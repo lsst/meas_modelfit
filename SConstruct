@@ -8,7 +8,22 @@ import lsst.SConsUtils as scons
 
 # List the direct *and indirect* pacakage dependencies of your package here.
 # Indirect dependencies are needed to get header files.
-dependencies = ["boost", "python", "utils", "pex_exceptions", "eigen"]
+dependencies = [
+		"boost", 
+		"python", 
+		"minuit",
+		"wcslib" 
+		"utils", 
+		"pex_exceptions", 
+		"eigen", 
+		"daf_base", 
+		"daf_data",
+		"daf_persistence",
+		"pex_logging",
+		"pex_exceptions",
+		"pex_policy",
+		"security",		
+		"afw"]
 
 env = scons.makeEnv(
         # The name of your package goes here.
@@ -24,15 +39,23 @@ env = scons.makeEnv(
 
         # If just a header is required, list it.
         ["boost", "boost/shared_ptr.hpp"],
-
-        # If a header and library are required, list them both.
-        # The library name should not include "lib" or ".so" or ".dylib".
-        # It should always have ":C++" suffixed.
-        ["boost", "boost/regex.hpp", "boost_regex:C++"],
         ["python", "Python.h"],
         ["utils", "lsst/utils/Utils.h", "utils:C++"],
-        ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"],
-        ["eigen", "Eigen/Core.h"]
+        ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"],   
+        ["m", "math.h", "m", "sqrt"],    
+		["cfitsio", "fitsio.h", "cfitsio", "ffopen"],
+        ["wcslib", "wcslib/wcs.h", "wcs:C++"],
+        ["xpa", "xpa.h", "xpa", "XPAPuts"],
+		["minuit", "Minuit/FCNBase.h", "lcg_Minuit:C++"],
+		["daf_base", "lsst/daf/base.h", "daf_base:C++"],
+		["pex_policy", "lsst/pex/policy/Policy.h", "pex_policy:C++"],
+		["pex_logging", "lsst/pex/logging/Trace.h", "pex_logging:C++"],
+        ["security", "lsst/security/Security.h", "security:C++"],
+        ["daf_persistence", "lsst/daf/persistence/Persistence.h", "daf_persistence:C++"],
+        ["daf_data", "lsst/daf/data/LsstBase.h", "daf_data:C++"],
+        ["gsl", "gsl/gsl_rng.h", "gslcblas gsl"],       
+        ["eigen", "Eigen/Core.h"],
+        ["afw", "lsst/afw/image/Exposure.h"]
         ])
 
 # Describe what the package contains here.
