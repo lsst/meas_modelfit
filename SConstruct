@@ -12,7 +12,8 @@ dependencies = [
 		"boost", 
 		"python", 
 		"minuit",
-		"wcslib" 
+        "cfitsio",
+		"wcslib",
 		"utils", 
 		"pex_exceptions", 
 		"eigen", 
@@ -22,7 +23,8 @@ dependencies = [
 		"pex_logging",
 		"pex_exceptions",
 		"pex_policy",
-		"security",		
+		"security",	
+        "gsl",
 		"afw"]
 
 env = scons.makeEnv(
@@ -42,9 +44,8 @@ env = scons.makeEnv(
         ["python", "Python.h"],
         ["utils", "lsst/utils/Utils.h", "utils:C++"],
         ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"],   
-        ["m", "math.h", "m", "sqrt"],    
-		["cfitsio", "fitsio.h", "cfitsio", "ffopen"],
-        ["wcslib", "wcslib/wcs.h", "wcs:C++"],
+		["cfitsio", "fitsio.h", "m cfitsio", "ffopen"],
+        ["wcslib", "wcslib/wcs.h", "m wcs"],
         ["xpa", "xpa.h", "xpa", "XPAPuts"],
 		["minuit", "Minuit/FCNBase.h", "lcg_Minuit:C++"],
 		["daf_base", "lsst/daf/base.h", "daf_base:C++"],
