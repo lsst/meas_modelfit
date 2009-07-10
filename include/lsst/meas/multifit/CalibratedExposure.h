@@ -71,6 +71,8 @@ public:
 
     virtual Eigen::Transform2d getTransform(Eigen::Vector2d const & global_pos) const = 0;
     virtual double getPhotometricFactorAt(Eigen::Vector2d const & local_pos) const = 0;
+    
+    virtual Eigen::VectorXd getSigmaWeightedBackgroundSubtracted() const = 0;
 
     virtual Psf * const & getPsf() const = 0;
     virtual int getNumPsfParam() const {

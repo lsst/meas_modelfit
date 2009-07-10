@@ -93,13 +93,11 @@ private:
     void buildBkgSubtracted();
 
     int getNumBkgParam(CalibratedExposure::Ptr const & exposure) const {
-        // TODO: query exposure for background parameter size
-        return testFlags(BKG) * (0);
+        return testFlags(BKG) * exposure->getNumBkgParam();
     }
 
     int getNumPsfParam(CalibratedExposure::Ptr const & exposure) const {
-        // TODO: query exposure for PSF parameter size
-        return testFlags(PSF) * (0);
+        return testFlags(PSF) * exposure->getNumPsfParam();
     }
 
     void computeBkgMatrix(CalibratedExposure::Ptr const & exposure) {
@@ -108,6 +106,7 @@ private:
         ndarray::ArrayRef<double,3,2> ref(_calibration_matrix.data(),
                 ndarray::make_index(getNumBkgParam(exposure),height,width),
                 ndarray::make_index(height*width,width,1));
+
         // TODO: query exposure for background matrix, append to ref
     }
 
