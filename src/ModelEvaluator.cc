@@ -25,14 +25,10 @@ multifit::ModelEvaluator::ModelEvaluator(
     _nonlinear(nonlinear.core().vector()),
     _marginalizationFlags(marginalizationFlags) 
 {
-    generateExposureIndex(exposures.begin(), exposures.end());
-    _linear_matrix.resize(_linear.size(), _numTotalPixels);
-    _nonlinear_matrix.resize(_nonlinear.size(), _numTotalPixels);
-    _residuals.resize(_numTotalPixels);
-    _bkg_subtracted.resize(_numTotalPixels);
-    
+    setExposures(exposures);
+
     //build background subtracted data
-    buildBkgSubtracted();
+    buildBkgSubtracted()
     
     //build list of SourceModels.
     //this is a kind of workspace for matrix calculations
@@ -63,22 +59,72 @@ multifit::ModelEvaluator::ModelEvaluator(
     }
  }
 
-template <typename ExposureIterator>
+template <typename ExposureContainer>
 void multifit::ModelEvaluator::setExposures(
-        ExposureIterator const & begin,
-        ExposureIterator const & end) {
-    _exposures.empty();
+        ExposureContainer const & exposures) {
+    _exposures.clear();
+    _residualsSection.clear();
+    _linearMatrixSection.clear();
+    _nonlinearMatrixSection.clear();
+    _psfMatrixSection.clear();
 
-    int offset = 0;
-    int size;
-    for(ExposureIterator iter = begin; iter != end; iter++) {
-        _exposures.insert(std::make_pair(*iter, offset));        
-        size = iter->getWidth()*iter->getHeight();
-        _bkg_subtracted.segment(offset, size) = 
+    int nExposures = exposures.size();
+    _exposures.reserve(nExposures);
+    _residualsSection.reserve(nExposures);
+    _linearMatrixSection.reserve(nExposures);
+    _nonlinearMatrixSection.reserve(nExposures);
+    _psfMatrixSection.reserve(nExposures);
+
+    _numTotalPixels=0;
+    int nPix;
+    ExposureContainer::const_iterator iter = exposures.begin();
+    ExposureContainer::const_iterator const end = exposures.end();
+    for(; iter != end; ++iter) {
+        CalibratedExposure::Ptr exposure = *iter;
+        _exposures.push_back(exposure);
+        nPix = exposure->getWidth()*exposure->getHeight();
+        _bkgSubtracted.segment(_numTotalPixels, nPix) = 
                 iter->getSigmaWeightedBackgroundSubtracted();
-        offset += size;
+        _numTotalPixels += nPix;
     }
-    _numTotalPixels = offset;
+
+    _linearMatrix.resize(_linear.size(), _numTotalPixels);
+    _nonlinearMatrix.resize(_nonlinear.size(), _numTotalPixels);
+    _residuals.resize(_numTotalPixels);
+    _bkgSubtracted.resize(_numTotalPixels);
+
+    int linearMatrixOffset = 0;
+    int nonLinearMatrixOffset = 0;
+    int psfMatrixOffset = 0;
+    int residualsOffset = 0;
+    int height, width;
+
+    for(iter = exposures.begin(); iter != end; ++iter) {
+        height = iter->getHeight();
+        width = iter->getWidth();
+        nPix = height*width;
+        
+        _residualsSection.push_back(ImageCore(
+                _residuals.data() + residualsOffset,
+                ndarray::make_index(height, width),
+                ndarray::make_index(width, 1))
+        );
+        residualsOffset += nPix;
+
+        _linearMatrixSection.push_back(DerivativeCore(
+                _linearMatrix.data() + linearMatrixOffset,
+                ndarray::make_index(_linear.size(), height, width),
+                ndarray::make_index(nPix, width, 1))
+        );
+        linearMatrixOffset +=_linear.size()*nPix;
+
+        _nonlinearMatrixSection.push_back(DerivativeCore(
+                _nonlinearMatrix.data() + nonlinearMatrixOffset,
+                ndarray::make_index(_nonlinear.size(), height, width),
+                ndarray::make_index(nPix, width, 1))
+        );
+        nonlinearMatrixOffset +=_linear.size()*nPix;
+    }
 }
 
 void multifit::ModelEvaluator::buildBkgSubtracted() {
@@ -88,73 +134,69 @@ void multifit::ModelEvaluator::buildBkgSubtracted() {
 }
 
 multifit::ProbabilityExpansion const & multifit::ModelEvaluator::evaluate() {
-    const int linear_size = _linear.size();
-    const int nonlinear_size = _nonlinear.size();
+    int const linearSize = _linear.size();
+    int const nonlinearSize = _nonlinear.size();
+    int const nExposures = _exposures.size();
 
-    _residuals = _bkg_subtracted;
+    _residuals = _bkgSubtracted;
 
-    ExposureIndexIterator exposure_iter(_exposures.begin());
-    ExposureIndexIterator const exposure_end(_exposures.end());
-    ObjectModelIterator object_iter;
-    ObjectModelIterator const object_end(_models.end());
-    SourceModelIterator source_iter(_workspace.begin());    
-    //loop to compute linear matrix        
-    for( ; exposure_iter != exposure_end; ++exposure_iter) {
-        object_iter = ObjectModelIterator::begin(_models);
-        for( ; object_iter != object_end; ++object_iter, ++source_iter) { 
-            ObjectModel::Ptr model = *object_iter;
-            model->computeLinearMatrix(**source_iter, 
-                    getNonlinearParameterSection(object_iter),
-                    getLinearMatrixSection(object_iter, exposure_iter),
-                    getResidualsSection(exposure_iter));
-        }        
+    ParameterVector linearRef(_linear.data(), _linear.size(), 1);
+    ParameterVector nonlinearRef(_nonlinear.data(), _nonlinear.size(), 1);
+
+    //loop to compute linear matrix    
+
+    for(int exposureId=0; exposureId < nExposures; ++exposureId) {
+        TransformedModel::Ptr model = _modelStack.at(exposureId);
+        model->evalLinearDerivative(
+                nonlinearRef, 
+                getLinearMatrixSection(exposureId),
+                getResidualsSection(exposureId)
+        );
     }
 
     //solve for linear params
-    Eigen::Block<Eigen::MatrixXd> ddp_linear_block(_posterior._ddp, 
-            nonlinear_size, 
-            nonlinear_size, 
-            linear_size, 
-            linear_size);
+    Eigen::Block<Eigen::MatrixXd> ddpLinearBlock(_posterior._ddp, 
+            nonlinearSize, 
+            nonlinearSize, 
+            linearSize, 
+            linearSize);
 
-    ddp_linear_block.part<Eigen::SelfAdjoint>() += 
-            (_linear_matrix.adjoint() * _linear_matrix).lazy();
+    ddpLinearBlock.part<Eigen::SelfAdjoint>() += 
+            (_linearMatrix.adjoint() * _linearMatrix).lazy();
 
     //TODO: implement solver
-    //solve(ddp_linear_block, 
-    //        _linear_matrix.transpose()*_residuals - _posterior._dp.end(linear_size), 
+    //solve(ddpLinearBlock, 
+    //        _linearMatrix.transpose()*_residuals - _posterior._dp.end(linearSize), 
     //        _linear);
                     
     //compute residuals
-    _residuals -= _linear_matrix * _linear;
+    _residuals -= _linearMatrix * _linear;
     
     //loop to compute nonlinear matrix
     source_iter = _workspace.begin();
     exposure_iter = _exposures.begin();
-    for(; exposure_iter != exposure_end; ++exposure_iter) {
-        object_iter = ObjectModelIterator::begin(_models);
-        for(; object_iter != object_end; ++object_iter) {
-            ObjectModel::Ptr model = *object_iter;
-            model->computeNonlinearMatrix(**source_iter,
-                    getLinearParameterSection(object_iter),
-                    getNonlinearMatrixSection(object_iter, exposure_iter));
-            ++source_iter;
-        }
+    for(int exposureId = 0; exposureId < nExposures; ++exposureId) {
+        TransformedModel::Ptr model = _modelStack.at(exposureId);
+        model->evalNonlinearDerivative(
+                linearRef,
+                nonlinearRef,
+                getNonlinearMatrixSection(exposureId)
+        );                        
     }
 
     _posterior._p += 0.5*_residuals.dot(_residuals);
-    _posterior._dp.end(linear_size).setZero();
-    _posterior._dp.start(nonlinear_size) -= 
-            _nonlinear_matrix.transpose() * _residuals;
-    _posterior._ddp.block(0, 0, nonlinear_size, nonlinear_size).part<Eigen::SelfAdjoint>() += 
-            (_nonlinear_matrix.adjoint() * _nonlinear_matrix).lazy();
-    _posterior._ddp.block(nonlinear_size, 0, linear_size, nonlinear_size) +=
-            _linear_matrix.adjoint() * _nonlinear_matrix;
+    _posterior._dp.end(linearSize).setZero();
+        _posterior._dp.start(nonlinearSize) -= 
+            _nonlinearMatrix.transpose() * _residuals;
+    _posterior._ddp.block(0, 0, nonlinearSize, nonlinearSize).part<Eigen::SelfAdjoint>() += 
+            (_nonlinearMatrix.adjoint() * _nonlinearMatrix).lazy();
+    _posterior._ddp.block(nonlinearSize, 0, linearSize, nonlinearSize) +=
+            _linearMatrix.adjoint() * _nonlinearMatrix;
 
     //loop to marginalize over calibration parameters...lots of work to do
     source_iter = _workspace.begin();
     exposure_iter = _exposures.begin();
-    for( ; exposure_iter != exposure_end; ++exposure_iter) {
+    for(int exposureId ; exposureId < nExposures; ++exposureId) {
         int width = exposure_iter->first->getWidth();
         int height = exposure_iter->first->getHeight();
         int pixels = width*height;
@@ -182,11 +224,11 @@ multifit::ProbabilityExpansion const & multifit::ModelEvaluator::evaluate() {
             dtau_dtau.part<Eigen::SelfAdjoint>() 
                 = (_calibration_matrix.adjoint() * _calibration_matrix).lazy();
             Eigen::MatrixXd dtau_dphi = _calibration_matrix.adjoint() 
-                    * _nonlinear_matrix.block(
-                            exposure_iter->second,0,pixels,nonlinear_size);
+                    * _nonlinearMatrix.block(
+                            exposure_iter->second,0,pixels,nonlinearSize);
             Eigen::MatrixXd dtau_dlambda = _calibration_matrix.adjoint() 
-                    * _linear_matrix.block(
-                            exposure_iter->second,0,pixels,linear_size);
+                    * _linearMatrix.block(
+                            exposure_iter->second,0,pixels,linearSize);
             addCalibrationFisherMatrix(exposure_iter->first,dtau_dtau);
             Eigen::LU<Eigen::MatrixXd> lu(dtau_dtau.lu());
             _posterior._p += 0.5*std::log(
@@ -201,27 +243,27 @@ multifit::ProbabilityExpansion const & multifit::ModelEvaluator::evaluate() {
 
             double temp = (dtau.adjoint() * dtau_dtau_inv).dot(dtau);
             _posterior._p -= 0.5 * temp;
-            _posterior._dp.start(nonlinear_size) += dtau_dphi.adjoint() * dtau_dtau_inv * dtau;
-            _posterior._dp.end(linear_size) += dtau_dlambda.adjoint() * dtau_dtau_inv * dtau;
+            _posterior._dp.start(nonlinearSize) += dtau_dphi.adjoint() * dtau_dtau_inv * dtau;
+            _posterior._dp.end(linearSize) += dtau_dlambda.adjoint() * dtau_dtau_inv * dtau;
             Eigen::Block<Eigen::MatrixXd> ddp_nonlinear = 
-                    _posterior._ddp.block(0, 0, nonlinear_size, nonlinear_size);
+                    _posterior._ddp.block(0, 0, nonlinearSize, nonlinearSize);
             ddp_nonlinear.part<Eigen::SelfAdjoint>() += 
                     (dtau_dphi.adjoint()*dtau_dtau_inv.part<Eigen::SelfAdjoint>()*dtau_dphi).lazy();
 
             Eigen::Block<Eigen::MatrixXd> ddp_linear = _posterior._ddp.block(
-                    nonlinear_size, nonlinear_size, linear_size,linear_size);
+                    nonlinearSize, nonlinearSize, linearSize,linearSize);
             ddp_linear.part<Eigen::SelfAdjoint>() +=
                 (dtau_dlambda.adjoint()*dtau_dtau_inv.part<Eigen::SelfAdjoint>()*dtau_dlambda).lazy();
 
-            _posterior._ddp.block(nonlinear_size,0,linear_size,nonlinear_size) +=
+            _posterior._ddp.block(nonlinearSize,0,linearSize,nonlinearSize) +=
                 dtau_dlambda.adjoint() * dtau_dtau_inv * dtau_dphi;
             
         }
     }
 
     // make 
-    _posterior._ddp.block(0, nonlinear_size, nonlinear_size, linear_size) =
-        _posterior._ddp.block(nonlinear_size, 0, linear_size, nonlinear_size).adjoint();
+    _posterior._ddp.block(0, nonlinearSize, nonlinearSize, linearSize) =
+        _posterior._ddp.block(nonlinearSize, 0, linearSize, nonlinearSize).adjoint();
 
     
     return _posterior;

@@ -24,21 +24,23 @@ public:
     enum MarginalizationFlagsEnum { NONE=0, PSF=1, BKG=2 };
 
     template <typename ExposureContainer>
-    ModelEvaluator(ObjectModel::Map const & model_set, 
+    ModelEvaluator(Model::ConstPtr model,
                    ExposureContainer exposures,
                    int marginalizationFlags,
                    Probability const * prior);
 
 
     template <typename ExposureContainer>
-    ModelEvaluator(ObjectModel::Map const & model_set,
+    ModelEvaluator(Model::ConstPtr model,
                    ndarray::ArrayRef<double,1,1> const & linear,
                    ndarray::ArrayRef<double,1,1> const & nonlinear,
                    ExposureContainer exposures,
                    int marginalizationFlags,
                    Probability const * prior = NULL);
 
-    ObjectModel::Map const& getModels() const {return _models;}
+    Model::ConstPtr getModel() const {return _model;}
+
+    std::vector<TransformedModel::Ptr> const & getModelStack() const {return _modelStack;}
 
     // evaluate the likelihood of the model at the current values 
     //(only linear parameters are updated)
@@ -50,15 +52,12 @@ public:
 
     GaussianProbability getProbability() const;
   
-    ObjectModel& editModel(const ObjectModel::Key& tag);
-    ObjectModel::Ptr const getModel(ObjectModel::Key const& id) const;
-
-    int getNumTotalLinear() const {return _linear.size();}
-    int getNumTotalNonLinear() const {return _nonlinear.size();}
+    void setModel(Model::ConstPtr model);
+ 
+    int getNumLinear() const {return _linear.size();}
+    int getNumNonlinear() const {return _nonlinear.size();}
     int getNumTotalPixels() const {return _numTotalPixels;}
     int getNumExposures() const {return _exposures.size();}
-    int getNumObjects() const {return _models.size();}
-    int getNumSources() const {return _workspace.size();}
 
     class SourceView {
         Eigen::Block<Eigen::MatrixXd> _gm;  // block of grand matrix
@@ -66,8 +65,7 @@ public:
         Eigen::MatrixXd _gr; // copy of residuals with this source un-subtracted
 
         // more data to come
-        SourceView(const ObjectModel::Key& tag, 
-                const CalibratedExposure::Ptr & exposure, 
+        SourceView(const CalibratedExposure::Ptr & exposure, 
                 const std::string & constraint);
     
         friend class ModelEvaluator;
@@ -77,25 +75,46 @@ public:
     };
 
 private:    
-    typedef std::map<CalibratedExposure::Ptr, int>::const_iterator 
-            ExposureIndexIterator;
-    typedef ObjectModel::SourceModel SourceModel;
-    typedef std::vector<SourceModel*> SourceModelList;
-    typedef std::vector<SourceModel*>::iterator SourceModelIterator;
+    typedef std::vector<TransformedModel::Ptr> ModelStack;
+    typedef ndarray::ArrayCore<double, 2, 2> ImageCore;
+    typedef ndarray::ArrayCore<double, 3, 2> DerivativeCore;
 
-    template <typename ExposureIterator>
-    void setExposures(
-            ExposureIterator const & begin, 
-            ExposureIterator const & end);
+    int _numTotalPixels;
+    std::vector<CalibratedExposure::Ptr> _exposures;
+    std::vector<ImageCore> _residualsSection;
+    std::vector<DerivativeCore> _linearMatrixSection;
+    std::vector<DerivativeCore> _nonlinearMatrixSection;
+
+    Model::ConstPtr _model;    
+    ModelStack _modelStack;
+
+
+    Eigen::VectorXd _linear, _nonlinear;
+    Eigen::VectorXd _bkgSubtracted;
+    Eigen::VectorXd _residuals;
+    ProbabilityExpansion _posterior;
+
+    Eigen::MatrixXd _linearMatrix, _nonlinearMatrix, _calibrationMatrix;
+
+    int _marginalizationFlags;
+
+    template <typename ExposureContainer>
+    void setExposures(ExposureContainer const & exposures);
 
     //begin stuff that wraps Exposure interface -------------------------------
 
     void buildBkgSubtracted();
 
+    int getNumBkgParam(int const exposureId) const {
+        return getNumBkgParam(_exposures.at(exposureId));
+    }
     int getNumBkgParam(CalibratedExposure::Ptr const & exposure) const {
         return testFlags(BKG) * exposure->getNumBkgParam();
     }
 
+    int getNumPsfParam(int const exposureId) const {
+        return getNumPsfParam(_exposures.at(exposureId));
+    }
     int getNumPsfParam(CalibratedExposure::Ptr const & exposure) const {
         return testFlags(PSF) * exposure->getNumPsfParam();
     }
@@ -103,7 +122,7 @@ private:
     void computeBkgMatrix(CalibratedExposure::Ptr const & exposure) {
         int height = exposure->getHeight();
         int width = exposure->getWidth();
-        ndarray::ArrayRef<double,3,2> ref(_calibration_matrix.data(),
+        ndarray::ArrayRef<double,3,2> ref(_calibrationMatrix.data(),
                 ndarray::make_index(getNumBkgParam(exposure),height,width),
                 ndarray::make_index(height*width,width,1));
 
@@ -119,97 +138,29 @@ private:
 
     //end stuff that wraps Exposure interface ---------------------------------
 
-    int _numTotalPixels;
-    std::map<CalibratedExposure::Ptr, int> _exposures;
-    ObjectModel::Map _models;
-    SourceModelList _workspace;
 
-    Eigen::VectorXd _linear, _nonlinear;
-    Eigen::VectorXd _bkg_subtracted;
-    Eigen::VectorXd _residuals;
-    ProbabilityExpansion _posterior;
 
-    Eigen::MatrixXd _linear_matrix, _nonlinear_matrix, _calibration_matrix;
-
-    int _marginalizationFlags;
-
-    inline bool testFlags(MarginalizationFlagsEnum f) const { 
-        return _marginalizationFlags & f; 
+    inline bool testFlags(int flags) const { 
+        return _marginalizationFlags & flag; 
     }
-
-    // returned array is (linear)
-    ndarray::ArrayRef<double,1,1> getLinearParameterSection(
-            ObjectModelIterator & iter) {
-        return ndarray::ArrayRef<double,1,1>(
-                _linear.data() + iter.getLinearOffset(),
-                (*iter)->getNumLinearParam());
-    }
-
-    // returned array is (nonlinear)
-    ndarray::ArrayRef<double,1,1> getNonlinearParameterSection(
-            ObjectModelIterator const & iter) {
-        ObjectModel::Ptr model = *iter;
-        return ndarray::ArrayRef<double,1,1>(
-                _nonlinear.data() + iter.getNonlinearOffset(),
-                model->getNumNonlinearParam());
-    }
-        
+       
     // returned array is (y,x)
-    ndarray::ArrayRef<double,2,2> getResidualsSection(
-            ExposureIndexIterator const & exposure) {
-        int height = exposure->first->getHeight();
-        int width = exposure->first->getWidth();
-        return ndarray::ArrayRef<double,2,2>(
-                _residuals.data()+exposure->second,
-                ndarray::make_index(height, width));
+    ImageVector getResidualsSection(int exposureId) {
+        return ndarray::ArrayRef<double, 2, 2>(residualsSection.at(exposureId);
     }
 
     // returned array is (linear,y,x)
-    ndarray::ArrayRef<double,3,2>
-    getLinearMatrixSection(ObjectModelIterator const & modelIter, 
-            ExposureIndexIterator const & exposureIter) {
-        CalibratedExposure::Ptr exposure = exposureIter->first;
-        int height = exposure->getHeight();
-        int width = exposure->getWidth();
-        int offset = modelIter.getLinearOffset()*_numTotalPixels 
-                + exposureIter->second;
-        ObjectModel::Ptr model = *modelIter;
-        return ndarray::ArrayRef<double,3,2>(
-            _linear_matrix.data() + offset,
-            ndarray::make_index(model->getNumLinearParam(), height, width),
-            ndarray::make_index(_numTotalPixels, width,1));
+    DerivateMatrix getLinearMatrixSection(int exposureId) {
+        return DerivativeMatrix(linearMatrixSection.at(exposureId);
     }
 
     // returned array is (nonlinear,y,x)
-    ndarray::ArrayRef<double,3,2> getNonlinearMatrixSection(
-            ObjectModelIterator const & modelIter, 
-            ExposureIndexIterator const & exposureIter
-    ) {
-        CalibratedExposure::Ptr exposure = exposureIter->first;
-        int height = exposure->getHeight();
-        int width = exposure->getWidth();
-        int offset = modelIter.getNonlinearOffset()*_numTotalPixels
-                + exposureIter->second;
-        ObjectModel::Ptr model = *modelIter;
-
-        return ndarray::ArrayRef<double,3,2>(
-            _nonlinear_matrix.data() + offset,
-            ndarray::make_index(model->getNumNonlinearParam(), height,width),
-            ndarray::make_index(_numTotalPixels, width,1));
+    DerivativeMatrix getNonlinearMatrixSection(int exposureId) {
+        return DerivativeMatrix(nonlinearMatrixSection.at(exposureId);
     }
 
-    ndarray::ArrayRef <double, 3, 2> getPsfMatrix(
-            ExposureIndexIterator const & exposureIter
-    ) {
-        CalibratedExposure::Ptr exposure = exposureIter->first;
-        int height = exposure->getHeight();
-        int width = exposure->getWidth();
-        int offset = testFlags(BKG) * exposure->getNumBackgroundParam();
-        int size = testFlags(PSF) * exposure->getNumPsfParam();
-        return ndarray::ArrayRef<double,3,2>(
-                _calibration_matrix.data() + offset*width*height,
-                ndarray::make_index(size,height,width),
-                ndarray::make_index(height*width,width,1));        
+    DerivativeMatrix getPsfMatrixSection(int exposureid) {
+        return DerivativeMatrix(psfMatrixSection.at(exposureId);
     }
 
 };
