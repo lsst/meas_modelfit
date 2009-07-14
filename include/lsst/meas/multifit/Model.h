@@ -1,17 +1,10 @@
 #ifndef LSST_MEAS_MULTIFIT_MODEL_H
 #define LSST_MEAS_MULTIFIT_MODEL_H
 
-#include <map>
-#include <stdexcept>
-
 #include "boost/shared_ptr.hpp"
-#include "boost/utility.hpp"
-#include "boost/cstdint.hpp"
 
 #include "Eigen/Core"
 #include "ndarray/ndarray.hpp"
-
-#include "lsst/meas/multifit/CalibratedExposure.h"
 
 namespace lsst {
 namespace meas {
