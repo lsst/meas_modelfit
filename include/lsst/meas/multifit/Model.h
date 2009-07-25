@@ -9,97 +9,84 @@
 namespace lsst {
 namespace meas {
 namespace multifit {
+
+typedef Eigen::Vector2d Coordinate;
 typedef ndarray::ArrayRef<double, 1, 1> ParameterVector;
+//dimensions are pixel height, pixel width
 typedef ndarray::ArrayRef<double, 2, 2> ImageVector;
-typedef ndarray::ArrayRef<double, 3, 2> DerivativeMatrix;
+// dimensions are parameters, pixel height, pixel width
+typedef ndarray::ArrayRef<double, 3, 3> DerivativeMatrix;
 
-class TransformedModel;
+inline Eigen::Map<Eigen::VectorXd> extractEigenView(ParameterVector const & array) {
+    return array.core().vector();
+}
 
+inline Eigen::Map<Eigen::VectorXd> extractEigenView(ImageVector const & array) {
+    return array.core().vector();
+}
+
+inline Eigen::Map<Eigen::MatrixXd> extractEigenView(DerivativeMatrix const & array) {
+    return Eigen::Map<Eigen::MatrixXd>(
+            array.data(),array.shape()[2]*array.shape()[1],array.shape()[0]
+    );
+}
 class Model {
 public:
     typedef boost::shared_ptr<Model> Ptr;
     typedef boost::shared_ptr<const Model> ConstPtr;
 
-    virtual TransformedModel * transform(Eigen::Transform2d transform, Psf::Ptr psf) const;
+    virtual void setLinearParameters(Eigen::VectorXd const & parameters) = 0;
+    virtual void setNonlinearParameters(Eigen::VectorXd const & parameters) = 0;
+    
+    /**
+     * Apply transform to the model "after" any existing transform.
+     */
+    virtual void addTransform(Eigen::Transform2d const & transform) = 0;
+    
+    virtual Model * clone() const = 0;
 
-    virtual void evalImage(ParameterVector const & linearParameters, 
-            ParameterVector const & nonlinearParameters,
-            ImageVector const & image           
-    );
-    virtual void evalLinearDerivative(ParameterVector const & nonlinearParameters,
-            DerivativeMatrix const & linearDerivative,
-            ImageVector const & constantModel
-    ) = 0;
-    virtual void evalNonlinearDerivative(
-            ParameterVector const & linearParameters, 
-            ParameterVector const & nonlinearParameters,
-            DerivateMatrix const & nonlinearDerivative,
-    ) = 0;
+    /**
+     * Creates a convolved model
+     * If the model already has a Psf, the old Psf is ignored.
+     */
+    virtual Model * convolve(Psf::ConstPtr psf) const = 0;
+
+
+    // should add to existing image rather than overwrite it
+    virtual void evalParametrizedImage(ImageVector const & parametrizedImage) const = 0 ;
+    // should add to existing image rather than overwrite it
+    // by default, there is nothing to do. Only constrained models will need to
+    // override this method
+    virtual void evalConstantImage(ImageVector const& constantImage) const {};
+    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
+    virtual void evalLinearDerivative(DerivativeMatrix const & linearDerivative) const = 0;    
+    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
+    virtual void evalNonlinearDerivative(DerivateMatrix const & nonlinearDerivative) const = 0;
+    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
+    virtual void evalTransformDerivative(DerivativeMatrix const & transformDerivative) const = 0;    
+    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
+    virtual void evalPsfDerivative(DerivativeMatrix const & psfDerivative) const = 0;    
 
 
     virtual int getNumLinearParameters() const = 0;
     virtual int getNumNonlinearParameters() const = 0;
+    /**
+     * affine transforms have exactly 6 parameters. yay for magic numbers
+     */
+    virtual int getNumTransformParameters() const {return 6;}
+    virtual int getNumPsfParameters() const {return 0;}
     
+    virtual Coordinate getCenter() const = 0;
+    
+    virtual ~Model(){}
 protected:
 
     Model(Model const & other)
     {}
 
-    virtual void transformNonlinear(
-            Eigen::Transform2d const & transform, 
-            ParameterVector const & input,
-            ParameterVector const & output
-    );
-    
-    virtual void evalTransformDerivative_impl(
-            Eigen::Transform2d const & transform,
-            ParameterVector const & linearParameters, 
-            ParameterVector const & nonlinearParameters,
-            DerivateMatrix const & transformDerivative
-    );
-
 private:
     void operator=(Model const & other) {}
 };
-
-
-class TransformedModel : public Model {
-public:
-    TransformedModel(
-            Model::ConstPtr model, 
-            Eigen::Transform2d transform, 
-            Psf::Ptr psf,
-            int overSampling = 1
-    ) : _model(model), _transform(transform), _psf(psf) {
-        
-    }
-
-
-    virtual void evalPsfDerivative(
-            ParameterVector const & linearParameters, 
-            ParameterVector const & nonlinearParameters,
-            DerivateMatrix const & psfDerivative
-    );
-
-    virtual void evalTransformDerivative(
-            ParameterVector const & linearParameters, 
-            ParameterVector const & nonlinearParameters,
-            DerivateMatrix const & transformDerivative
-    ) {
-        _model->evalTransformDerivative_impl(_transform, linearParameters,
-                nonlinearParameters, transformDerivative);        
-    }
-
-    int getNumPsfParameters() const {return _psf->getNumParams();}
-
-protected:
-    TransformModel(TransformModel const & other)
-        : _model(other._model), _transform(other._transform), _psf(other._psf) 
-    {}
-    Model::ConstPtr _model;
-    Eigen::Transform2d _transform;
-    Psf::Ptr _psf;
-}
 
 
 }}} //end namespace lsst::meas::multifit

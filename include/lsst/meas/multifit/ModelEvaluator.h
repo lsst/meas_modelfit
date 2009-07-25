@@ -10,8 +10,6 @@
 
 #include "GaussianProbability.h"
 #include "lsst/meas/multifit/Model.h"
-#include "lsst/meas/multifit/ModelIterator.h"
-#include "lsst/meas/multifit/ConstrainedModel.h"
 #include "lsst/meas/multifit/CalibratedExposure.h"
 
 namespace lsst {
@@ -20,8 +18,11 @@ namespace multifit{
 
 class ModelEvaluator {
 public:
-
-    enum MarginalizationFlagsEnum { NONE=0, PSF=1, BKG=2 };
+    typedef std::vector<TransformedModel::Ptr> ModelStack;
+    typedef ndarray::ArrayCore<double, 2, 2> ImageCore;
+    typedef ndarray::ArrayCore<double, 3, 2> DerivativeCore;
+    
+    enum MarginalizationFlagsEnum { MARGINALIZE_NONE=0, MARGINALIZE_PSF=1, MARGINALIZE_BKG=2 };
 
     template <typename ExposureContainer>
     ModelEvaluator(Model::ConstPtr model,
@@ -75,9 +76,7 @@ public:
     };
 
 private:    
-    typedef std::vector<TransformedModel::Ptr> ModelStack;
-    typedef ndarray::ArrayCore<double, 2, 2> ImageCore;
-    typedef ndarray::ArrayCore<double, 3, 2> DerivativeCore;
+
 
     int _numTotalPixels;
     std::vector<CalibratedExposure::Ptr> _exposures;
@@ -109,14 +108,14 @@ private:
         return getNumBkgParam(_exposures.at(exposureId));
     }
     int getNumBkgParam(CalibratedExposure::Ptr const & exposure) const {
-        return testFlags(BKG) * exposure->getNumBkgParam();
+        return testFlags(MARGINALIZE_BKG) * exposure->getNumBkgParam();
     }
 
     int getNumPsfParam(int const exposureId) const {
         return getNumPsfParam(_exposures.at(exposureId));
     }
     int getNumPsfParam(CalibratedExposure::Ptr const & exposure) const {
-        return testFlags(PSF) * exposure->getNumPsfParam();
+        return testFlags(MARGINALIZE_PSF) * exposure->getNumPsfParam();
     }
 
     void computeBkgMatrix(CalibratedExposure::Ptr const & exposure) {
