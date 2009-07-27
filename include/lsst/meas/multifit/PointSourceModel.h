@@ -52,7 +52,7 @@ class PointSourceModel : public Model{
      */
     virtual int getNumLinearParamters() const {return 1;}
     virtual int getNumPsfParameters() const {
-        return (_psf) ? _psf->getNumParam() : 0;
+        return (_psf) ? _psf->getBasisSize() : 0;
     }
 
     virtual Coordinate getCenter() {return _center;}
@@ -64,8 +64,6 @@ class PointSourceModel : public Model{
     virtual void evalPsfDerivative(DerivativeMatrix const & psfDerivative) const;
     
 protected:
-    typedef Psf::ImageT ImageT;
-
     explicit PointSourceModel(PointSourceModel const & other) 
         : _nonlinear(other._nonlinear), _linear(other._linear), _psf(other._psf)
     {}
