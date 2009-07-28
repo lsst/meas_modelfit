@@ -30,6 +30,7 @@ inline Eigen::Map<Eigen::MatrixXd> extractEigenView(DerivativeMatrix const & arr
             array.data(),array.shape()[2]*array.shape()[1],array.shape()[0]
     );
 }
+
 class Model {
 public:
     typedef boost::shared_ptr<Model> Ptr;
@@ -37,7 +38,8 @@ public:
 
     virtual void setLinearParameters(Eigen::VectorXd const & parameters) = 0;
     virtual void setNonlinearParameters(Eigen::VectorXd const & parameters) = 0;
-    
+    VectorXd const & getLinearParameters() {return _linearParameters;}
+    VectorXd const & getNonlinearParameters() {return _nonlinearParameters;}
     /**
      * Apply transform to the model "after" any existing transform.
      */
@@ -51,39 +53,49 @@ public:
      */
     virtual Model * convolve(Psf::ConstPtr psf) const = 0;
 
+    Eigen::VectorXd const & computeParametrizedImage();
+    Eigen::VectorXd const & computeConstantImage();
+    Eigen::MatrixXd const & computeLinearMatrix();   
+    Eigen::MatrixXd const & computeNonlinearMatrix();
+    Eigen::MatrixXd const & computeTransformMatrix();    
+    Eigen::MatrixXd const & computePsfMatrix();
 
-    // should add to existing image rather than overwrite it
-    virtual void evalParametrizedImage(ImageVector const & parametrizedImage) const = 0 ;
-    // should add to existing image rather than overwrite it
-    // by default, there is nothing to do. Only constrained models will need to
-    // override this method
-    virtual void evalConstantImage(ImageVector const& constantImage) const {};
-    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
-    virtual void evalLinearDerivative(DerivativeMatrix const & linearDerivative) const = 0;    
-    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
-    virtual void evalNonlinearDerivative(DerivateMatrix const & nonlinearDerivative) const = 0;
-    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
-    virtual void evalTransformDerivative(DerivativeMatrix const & transformDerivative) const = 0;    
-    // CAUTION: Assumes DerivativeMatrix is zeroed. Will overwrite
-    virtual void evalPsfDerivative(DerivativeMatrix const & psfDerivative) const = 0;    
+    std::pair<int, int> const getImageDimensions() const;
+    int const getImageWidth() const;
+    int const getImageHeight() const;
 
-
-    virtual int getNumLinearParameters() const = 0;
-    virtual int getNumNonlinearParameters() const = 0;
-    /**
-     * affine transforms have exactly 6 parameters. yay for magic numbers
-     */
-    virtual int getNumTransformParameters() const {return 6;}
-    virtual int getNumPsfParameters() const {return 0;}
+    virtual int getLinearSize() const = 0;
+    virtual int getNonlinearSize() const = 0;
+    virtual int getPsfBasisSize() const {return 0;}
     
     virtual Coordinate getCenter() const = 0;
     
     virtual ~Model(){}
 protected:
+    virtual void updateParametrizedImage() = 0;
+    virtual void updateConstantImage() {}
+    virtual void updateLinearMatrix()=0;    
+    virtual void updateNonlinearMatrix()=0;
+    virtual void updateTransformMatrix() =0;    
+    virtual void updatePsfMatrix() {}
+
+    VectorXd _linearParameters;
+    VectorXd _nonlinearParameters;
+    VectorXd _modelImage;
+    VectorXd _constantImage;
+    MatrixXd _linearMatrix;
+    MatrixXd _nonlinearMatrix;
+    MatrixXd _transformMatrix;
+    MatrixXd _psfMatrix;
 
     Model(Model const & other)
     {}
-
+    Model(int const imageWidth,
+            int const imageHeight,
+            int const linearSize,
+            int const nonlinearSize,
+            int const psfBasisSize
+            int const transformSize = 6);
 private:
     void operator=(Model const & other) {}
 };
