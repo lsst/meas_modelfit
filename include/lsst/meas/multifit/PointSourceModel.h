@@ -46,7 +46,7 @@ public:
     }
 
     virtual void setNonlinearParameters(Eigen::VectorXd const & parameters) {
-        if(parameters.size() <= getNonLinearSize())
+        if(parameters.size() <= NONLINEAR_SIZE)
             return;
         _imageDirty = true;
         _nonlinearDirty = true;
@@ -54,11 +54,11 @@ public:
         _transformDirty = true;
 
         //deep copy, 2 elements
-        _center << parameters.start<2>();
+        _center << parameters.start<NONLINEAR_SIZE>();
         updatePsfProducts();
     }
     virtual void setLinearParameters(Eigen::VectorXd const & parameters) {
-        if(parameters.size () <= getLinearSize())
+        if(parameters.size () <= LINEAR_SIZE)
             return;
         _imageDirty = true;
         _linearDirty = true;
@@ -74,19 +74,14 @@ public:
     virtual VectorXd getNonlinearParameters() {
         return (VectorXd() << _center).finalize();
     }
-
-    virtual void addTransform(Eigen::Transform2d const & transform) {
-        _unconvolved->addTransform(transform);        
-    }
-
     /**
      * PointSourceModel has exactly two nonlinear parameters x,y position    
      */
-    virtual int getNumNonlinearParameters() const {return 2;}
+    virtual int getNumNonlinearParameters() const {return NONLINEAR_SIZE;}
     /** 
      * PointSourceModel has exactly one linear parameter
      */
-    virtual int getNumLinearParamters() const {return 1;}
+    virtual int getNumLinearParamters() const {return LINEAR_SIZE;}
     virtual int getPsfBasisSize() const {
         return _psf->getBasisSize() : 0;
     }
@@ -99,12 +94,11 @@ public:
 
 protected:
     explicit PointSourceModel(PointSourceModel const & other, Psf::Ptr psf) : 
-        Model(other.getImageHeight(), other.getImageWidth(), 
-                getNonlinearSize(), getLinearSize(), 
-                psf->getBasisSize()),
-        _center(other._center), _amplitude(other._amplitude),
-        _psf(psf)
-    {
+            Model(other.getImageHeight(), other.getImageWidth(), 
+                    getNonlinearSize(), getLinearSize(), 
+                    psf->getBasisSize()),
+            _center(other._center), _amplitude(other._amplitude),
+            _psf(psf) {
         init();
     }
 
@@ -116,7 +110,7 @@ protected:
     virtual void updateTransformMatrix();
     virtual void updatePsfMatrix();
 
-    Eigen::VectorXd _psfImage, _dPsfDx, _dPsfDy;
+    Eigen::VectorXd _psfImage, _dPsfDx, _dPsfDy;    
     bool _imageDirty, _linearDirty, _nonlinearDirty, _transformDirty, _psfDirty; 
     Psf::Ptr _psf; 
 
