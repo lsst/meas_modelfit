@@ -1,92 +1,98 @@
 #include "lsst/meas/multifit/PointSourceModel.h"
-#include "lsst/afw/image/Image.h"
 
 namespace multifit = lsst::meas::multifit;
 
-void multifit::PointSourceModel::evalParametrizedImage(
-        ImageVector const & modelImage
-) const {
-    ImageVector::Index psfShape = modelImage.shape();
-    int nPix = psfShape.products();
-    Eigen::VectorXd psfImage(nPix);
-    ndarray::ArrayRef<double, 2, 1> psfRef(psfImage.data(), psfShape);
-    _psf->getKernel()->getImage(psfRef, _center);
-
-    Eigen::Map<VectorXd> imageView = extractEigenView(modelImage);
-    imageView << psfImage * _magnitude
+void multifit::PointSourceModel::init() {
+    _psfImage.resize(getImageSize());
+    _dPsfdX.resize(getImageSize());
+    _dPsfDy.resize(getImageSize());
+    _imageDirty = true;
+    _linearDirty = true; 
+    _nonlinearDirty = true;
+    _psfDirty = true;
+    _transformDirty = true;
 }
 
-void multifit::PointSourceModel::evalLinearDerivative(
-        DerivativeMatrix const & linearDerivative
-) const {
-    assert(linearDerivative.size() == getNumLinearParameters());
 
-    _psf->getKernel()->getImage(linearDerivative[0], _center);
-}
+void multifit::PointSourceModel::updatePsfProducts() {
+    _psfImage.setZero();
+    _dPsfDx.setZero();
+    _dPsfDy.setZero();
 
-void multifit::PointSourceModel::evalNonlinearDerivative(
-        DerivativeMatrix const & nonlinearDerivative
-) const {
-    assert(nonlinearDerivative.size() == getNumNonlinearParameters());
-
-    ImageVector::Index imageShape = nonlinearDerivatives[0].shape();
-    int nPix = imageShape.products();
-
-    Eigen::VectorXd dPsfDx(nPix), dPsfDy(nPix);
-    ndarray::ArrafRef<double, 2, 1> dPsfDxRef(dPsfDx.data(), imageShape);
-    ndarray::ArrafRef<double, 2, 1> dPsfDyRef(dPsfDy.data(), imageShape);
-    _psf->getKernel()->getCentroidDerivative(dPsfDxRef, dPsfDyRef);
-
-    Eigen::Map<VectorXd> dxView = extractEigenView(nonlinearDerivative[0]);
-    Eigen::Map<VectorXd> dyView = extractEigenView(nonlinearDerivative[1]);
-    
-    dxView = dPsfDx * _transform(0, 0) + dPsfDy * _transform(0, 1);
-    dyView = dPsfDx * _transform(1, 0) + dPsfDy * _transform(1, 1);
-
-    dxView *= _magnitude;
-    dyView *= _magnitude;
-}
-
-void multifit::PointSourceModel::evalTransformDerivative(
-        DerivativeMatrix const & transformDerivative
-) const {
-    assert(transformDerivative.size() == getNumTransformParameters());
-
-    _psf->getKernel()->getCentroidDerivative(
-            transformDerivative[4],
-            transformDerivative[5],
-            _center
+    ImageVector imageRef = getImageView(_psfImage,
+            getImageHeight(), getImageWidth()
     );
+    ImageVector dxRef = getImageView(_dPsfDx, 
+            getImageHeight(), getImageWidth()
+    );
+    ImageVector dyRef = getImageView(_dPsfDy,
+            getImageHeight(), getImageWidth()
+    );
+    _psf->getKernel()->getCentroidDerivative(imageRef, getCenter());
+    _psf->getKernel()->getCentroidDerivative(dxRef, dyRef, getCenter());
+}
+void multifit::PointSourceModel::updateParametrizedImage() {
+    if(!_imageDirty)
+        return;
 
-    Eigen::Map<VectorXd> dTxView = extractEigenView(transformDerivative[4]);
-    Eigen::Map<VectorXd> dTyView = extractEigenView(transformDerivative[5]);
-    
-    Eigen::Map<VectorXd> dTxxView = extractEigenView(transformDerivative[0]);
-    Eigen::Map<VectorXd> dTxyView = extractEigenView(transformDerivative[1]);
-    Eigen::Map<VectorXd> dTyxView = extractEigenView(transformDerivative[2]);
-    Eigen::Map<VectorXd> dTyyView = extractEigenView(transformDerivative[3]);
-
-
-    dTxView *= _magnitude;
-    dTyView *= _magnitude;
-    dTxxView << dTxView * _center.x();
-    dTxyView << dTxView * _center.y();
-    dTyxView << dTyView * _center.x();
-    dTyyView << dTyView * _center.y();
+    _parameterizedImage << _psfImage * getAmplitude();
+    _imageDirty = false;
 }
 
-void multifit::PointSourceModel::evalPsfDerivative(
-        DerivativeMatrix const & psfDerivative     
-) const {
-    int nPsfParams = getNumPsfParameters();
-    assert(psfDerivative.size() == nPsfParams);
+void multifit::PointSourceModel::updateLinearMatrix() {
+    if(!_linearDirty)
+        return;
 
+    _linearMatrix.row(0) << _psfImage;
+    _linearDirty = false;
+}
+
+void multifit::PointSourceModel::updateNonlinearMatrix() {
+    if(!_nonlinearDirty)
+        return;
+
+    _nonlinearMatrix.row(0) << _dPsfDx * _transform[AffineTransform::XX] 
+                             + _dPsfDy * _transform[AffineTransform::XY];
+    _nonlinearMatrix.row(1) << _dPsfDx * _transform[AffineTransform::YX] 
+                             + _dPsfDy * _transform[AffineTransform::YY];
+    _nonlinearMatrix *= getAmplitude();
+    _nonlinearDirty = false;
+}
+
+void multifit::PointSourceModel::updateTransformDerivative() const {
+    if(!_transformDirty)
+        return;
+    
+    _transformMatrix.row(AffineTransform::X) << _dPsfDx * getAmplitude();
+    _transformMatrix.row(AffineTransform::Y) << _dPsfDy * getAMplitude();
+    _transformMatrix.row(AffineTransform::XX) << 
+            _transformMatrix.row(AffineTransform::X) * _center.x();
+    _transformMatrix.row(AffineTransform::XY) << 
+            _transformMatrix.row(AffineTransform::X) * _center.y();
+    _transformMatrix.row(AffineTransform::YX) << 
+            _transformMatrix.row(AffineTransform::Y) * _center.x();
+    _transformMatrix.row(AffineTransform::YY) << 
+            _transformMatrix.row(AffineTransform::Y) * _center.y();
+    
+    _transformDirty = false;
+}
+
+void multifit::PointSourceModel::updatePsfDerivative() const {
+    if(!_psfDirty)
+        return;
+
+    int nPsfParams = getPsfBasisSize();
     Eigen::VectorXd coefficients = _psf->getCoefficients();
-
+    ndarray::Index<2> imageShape(getImageHeight(), getImageWidth());
+    int nPix = imageShape.products();
+    
+    _psfMatrix.setZero();
     for(int i = 0; i < nPsfParams; ++i) {
-        _psf->getBasisKernel(i)->getImage(psfDerivative[i],  _center);
-        Eigen::Map<VectoXd> basisImage = extractEigenView(psfDerivative[i]);
-        basisImage *= _magnitude * coefficients[i];
+        ndarray::ArrayRef<double, 2, 1> basisRef(
+                _psfMatrix.row(i).data(), imageShape);
+        _psf->getBasisKernel(i)->getImage(basisRef,  getCenter());
+        _psfMatrix.row(i) *= getAmplitude() * coefficients[i];
     }
 
+    _psfDirty = false;
 }

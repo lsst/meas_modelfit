@@ -1,35 +1,52 @@
 #include "lsst/meas/multifit/Model.h"
 
-///////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
 namespace multifit = lsst::meas::multifit;
 
-multifit::ModelFactoryBase::ModelFactoryBase(
-        std::string const & type, 
-        std::string const & constraint) {
-    RegistryMap& registry = getRegistry();
-    registry.insert(std::make_pair(std::make_pair(type,constraint),this));
+void init(int const & nonlinearSize,
+        int const & linearsize,
+        int const & psfBasisSize,
+        int const & transformSize) {
+    int nPix = getImageSize();
+    if(nPix != 0) {
+        if(linearSize != 0) {
+            _linearMatrix.resize(linearSize, nPix);
+        }
+        if(nonlinearSize != 0) {
+            _nonlinearMatrix.resize(nonlinearSize, nPix);    
+        }
+        if(psfBasisSize != 0)
+            _psfMatrix.resize(psfBasisSize, nPix);
+        if(transformSize != 0)
+            _transformMatrix.resize(transformSize, nPix);
+    }   
 }
 
-multifit::ModelFactoryBase::RegistryMap& multifit::ModelFactoryBase::getRegistry() {
-    static RegistryMap instance;
-    return instance;
+Eigen::VectorXd const & multifit::Model::computeParameterizedImage() {
+    updateParameterizedImage();
+    return _parameterizedImage;
 }
 
-multifit::ObjectModel* multifit::createObjectModel(
-        std::string const & type, 
-        std::string const & constraint,
-        ndarray::ArrayRef<ObjectModel::Real,1,1> const & nonlinear_params, 
-        ndarray::ArrayRef<ObjectModel::Real,1,1> const & linear_params) {
-    ModelFactoryBase::RegistryMap& registry = ModelFactoryBase::getRegistry();
-    ModelFactoryBase::RegistryIterator iter = 
-            registry.find(std::make_pair(type,constraint));
-    if(iter == registry.end()) 
-    {
-        throw std::runtime_error("Model of type \"" + type + 
-                "\" with constraint \"" + constraint + "\" is not implemented");
-    }
-    return iter->second->create(nonlinear_params,linear_params);
+Eigen::VectorXd const & multifit::Model::computeConstantImage() {
+    updateConstantImage();
+    return _constantImage;
 }
 
+Eigen::MatrixXd const & multifit::Model::computeLinearMatrix()  {
+    updateLinearMatrix();
+    return _linearMatrix;
+}
+
+Eigen::MatrixXd const & multifit::Model::computeNonlinearMatrix() {
+    updateNonlinearMatrix();
+    return _nonlinearMatrix;
+}
+
+Eigen::MatrixXd const & multifit::Model::computeTransformMatrix() {
+    updateTransformMatrix();
+    return _transformMatrix;
+}
+
+Eigen::MatrixXd const & multifit::Model::computePsfMatrix() {
+    updatePsfMatrix();
+    return _psfMatrix();
+}
