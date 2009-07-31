@@ -4,10 +4,12 @@ namespace multifit = lsst::meas::multifit;
 
 void init(int const & nonlinearSize,
         int const & linearsize,
-        int const & psfBasisSize,
-        int const & transformSize) {
+        int const & psfBasisSize) {
     int nPix = getImageSize();
     if(nPix != 0) {
+        _parameterizedImage(nPix);
+        _constantImage(nPix);
+        
         if(linearSize != 0) {
             _linearMatrix.resize(linearSize, nPix);
         }
@@ -16,8 +18,8 @@ void init(int const & nonlinearSize,
         }
         if(psfBasisSize != 0)
             _psfMatrix.resize(psfBasisSize, nPix);
-        if(transformSize != 0)
-            _transformMatrix.resize(transformSize, nPix);
+        
+        _transformMatrix.resize(TRANSFORM_SIZE, nPix);
     }   
 }
 

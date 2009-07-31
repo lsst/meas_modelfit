@@ -31,60 +31,40 @@ public:
     virtual Model * clone() const {
         return new PointSourceModel(*this, _psf);
     }
+    virtual Model * project(int const height, int const width, AffineTransform const & transform) const {
+        PointSourceModel * projection = new PointSourceModel(
+                height, width, _center, _amplitude, _psf);
+        projection.setTransform(transform*_transform);
+    }
     virtual Model * convolve(Psf::ConstPtr psf) {
         return new PointSourceModel(*this, psf);    
     }
 
     virtual void setTranform(AffineTransform const & transform) {
-        _transform = transform;    
+        _transform = transform;   
+        _transformDirty = true;
     }
     virtual void addTransform(AffineTransform const & transform) {
         _transform = transform * _transform;
+        _transformDirty = true;
     }
     virtual AffineTransform getTransform() {
         return _transform;    
     }
 
-    virtual void setNonlinearParameters(Eigen::VectorXd const & parameters) {
-        if(parameters.size() <= NONLINEAR_SIZE)
-            return;
-        _imageDirty = true;
-        _nonlinearDirty = true;
-        _psfDirty = true;
-        _transformDirty = true;
-
-        //deep copy, 2 elements
-        _center << parameters.start<NONLINEAR_SIZE>();
-        updatePsfProducts();
-    }
-    virtual void setLinearParameters(Eigen::VectorXd const & parameters) {
-        if(parameters.size () <= LINEAR_SIZE)
-            return;
-        _imageDirty = true;
-        _linearDirty = true;
-        _psfDirty = true;
-        _transformDirty = true;
-
-        //deep copy, 1 element
-        _amplitude = parameters[0];
-    }
+    virtual void setNonlinearParameters(Eigen::VectorXd const & parameters); 
+    virtual void setLinearParameters(Eigen::VectorXd const & parameters);
+    
     virtual VectorXd getLinearParameters() {
         return (VectorXd() << _amplitude).finalize();        
     }
     virtual VectorXd getNonlinearParameters() {
         return (VectorXd() << _center).finalize();
     }
-    /**
-     * PointSourceModel has exactly two nonlinear parameters x,y position    
-     */
     virtual int getNumNonlinearParameters() const {return NONLINEAR_SIZE;}
-    /** 
-     * PointSourceModel has exactly one linear parameter
-     */
     virtual int getNumLinearParamters() const {return LINEAR_SIZE;}
-    virtual int getPsfBasisSize() const {
-        return _psf->getBasisSize() : 0;
-    }
+    virtual int getPsfBasisSize() const {return _psf->getBasisSize();}
+    
 
     virtual Coordinate getCenter() {return _center;}
     double getAmplitude() {return _amplitude;}

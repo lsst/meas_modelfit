@@ -11,14 +11,6 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
-struct ModelShape {
-    int imageWidth, imageHeight;
-    int linearSize;
-    int nonlinearSize;
-    int psfBasisSize;
-    int transformSize;
-}
-
 typedef Eigen::Vector2d Coordinate;
 typedef ndarray::ArrayRef<double, 1, 1> ParameterVector;
 //dimensions are pixel height, pixel width
@@ -81,7 +73,17 @@ public:
     virtual void setTransform(AffineTransform const & transform) = 0;
     virtual AffineTransform getTransform() const = 0;
     
+    /**
+     * Copy constructor for derived types
+     */
     virtual Model * clone() const = 0;
+    
+    /**
+     * Project model into a new image space
+     * calls setTransform on new Model with parameter transform
+     */
+    virtual Model * project(int const imageHeight, int const imageWidth, 
+            AffineTransform const & transform) const = 0;
 
     /**
      * Creates a convolved model
@@ -109,7 +111,7 @@ public:
     virtual int getPsfBasisSize() const {return 0;}
     
     virtual Coordinate getCenter() const = 0;
-    
+    virtual void hasConstantImage() const {return false;} 
     virtual ~Model(){}
 protected:
     virtual void updateParametrizedImage() = 0;
@@ -134,19 +136,18 @@ protected:
             int const imageWidth,
             int const nonlinearSize,
             int const linearSize,
-            int const psfBasisSize = 0,
-            int const transformSize = 6)
+            int const psfBasisSize = 0)
         : _imageDimensions(imageHeight, imageWidth) {
-        init(nonlinearSize, linearSize, psfBasisSize, transformSize);        
+        init(nonlinearSize, linearSize, psfBasisSize);        
     }
     
+    static const int TRANSFORM_SIZE = 6;
 private:
     void operator=(Model const & other) {}
 
     void init(int const nonlinearSize,
             int const linearSize,
-            int const psfBasisSize,
-            int const transformSize);
+            int const psfBasisSize);
 };
 
 

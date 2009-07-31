@@ -13,7 +13,6 @@ void multifit::PointSourceModel::init() {
     _transformDirty = true;
 }
 
-
 void multifit::PointSourceModel::updatePsfProducts() {
     _psfImage.setZero();
     _dPsfDx.setZero();
@@ -31,6 +30,32 @@ void multifit::PointSourceModel::updatePsfProducts() {
     _psf->getKernel()->getCentroidDerivative(imageRef, getCenter());
     _psf->getKernel()->getCentroidDerivative(dxRef, dyRef, getCenter());
 }
+
+void multifit::PointSourceModel::setNonlinearParameters(Eigen::VectorXd const & parameters); {
+    if(parameters.size() <= NONLINEAR_SIZE)
+        return;
+    _imageDirty = true;
+    _nonlinearDirty = true;
+    _psfDirty = true;
+    _transformDirty = true;
+
+    //deep copy, 2 elements
+    _center << parameters.start<NONLINEAR_SIZE>();
+    updatePsfProducts();
+}
+
+void multifit::PointSourceModel::setLinearParameters(Eigen::VectorXd const & parameters); {
+    if(parameters.size () <= LINEAR_SIZE)
+        return;
+    _imageDirty = true;
+    _linearDirty = true;
+    _psfDirty = true;
+    _transformDirty = true;
+
+    //deep copy, 1 element
+    _amplitude = parameters[0];
+}
+
 void multifit::PointSourceModel::updateParametrizedImage() {
     if(!_imageDirty)
         return;
@@ -91,8 +116,8 @@ void multifit::PointSourceModel::updatePsfDerivative() const {
         ndarray::ArrayRef<double, 2, 1> basisRef(
                 _psfMatrix.row(i).data(), imageShape);
         _psf->getBasisKernel(i)->getImage(basisRef,  getCenter());
-        _psfMatrix.row(i) *= getAmplitude() * coefficients[i];
     }
 
+    _psfMatrix *= getAmplitude();
     _psfDirty = false;
 }
