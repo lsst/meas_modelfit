@@ -4,7 +4,7 @@ namespace multifit = lsst::meas::multifit;
 
 void multifit::PointSourceModel::init() {
     _psfImage.resize(getImageSize());
-    _dPsfdX.resize(getImageSize());
+    _dPsfDX.resize(getImageSize());
     _dPsfDy.resize(getImageSize());
     _imageDirty = true;
     _linearDirty = true; 
@@ -107,14 +107,13 @@ void multifit::PointSourceModel::updatePsfDerivative() const {
         return;
 
     int nPsfParams = getPsfBasisSize();
-    Eigen::VectorXd coefficients = _psf->getCoefficients();
-    ndarray::Index<2> imageShape(getImageHeight(), getImageWidth());
-    int nPix = imageShape.products();
+    int height = getImageHeight();
+    int width = getImageWidth();
     
     _psfMatrix.setZero();
     for(int i = 0; i < nPsfParams; ++i) {
-        ndarray::ArrayRef<double, 2, 1> basisRef(
-                _psfMatrix.row(i).data(), imageShape);
+        ImageVector basisRef = getImageView(_psfMatrix, i, 
+                height, width);
         _psf->getBasisKernel(i)->getImage(basisRef,  getCenter());
     }
 
