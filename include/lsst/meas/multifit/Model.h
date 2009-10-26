@@ -29,13 +29,6 @@ inline ImageVector getImageView(Eigen::MatrixXd matrix, int row,
     return ImageVector(matrix.row(row).data(),
             ndarray::make_index(height, width));
 }
-inline DerivativeMatrix(Eigen::MatrixXd matrix, 
-        int const & nParams, int const & height, int const width
-) {
-    return DerivativeMatrix(matrix.data(), 
-            ndarray::make_index(nParameters, height, width));
-} 
-
 inline Eigen::Map<Eigen::VectorXd> extractEigenView(
         ParameterVector const & array
 ) {
