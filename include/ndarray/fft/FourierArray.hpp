@@ -149,7 +149,7 @@ public:
     FourierArray const & operator=(FourierArray const & other) const {
         if (&other != this) {
             NDARRAY_ASSERT(other.getShape() == this->getShape());
-            NDARRAY_ASSERT(other._size = this->_size);
+            NDARRAY_ASSERT(other._size == this->_size);
             std::copy(other.begin(),other.end(),this->begin());
         }
         return *this;
