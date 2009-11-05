@@ -1,54 +1,52 @@
-#include "lsst/meas/multifit/Model.h"
+#include <ndarray.hpp>
+#include <lsst/meas/multifit/Model.h>
 
 namespace multifit = lsst::meas::multifit;
 
-void init(int const & nonlinearSize,
-        int const & linearsize,
-        int const & psfBasisSize) {
-    int nPix = getImageSize();
-    if(nPix != 0) {
-        _parameterizedImage(nPix);
-        _constantImage(nPix);
-        
-        if(linearSize != 0) {
-            _linearMatrix.resize(linearSize, nPix);
-        }
-        if(nonlinearSize != 0) {
-            _nonlinearMatrix.resize(nonlinearSize, nPix);    
-        }
-        if(psfBasisSize != 0)
-            _psfMatrix.resize(psfBasisSize, nPix);
-        
-        _transformMatrix.resize(TRANSFORM_SIZE, nPix);
-    }   
+void multifit::Model::getLinearParameters(
+        ParameterIterator parameters
+) const {
+    Eigen::VectorXd const & vector = getLinearParameters();
+    std::copy(vector.data(),vector.data()+vector.size(),parameters);
 }
 
-Eigen::VectorXd const & multifit::Model::computeParameterizedImage() {
-    updateParameterizedImage();
-    return _parameterizedImage;
+void multifit::Model::getNonlinearParameters(
+        ParameterIterator parameters
+) const {
+    Eigen::VectorXd const & vector = getNonlinearParameters();
+    std::copy(vector.data(),vector.data()+vector.size(),parameters);
 }
 
-Eigen::VectorXd const & multifit::Model::computeConstantImage() {
-    updateConstantImage();
-    return _constantImage;
+multifit::Model::Definition::Definition(
+        Factory::ConstPtr const & factory,
+        ParameterConstIterator linearParameterBegin,
+        ParameterConstIterator const linearParameterEnd,
+        ParameterConstIterator nonlinearParameterBegin
+) : _factory(factory),
+    _linearParameters(linearParameterEnd-linearParameterBegin),
+    _nonlinearParameters(factory->getNonlinearParameterSize())
+{
+    setLinearParameters(linearParameterBegin);
+    setNonlinearParameters(nonlinearParameterBegin);
 }
 
-Eigen::MatrixXd const & multifit::Model::computeLinearMatrix()  {
-    updateLinearMatrix();
-    return _linearMatrix;
-}
+multifit::Model::Model(
+        Definition const & definition,
+        int activeProducts,
+        WcsConstPtr const &wcs,
+        FootprintConstPtr const &footprint,
+        double photFactor
+) : _activeProducts(activeProducts),
+    _photFactor(photFactor),
+    _definition(new Definition(definition)),
+    _footprint(footprint),
+    _wcs(wcs)
+{}
 
-Eigen::MatrixXd const & multifit::Model::computeNonlinearMatrix() {
-    updateNonlinearMatrix();
-    return _nonlinearMatrix;
-}
-
-Eigen::MatrixXd const & multifit::Model::computeTransformMatrix() {
-    updateTransformMatrix();
-    return _transformMatrix;
-}
-
-Eigen::MatrixXd const & multifit::Model::computePsfMatrix() {
-    updatePsfMatrix();
-    return _psfMatrix();
-}
+multifit::Model::Model(Model const & other) : 
+    _activeProducts(other._activeProducts),
+    _photFactor(other._photFactor),
+    _definition(new Definition(*other._definition)),
+    _footprint(other._footprint),
+    _wcs(other._wcs)
+{}

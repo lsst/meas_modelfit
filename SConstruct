@@ -28,11 +28,11 @@ dependencies = [
 		"afw"]
 
 env = scons.makeEnv(
-        # The name of your package goes here.
-        "meas_multifit",
-        # This is used to try to get some version information.
-        r"$HeadURL$",
-        [
+    # The name of your package goes here.
+    "meas_multifit",
+    # This is used to try to get some version information.
+    r"$HeadURL$",
+    [
         # For each dependency above, include one or more lines listing
         # at least one required header file and, if needed, a shared library.
         # For maximum safety, all header files and all shared libraries used
@@ -56,8 +56,9 @@ env = scons.makeEnv(
         ["daf_data", "lsst/daf/data/LsstBase.h", "daf_data:C++"],
         ["gsl", "gsl/gsl_rng.h", "gslcblas gsl"],       
         ["eigen", "Eigen/Core.h"],
-        ["afw", "lsst/afw/image/Exposure.h"]
-        ])
+        ["afw", "lsst/afw.h", "afw:C++"],
+    ]
+)
 
 # Describe what the package contains here.
 env.Help("""
