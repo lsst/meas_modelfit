@@ -1,304 +1,193 @@
 #ifndef LSST_MEAS_MULTIFIT_MODEL_H
 #define LSST_MEAS_MULTIFIT_MODEL_H
 
-#include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
 #include <Eigen/Core>
+
+#include <list>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/weak_ptr.hpp>
 
 #include <ndarray_fwd.hpp>
 
-#include <lsst/afw/math/AffineTransform.h>
-#include <lsst/afw/image/Wcs.h>
-#include <lsst/afw/math/Kernel.h>
-#include <lsst/afw/detection/Footprint.h>
+#include <lsst/meas/multifit/core.h>
 
-namespace lsst {
+namespace lsst{
 namespace meas {
 namespace multifit {
 
-class Model {
+namespace projections {
+
+class ModelProjection;
+
+} // namespace projections
+
+class ModelEvaluator;
+class ModelFactory;
+
+/**
+ *  \brief A model for an astronomical object (ABC).
+ *
+ *  A Model's parameters are always in "global" (typically celestial) coordinates.
+ *  A projection of the Model to a particular image coordinate system (along with
+ *  convolution by the appropriate PSF and application of other observational effects)
+ *  is represented by an instance of ModelProjection, which will generally be subclassed in
+ *  tandem with Model and ModelFactory.  Model and ModelProjection participate in a
+ *  Observer design pattern, with a Model broadcasting changes in its parameters to its
+ *  associated ModelProjection objects.
+ *
+ *  \sa ModelFactory
+ *  \sa ModelProjection
+ */
+class Model : protected boost::enable_shared_from_this<Model> {
 public:
-    typedef lsst::afw::math::Kernel Kernel;
-    typedef lsst::afw::detection::Footprint Footprint;
-    typedef boost::shared_ptr<const Footprint> FootprintConstPtr;
-    typedef lsst::afw::image::Wcs Wcs;
-    typedef boost::shared_ptr<const Wcs> WcsConstPtr;
-
-
     typedef boost::shared_ptr<Model> Ptr;
-    typedef boost::shared_ptr<const Model> ConstPtr;
-
-    typedef double Pixel;
-    typedef double * ParameterIterator;
-    typedef double const * ParameterConstIterator;
-
-    class Factory;
-    class Definition;
-
-    enum ProductFlag {
-        NONE                             = 0x00,
-        MODEL_IMAGE                      = 0x01,
-        LINEAR_PARAMETER_DERIVATIVE      = 0x02,
-        NONLINEAR_PARAMETER_DERIVATIVE   = 0x04,
-        OBJECT_PARAMETER_DERIVATIVE      = 0x06,
-        WCS_PARAMETER_DERIVATIVE         = 0x08,
-        PSF_PARAMETER_DERIVATIVE         = 0x10,
-        CALIBRATION_PARAMETER_DERIVATIVE = 0x18,
-        ALL                              = 0x1F
-    };
-
-    virtual ~Model() {}
-
-    virtual Model * clone() const = 0;
+    typedef boost::shared_ptr<Model const> ConstPtr;
 
     /**
-     *  Return a new Model of the same type and same parameters with a new coordinate system
-     *  and Kernel.
+     *  \brief Create a Footprint that would contain a projection of the Model.
      */
-    virtual void reproject(
-        Kernel const & kernel,
-        WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor
-    ) = 0;
-
-    Eigen::VectorXd const & getLinearParameters() const;
-    void getLinearParameters(ParameterIterator parameters) const;
-    void setLinearParameters(ParameterConstIterator parameters);
-
-    Eigen::VectorXd const & getNonlinearParameters() const;
-    void getNonlinearParameters(ParameterIterator parameters) const;
-    virtual void setNonlinearParameters(ParameterConstIterator parameters);
-
-    int const getLinearParameterSize() const;
-    int const getNonlinearParameterSize() const;
-    virtual int const getWcsParameterSize() const = 0;
-    virtual int const getPsfParameterSize() const = 0;
-
-    /**
-     *  Compute the model image, flattened via its footprint.
-     */
-    virtual void computeModelImage(ndarray::Array<Pixel,1,1> const & vector) = 0;
-
-    /**
-     *  Compute the derivative of the model image with respect to its linear 
-     *  parameters, flattened via its footprint such that the first dimension 
-     *  runs over parameters and the second runs over pixels.
-     */
-    virtual void computeLinearParameterDerivative(
-        ndarray::Array<Pixel,2,2> const & matrix
-    ) = 0;
-
-    /**
-     *  Compute the derivative of the model image with respect to its nonlinear
-     *  parameters, flattened via its footprint such that the first dimension 
-     *  runs over parameters and the second runs over pixels.
-     */
-    virtual void computeNonlinearParameterDerivative(
-        ndarray::Array<Pixel,2,2> const & matrix
-    ) = 0;
-
-    /**
-     *  Compute the derivative of the model image with respect to its Wcs 
-     *  parameters, flattened via its footprint such that the first dimension 
-     *  runs over parameters and the second runs over pixels.
-     */
-    virtual void computeWcsParameterDerivative(
-        ndarray::Array<Pixel,2,2> const & matrix
-    ) = 0;
-
-    /**
-     *  Compute the derivative of the model image with respect to its PSF 
-     *  parameters, flattened via its footprint such that the first dimension 
-     *  runs over parameters and the second runs over pixels.
-     */
-    virtual void computePsfParameterDerivative(
-        ndarray::Array<Pixel,2,2> const & matrix
-    ) = 0;
-
-    void enableProducts(int toAdd) {
-        _activeProducts |= _enableProducts(toAdd);
-    }
-
-    void disableProducts(int toRemove) {
-        _activeProducts &= (~_disableProducts(toRemove));
-    }
-
-    int const getActiveProducts() const { return _activeProducts; }
-    double getPhotFactor() const { return _photFactor; }
-    WcsConstPtr getWcs() const { return _wcs; }
-    FootprintConstPtr getFootprint() const { return _footprint; }
-
-    Definition const & getDefinition() const;
-
-    boost::shared_ptr<Factory const> getFactory() const;
-
-protected:
-
-    Model(
-        Definition const & definition,
-        int activeProducts,
-        WcsConstPtr const &wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor
-    );
-
-    Model(Model const & other);
-
-    void setProjectionVariables(
-        WcsConstPtr wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor
-    ) {
-        _wcs = wcs;
-        _footprint = footprint;
-        _photFactor = photFactor;
-    }
-
-    virtual int _enableProducts(int toAdd) = 0;
-    virtual int _disableProducts(int toRemove) = 0;
-
-    virtual void _handleLinearParameterChange() = 0;
-    virtual void _handleNonlinearParameterChange() = 0;
-
-private:
-
-    int _activeProducts;
-    double _photFactor;
-    boost::scoped_ptr<Definition> _definition;
-    FootprintConstPtr _footprint;
-    WcsConstPtr _wcs;
-
-    void operator=(Model const & other) {} // assignment is disabled
-
-};
-
-class Model::Factory {
-public:
-    typedef boost::shared_ptr<Factory> Ptr;
-    typedef boost::shared_ptr<const Factory> ConstPtr;
-    
-    virtual Model * project(
-        ParameterConstIterator linearParameterBegin,
-        ParameterConstIterator const linearParameterEnd,
-        ParameterConstIterator nonlinearParameterBegin,
-        Kernel const & kernel,
-        WcsConstPtr const &wcs,
-        FootprintConstPtr const &footprint,
+    virtual Footprint::Ptr computeProjectionFootprint(
+        Kernel::ConstPtr const & kernel,
+        Wcs::ConstPtr const & wcs,
         double photFactor
     ) const = 0;
 
-    virtual int const getNonlinearParameterSize() const = 0;
+    /**
+     *  \brief Create an image-coordinate bounding box that would contain a
+     *  projection of the Model.
+     */
+    virtual lsst::afw::image::BBox computeProjectionEnvelope(
+        Kernel::ConstPtr const & kernel,
+        Wcs::ConstPtr const & wcs,
+        double photFactor
+    ) const = 0;
 
-    virtual int const getMinLinearParameterSize() const = 0;
-    virtual int const getMaxLinearParameterSize() const = 0;
+    /**
+     *  \brief Create an ra/dec bounding ellipse for the Model.
+     */
+    virtual lsst::afw::math::ellipses::Ellipse::Ptr computeBoundingEllipse() const = 0;
 
-    virtual ~Factory() {}
-};
-
-class Model::Definition {
-public:
-    typedef boost::shared_ptr<Factory> Ptr;
-    typedef boost::shared_ptr<const Factory> ConstPtr;
-    
-    Eigen::VectorXd const & getLinearParameters() const { 
-        return _linearParameters; 
-    }
-    Eigen::VectorXd const & getNonlinearParameters() const { 
-        return _nonlinearParameters; 
-    }
-    
-    Factory::ConstPtr const & getFactory() const { return _factory; }
-
-    void setLinearParameters(ParameterConstIterator parameters) {
-        std::copy(
-                parameters, 
-                parameters+getLinearParameterSize(), 
-                _linearParameters.data()
-        );
+    /// \brief Return a vector of the linear parameters.
+    ParameterVector const & getLinearParameters() const { 
+        return *_linearParameterVector; 
     }
 
-    void setNonlinearParameters(ParameterConstIterator parameters) {
-        std::copy(
-                parameters, 
-                parameters+getNonlinearParameterSize(), 
-                _nonlinearParameters.data()
-        );
+    /// \brief Return an iterator to the beginning of the linear parameters.
+    ParameterConstIterator getLinearParameterIter() const { 
+        return _linearParameterVector->data(); 
     }
 
+    /// \brief Return the number of linear parameters.
     int const getLinearParameterSize() const { 
-        return _linearParameters.size(); 
-    }
-    int const getNonlinearParameterSize() const { 
-        return _nonlinearParameters.size(); 
-    }
-    
-    Model * project(
-            Kernel const & kernel,
-            WcsConstPtr const &wcs,
-            FootprintConstPtr const &footprint,
-            double photFactor
-    ) const {
-        return _factory->project(
-                _linearParameters.data(),
-                _linearParameters.data() + getLinearParameterSize(),
-                _nonlinearParameters.data(),
-                kernel, wcs, footprint, photFactor
-        );
+        return _linearParameterVector->size(); 
     }
 
-    explicit Definition(
-            Factory::ConstPtr const & factory, 
-            int linearParameterSize
-    ) : _factory(factory),
-        _linearParameters(linearParameterSize),
-        _nonlinearParameters(factory->getNonlinearParameterSize())
-    {}
-    
-    Definition(
-        Factory::ConstPtr const & factory,
-        ParameterConstIterator linearParameterBegin,
-        ParameterConstIterator const linearParameterEnd,
-        ParameterConstIterator nonlinearParameterBegin
-    );
+    /// \brief Set the linear parameters.
+    void setLinearParameters(ParameterConstIterator parameterIter);
+
+    /// \brief Return a vector of the nonlinear parameters.
+    ParameterVector const & getNonlinearParameters() const { 
+        return *_nonlinearParameterVector; 
+    }
+
+    /// \brief Return an iterator to the beginning of the nonlinear parameters.
+    ParameterConstIterator getNonlinearParameterIter() const { 
+        return _nonlinearParameterVector->data(); 
+    }
+
+    /// \brief Return the number of nonlinear parameters.
+    int const getNonlinearParameterSize() const { 
+        return _nonlinearParameterVector->size(); 
+    }
+
+    /// \brief Set the nonlinear parameters.
+    void setNonlinearParameters(ParameterConstIterator parameterIter);
+
+    /**
+     *  \brief Create a new Model with the same type and parameters.
+     *
+     *  Associated ModelProjection objects are not copied or shared;
+     *  the new Model will not have any associated ModelProjections.
+     */
+    virtual Model::Ptr clone() const = 0;
+
+    virtual ~Model() {}
+
+protected:
+
+    /** 
+     *  \brief Create a ModelProjection object associated with this.
+     *
+     *  All public ModelProjection creation should use this function (or one that delegates to it).
+     *
+     *  makeProjection() delegates to _createProjection() the actual construction of a ModelProjection
+     *  of the appropriate subclass, then:
+     *  - Initializes the data members (model, WCS, footprint, phot. factor) of the new ModelProjection.
+     *  - Calls ModelProjection::_setKernel(kernel).
+     *  - Calls ModelProjection::enableProducts(activeProducts).
+     *  - Calls ModelProjection::_handleLinearParameterChange().
+     *  - Calls ModelProjection::_handleNonlinearParameterChange().
+     *  - Registers the ModelProjection as an observer of this.
+     */
+    virtual boost::shared_ptr<projections::ModelProjection> makeProjection(
+        Kernel::ConstPtr const & kernel,
+        Wcs::ConstPtr const & wcs,
+        Footprint::ConstPtr const & footprint,
+        double photFactor,
+        int activeProducts = 0
+    ) const = 0;
+
+    /// \brief Notify all associated ModelProjections that the linear parameters have changed.
+    void _broadcastLinearParameterChange() const;
+
+    /// \brief Notify all associated ModelProjections that the nonlinear parameters have changed.
+    void _broadcastNonlinearParameterChange() const;
+
+    /**
+     *  \brief Provide additional code for setLinearParameters().
+     *
+     *  This will be called by setLinearParameters, after the parameter vector has been updated and
+     *  before the call to _broadcastLinearParameterChange().
+     */
+    virtual void _handleLinearParameterChange() {}
+
+    /**
+     *  \brief Provide additional code for setNonlinearParameters().
+     *
+     *  This will be called by setNonlinearParameters, after the parameter vector has been updated
+     *  and before the call to _broadcastNonlinearParameterChange().
+     */
+    virtual void _handleNonlinearParameterChange() {}
+
+    /// \brief Initialize the Model and allocate space for the parameter vectors.
+    Model(int linearParameterSize, int nonlinearParamterSize);
+
+    /**
+     * \brief Deep-copy the Model.
+     *
+     * This is a deep copy of the model parameters, projections will not be
+     * associated with the new Model
+     */ 
+    explicit Model(Model const & model);
+
+    boost::shared_ptr<ParameterVector> _linearParameterVector;
+    boost::shared_ptr<ParameterVector> _nonlinearParameterVector;
 
 private:
-    Factory::ConstPtr _factory;
-    Eigen::VectorXd _linearParameters;
-    Eigen::VectorXd _nonlinearParameters;
+    typedef boost::weak_ptr<projections::ModelProjection> ProjectionWeakPtr;
+    typedef std::list<ProjectionWeakPtr> ProjectionList;
+
+    friend class ModelFactory;
+    friend class ModelEvaluator;
+
+    void operator=(Model const & other) { assert(false); } // Assignment disabled.
+
+    boost::shared_ptr<ModelFactory const> _factory;
+    mutable ProjectionList _projectionList;
 };
 
-inline Eigen::VectorXd const & Model::getLinearParameters() const {
-    return _definition->getLinearParameters(); 
-}
-
-inline void Model::setLinearParameters(ParameterConstIterator parameters) {
-    _definition->setLinearParameters(parameters);
-    _handleLinearParameterChange();
-}
-
-inline Eigen::VectorXd const & Model::getNonlinearParameters() const {
-    return _definition->getNonlinearParameters(); 
-}
-
-inline void Model::setNonlinearParameters(ParameterConstIterator parameters) {
-    _definition->setNonlinearParameters(parameters);
-    _handleNonlinearParameterChange();
-}
-
-inline int const Model::getLinearParameterSize() const {
-    return (_activeProducts & LINEAR_PARAMETER_DERIVATIVE) ? getLinearParameters().size() : 0; 
-}
-
-inline int const Model::getNonlinearParameterSize() const {
-    return (_activeProducts & NONLINEAR_PARAMETER_DERIVATIVE) ? getNonlinearParameters().size() : 0;
-}
-
-inline Model::Definition const & Model::getDefinition() const { return *_definition; }
-
-inline Model::Factory::ConstPtr Model::getFactory() const { return _definition->getFactory(); }
-
-}}} //namespace lsst::meas::multifit
+} // namespace multifit
 
 #endif // !LSST_MEAS_MULTIFIT_MODEL_H

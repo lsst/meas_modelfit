@@ -6,162 +6,151 @@
 #include "Eigen/Core"
 #include "Eigen/LU"
 
-#include "ndarray/ndarray.hpp"
+#include "ndarray_fwd.hpp"
 
-#include "GaussianProbability.h"
+#include "lsst/afw/image/MaskedImage.h"
+#include "lsst/afw/image/Wcs.h"
+#include "lsst/afw/math/Kernel.h"
+#include "lsst/afw/detection/Footprint.h"
+#include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
-#include "lsst/meas/multifit/CalibratedExposure.h"
+#include "lsst/meas/multifit/projections/ModelProjection.h"
 
 namespace lsst {
 namespace meas {
 namespace multifit{
 
 class ModelEvaluator {
-public:
-    typedef std::vector<TransformedModel::Ptr> ModelStack;
-    typedef ndarray::ArrayCore<double, 2, 2> ImageCore;
-    typedef ndarray::ArrayCore<double, 3, 2> DerivativeCore;
-    
-    enum MarginalizationFlagsEnum { MARGINALIZE_NONE=0, MARGINALIZE_PSF=1, MARGINALIZE_BKG=2 };
+public:  
+    typedef boost::shared_ptr<projections::ModelProjection> ModelProjectionPtr;
+    typedef boost::shared_ptr<Kernel const> KernelPtr;
+    typedef boost::shared_ptr<Wcs const> WcsPtr;
+    typedef boost::shared_ptr<Footprint const> FootprintPtr;
+    typedef boost::shared_ptr<Exposure const> ExposurePtr;
+    typedef boost::shared_ptr<MaskedImage const> MaskedImagePtr;
 
-    template <typename ExposureContainer>
-    ModelEvaluator(Model::ConstPtr model,
-                   ExposureContainer exposures,
-                   int marginalizationFlags,
-                   Probability const * prior);
+    typedef boost::tuple<ExposurePtr, KernelPtr, double> CalibratedExposure;
+    typedef std::list<CalibratedExposure> CalibratedExposureList;
 
+    struct ProjectionFrame {        
+        Frame(){}
+        Frame(Frame const & other) 
+          : projection(other.projection),
+            exposure(other.exposure),
+            kernel(other.kernel),
+            wcs(other.wcs),
+            footprint(other.footprint)
+        {}
+        Frame(
+            ModelProjectionPtr const & projectionPtr, 
+            ExposurePtr const & exposurePtr, 
+            KernelPtr const & kernelPtr, 
+            WcsPtr const & wcsPtr, 
+            FootprintPtr const &footprintPtr
+        ) : projection(projectionPtr), 
+            exposure(exposurePtr),
+            kernel(kernelPtr),
+            wcs(wcsPtr),
+            footprint(footprintPtr)
+        {}
 
-    template <typename ExposureContainer>
-    ModelEvaluator(Model::ConstPtr model,
-                   ndarray::ArrayRef<double,1,1> const & linear,
-                   ndarray::ArrayRef<double,1,1> const & nonlinear,
-                   ExposureContainer exposures,
-                   int marginalizationFlags,
-                   Probability const * prior = NULL);
+        void compressExposure();
 
-    Model::ConstPtr getModel() const {return _model;}
+        ModelProjectionPtr const projection;
+        ExposurePtr const exposure;
+        KernelPtr const kernel;
+        WcsPtr const wcs;
+        FootprintPtr const footprint;
 
-    std::vector<TransformedModel::Ptr> const & getModelStack() const {return _modelStack;}
-
-    // evaluate the likelihood of the model at the current values 
-    //(only linear parameters are updated)
-    ProbabilityExpansion const & evaluate();
-
-    Eigen::VectorXd step();
-
-    std::pair<double,GaussianProbability> run(int end_condition);
-
-    GaussianProbability getProbability() const;
-  
-    void setModel(Model::ConstPtr model);
- 
-    int getNumLinear() const {return _linear.size();}
-    int getNumNonlinear() const {return _nonlinear.size();}
-    int getNumTotalPixels() const {return _numTotalPixels;}
-    int getNumExposures() const {return _exposures.size();}
-
-    class SourceView {
-        Eigen::Block<Eigen::MatrixXd> _gm;  // block of grand matrix
-        Eigen::Block<Eigen::MatrixXd> _gv;  // block of grand data vector
-        Eigen::MatrixXd _gr; // copy of residuals with this source un-subtracted
-
-        // more data to come
-        SourceView(const CalibratedExposure::Ptr & exposure, 
-                const std::string & constraint);
-    
-        friend class ModelEvaluator;
-
-    public:
-        std::pair<double,GaussianProbability> evaluate() const;
+        //references into larger matrices
+        ndarray::Array<const Pixel, 1, 1> const imageVector;
+        ndarray::Array<const Pixel, 1, 1> const varianceVector;
+        ndarray::Array<Pixel, 1, 1> const modelImage;
+        ndarray::Array<Pixel, 2, 2> const linearParameterDerivative;
+        ndarray::Array<Pixel, 2, 2> const nonlinearParameterDerivative;
+        ndarray::Array<Pixel, 2, 2> const wcsParameterDerivative;
+        ndarray::Array<Pixel, 2, 2> const psfParameterDerivative;
     };
+     
+    typedef std::list<ProjectionFrame> ProjectionFrameList;
 
-private:    
+    explicit ModelEvaluator(Model::ConstPtr model, int activeProducts=0) :    
+        _activeProducts(activeProducts), 
+        _validProducts(0), 
+        _model(model->clone())
+    {}
 
+    ModelEvaluator(
+        Model::ConstPtr model, 
+        CalibratedExposureList const & exposureList, 
+        int activeProducts = 0
+    ) : _activeProducts(activeProducts), 
+        _validProducts(0), 
+        _model(model->clone()) 
+    {
+        setExposureList(exposureList);
+    }
 
-    int _numTotalPixels;
-    std::vector<CalibratedExposure::Ptr> _exposures;
-    std::vector<ImageCore> _residualsSection;
-    std::vector<DerivativeCore> _linearMatrixSection;
-    std::vector<DerivativeCore> _nonlinearMatrixSection;
+    void setExposureList(
+        CalibratedExposureList const & exposureList, 
+        int nMinPix = 0
+    );
 
+    ndarray::Array<Pixel const, 1, 1> computeModelImage();
+    ndarray::Array<Pixel const, 2, 2> computeLinearParameterDerivative();
+    ndarray::Array<Pixel const, 2, 2> computeNonlinearParameterDerivative();
+    ndarray::Array<Pixel const, 2, 2> computeWcsParameterDerivative();
+    ndarray::Array<Pixel const, 2, 2> computePsfParameterDerivative();
+
+    int const getLinearParameterSize() const {
+        return _model->getLinearParameterSize();
+    }
+    int const getNonlinearParameterSize() const {
+        return _model->getNonlinearParameterSize();
+    }
+    ParameterVector const & getLinearParameters() const {
+        return _model->getLinearParameters();
+    }
+    ParameterVector const & getNonlinearParameters() const {
+        return _model->getNonlinearParameters();
+    }
+
+    void setLinearParameters(
+        ParameterConstIterator const & parameterIterator
+    ) {
+        _model->setLinearParameters(parameterIterator);
+    }
+    void setNonlinearParameters(
+        ParameterCosntIterator const & parameterIterator
+    ) {
+        _model->setNonlinearParameters(parameterIterator);
+    }
+    
+    Model::ConstPtr getModel() const {return _model;}
+    int const getNProjections() const {return _projectionList.size();}
+
+    FrameList const & getProjectionList() const {return _projectionList;}
+
+private:        
+    typedef ProjectionFrameList::iterator ProjectionFrameIterator;    
+    typedef CalibratedExposureList::const_iterator CalibratedExposureIterator;
+    typedef Footprint::SpanList SpanList;
+
+    int _activeProducts;
+    int _validProducts;
     Model::ConstPtr _model;    
-    ModelStack _modelStack;
 
+    ProjectionFrameList _projectionList;
 
-    Eigen::VectorXd _linear, _nonlinear;
-    Eigen::VectorXd _bkgSubtracted;
-    Eigen::VectorXd _residuals;
-    ProbabilityExpansion _posterior;
+    static FootprintPtr fixFootprint(FootprintPtr const &, MaskedImagePtr const &);
 
-    Eigen::MatrixXd _linearMatrix, _nonlinearMatrix, _calibrationMatrix;
-
-    int _marginalizationFlags;
-
-    template <typename ExposureContainer>
-    void setExposures(ExposureContainer const & exposures);
-
-    //begin stuff that wraps Exposure interface -------------------------------
-
-    void buildBkgSubtracted();
-
-    int getNumBkgParam(int const exposureId) const {
-        return getNumBkgParam(_exposures.at(exposureId));
-    }
-    int getNumBkgParam(CalibratedExposure::Ptr const & exposure) const {
-        return testFlags(MARGINALIZE_BKG) * exposure->getNumBkgParam();
-    }
-
-    int getNumPsfParam(int const exposureId) const {
-        return getNumPsfParam(_exposures.at(exposureId));
-    }
-    int getNumPsfParam(CalibratedExposure::Ptr const & exposure) const {
-        return testFlags(MARGINALIZE_PSF) * exposure->getNumPsfParam();
-    }
-
-    void computeBkgMatrix(CalibratedExposure::Ptr const & exposure) {
-        int height = exposure->getHeight();
-        int width = exposure->getWidth();
-        ndarray::ArrayRef<double,3,2> ref(_calibrationMatrix.data(),
-                ndarray::make_index(getNumBkgParam(exposure),height,width),
-                ndarray::make_index(height*width,width,1));
-
-        // TODO: query exposure for background matrix, append to ref
-    }
-
-    void addCalibrationFisherMatrix(CalibratedExposure::Ptr const & exposure, 
-            Eigen::MatrixXd & matrix) const {
-        // TODO: get exposure to add inverse calibration matrix to the 
-        // given matrix.  Should only add blocks that correspond to the 
-        // set bits in the marginalization flags.
-    }
-
-    //end stuff that wraps Exposure interface ---------------------------------
-
-
-
-    inline bool testFlags(int flags) const { 
-        return _marginalizationFlags & flag; 
-    }
-       
-    // returned array is (y,x)
-    ImageVector getResidualsSection(int exposureId) {
-        return ndarray::ArrayRef<double, 2, 2>(residualsSection.at(exposureId);
-    }
-
-    // returned array is (linear,y,x)
-    DerivateMatrix getLinearMatrixSection(int exposureId) {
-        return DerivativeMatrix(linearMatrixSection.at(exposureId);
-    }
-
-    // returned array is (nonlinear,y,x)
-    DerivativeMatrix getNonlinearMatrixSection(int exposureId) {
-        return DerivativeMatrix(nonlinearMatrixSection.at(exposureId);
-    }
-
-    DerivativeMatrix getPsfMatrixSection(int exposureid) {
-        return DerivativeMatrix(psfMatrixSection.at(exposureId);
-    }
-
+    ndarray::Array<Pixel, 1, 1> _imageVector;
+    ndarray::Array<Pixel, 1, 1> _varianceVector;
+    ndarray::Array<Pixel, 1, 1> _modelImage;
+    ndarray::Array<Pixel, 2, 2> _linearParameterDerivative;
+    ndarray::Array<Pixel, 2, 2> _nonlinearParameterDerivative;
+    ndarray::Array<Pixel, 2, 2> _wcsParameterDerivative;
+    ndarray::Array<Pixel, 2, 2> _psfParameterDerivative;
 };
 
 }}} //end namespace lsst::meas::multifit

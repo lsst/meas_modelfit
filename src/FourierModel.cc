@@ -5,369 +5,8 @@
 
 namespace multifit = lsst::meas::multifit;
 
-
-
-//-------------------- FourierModel::LinearMatrixHandler --------------------//
-class multifit::FourierModel::LinearMatrixHandler : boost::noncopyable {
-public:
-    void invalidate() { _valid = false; }
-    
-    int const getSize() const { return _output.size(); }
-
-    ndarray::Array<Pixel,3,1> compute() {
-        if (!_valid) 
-            recompute();
-        return _output; 
-    }
-
-    ndarray::FourierArray<Pixel,3,3> computeUnconvolved() {
-        if (!_valid) 
-            recompute();
-        return _unconvolved; 
-    }
-
-    explicit LinearMatrixHandler(FourierModel * parent);
-
-private:
-    void recompute();
-
-    bool _valid;
-    FourierModel * _parent;
-    FFT::Ptr _ifft;
-    ndarray::Array<Pixel,3,3> _padded;
-    ndarray::Array<Pixel,3,1> _output;
-    ndarray::FourierArray<Pixel,3,3> _unconvolved;
-    ndarray::FourierArray<Pixel,3,3> _workspace;
-};
-
-
-
-multifit::FourierModel::LinearMatrixHandler::LinearMatrixHandler(
-    multifit::FourierModel * parent
-) : 
-    _valid(false), _parent(parent) 
-{
-    ndarray::Vector<int,3> shape = ndarray::makeVector(
-        _parent->_morphology->getLinearParameterSize(),
-        _parent->_outer.getHeight(),
-        _parent->_outer.getWidth()
-    );
-    _ifft = FFT::planMultiplexInverse(shape,_workspace,_padded);
-    ndarray::shallow(_unconvolved) = FFT::initializeK(shape);
-    ndarray::shallow(_output) = window(_padded,_parent->_inner);
-}
-
-void multifit::FourierModel::LinearMatrixHandler::recompute() {
-    _workspace = _parent->_morphology->computeLinearParameterDerivative();
-    _workspace *= _parent->getPhotFactor();
-    _parent->applyShift(_workspace.begin(),_workspace.end());
-    _unconvolved = _workspace;
-    _parent->applyKernel(_workspace.begin(),_workspace.end());
-    _ifft->execute();
-    _valid = true;
-}
-
-//--------------------- FourierModel::ModelImageHandler ---------------------//
-class multifit::FourierModel::ModelImageHandler : boost::noncopyable {
-public:
-    void invalidate() { _valid = false; }
-
-    ndarray::FourierArray<Pixel,2,2> computeUnconvolved() {
-        if (!_valid) 
-            recompute();
-        return _unconvolved;
-    }
-    ndarray::FourierArray<Pixel,3,3> computeConvolvedDXY() {
-        if (!_valid) 
-            recompute();
-        return _convolvedDXY; 
-    }
-
-    explicit ModelImageHandler(FourierModel * parent);
-
-private:
-    void recompute();
-
-    bool _valid;
-    FourierModel * _parent;
-    ndarray::FourierArray<Pixel,2,2> _unconvolved;
-    ndarray::FourierArray<Pixel,3,3> _convolvedDXY;
-};
-
-multifit::FourierModel::ModelImageHandler::ModelImageHandler(
-    multifit::FourierModel * parent
-) :
-    _valid(false), _parent(parent)
-{
-    ndarray::Vector<int,2> shape = ndarray::makeVector(
-        _parent->_outer.getHeight(),
-        _parent->_outer.getWidth()
-    );
-    ndarray::shallow(_unconvolved) = FFT::initializeK(shape);
-    ndarray::shallow(_convolvedDXY) = FFT::initializeK(
-        ndarray::concatenate(2,shape)
-    );
-}
-
-void multifit::FourierModel::ModelImageHandler::recompute() {
-    lsst::afw::math::FourierCutout::Ptr cutout(
-        _parent->_kernelVisitor->getFourierImage()
-    );
-    boost::shared_ptr<Complex> owner(cutout->getOwner());
-    int width = cutout->getFourierWidth();
-    int height = cutout->getFourierHeight();
-    ndarray::FourierArray<Pixel, 2, 2> parentKernelImage(
-        cutout->getImageWidth(),
-        ndarray::external(
-            owner.get(),
-            ndarray::makeVector(height, width),
-            ndarray::makeVector(width, 1),
-            owner
-        )
-    );
-
-    ndarray::FourierArray<Pixel,3,3> linearMatrix = 
-            _parent->_linearMatrixHandler->computeUnconvolved();
-    getVectorView(_unconvolved.getBase()) = 
-            getMatrixView(linearMatrix.getBase()) 
-            * _parent->getLinearParameters();
-    _convolvedDXY[0] = _convolvedDXY[1] = _unconvolved * parentKernelImage;
-    ndarray::differentiate(0, _convolvedDXY[1]);
-    ndarray::differentiate(1, _convolvedDXY[0]);
-    _valid = true;
-}
-
-// ------------------ FourierModel::NonlinearMatrixHandler ------------------ //
-
-class multifit::FourierModel::NonlinearMatrixHandler : boost::noncopyable {
-public:
-    void invalidate() { _valid = false; }
-
-    int const getSize() const { return _output.getSize<0>(); }
-
-    ndarray::Array<Pixel,3,1> compute() {
-        if (!_valid) recompute();
-        return _output;
-    }
-
-    explicit NonlinearMatrixHandler(FourierModel * parent);
-
-private:
-    void recompute();
-
-    bool _valid;
-    FourierModel * _parent;
-    FFT::Ptr _ifft;
-    ndarray::Array<Pixel,3,3> _padded;
-    ndarray::Array<Pixel,3,1> _output;
-    ndarray::FourierArray<Pixel,3,3> _workspace;
-    ndarray::FourierArray<Pixel,3,3> _dPosition;
-    ndarray::FourierArray<Pixel,3,3> _dEllipse;
-    ndarray::FourierArray<Pixel,3,3> _dNonspatial;
-};
-
-multifit::FourierModel::NonlinearMatrixHandler::NonlinearMatrixHandler(
-        multifit::FourierModel * parent
-) :
-    _valid(false), _parent(parent)
-{
-    int last = _parent->_position->getParameterSize();
-    int size = last + _parent->_morphology->getNonspatialParameterSize();
-    if (_parent->_ellipse) 
-        size += 3;
-    ndarray::Vector<int,3> shape = ndarray::makeVector(
-        size,
-        _parent->_outer.getHeight(),
-        _parent->_outer.getWidth()
-    );
-
-    _ifft = FFT::planMultiplexInverse(shape,_workspace,_padded);
-    ndarray::shallow(_output) = window(_padded,_parent->_inner);
-
-    ndarray::shallow(_dPosition) = _workspace[ndarray::view(0,last)];
-    if (_parent->_ellipse) {
-        ndarray::shallow(_dEllipse) = _workspace[ndarray::view(last,last+3)];
-        last += 3;
-    }
-    if (_parent->_morphology->getNonspatialParameterSize() > 0) {
-        ndarray::shallow(_dNonspatial) = _workspace[ndarray::view(last,size)];
-    }
-}
-
-void multifit::FourierModel::NonlinearMatrixHandler::recompute() {
-    ndarray::FourierArray<Pixel,3,3> convolvedDXY( 
-            _parent->_modelImageHandler->computeConvolvedDXY()
-    );
-    getMatrixView(_dPosition.getBase()) = 
-            getMatrixView(convolvedDXY.getBase())
-            * _parent->_transform->matrix().linear()
-            * _parent->_position->getCenterDerivative();
-    if (_parent->_ellipse) {        
-        getMatrixView(_dEllipse.getBase()) = 
-            getMatrixView(
-                _parent->_morphology->computeEllipseDerivative().getBase()
-            ) * _parent->_td->dInput();    
-    }
-    if (_parent->_morphology->getNonspatialParameterSize() > 0) {
-        _dNonspatial = 
-                _parent->_morphology->computeNonspatialParameterDerivative();
-    }
-    _parent->applyShift(
-            _workspace.begin()+_parent->_position->getParameterSize(),
-            _workspace.end()
-    );
-    _parent->applyKernel(
-        _workspace.begin()+_parent->_position->getParameterSize(),
-        _workspace.end()
-    );
-    _ifft->execute();
-    _valid = true;
-}
-
-// --------------------- FourierModel::WcsMatrixHandler --------------------- //
-
-class multifit::FourierModel::WcsMatrixHandler : boost::noncopyable {
-public:
-    void invalidate() { _valid = false; }
-
-    int const getSize() const { return _output.getSize<0>(); }
-
-    ndarray::Array<Pixel,3,1> compute() {
-        if (!_valid) recompute();
-        return _output;
-    }
-
-    explicit WcsMatrixHandler(FourierModel * parent);
-
-private:
-    void recompute();
-
-    bool _valid;
-    FourierModel * _parent;
-    FFT::Ptr _ifft;
-    ndarray::Array<Pixel,3,3> _padded;
-    ndarray::Array<Pixel,3,1> _output;
-    ndarray::FourierArray<Pixel,3,3> _workspace;
-};
-
-multifit::FourierModel::WcsMatrixHandler::WcsMatrixHandler(
-        FourierModel * parent
-) :
-    _valid(false), _parent(parent)
-{
-    _ifft = FFT::planMultiplexInverse(
-        ndarray::makeVector(
-            WCS_PARAMETER_SIZE,
-            _parent->_outer.getHeight(),
-            _parent->_outer.getWidth()
-        ),
-        _workspace,
-        _padded
-    );
-    ndarray::shallow(_output) = window(_padded,_parent->_inner);
-}
-
-void multifit::FourierModel::WcsMatrixHandler::recompute() {
-    Eigen::Map<Eigen::Matrix<Complex,Eigen::Dynamic,Eigen::Dynamic> > workspaceView = getMatrixView(
-        _workspace.getBase()
-    );
-    workspaceView = 
-        getMatrixView(_parent->_morphology->computeEllipseDerivative().getBase()) 
-        * _parent->_td->dTransform();
-    _parent->applyShift(_workspace.begin(), _workspace.end());
-    _parent->applyKernel(_workspace.begin(),_workspace.end());
-    ndarray::FourierArray<Pixel,3,3> convolvedDXY = 
-        _parent->_modelImageHandler->computeConvolvedDXY();
-    workspaceView += getMatrixView(convolvedDXY.getBase()) 
-        * _parent->_transform->d(_parent->_position->getCenter());
-    
-    _ifft->execute();
-    _valid = true;
-}
-
-// --------------------- FourierModel::PsfMatrixHandler --------------------- //
-
-class multifit::FourierModel::PsfMatrixHandler : boost::noncopyable {
-public:
-    void invalidate() { _valid = false; }
-    
-    int const getSize() const { return _output.getSize<0>(); }
-
-    ndarray::Array<Pixel,3,1> compute() {
-        if (!_valid) recompute();
-        return _output;
-    }
-
-    explicit PsfMatrixHandler(FourierModel * parent);
-
-private:
-    void recompute();
-
-    bool _valid;
-    FourierModel * _parent;
-    FFT::Ptr _ifft;
-    ndarray::Array<Pixel,3,3> _padded;
-    ndarray::Array<Pixel,3,1> _output;
-    ndarray::FourierArray<Pixel,3,3> _workspace;
-};
-
-multifit::FourierModel::PsfMatrixHandler::PsfMatrixHandler(
-        FourierModel * parent
-) :
-    _valid(false), _parent(parent)
-{
-    _ifft = FFT::planMultiplexInverse(
-        ndarray::makeVector(
-            _parent->_kernelVisitor->getNParameters(),
-            _parent->_outer.getHeight(),
-            _parent->_outer.getWidth()
-        ),
-        _workspace,
-        _padded
-    );
-    ndarray::shallow(_output) = window(_padded,_parent->_inner);
-}
-
-void multifit::FourierModel::PsfMatrixHandler::recompute() {
-    ndarray::FourierArray<Pixel,2,2> unconvolved( 
-            _parent->_modelImageHandler->computeUnconvolved()
-    );
-    std::vector<lsst::afw::math::FourierCutout::Ptr> cutoutList = 
-        _parent->_kernelVisitor->getFourierDerivativeImageList();
-    lsst::afw::math::FourierCutout::Ptr first = cutoutList[0];
-    boost::shared_ptr<Complex> owner(first->getOwner());
-    int width = first->getFourierWidth();
-    int height = first->getFourierHeight();
-    int nDerivatives = static_cast<int>(cutoutList.size());
-    _workspace = ndarray::FourierArray<Pixel, 3, 3>(
-        first->getImageWidth(),
-        ndarray::external(
-            owner.get(),
-            ndarray::makeVector(nDerivatives, height, width),
-            ndarray::makeVector(height*width, width, 1),
-            owner
-        )
-    );
-       
-    _parent->applyKernel(_workspace.begin(),_workspace.end(),unconvolved);
-    _ifft->execute();
-    _valid = true;
-}
-
-// ----------------------------- FourierModel ------------------------------- //
-
-void multifit::FourierModel::reproject(
-    Kernel const & kernel,
-    WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint,
-    double photFactor
-) {
-    setProjectionVariables(wcs,footprint,photFactor);
-    convolve(*kernel.computeFourierConvolutionVisitor(getPsfPosition()));
-}
-
-void multifit::FourierModel::_handleLinearParameterChange() {
-    _morphology->setLinearParameters(getLinearParameters().data());
+void multifit::FourierModelProjection::_handleLinearParameterChange() {
+    _morphology->setLinearParameters(getModel().getLinearParameters().data());
     if (_morphology->getDimensions() != _outer.getDimensions()) {
         setDimensions();
     } else {
@@ -378,9 +17,9 @@ void multifit::FourierModel::_handleLinearParameterChange() {
     }
 }
 
-void multifit::FourierModel::_handleNonlinearParameterChange() {
-    ParameterConstIterator parameters = getNonlinearParameters().data();
-    _position->setParameters(parameters);
+void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
+    ParameterConstIterator parameters = 
+        getModel().getNonlinearParameters().data();
     parameters += _position->getParameterSize();
     if (_ellipse) {
         (*_ellipse)[0] = parameters[0];
@@ -408,7 +47,7 @@ void multifit::FourierModel::_handleNonlinearParameterChange() {
     }
 }
 
-void multifit::FourierModel::computeModelImage(
+void multifit::FourierModelProjection::computeModelImage(
         ndarray::Array<Pixel,1,1> const & output
 ) {
     assert(output.getSize<0>() == _wf->getNpix());
@@ -425,10 +64,10 @@ void multifit::FourierModel::computeModelImage(
         output.getData(),
         output.getSize<0>()
     );
-    v = m * getLinearParameters();
+    v = m * getModel().getLinearParameters();
 }
 
-void multifit::FourierModel::computeLinearParameterDerivative(
+void multifit::FourierModelProjection::computeLinearParameterDerivative(
         ndarray::Array<Pixel,2,2> const & output
 ) {
     assert(output.getSize<0>() != getLinearParameterSize());
@@ -436,7 +75,7 @@ void multifit::FourierModel::computeLinearParameterDerivative(
     _wf->compress(_linearMatrixHandler->compute(),output);
 }
 
-void multifit::FourierModel::computeNonlinearParameterDerivative(
+void multifit::FourierModelProjection::computeNonlinearParameterDerivative(
         ndarray::Array<Pixel,2,2> const & output
 ) {
     assert(output.getSize<0>() != getNonlinearParameterSize());
@@ -446,7 +85,7 @@ void multifit::FourierModel::computeNonlinearParameterDerivative(
     _wf->compress(_nonlinearMatrixHandler->compute(),output);
 }
 
-void multifit::FourierModel::computeWcsParameterDerivative(
+void multifit::FourierModelProjection::computeWcsParameterDerivative(
         ndarray::Array<Pixel,2,2> const & output
 ) {
     assert(output.getSize<0>() != getWcsParameterSize());
@@ -456,7 +95,7 @@ void multifit::FourierModel::computeWcsParameterDerivative(
     _wf->compress(_wcsMatrixHandler->compute(),output);
 }
 
-void multifit::FourierModel::computePsfParameterDerivative(
+void multifit::FourierModelProjection::computePsfParameterDerivative(
     ndarray::Array<Pixel,2,2> const & output
 ) {
     assert(output.getSize<0>() != getPsfParameterSize());
@@ -466,19 +105,25 @@ void multifit::FourierModel::computePsfParameterDerivative(
     _wf->compress(_psfMatrixHandler->compute(),output);
 }
 
-int const multifit::FourierModel::getWcsParameterSize() const {
+int const multifit::FourierModelProjection::getWcsParameterSize() const {
     if(getActiveProducts() & WCS_PARAMETER_DERIVATIVE != 0) 
         return _wcsMatrixHandler->getSize();
     else return 0;
 }
 
-int const multifit::FourierModel::getPsfParameterSize() const {
+int const multifit::FourierModelProjection::getPsfParameterSize() const {
     if(getActiveProducts() & PSF_PARAMETER_DERIVATIVE != 0) 
         return _psfMatrixHandler->getSize();
     else return 0;
 }
 
-void multifit::FourierModel::convolve(
+void multifit::FourierModelProjection::setKernel(
+    boost::shared_ptr<const lsst::afw::math::Kernel> const & kernel
+) {
+    convolve(*kernel->computeFourierConvolutionVisitor(getPsfPosition()));
+}
+
+void multifit::FourierModelProjection::convolve(
     lsst::afw::math::FourierConvolutionVisitor const & visitor
 ) {
     _kernelVisitor.reset(
@@ -498,7 +143,7 @@ void multifit::FourierModel::convolve(
         disableProducts(PSF_PARAMETER_DERIVATIVE);
 
     if (getActiveProducts() & PSF_PARAMETER_DERIVATIVE) {
-        _psfMatrixHandler.reset(new PsfMatrixHandler(this));
+        _psfMatrixHandler.reset(new fourier::PsfMatrixHandler(this));
     } else {
         _psfMatrixHandler.reset();
     }
@@ -510,36 +155,38 @@ void multifit::FourierModel::convolve(
         _wcsMatrixHandler->invalidate();
 }
 
-int multifit::FourierModel::_enableProducts(int toAdd) {
+int multifit::FourierModelProjection::_enableProducts(int toAdd) {
     if (toAdd & PSF_PARAMETER_DERIVATIVE) {
         if (!_kernelVisitor->hasDerivatives()) 
             toAdd |= (~PSF_PARAMETER_DERIVATIVE);
     }
     if ((toAdd & NONLINEAR_PARAMETER_DERIVATIVE) && !_nonlinearMatrixHandler) {
-        _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
+        _nonlinearMatrixHandler.reset(
+            new fourier::NonlinearMatrixHandler(this)
+        );
     }
     if ((toAdd & WCS_PARAMETER_DERIVATIVE) && !_wcsMatrixHandler) {
-        _wcsMatrixHandler.reset(new WcsMatrixHandler(this));
+        _wcsMatrixHandler.reset(new fourier::WcsMatrixHandler(this));
     }
     if ((toAdd & PSF_PARAMETER_DERIVATIVE) && !_psfMatrixHandler) {
-        _psfMatrixHandler.reset(new PsfMatrixHandler(this));
+        _psfMatrixHandler.reset(new fourier::PsfMatrixHandler(this));
     }
     return toAdd;
 }
 
-int multifit::FourierModel::_disableProducts(int toRemove) {
+int multifit::FourierModelProjection::_disableProducts(int toRemove) {
     toRemove &= (~MODEL_IMAGE) & (~LINEAR_PARAMETER_DERIVATIVE);
     return toRemove;
 }
 
-void multifit::FourierModel::setDimensions() {
+void multifit::FourierModelProjection::setDimensions() {
     std::pair<int, int> dimensions = _morphology->getDimensions();
     //TODO: add method to compute linear approximation of a WCS
-    //at a given position:
-
-    //replace following line with a call to that method
-    //
-    _transform.reset(new lsst::afw::math::AffineTransform(_position->getCenter()));
+    //at a given position, then replace following line with a call to that 
+    //function    
+    _transform.reset(
+        new lsst::afw::math::AffineTransform(_position->getCenter())
+    );
                      
     lsst::afw::image::PointD centerOnExposure = (*_transform)(
         _position->getCenter()
@@ -566,17 +213,20 @@ void multifit::FourierModel::setDimensions() {
     _inner.shift(-_outer.getX0(), -_outer.getY0());
     _kernelVisitor->fft(_outer.getWidth(), _outer.getHeight());
    
-    _linearMatrixHandler.reset(new LinearMatrixHandler(this));
-    _modelImageHandler.reset(new ModelImageHandler(this));
-    if (getActiveProducts() & NONLINEAR_PARAMETER_DERIVATIVE)
-        _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
+    _linearMatrixHandler.reset(new fourier::LinearMatrixHandler(this));
+    _modelImageHandler.reset(new fourier::ModelImageHandler(this));
+    if (getActiveProducts() & NONLINEAR_PARAMETER_DERIVATIVE) {
+        _nonlinearMatrixHandler.reset(
+            new fourier::NonlinearMatrixHandler(this)
+        );
+    }
     if (getActiveProducts() & WCS_PARAMETER_DERIVATIVE)
-        _wcsMatrixHandler.reset(new WcsMatrixHandler(this));
+        _wcsMatrixHandler.reset(new fourier::WcsMatrixHandler(this));
     if (getActiveProducts() & PSF_PARAMETER_DERIVATIVE)
-        _psfMatrixHandler.reset(new PsfMatrixHandler(this));
+        _psfMatrixHandler.reset(new fourier::PsfMatrixHandler(this));
 }
 
-void multifit::FourierModel::applyShift(
+void multifit::FourierModelProjection::applyShift(
     ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
     ndarray::FourierArray<Pixel,3,3>::Iterator const & end
 ) const {
@@ -591,7 +241,7 @@ void multifit::FourierModel::applyShift(
     }
 }
 
-void multifit::FourierModel::applyKernel(
+void multifit::FourierModelProjection::applyKernel(
     ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
     ndarray::FourierArray<Pixel,3,3>::Iterator const & end,
     ndarray::FourierArray<Pixel,2,2> const & kernel
@@ -601,9 +251,9 @@ void multifit::FourierModel::applyKernel(
     }    
 }
 
-void multifit::FourierModel::applyKernel(
-        ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
-        ndarray::FourierArray<Pixel,3,3>::Iterator const & end
+void multifit::FourierModelProjection::applyKernel(
+    ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
+    ndarray::FourierArray<Pixel,3,3>::Iterator const & end
 ) const {
     lsst::afw::math::FourierCutout::Ptr cutout(
         _kernelVisitor->getFourierImage()
@@ -623,88 +273,43 @@ void multifit::FourierModel::applyKernel(
     applyKernel(iter,end,kernelImage);
 }
 
-
-multifit::FourierModel::FourierModel(
-    FourierModel const & other
-) : 
-    Model(other),
-    _transform(other._transform),
-    _position(other._position->clone()),
-    _morphology(other._morphology->clone()),
-    _ellipse(other._ellipse->clone()),
-    _wf(other._wf),
-    _outer(other._outer),
-    _inner(other._inner),
-    _td(other._td)
-{
-    convolve(*other._kernelVisitor);
-}
-
-multifit::Model::Definition multifit::FourierModel::makeDefinition(
-    Position::ConstPtr const & position,
-    Morphology::Factory::ConstPtr const & morphologyFactory,
-    ParameterConstIterator linearBegin,
-    ParameterConstIterator const linearEnd,
-    ParameterConstIterator nonlinearBegin
-) {
-    Model::Factory::ConstPtr factory(new FourierModel::Factory(position,morphologyFactory));
-    return Model::Definition(factory,linearBegin,linearEnd,nonlinearBegin);
-}
-
-multifit::FourierModel::FourierModel(
-    Position::Ptr const & position, 
-    Morphology::Factory::ConstPtr const & morphologyFactory,
-    ParameterConstIterator linearBegin,
-    ParameterConstIterator const linearEnd,
-    ParameterConstIterator nonlinearBegin,
-    Kernel const & kernel,
-    WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint,
-    double photFactor
-) : 
-    Model(
-        makeDefinition(
-            position,morphologyFactory,linearBegin,linearEnd,nonlinearBegin
-        ),
-        MODEL_IMAGE | LINEAR_PARAMETER_DERIVATIVE,
-        wcs, footprint, photFactor
-    ),
-    _position(position), 
-    _morphology(morphologyFactory->create(linearEnd-linearBegin))
-{
-    convolve(*kernel.computeFourierConvolutionVisitor(getPsfPosition()));
-    if (_morphology->hasEllipse()) 
-        _ellipse.reset(_morphology->getEllipse().clone());
-    _morphology->setLinearParameters(linearBegin);
-    _handleNonlinearParameterChange();
-}
-    
-// ------------------------- FourierModel::Factory -------------------------- //
-
-
-multifit::FourierModel * multifit::FourierModel::Factory::project(
-    ParameterConstIterator linearParameterBegin,
-    ParameterConstIterator const linearParameterEnd,
-    ParameterConstIterator nonlinearParameterBegin,
-    Kernel const & kernel,
-    WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint,
-    double photFactor
-) const {
-    Position::Ptr position(_position->clone());
-    return new FourierModel(
-        position,_morphologyFactory,
-        linearParameterBegin,linearParameterEnd,
-        nonlinearParameterBegin,
-        kernel, wcs, footprint, photFactor
+multifit::ModelProjection::Ptr multifit::FourierModel::createProjection() const {
+    Model::ConstPtr const model(shared_from_this()); 
+    return boost::shared_ptr<ModelProjection>(
+        new FourierModelProjection(model, _position, _morphologyFactory)
     );
 }
 
-int const multifit::FourierModel::Factory::getNonlinearParameterSize() const {
-    int size = _position->getParameterSize()
-            + _morphologyFactory->getNonspatialParameterSize();
+multifit::Model::Ptr multifit::FourierModelFactory::makeModel(
+    int const linearParameterSize,
+    ParameterConstIterator linearParameters,
+    ParameterConstIterator nonlinearParameters
+) const {
+    if(linearParameterSize < getMinLinearParameterSize() || 
+       linearParameterSize < getMaxLinearParameterSize()) {
+        throw LSST_EXCEPT(lsst::pex::exceptions::LengthErrorException,
+            (   
+                boost::format("linearParameterSize must be in range [%1%, %2%]. Was %3%")
+                % getMinLinearParameterSize() 
+                % getMaxLinearParameterSize() 
+                % linearParameterSize
+             ).str()
+        );
+    }
+    ModelFactory::ConstPtr const factory(shared_from_this());
+    FourierModel::Ptr model(
+        new FourierModel(
+            factory ,
+            linearParameterSize
+        )
+    );
+    model->_position.reset(_position->clone());
+    model->_morphologyFactory = _morphologyFactory;
 
-    if (_morphologyFactory->hasEllipse()) 
-        size += 3;
-    return size;
+    model->setLinearParameters(linearParameters);
+    model->setNonlinearParameters(nonlinearParameters);
+
+    return model;
 }
+
+

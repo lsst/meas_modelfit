@@ -4,38 +4,124 @@
 #include <ndarray/fft.hpp>
 
 #include <lsst/afw/math/ellipses.h>
-#include <lsst/meas/multifit/Model.h>
-#include <lsst/meas/multifit/WindowedFootprint.h>
 #include <lsst/afw/math/AffineTransform.h>
 #include <lsst/afw/math/ConvolutionVisitor.h>
+
+#include <lsst/meas/multifit/Model.h>
+#include <lsst/meas/multifit/ModelFactory.h>
+#include <lsst/meas/multifit/ModelProjection.h>
+#include <lsst/meas/multifit/WindowedFootprint.h>
+
+#include <lsst/meas/multifit/fourier/Types.h>
+#include <lsst/meas/multifit/fourier/PositionComponent.h>
+#include <lsst/meas/multifit/fourier/MorphologyComponent.h>
+#include <lsst/meas/multifit/fourier/Handlers.h>
 
 namespace lsst{
 namespace meas {
 namespace multifit {
 
-class FourierModel : public Model, public lsst::afw::math::Convolvable {
+class FourierModelFactory;
+
+class FourierModel : public Model {
 public:
     typedef boost::shared_ptr<FourierModel> Ptr;
-    typedef boost::shared_ptr<const FourierModel> ConstPtr;
+    typedef boost::shared_ptr<const FourierModel> CosntPtr;
 
-    typedef Model::Pixel Pixel;
-    typedef std::complex<Pixel> Complex;
-    typedef ndarray::FourierTransform<Pixel,2> FFT;
+    typedef fourier::PositionComponent Position;
+    typedef fourier::MorphologyComponent Morphology;
 
-    class Factory;
-    class Position;
-    class Morphology;
+    virtual Model::Ptr clone() const { return Model::Ptr(new FourierModel(*this)); }
+    virtual void setNonlinearParameters(ParameterConstIterator parameterIter) {
+        _position->setParameters(parameterIter);
+        Model::setNonlinearParameters(parameterIter);
+    }
+protected:
+    virtual ModelProjection::Ptr createProjection() const;
+private:
+    friend class FourierModelFactory;
+
+    FourierModel(
+        boost::shared_ptr<const ModelFactory> const & factory, 
+        int const linearParameterSize
+    ) : Model(factory, linearParameterSize) {}
+
+    FourierModel(FourierModel const & model) : Model(model) {}
+
+
+    //because position is in ra/dec, it does not need to be transformed
+    //and thus can be shared between all projections
+    Position::Ptr _position;
+
+    //used for constructing projections
+    Morphology::Factory::ConstPtr _morphologyFactory;
+};
+
+class FourierModelFactory : public ModelFactory {
+public:
+    typedef boost::shared_ptr<FourierModelFactory> Ptr;
+    typedef boost::shared_ptr<FourierModelFactory const> ConstPtr;
+    typedef fourier::PositionComponent Position;
+    typedef fourier::MorphologyComponent Morphology;
+
+    virtual int const getNonlinearParameterSize() const {
+        return _position->getParameterSize() + 
+            _morphologyFactory->getNonspatialParameterSize() +
+            (_morphologyFactory->hasEllipse())? 3: 0;
+    }
+
+    virtual int const getMinLinearParameterSize() const {
+        return _morphologyFactory->getMinLinearParameterSize();
+    }
+
+    virtual int const getMaxLinearParameterSize() const {
+        return _morphologyFactory->getMaxLinearParameterSize();
+    }
+
+    virtual Model::Ptr makeModel(
+        int linearParameterSize,
+        ParameterConstIterator linearParameters,
+        ParameterConstIterator nonlinearParameters
+    ) const;
+
+    static ConstPtr makeFactory(
+        fourier::PositionComponent::ConstPtr const & position, 
+        fourier::MorphologyComponent::Factory::ConstPtr const & morphologyFactory
+    ) {
+        return ConstPtr(new FourierModelFactory(position, morphologyFactory));
+    }
+
+private:
+
+    FourierModelFactory(
+        Position::ConstPtr const & position, 
+        Morphology::Factory::ConstPtr const & morphologyFactory
+    ) :
+        _position(position),
+        _morphologyFactory(morphologyFactory)
+    {}
+
+    Position::ConstPtr _position;
+    Morphology::Factory::ConstPtr _morphologyFactory;
+};
+
+
+
+class FourierModelProjection :
+    public ModelProjection, 
+    public lsst::afw::math::Convolvable 
+{
+public:
+    typedef boost::shared_ptr<FourierModelProjection> Ptr;
+    typedef boost::shared_ptr<const FourierModelProjection> ConstPtr;
+
+    typedef fourier::Pixel Pixel;
+    typedef fourier::Complex Complex;
+
+    typedef fourier::PositionComponent Position;
+    typedef fourier::MorphologyComponent Morphology;
 
     static const int WCS_PARAMETER_SIZE = 6;
-
-    virtual FourierModel * clone() const { return new FourierModel(*this); }
-
-    virtual void reproject(
-        Kernel const & kernel,
-        WcsConstPtr const &wcs,
-        FootprintConstPtr const &footprint,
-        double photFactor
-    );
 
     virtual int const getWcsParameterSize() const;
     virtual int const getPsfParameterSize() const;
@@ -81,109 +167,9 @@ public:
         ndarray::Array<Pixel,2,2> const & matrix
     );
 
-    class Morphology {
-    public:
-        typedef boost::shared_ptr<Morphology> Ptr;
-        typedef boost::shared_ptr<const Morphology> ConstPtr;
-
-        class Factory {
-        public:
-            typedef boost::shared_ptr<Factory> Ptr;
-            typedef boost::shared_ptr<const Factory> ConstPtr;
-
-            virtual Morphology * create(int linearParameterSize) const = 0;
-
-            virtual bool hasEllipse() const = 0;
-
-            virtual int const getMinLinearParameterSize() const = 0;
-            virtual int const getMaxLinearParameterSize() const = 0;
-            virtual int const getNonspatialParameterSize() const = 0;
-
-            virtual ~Factory() {}
-        };
-
-        virtual Morphology * clone() const = 0;
-
-        virtual void getLinearParameters(
-            ParameterIterator parameters
-        ) const = 0;
-        virtual void setLinearParameters(ParameterConstIterator parameters) = 0;
-
-        virtual void getNonspatialParameters(
-            ParameterIterator parameters
-        ) const = 0;
-        virtual void setNonspatialParameters(
-            ParameterConstIterator parameters
-        ) = 0;
-
-        virtual lsst::afw::math::ellipses::Core const & getEllipse() const = 0;
-        virtual void setEllipse(
-            lsst::afw::math::ellipses::Core const & ellipse
-        ) = 0;
-
-        virtual bool hasEllipse() const = 0;
-        virtual int const getLinearParameterSize() const = 0;
-        virtual int const getNonspatialParameterSize() const = 0;
-
-        //get (width, height) as a std::pair
-        virtual std::pair<int, int> getDimensions() const = 0;
-
-        virtual int const getMaxKernelSize() const = 0;
-        virtual int const getPadding() const { 
-            return getMaxKernelSize() / 2 + 1; 
-        }
-
-        /**
-         *  Compute the derivative of the Fourier-space model with respect to 
-         *  the linear parameters.
-         */
-        virtual ndarray::FourierArray<Pixel,3,3> computeLinearParameterDerivative() = 0;
-
-        /**
-         *  Compute the derivative of the Fourier-space model with respect to 
-         *  the non-elllipse nonlinear parameters.
-         */
-        virtual ndarray::FourierArray<Pixel,3,3> computeNonspatialParameterDerivative() = 0;
-
-        /**
-         *  Compute the derivative of the Fourier-space model with respect to 
-         *  the ellipse parameters.
-         */
-        virtual ndarray::FourierArray<Pixel,3,3> computeEllipseDerivative() = 0;
-
-        virtual ~Morphology() {}
-
-    private:
-        void operator=(Morphology const & other) {}
-    };
-
-    class Position {
-    public:
-        typedef boost::shared_ptr<Position> Ptr;
-        typedef boost::shared_ptr<const Position> ConstPtr;
-        typedef Eigen::Matrix<double, 2, Eigen::Dynamic> CenterDerivative;
-        virtual ~Position() {}
-
-        virtual Position * clone() const = 0;
-
-        virtual void getParameters(ParameterIterator parameters) const = 0;
-        virtual void setParameters(ParameterConstIterator parameters) = 0;
-
-        virtual int const getParameterSize() const = 0;
-
-        /**
-         *  Return the center of the object in (ra,dec).
-         */
-        virtual lsst::afw::image::PointD const & getCenter() const = 0;
-
-        /**
-         *  Return the derivative of getCenter() with respect to the parameters.
-         */
-        virtual CenterDerivative const & getCenterDerivative() const = 0;
-
-    private:
-        void operator=(Position const & other) {}
-    };
+    FourierModel const & getModel() const {
+        return static_cast<FourierModel const &>(*ModelProjection::getModel());
+    } 
 
 protected:
 
@@ -196,6 +182,7 @@ protected:
      *  This is the point at which the PSF model will be evaluated.
      */
     virtual lsst::afw::image::PointD getPsfPosition() const;
+    virtual void setKernel(boost::shared_ptr<const Kernel> const & kernel);
 
     virtual void convolve(
         lsst::afw::math::FourierConvolutionVisitor const & visitor
@@ -222,29 +209,30 @@ protected:
     virtual void _handleNonlinearParameterChange();
 
 private:
+    friend class FourierModel;
+    friend class fourier::ModelImageHandler;
+    friend class fourier::LinearMatrixHandler;
+    friend class fourier::NonlinearMatrixHandler;
+    friend class fourier::WcsMatrixHandler;
+    friend class fourier::PsfMatrixHandler;
 
-    FourierModel(FourierModel const & other);
-    
-    FourierModel(
-        Position::Ptr const & position, 
-        Morphology::Factory::ConstPtr const & morphologyFactory,
-        ParameterConstIterator linearBegin,
-        ParameterConstIterator const linearEnd,
-        ParameterConstIterator nonlinearBegin,
-        Kernel const & kernel,
-        WcsConstPtr const &wcs,
-        FootprintConstPtr const &footprint,
-        double photFactor
-    );  
-    
-    static Definition makeDefinition(
-        Position::ConstPtr const & position,
-        Morphology::Factory::ConstPtr const & morphologyFactory,
-        ParameterConstIterator linearBegin,
-        ParameterConstIterator const linearEnd,
-        ParameterConstIterator nonlinearBegin
-    );
+    typedef ndarray::FourierTransform<Pixel,2> FFT;
 
+    FourierModelProjection(
+        boost::shared_ptr<const Model> const & model,
+        fourier::PositionComponent::Ptr const & position,
+        fourier::MorphologyComponent::Factory::ConstPtr const & morphologyFactory
+    ) : 
+        ModelProjection(model),
+        _position(position),
+        _morphology(
+            morphologyFactory->makeMorphology(getLinearParameterSize())
+        )
+    {
+        if(_morphology->hasEllipse())
+            _ellipse.reset(_morphology->getEllipse().clone());
+    }
+   
     void setDimensions();
 
     void applyShift(
@@ -267,11 +255,10 @@ private:
     lsst::afw::math::AffineTransform::ConstPtr _transform;     
     /** PSF/Kernel information. */
     lsst::afw::math::FourierConvolutionVisitor::Ptr _kernelVisitor; 
-
     /** Determines RA/DEC center from parameters.*/
-    boost::shared_ptr<Position> _position;     
+    Position::Ptr _position;     
     /** A simpler uncentered model class in the exposure Wcs. */
-    boost::shared_ptr<Morphology> _morphology; 
+    Morphology::Ptr _morphology; 
     /** Size and ellipticity parameters. Empty if !_morphology->hasEllipse().*/
     lsst::afw::math::ellipses::Core::Ptr _ellipse; 
     /** maps footprint to handler output arrays */
@@ -283,58 +270,14 @@ private:
     /** derivatives of ellipse in exposure Wcs */
     lsst::afw::math::ellipses::Core::TransformDerivative::Ptr _td; 
 
-    class ModelImageHandler;
-    class LinearMatrixHandler;
-    class NonlinearMatrixHandler;
-    class WcsMatrixHandler;
-    class PsfMatrixHandler;
-
-    boost::scoped_ptr<ModelImageHandler> _modelImageHandler;
-    boost::scoped_ptr<LinearMatrixHandler> _linearMatrixHandler;
-    boost::scoped_ptr<NonlinearMatrixHandler> _nonlinearMatrixHandler;
-    boost::scoped_ptr<WcsMatrixHandler> _wcsMatrixHandler;
-    boost::scoped_ptr<PsfMatrixHandler> _psfMatrixHandler;
-
+    boost::scoped_ptr<fourier::ModelImageHandler> _modelImageHandler;
+    boost::scoped_ptr<fourier::LinearMatrixHandler> _linearMatrixHandler;
+    boost::scoped_ptr<fourier::NonlinearMatrixHandler> _nonlinearMatrixHandler;
+    boost::scoped_ptr<fourier::WcsMatrixHandler> _wcsMatrixHandler;
+    boost::scoped_ptr<fourier::PsfMatrixHandler> _psfMatrixHandler;
 };
 
-class FourierModel::Factory  : public Model::Factory {
-public:
-    typedef boost::shared_ptr<Factory> Ptr;
-    typedef boost::shared_ptr<const Factory> ConstPtr;
-    
-    virtual FourierModel * project(
-        ParameterConstIterator linearParameterBegin,
-        ParameterConstIterator const linearParameterEnd,
-        ParameterConstIterator nonlinearParameterBegin,
-        Kernel const & kernel,
-        WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor
-    ) const;
-
-    virtual int const getNonlinearParameterSize() const;
-
-    virtual int const getMinLinearParameterSize() const {
-        return _morphologyFactory->getMinLinearParameterSize();
-    }
-
-    virtual int const getMaxLinearParameterSize() const {
-        return _morphologyFactory->getMaxLinearParameterSize();
-    }
-
-    Factory(
-        Position::ConstPtr const & position, 
-        Morphology::Factory::ConstPtr const & morphologyFactory
-    ) : _position(position),
-        _morphologyFactory(morphologyFactory)
-    {}
-
-private:
-    Position::ConstPtr _position;
-    Morphology::Factory::ConstPtr _morphologyFactory;
-};
-
-inline lsst::afw::image::PointD FourierModel::getPsfPosition() const { 
+inline lsst::afw::image::PointD FourierModelProjection::getPsfPosition() const { 
     return (*_transform)(_position->getCenter()); 
 }
 
