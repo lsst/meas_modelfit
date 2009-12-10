@@ -1,7 +1,7 @@
-#ifndef LSST_MEAS_MULTIFIT_UTIL_H
-#define LSST_MEAS_MULTIFIT_UTIL_H
+#ifndef LSST_MEAS_MULTIFIT_UTILS_H
+#define LSST_MEAS_MULTIFIT_UTILS_H
 
-#include <lsst/afw/image/Utils.h>
+#include "lsst/afw/image/Utils.h"
 #include <ndarray.hpp>
 
 namespace lsst {
@@ -33,4 +33,4 @@ inline ndarray::Array<T,3,((C>=1) ? 1:0)> window(
 
 }}}
 
-#endif //LSST_MEAS_MULTIFIT_UTIL_H
+#endif //LSST_MEAS_MULTIFIT_UTILS_H

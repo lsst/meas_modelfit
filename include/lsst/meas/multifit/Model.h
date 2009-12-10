@@ -11,19 +11,14 @@
 
 #include <ndarray_fwd.hpp>
 
-#include <lsst/meas/multifit/core.h>
+#include "lsst/meas/multifit/core.h"
 
 namespace lsst{
 namespace meas {
 namespace multifit {
 
-namespace projections {
-
+//forward declarations
 class ModelProjection;
-
-} // namespace projections
-
-class ModelEvaluator;
 class ModelFactory;
 
 /**
@@ -70,7 +65,7 @@ public:
     virtual lsst::afw::math::ellipses::Ellipse::Ptr computeBoundingEllipse() const = 0;
 
     /// \brief Return a vector of the linear parameters.
-    ParameterVector const & getLinearParameters() const { 
+    ParameterVector const & getLinearParameterVector() const { 
         return *_linearParameterVector; 
     }
 
@@ -88,7 +83,7 @@ public:
     void setLinearParameters(ParameterConstIterator parameterIter);
 
     /// \brief Return a vector of the nonlinear parameters.
-    ParameterVector const & getNonlinearParameters() const { 
+    ParameterVector const & getNonlinearParameterVector() const { 
         return *_nonlinearParameterVector; 
     }
 
@@ -115,21 +110,8 @@ public:
 
     virtual ~Model() {}
 
-protected:
-
     /** 
      *  \brief Create a ModelProjection object associated with this.
-     *
-     *  All public ModelProjection creation should use this function (or one that delegates to it).
-     *
-     *  makeProjection() delegates to _createProjection() the actual construction of a ModelProjection
-     *  of the appropriate subclass, then:
-     *  - Initializes the data members (model, WCS, footprint, phot. factor) of the new ModelProjection.
-     *  - Calls ModelProjection::_setKernel(kernel).
-     *  - Calls ModelProjection::enableProducts(activeProducts).
-     *  - Calls ModelProjection::_handleLinearParameterChange().
-     *  - Calls ModelProjection::_handleNonlinearParameterChange().
-     *  - Registers the ModelProjection as an observer of this.
      */
     virtual boost::shared_ptr<projections::ModelProjection> makeProjection(
         Kernel::ConstPtr const & kernel,
@@ -138,6 +120,26 @@ protected:
         double photFactor,
         int activeProducts = 0
     ) const = 0;
+
+protected:
+    /// \brief Initialize the Model and allocate space for the parameter vectors.
+    Model(int linearParameterSize, int nonlinearParamterSize)       
+      : _linearParameterVector(boost::make_shared<ParameterVector>(linearParameterSize)),
+        _nonlinearParameterVector(boost::make_shared<ParameterVector>(nonlinearParameterSize)),
+        _projectionList()
+    {}
+
+    /**
+     * \brief Deep-copy the Model.
+     *
+     * This is a deep copy of the model parameters, projections will not be
+     * associated with the new Model
+     */ 
+    explicit Model(Model const & model) 
+      : _linearParameterVector(boost::make_shared<ParameterVector>(model.getLinearParameterVector())),
+        _nonlinearParameterVector(boost::make_shared<ParameterVector>(model.getNonlinearParameterVector())),
+        _projectionList()
+    {}
 
     /// \brief Notify all associated ModelProjections that the linear parameters have changed.
     void _broadcastLinearParameterChange() const;
@@ -161,33 +163,23 @@ protected:
      */
     virtual void _handleNonlinearParameterChange() {}
 
-    /// \brief Initialize the Model and allocate space for the parameter vectors.
-    Model(int linearParameterSize, int nonlinearParamterSize);
-
-    /**
-     * \brief Deep-copy the Model.
-     *
-     * This is a deep copy of the model parameters, projections will not be
-     * associated with the new Model
-     */ 
-    explicit Model(Model const & model);
+    /// \brief Add a newly-created projection to the list of listeners.
+    void _registerProjection(boost::shared_ptr<ModelProjection> const & proj) const;
 
     boost::shared_ptr<ParameterVector> _linearParameterVector;
     boost::shared_ptr<ParameterVector> _nonlinearParameterVector;
 
 private:
-    typedef boost::weak_ptr<projections::ModelProjection> ProjectionWeakPtr;
+    typedef boost::weak_ptr<ModelProjection> ProjectionWeakPtr;
     typedef std::list<ProjectionWeakPtr> ProjectionList;
 
     friend class ModelFactory;
-    friend class ModelEvaluator;
 
     void operator=(Model const & other) { assert(false); } // Assignment disabled.
 
-    boost::shared_ptr<ModelFactory const> _factory;
     mutable ProjectionList _projectionList;
 };
 
-} // namespace multifit
+}}} // namespace lsst::meas::multifit
 
 #endif // !LSST_MEAS_MULTIFIT_MODEL_H

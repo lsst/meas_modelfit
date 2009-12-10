@@ -11,8 +11,7 @@
 
 #include <ndarray_fwd.hpp>
 
-#include <lsst/meas/multifit/core.h>
-#include <lsst/meas/multifit/Model.h>
+#include "lsst/meas/multifit/core.h"
 
 namespace lsst {
 namespace meas {
@@ -82,6 +81,6 @@ private:
     static RegistryMap _registry;
 };
 
-} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::multifit
 
 #endif // !LSST_MEAS_MULTIFIT_MODEL_FACTORY_H
