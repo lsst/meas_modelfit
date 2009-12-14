@@ -31,7 +31,7 @@ public:
      *  \brief Create a Footprint that would contain a projection of the Model.
      */
     virtual Footprint::Ptr computeProjectionFootprint(
-        Kernel const & kernel,
+        Kernel::ConstPtr const & kernel,
         Wcs::ConstPtr const & wcs,
         double photFactor
     ) const;
@@ -39,8 +39,8 @@ public:
     /**
      *  \brief Create an image-coordinate bounding box that would contain a projection of the Model.
      */
-    virtual agl::BoxD computeProjectionEnvelope(
-        Kernel const & kernel,
+    virtual lsst::Afw::geom::Box2I computeProjectionEnvelope(
+        Kernel::ConstPtr const & kernel,
         Wcs::ConstPtr const & wcs,
         double photFactor
     ) const;
@@ -48,7 +48,7 @@ public:
     /**
      *  \brief Create an ra/dec bounding ellipse for the Model (does not include PSF broadening).
      */
-    virtual lsst::afw::math::ellipses::Ellipse::Ptr computeBoundingEllipse() const;
+    virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const;
 
     /**
      *  \brief Create a new ComponentModel with the same type and parameters.

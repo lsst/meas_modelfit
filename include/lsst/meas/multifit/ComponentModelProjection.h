@@ -41,7 +41,7 @@ public:
     }
 
     /// \brief Return the AffineTransform that maps global coordinates to image coordinates.
-    lst::afw::math::AffineTransform::ConstPtr getTransform() const { return _transform; }
+    lst::afw::geom::AffineTransform::ConstPtr getTransform() const { return _transform; }
 
     /// \brief Return the number of parameters that specify the coordinate transformation.
     virtual int const getWcsParameterSize() const { return WCS_PARAMETER_SIZE; }
@@ -69,7 +69,7 @@ protected:
      *  @name LocalizedConvolvableImplementation
      */
     //@{
-    virtual lsst::afw::math::PointD getPsfPosition() const { 
+    virtual lsst::afw::geom::Point2D _getPsfPosition() const { 
         return (*_transform)(getAstrometry()->apply()); 
     }
     //@}

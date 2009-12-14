@@ -74,7 +74,7 @@ protected:
     MorphologyProjection(
         boost::shared_ptr<Morphology const> const & morphology,
         int kernelSize, 
-        lsst::afw::math::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) : _morphology(morphology), _kernelSize(kernelSize), _transform(transform) {}
 
 private:
@@ -83,7 +83,7 @@ private:
 
     boost::shared_ptr<Morphology const> _morphology;
     int _kernelSize;
-    lsst::afw::math::AffineTransform::ConstPtr _transform;
+    lsst::afw::geom::AffineTransform::ConstPtr _transform;
 };
 
 }}}} // namespace lsst::meas::multifit::components

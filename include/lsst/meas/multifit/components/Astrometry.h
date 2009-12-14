@@ -40,14 +40,14 @@ public:
     virtual int const getAstrometryParameterSize() const { return 2; }
 
     /// \brief Return the reference point (ra,dec).
-    lsst::afw::image::PointD getRefPoint() const { 
-        return lsst::afw::image::PointD(_astrometryParameterIter[0],_astrometryParameterIter[1]); 
+    lsst::afw::geom::Point2D getRefPoint() const { 
+        return lsst::afw::geom::Point2D::makeXY(_astrometryParameterIter[0],_astrometryParameterIter[1]);
     }
 
     /**
      *  Return the computed point (ra,dec).
      */
-    virtual agl::PointD apply() const { return getRefPoint(); }
+    virtual lsst::afw::geom::Point2D apply() const { return getRefPoint(); }
 
     /**
      *  Compute the derivative with respect to the astrometric parameters.

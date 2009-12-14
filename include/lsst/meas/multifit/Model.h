@@ -35,7 +35,7 @@ class ModelFactory;
  *  \sa ModelFactory
  *  \sa ModelProjection
  */
-class Model : protected boost::enable_shared_from_this<Model> {
+class Model : public boost::enable_shared_from_this<Model> {
 public:
     typedef boost::shared_ptr<Model> Ptr;
     typedef boost::shared_ptr<Model const> ConstPtr;
@@ -53,7 +53,7 @@ public:
      *  \brief Create an image-coordinate bounding box that would contain a
      *  projection of the Model.
      */
-    virtual lsst::afw::image::BBox computeProjectionEnvelope(
+    virtual lsst::afw::geom::Box2I computeProjectionEnvelope(
         Kernel::ConstPtr const & kernel,
         Wcs::ConstPtr const & wcs,
         double photFactor
@@ -113,7 +113,7 @@ public:
     /** 
      *  \brief Create a ModelProjection object associated with this.
      */
-    virtual boost::shared_ptr<projections::ModelProjection> makeProjection(
+    virtual boost::shared_ptr<ModelProjection> makeProjection(
         Kernel::ConstPtr const & kernel,
         Wcs::ConstPtr const & wcs,
         Footprint::ConstPtr const & footprint,
@@ -122,6 +122,9 @@ public:
     ) const = 0;
 
 protected:
+    typedef boost::weak_ptr<ModelProjection> ProjectionWeakPtr;
+    typedef std::list<ProjectionWeakPtr> ProjectionList;
+
     /// \brief Initialize the Model and allocate space for the parameter vectors.
     Model(int linearParameterSize, int nonlinearParamterSize)       
       : _linearParameterVector(boost::make_shared<ParameterVector>(linearParameterSize)),
@@ -164,15 +167,12 @@ protected:
     virtual void _handleNonlinearParameterChange() {}
 
     /// \brief Add a newly-created projection to the list of listeners.
-    void _registerProjection(boost::shared_ptr<ModelProjection> const & proj) const;
+    void _registerProjection(ProjectionWeakPtr const & proj) const;
 
     boost::shared_ptr<ParameterVector> _linearParameterVector;
     boost::shared_ptr<ParameterVector> _nonlinearParameterVector;
 
 private:
-    typedef boost::weak_ptr<ModelProjection> ProjectionWeakPtr;
-    typedef std::list<ProjectionWeakPtr> ProjectionList;
-
     friend class ModelFactory;
 
     void operator=(Model const & other) { assert(false); } // Assignment disabled.

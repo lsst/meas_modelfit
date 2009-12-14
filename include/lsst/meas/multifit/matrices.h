@@ -45,23 +45,23 @@ getVectorView(ndarray::Array<T,2,2> const & array) {
 template <typename T, int C>
 inline ndarray::Array<T,2,((C>=1) ? 1:0)> window(
     ndarray::Array<T,2,C> const & input, 
-    lsst::afw::image::BBox const & box
+    lsst::afw::geom::Box2I const & box
 ) {
     return input[ndarray::view
-        (box.getY0(),box.getY1()+1)
-        (box.getX0(),box.getX1()+1)
+        (box.getMinY(), box.getMaxY()+1)
+        (box.getMinX(), box.getMaxX()+1)
     ];
 }
 
 template <typename T, int C>
 inline ndarray::Array<T,3,((C>=1) ? 1:0)> window(
     ndarray::Array<T,3,C> const & input, 
-    lsst::afw::image::BBox const & box
+    lsst::afw::geom::Box2I const & box
 ) {
     return input[ndarray::view
         ()
-        (box.getY0(),box.getY1()+1)
-        (box.getX0(),box.getX1()+1)
+        (box.getMinY(), box.getMaxY()+1)
+        (box.getMinX(), box.getMaxX()+1)
     ];
 }
 

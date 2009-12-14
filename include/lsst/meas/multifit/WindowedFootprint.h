@@ -17,7 +17,7 @@ public:
 
     WindowedFootprint(
         lsst::afw::detection::Footprint const & fp, 
-        lsst::afw::image::BBox const & window
+        lsst::afw::geom::Box2I const & window
     );
 
     int const getNpix() const {return _nPix;}
@@ -139,9 +139,6 @@ public:
 
 
 private:
-
-
-
     typedef lsst::afw::detection::Span Span;
 
     class WindowedSpan : public Span {
@@ -164,7 +161,7 @@ private:
 
     int _nPix;
     SpanMap _spanList;
-    lsst::afw::image::BBox _window;    
+    lsst::afw::geom::Box2I _window;    
 };
 
 }}}

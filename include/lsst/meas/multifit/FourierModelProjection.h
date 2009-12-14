@@ -48,7 +48,7 @@ protected:
      *  @name ConvolvableImplementation
      */
     //@{
-    virtual void convolve(lsst::afw::math::FourierConvolutionVisitor const & visitor);
+    virtual void _convolve(Kernerl::ConstPtr const & kernel);
 
     virtual bool isConvolved() const { return _kernelVisitor; }
     //@}
@@ -81,12 +81,14 @@ private:
     
     FourierModelProjection(
         ComponentModel::ConstPtr const & model,
-        Kernel const & kernel,
+        Kernel::ConstPtr const & kernel,
         Wcs::ConstPtr const & wcs,
         Footprint::ConstPtr const & footprint,
         double photFactor,
         int activeProducts = 0
     );
+
+    void _convolve(Kernel::ConstPtr const & kernel);
 
     void _setDimensions();
 
@@ -105,8 +107,8 @@ private:
 
     lsst::afw::math::FourierConvolutionVisitor::Ptr _kernelVisitor; ///< PSF/Kernel information.
     WindowedFootprint::Ptr _wf; ///< maps footprint to handler output arrays
-    lsst::afw::image::BBox _outerBBox; ///< bounding box of padded arrays relative to exposure
-    lsst::afw::image::BBox _innerBBox; ///< bounding box of unpadded arrays relative to _outerBBox
+    lsst::afw::geom:Box2I _outerBBox; ///< bounding box of padded arrays relative to exposure
+    lsst::afw::geom::Box2I _innerBBox; ///< bounding box of unpadded arrays relative to _outerBBox
 
     class Shifter;
     class LinearMatrixHandler;

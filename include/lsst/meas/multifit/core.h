@@ -14,7 +14,7 @@ namespace multifit {
 
 typedef double Pixel;
 typedef double Parameter;
-typedef lsst::afw::math::ellipses::LogShear ParameterEllipseCore;
+typedef lsst::afw::geom::ellipses::LogShear ParameterEllipseCore;
 typedef ParameterEllipseCore::Ellipse ParameterEllipse;
 
 typedef Parameter * ParameterIterator;

@@ -11,9 +11,8 @@ multifit::Model::Ptr multifit::ComponentModelFactory::makeModel(
 ) const {
     Model::Ptr model(
         new ComponentModel(
-            linearParameterSize,
-            _astrometryTemplate,
-            _morphologyTemplate)
+            linearParameterSize, _astrometryTemplate, _morphologyTemplate
+        )
     );
     model->setLinearParameters(linearParameterIter);
     model->setNonlinearParameters(nonlinearParameterIter);

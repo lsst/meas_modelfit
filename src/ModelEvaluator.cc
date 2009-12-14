@@ -132,7 +132,7 @@ void multifit::ModelEvaluator::setExposureList(
     //loop to assign matrix buffers to each projection Frame
     for( ; frameIter != frameEnd; ++frameIter) {
         Frame & frame(*frameIter);
-        nPip = frame.footprint->getNpix();
+        nPix = frame.footprint->getNpix();
         pixelEnd = pixelStart + nPix;
 
         frame.imageVector = _imageVector[ndarray::view(pixelStart, pixelEnd)];
