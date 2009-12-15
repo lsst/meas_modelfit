@@ -44,8 +44,8 @@ public:
      *  \brief Create a Footprint that would contain a projection of the Model.
      */
     virtual Footprint::Ptr computeProjectionFootprint(
-        Kernel::ConstPtr const & kernel,
-        Wcs::ConstPtr const & wcs,
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
         double photFactor
     ) const = 0;
 
@@ -53,16 +53,16 @@ public:
      *  \brief Create an image-coordinate bounding box that would contain a
      *  projection of the Model.
      */
-    virtual lsst::afw::geom::Box2I computeProjectionEnvelope(
-        Kernel::ConstPtr const & kernel,
-        Wcs::ConstPtr const & wcs,
+    virtual lsst::afw::geom::Box2D computeProjectionEnvelope(
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
         double photFactor
     ) const = 0;
 
     /**
      *  \brief Create an ra/dec bounding ellipse for the Model.
      */
-    virtual lsst::afw::math::ellipses::Ellipse::Ptr computeBoundingEllipse() const = 0;
+    virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const = 0;
 
     /// \brief Return a vector of the linear parameters.
     ParameterVector const & getLinearParameterVector() const { 
@@ -114,9 +114,9 @@ public:
      *  \brief Create a ModelProjection object associated with this.
      */
     virtual boost::shared_ptr<ModelProjection> makeProjection(
-        Kernel::ConstPtr const & kernel,
-        Wcs::ConstPtr const & wcs,
-        Footprint::ConstPtr const & footprint,
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
+        FootprintConstPtr const & footprint,
         double photFactor,
         int activeProducts = 0
     ) const = 0;
@@ -126,7 +126,7 @@ protected:
     typedef std::list<ProjectionWeakPtr> ProjectionList;
 
     /// \brief Initialize the Model and allocate space for the parameter vectors.
-    Model(int linearParameterSize, int nonlinearParamterSize)       
+    Model(int linearParameterSize, int nonlinearParameterSize)       
       : _linearParameterVector(boost::make_shared<ParameterVector>(linearParameterSize)),
         _nonlinearParameterVector(boost::make_shared<ParameterVector>(nonlinearParameterSize)),
         _projectionList()
@@ -167,7 +167,7 @@ protected:
     virtual void _handleNonlinearParameterChange() {}
 
     /// \brief Add a newly-created projection to the list of listeners.
-    void _registerProjection(ProjectionWeakPtr const & proj) const;
+    void _registerProjection(boost::shared_ptr<ModelProjection> const & projection) const;
 
     boost::shared_ptr<ParameterVector> _linearParameterVector;
     boost::shared_ptr<ParameterVector> _nonlinearParameterVector;

@@ -5,10 +5,8 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/noncopyable.hpp>
 
-#include "lsst/afw/math/ellipses.h"
-#include "lsst/afw/math/AffineTransform.h"
-
-#include "multifit/components/MorphologyProjection.hpp"
+#include "lsst/meas/multifit/core.h"
+#include "lsst/meas/multifit/components/MorphologyProjection.h"
 
 namespace lsst {
 namespace meas {
@@ -71,7 +69,7 @@ public:
     }
 
     /// \brief Return an ellipse core that bounds the morphology.
-    virtual lsts::afw::math::ellipses::Core::Ptr computeBoundingEllipseCore() const = 0;
+    virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const = 0;
 
     /**
      *  \brief Create a new MorphologyProjection object.
@@ -79,8 +77,8 @@ public:
      *  Typically used only by the owning ComponentModel.
      */
     virtual MorphologyProjection::Ptr makeProjection(
-        int kernelSize,
-        lsst::afw::math::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::Extent2I kernelSize,
+        lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) const = 0;
 
 protected:
@@ -98,7 +96,7 @@ protected:
      *  the owning ComponentModel's nonlinear parameter vector. 
      */
     virtual Morphology::Ptr create(
-        boost::shared_ptr<ParameterVector const> const & linearParameterVector
+        boost::shared_ptr<ParameterVector const> const & linearParameterVector,
         ParameterConstIterator morphologyParameterIter
     ) const = 0;
 
@@ -140,7 +138,7 @@ private:
     ParameterConstIterator _morphologyParameterIter;
 };
 
-}}} // namespace lsst::meas::multifit::components
+}}}} // namespace lsst::meas::multifit::components
 
 #endif // !LSST_MEAS_MULTIFIT_COMPONENTS_MORPHOLOGY_H
 

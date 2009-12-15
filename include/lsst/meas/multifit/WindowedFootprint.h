@@ -4,7 +4,9 @@
 #include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
 #include <ndarray_fwd.hpp>
-#include <lsst/afw/detection/Footprint.h>
+
+#include "lsst/afw/detection/Footprint.h"
+#include "lsst/afw/geom/Box.h"
 
 namespace lsst {
 namespace meas {

@@ -12,7 +12,7 @@ components::Morphology::Ptr components::PointSourceMorphology::create(
 
 components::MorphologyProjection::Ptr components::PointSourceMorphology::makeProjection(
     int kernelSize,
-    agl::AffineTransform::ConstPtr const & transform
+    lsst::afw::geom::AffineTransform::ConstPtr const & transform
 ) const {
     return boost::make_shared<PointSourceMorphologyProjection>(
         boost::static_pointer_cast<PointSourceMorphology const>(shared_from_this()),

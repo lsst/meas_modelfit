@@ -3,10 +3,13 @@
 
 #include <boost/shared_ptr.hpp>
 #include <ndarray/fft.hpp>
-#include <agl/Coordinate.hpp>
 
-#include "multifit/components/MorphologyProjection.hpp"
+#include "lsst/meas/multifit/core.h"
+#include "lsst/afw/geom/Extent.h"
+#include "lsst/meas/multifit/components/MorphologyProjection.h"
 
+namespace lsst {
+namespace meas {
 namespace multifit {
 namespace components {
 
@@ -26,7 +29,14 @@ public:
      *
      *  \todo Make sure this calculation is correct.
      */
-    int const getPadding() const { return MorphologyProjection::getKernelSize()/2+1; }
+    lsst::afw::geom::Extent2I const getPadding() const {
+        lsst::afw::geom::Extent2I kernelDimensions(getKernelDimensions());
+        
+        return lsst::afw::geom::Extent2I::makeXY(
+            kernelDimensions.getX() /2 + 1,
+            kernelDimensions.getY() /2 + 1
+        ); 
+    }
 
     /**
      *  Compute the derivative of the Fourier-space model with respect to the linear parameters.
@@ -46,9 +56,9 @@ protected:
      */
     FourierMorphologyProjection(
         Morphology::ConstPtr const & morphology,
-        int kernelSize, 
+        lsst::afw::geom::Extent2I const kernelDimensions, 
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
-    ) : MorphologyProjection(morphology,kernelSize,transform) {}
+    ) : MorphologyProjection(morphology,kernelDimensions,transform) {}
 
 };
 

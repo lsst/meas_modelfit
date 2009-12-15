@@ -3,11 +3,13 @@
 
 #include <ndarray/fft_fwd.hpp>
 
-#include "lsst/afw/math/AffineTransform.h"
+#include "lsst/afw/geom/AffineTransform.h"
+#include "lsst/afw/geom/Box.h"
 #include "lsst/afw/math/ConvolutionVisitor.h"
 #include "lsst/afw/image/Utils.h"
 
 #include "lsst/meas/multifit/Model.h"
+#include "lsst/meas/multifit/WindowedFootprint.h"
 #include "lsst/meas/multifit/ComponentModelProjection.h"
 #include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
 
@@ -48,7 +50,7 @@ protected:
      *  @name ConvolvableImplementation
      */
     //@{
-    virtual void _convolve(Kernerl::ConstPtr const & kernel);
+    virtual void _convolve(KernelConstPtr const & kernel);
 
     virtual bool isConvolved() const { return _kernelVisitor; }
     //@}
@@ -81,14 +83,12 @@ private:
     
     FourierModelProjection(
         ComponentModel::ConstPtr const & model,
-        Kernel::ConstPtr const & kernel,
-        Wcs::ConstPtr const & wcs,
-        Footprint::ConstPtr const & footprint,
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
+        FootprintConstPtr const & footprint,
         double photFactor,
         int activeProducts = 0
     );
-
-    void _convolve(Kernel::ConstPtr const & kernel);
 
     void _setDimensions();
 
@@ -101,14 +101,16 @@ private:
     void _applyKernel(
         ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
         ndarray::FourierArray<Pixel,3,3>::Iterator const & end
-    ) const {
-        _applyKernel(iter,end,_kernelVisitor->getFourierImage());
-    }
+    ) const;
 
-    lsst::afw::math::FourierConvolutionVisitor::Ptr _kernelVisitor; ///< PSF/Kernel information.
-    WindowedFootprint::Ptr _wf; ///< maps footprint to handler output arrays
-    lsst::afw::geom:Box2I _outerBBox; ///< bounding box of padded arrays relative to exposure
-    lsst::afw::geom::Box2I _innerBBox; ///< bounding box of unpadded arrays relative to _outerBBox
+    ///< PSF/Kernel information.
+    lsst::afw::math::FourierConvolutionVisitor::Ptr _kernelVisitor; 
+    ///< maps footprint to handler output arrays
+    WindowedFootprint::Ptr _wf;     
+    ///< bounding box of padded arrays relative to exposure
+    lsst::afw::geom::Box2I _outerBBox; 
+    ///< bounding box of unpadded arrays relative to _outerBBox
+    lsst::afw::geom::Box2I _innerBBox;
 
     class Shifter;
     class LinearMatrixHandler;

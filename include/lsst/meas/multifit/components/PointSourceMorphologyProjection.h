@@ -41,8 +41,7 @@ public:
 
     /// \brief Return the padded dimensions of the image representation of the model.
     virtual lsst::afw::geom::Extent2I getDimensions() const {
-        int kernelSize = getKernelSize() + getPadding() * 2;
-        return lsst::afw::geom::Extent2I(kernelSize, kernelSize);
+        return getKernelDimensions() + getPadding() * 2;
     }
 
     /**
@@ -61,7 +60,7 @@ public:
      */
     PointSourceMorphologyProjection(
         boost::shared_ptr<PointSourceMorphology const> const & morphology,
-        int kernelSize, 
+        lsst::afw::geom::Extent2I const kernelDimensions, 
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
     );
 

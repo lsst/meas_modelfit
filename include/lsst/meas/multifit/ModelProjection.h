@@ -2,7 +2,7 @@
 #define LSST_MEAS_MULTIFIT_MODEL_PROJECTION_H
 
 #include <Eigen/Core>
-#include <ndarray_fwd.hpp>
+#include <ndarray.hpp>
 
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
@@ -102,18 +102,18 @@ public:
     double getPhotFactor() const { return _photFactor; }
 
     /// \brief Return the World Coordinate System object for this projection.
-    Wcs::ConstPtr const & getWCS() const { return _wcs; }
+    WcsConstPtr const & getWCS() const { return _wcs; }
 
     /// \brief Return the Footprint the image representation will be computed on.
-    Footprint::ConstPtr const & getFootprint() const { return _footprint; }
+    FootprintConstPtr const & getFootprint() const { return _footprint; }
 
 protected:
 
     /// \brief Construct a projection.
     ModelProjection(
         Model::ConstPtr const & model,
-        Wcs::ConstPtr const & wcs,
-        Footprint::ConstPtr const & footprint,
+        WcsConstPtr const & wcs,
+        FootprintConstPtr const & footprint,
         double photFactor
     );
 
@@ -155,22 +155,22 @@ protected:
 
 private:
 
-    friend class multifit::Model;
+    friend class Model;
 
     int _activeProducts;
     int _validProducts;
     double _photFactor;
     Model::ConstPtr _model;
-    Footprint::ConstPtr _footprint;
-    Wcs::ConstPtr _wcs;
+    FootprintConstPtr _footprint;
+    WcsConstPtr _wcs;
 
-    ndarray::Array<Pixel,1,1> _modelImage;
-    ndarray::Array<Pixel,2,2> _linearParameterDerivative;
-    ndarray::Array<Pixel,2,2> _nonlinearParameterDerivative;
-    ndarray::Array<Pixel,2,2> _wcsParameterDerivative;
-    ndarray::Array<Pixel,2,2> _psfParameterDerivative;
+    ndarray::Array<Pixel, 1, 1> _modelImage;
+    ndarray::Array<Pixel, 2, 2> _linearParameterDerivative;
+    ndarray::Array<Pixel, 2, 2> _nonlinearParameterDerivative;
+    ndarray::Array<Pixel, 2, 2> _wcsParameterDerivative;
+    ndarray::Array<Pixel, 2, 2> _psfParameterDerivative;
 };
 
-}}} // namespace multifit
+}}} // namespace lsst::meas::multifit
 
 #endif // !LSST_MEAS_MULTIFIT_MODEL_PROJECTION_H

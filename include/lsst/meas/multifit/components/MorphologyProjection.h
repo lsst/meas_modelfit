@@ -2,12 +2,11 @@
 #define LSST_MEAS_MULTIFIT_COMPONENTS_MORPHOLOGY_PROJECTION_H
 
 #include <boost/shared_ptr.hpp>
-#include "lsst/afw/math/ellipses.h"
 
 #include "lsst/meas/multifit/core.h"
 
-namespace meas {
 namespace lsst {
+namespace meas {
 namespace multifit {
 
 class ComponentModelProjection;
@@ -25,20 +24,26 @@ class MorphologyProjection : private boost::noncopyable {
 public:
     typedef boost::shared_ptr<MorphologyProjection> Ptr;
     typedef boost::shared_ptr<MorphologyProjection const> ConstPtr;
-
-    typedef Eigen::Matrix<Pixel,Eigen::Dynamic,Eigen::Dynamic> ParameterJacobianMatrix;
+    
+    typedef Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> ParameterJacobianMatrix;
     typedef Eigen::Matrix<Pixel,Eigen::Dynamic,6> TransformJacobianMatrix;
 
     virtual ~MorphologyProjection() {}
 
     /// \brief Return the Morphology this is a projection of.
-    boost::shared_ptr<Morphology const> getMorphology() const { return _morphology; }
+    boost::shared_ptr<Morphology const> getMorphology() const { 
+        return _morphology; 
+    }
 
-    /// \brief Return the kernel size this MorphologyProjection expects.
-    int const getKernelSize() const { return _kernelSize; }
+    /// \brief Return the kernel dimensions this MorphologyProjection expects.
+    lsst::afw::geom::Extent2I const & getKernelDimensions() const { 
+        return _kernelDimensions; 
+    }
 
     /// \brief Return the AffineTransform that relates this projection to the global coordinate frame.
-    lsst::afw::math::AffineTransform::ConstPtr getTransform() const { return _transform; }
+    lsst::afw::geom::AffineTransform::ConstPtr getTransform() const { 
+        return _transform; 
+    }
 
     /**
      *  \brief Return the matrix that maps the output of
@@ -73,16 +78,18 @@ protected:
      */
     MorphologyProjection(
         boost::shared_ptr<Morphology const> const & morphology,
-        int kernelSize, 
+        lsst::afw::geom::Extent2I kernelDimensions, 
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
-    ) : _morphology(morphology), _kernelSize(kernelSize), _transform(transform) {}
+    ) : _morphology(morphology), 
+        _kernelDimensions(kernelDimensions), 
+        _transform(transform) {}
 
 private:
     friend class Morphology;
     friend class lsst::meas::multifit::ComponentModelProjection;
 
     boost::shared_ptr<Morphology const> _morphology;
-    int _kernelSize;
+    lsst::afw::geom::Extent2I _kernelDimensions;
     lsst::afw::geom::AffineTransform::ConstPtr _transform;
 };
 

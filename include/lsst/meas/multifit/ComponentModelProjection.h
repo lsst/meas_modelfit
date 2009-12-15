@@ -5,7 +5,7 @@
 #include "lsst/meas/multifit/components/MorphologyProjection.h"
 #include "lsst/meas/multifit/matrices.h"
 
-#include "lsst/afw/math/AffineTransform.h"
+#include "lsst/afw/geom/AffineTransform.h"
 
 namespace lsst {
 namespace meas {
@@ -41,7 +41,7 @@ public:
     }
 
     /// \brief Return the AffineTransform that maps global coordinates to image coordinates.
-    lst::afw::geom::AffineTransform::ConstPtr getTransform() const { return _transform; }
+    lsst::afw::geom::AffineTransform::ConstPtr getTransform() const { return _transform; }
 
     /// \brief Return the number of parameters that specify the coordinate transformation.
     virtual int const getWcsParameterSize() const { return WCS_PARAMETER_SIZE; }
@@ -59,9 +59,9 @@ protected:
     /// \brief Construct a projection.
     ComponentModelProjection(
         ComponentModel::ConstPtr const & model,
-        Kernel::ConstPtr const & kernel,
-        Wcs::ConstPtr const & wcs,
-        Footprint::ConstPtr const & footprint,
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
+        FootprintConstPtr const & footprint,
         double photFactor
     );
 
@@ -171,7 +171,8 @@ private:
     }
 
     int _validProducts;
-    lsst::afw::math::AffineTransform::ConstPtr _transform; ///< Transform from global coordinates to this projection
+    ///< Transform from global coordinates to this projection
+    lsst::afw::geom::AffineTransform::ConstPtr _transform; 
     components::MorphologyProjection::Ptr _morphologyProjection;
     ndarray::Array<Pixel,2,2> _translationDerivative;
     ndarray::Array<Pixel,2,2> _projectedParameterDerivative;

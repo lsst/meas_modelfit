@@ -8,10 +8,6 @@
 
 #include "ndarray_fwd.hpp"
 
-#include "lsst/afw/image/MaskedImage.h"
-#include "lsst/afw/image/Wcs.h"
-#include "lsst/afw/math/Kernel.h"
-#include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/projections/ModelProjection.h"
@@ -23,13 +19,7 @@ namespace multifit{
 class ModelEvaluator {
 public:  
     typedef boost::shared_ptr<projections::ModelProjection> ModelProjectionPtr;
-    typedef boost::shared_ptr<Kernel const> KernelPtr;
-    typedef boost::shared_ptr<Wcs const> WcsPtr;
-    typedef boost::shared_ptr<Footprint const> FootprintPtr;
-    typedef boost::shared_ptr<Exposure const> ExposurePtr;
-    typedef boost::shared_ptr<MaskedImage const> MaskedImagePtr;
-
-    typedef boost::tuple<ExposurePtr, KernelPtr, double> CalibratedExposure;
+    typedef boost::tuple<Exposure::Ptr, KernelConstPtr, double> CalibratedExposure;
     typedef std::list<CalibratedExposure> CalibratedExposureList;
 
     struct ProjectionFrame {        
@@ -43,10 +33,10 @@ public:
         {}
         Frame(
             ModelProjectionPtr const & projectionPtr, 
-            ExposurePtr const & exposurePtr, 
-            KernelPtr const & kernelPtr, 
-            WcsPtr const & wcsPtr, 
-            FootprintPtr const &footprintPtr
+            Exposure::Ptr const & exposurePtr, 
+            KernelConstPtr const & kernelPtr, 
+            WcsConstPtr const & wcsPtr, 
+            FootprintConstPtr const &footprintPtr
         ) : projection(projectionPtr), 
             exposure(exposurePtr),
             kernel(kernelPtr),
@@ -57,10 +47,10 @@ public:
         void compressExposure();
 
         ModelProjectionPtr const projection;
-        ExposurePtr const exposure;
-        KernelPtr const kernel;
-        WcsPtr const wcs;
-        FootprintPtr const footprint;
+        Exposure::Ptr const exposure;
+        KernelConstPtr const kernel;
+        WcsConstPtr const wcs;
+        FootprintConstPtr const footprint;
 
         //references into larger matrices
         ndarray::Array<const Pixel, 1, 1> const imageVector;
@@ -142,15 +132,16 @@ private:
 
     ProjectionFrameList _projectionList;
 
-    static FootprintPtr fixFootprint(FootprintPtr const &, MaskedImagePtr const &);
+    static FootprintConstPtr fixFootprint(
+        FootprintPtr const &, 
+        MaskedImagePtr const &
+    );
 
     ndarray::Array<Pixel, 1, 1> _imageVector;
     ndarray::Array<Pixel, 1, 1> _varianceVector;
     ndarray::Array<Pixel, 1, 1> _modelImage;
     ndarray::Array<Pixel, 2, 2> _linearParameterDerivative;
     ndarray::Array<Pixel, 2, 2> _nonlinearParameterDerivative;
-    ndarray::Array<Pixel, 2, 2> _wcsParameterDerivative;
-    ndarray::Array<Pixel, 2, 2> _psfParameterDerivative;
 };
 
 }}} //end namespace lsst::meas::multifit

@@ -3,8 +3,9 @@
 
 #include <Eigen/Core>
 
-#include "lsst/afw/math/ellipses.h"
+#include "lsst/afw/geom/ellipses.h"
 #include "lsst/afw/image/Exposure.h"
+#include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/math/Kernel.h"
 #include "lsst/afw/detection/Footprint.h"
 
@@ -25,7 +26,12 @@ typedef Eigen::aligned_allocator<char> Allocator;
 typedef lsst::afw::image::MaskedImage<Pixel> MaskedImage;
 typedef lsst::afw::image::Exposure<Pixel> Exposure;
 typedef lsst::afw::math::Kernel Kernel;
+typedef lsst::afw::image::Wcs Wcs;
 typedef lsst::afw::detection::Footprint Footprint;
+
+typedef boost::shared_ptr<Kernel const> KernelConstPtr;
+typedef boost::shared_ptr<Wcs const> WcsConstPtr;
+typedef boost::shared_ptr<Footprint const> FootprintConstPtr;
 
 }}} // namespace lsst::meas::multifit
 

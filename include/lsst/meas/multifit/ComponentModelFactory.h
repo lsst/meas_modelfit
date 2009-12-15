@@ -97,7 +97,9 @@ private:
     ComponentModelFactory(
         components::Astrometry::ConstPtr const & astrometryTemplate,
         components::Morphology::ConstPtr const & morphologyTemplate
-    ) : _astrometryTemplate(astrometryTemplate), _morphology(morphology) {}
+    ) : _astrometryTemplate(astrometryTemplate), 
+        _morphologyTemplate(morphologyTemplate) 
+    {}
 
     components::Astrometry::ConstPtr _astrometryTemplate;
     components::Morphology::ConstPtr _morphologyTemplate;

@@ -3,6 +3,7 @@
 
 #include <boost/make_shared.hpp>
 
+#include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
@@ -31,17 +32,17 @@ public:
      *  \brief Create a Footprint that would contain a projection of the Model.
      */
     virtual Footprint::Ptr computeProjectionFootprint(
-        Kernel::ConstPtr const & kernel,
-        Wcs::ConstPtr const & wcs,
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
         double photFactor
     ) const;
 
     /**
      *  \brief Create an image-coordinate bounding box that would contain a projection of the Model.
      */
-    virtual lsst::Afw::geom::Box2I computeProjectionEnvelope(
-        Kernel::ConstPtr const & kernel,
-        Wcs::ConstPtr const & wcs,
+    virtual lsst::afw::geom::Box2D computeProjectionEnvelope(
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
         double photFactor
     ) const;
 
@@ -74,9 +75,9 @@ protected:
      *  \brief Create a ModelProjection object associated with this.
      */
     virtual boost::shared_ptr<ModelProjection> makeProjection(
-        Kernel const & kernel,
-        Wcs::ConstPtr const & wcs,
-        Footprint::ConstPtr const & footprint,
+        KernelConstPtr const & kernel,
+        WcsConstPtr const & wcs,
+        FootprintConstPtr const & footprint,
         double photFactor,
         int activeProducts
     ) const;

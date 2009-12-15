@@ -19,7 +19,7 @@ void multifit::Model::broadcastLinearParameterChange() {
     ProjectionList::iterator const & end(_projectionList.end());
     ProjectionList::iterator i(_projectionList.begin());
     while (i != end) {
-        projections::ModelProjection::Ptr projection(i->lock());
+        ModelProjection::Ptr projection(i->lock());
         if (!projection) {
             i = _projectionList.erase(i);
         } else {
@@ -33,7 +33,7 @@ void multifit::Model::broadcastNonlinearParameterChange() {
     ProjectionList::iterator const & end(_projectionList.end());
     ProjectionList::iterator i = _projectionList.begin();
     while (i != end) {
-        projections::ModelProjection::Ptr projection(i->lock());
+        ModelProjection::Ptr projection(i->lock());
         if (!projection) {
             i = _projectionList.erase(i);
         } else {
@@ -43,7 +43,9 @@ void multifit::Model::broadcastNonlinearParameterChange() {
     }
 }
 
-void multifit::Model::_registerProjection(ModelProjection::Ptr const & projection) const {
+void multifit::Model::_registerProjection(
+    ModelProjection::Ptr const & projection
+) const {
     ProjectionWeakPtr weak(projection);
     _projectionList.push_back(weak);
 }

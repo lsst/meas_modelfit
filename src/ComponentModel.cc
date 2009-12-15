@@ -6,12 +6,13 @@ namespace multifit = lsst::meas::multifit;
 //-- ComponentModel ------------------------------------------------------------
 
 multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
-    Kernel::ConstPtr const & kernel,
-    Wcs::ConstPtr const & wcs,
+    KernelConstPtr const & kernel,
+    WcsConstPtr const & wcs,
     double photFactor
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    ellipse->grow(kernel.getKernelSize()/2+1);
+    int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
+    ellipse->grow(kernelSize/2+1);
 
     //TODO: need wcs linearize api
     //ellipse->transform(*wcs->linearize(ellipse->getCenter()));
@@ -20,20 +21,21 @@ multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     return boost::make_shared<Footprint>();
 }
 
-lsst::afw::image::BBox multifit::componentModel::computeProjectionEnvelope(
-    Kernel::ConstPtr const & kernel,
-    Wcs::ConstPtr const & wcs,
+lsst::afw::geom::Box2D multifit::ComponentModel::computeProjectionEnvelope(
+    KernelConstPtr const & kernel,
+    WcsConstPtr const & wcs,
     double photFactor
 ) const {
-    lsst::afw::math::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    ellipse->grow(kernel.getKernelSize()/2+1);
+    lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
+    int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
+    ellipse->grow(kernelSize/2+1);
     //TODO::need api for linearizing a wcs solution
     //ellipse->transform(*wcs->linearize(ellipse->getCenter()));
     return ellipse->computeEnvelope();
 }
 
-lsst::afw::math::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
-    return lsst::afw::math::ellipses::Ellipse::Ptr(
+lsst::afw::geom::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
+    return lsst::afw::geom::ellipses::Ellipse::Ptr(
         _morphology->computeBoundingEllipseCore()->makeEllipse(_astrometry->apply())
     );
 }
@@ -48,9 +50,9 @@ void multifit::ComponentModel::_handleNonlinearParameterChange() {
 }
 
 multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
-    Kernel::ConstPtr const & kernel,
-    WCS::ConstPtr const & wcs,
-    Footprint::ConstPtr const & footprint,
+    KernelConstPtr const & kernel,
+    WcsConstPtr const & wcs,
+    FootprintConstPtr const & footprint,
     double photFactor,
     int activeProducts
 ) const {
@@ -88,6 +90,6 @@ void multifit::ComponentModel::_construct(
 ) {
     ParameterConstIterator i = getNonlinearParameterIter();
     _astrometry = astrometryTemplate->create(i);
-    i += _astrometry->getParameterSize();
+    i += _astrometry->getAstrometryParameterSize();
     _morphology = morphologyTemplate->create(_linearParameterVector, i);
 }

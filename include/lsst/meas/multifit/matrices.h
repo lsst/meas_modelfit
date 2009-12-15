@@ -12,20 +12,20 @@ namespace multifit {
 
 typedef Eigen::aligned_allocator<char> Allocator;
 
-typename Eigen::Map< Eigen::Matrix<Pixel,Eigen::Dynamic,Eigen::Dynamic> > MatrixMap;
-typename Eigen::Map< Eigen::Matrix<Pixel,1,Eigen::Dynamic> > VectorMap;
+typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> > MatrixMap;
+typedef Eigen::Map<Eigen::Matrix<Pixel, 1, Eigen::Dynamic> > VectorMap;
 
-inline MatrixMap getCompressedMatrixView(ndarray::Array<Pixel,2,2> const & array) {
+inline MatrixMap getMatrixView(ndarray::Array<Pixel const,2,2> const & array) {
     return MatrixMap(array.getData(), array.getSize<1>(), array.getSize<0>());
 }
 
-inline VectorMap getCompressedVectorView(ndarray::Array<Pixel,1,1> const & array) {
+inline VectorMap getVectorView(ndarray::Array<Pixel const,1,1> const & array) {
     return VectorMap(array.getData(), array.getSize<0>());
 }
 
 template <typename T>
 inline Eigen::Map< Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> >
-getMatrixView(ndarray::Array<T,3,3> const & array) {
+getCompressedMatrixView(ndarray::Array<T,3,3> const & array) {
     return Eigen::Map< Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic> >(
         array.getData(),
         array.template getSize<2>() * array.template getSize<1>(),
@@ -35,7 +35,7 @@ getMatrixView(ndarray::Array<T,3,3> const & array) {
 
 template <typename T>
 inline Eigen::Map< Eigen::Matrix<T,Eigen::Dynamic,1> >
-getVectorView(ndarray::Array<T,2,2> const & array) {
+getCompressedVectorView(ndarray::Array<T,2,2> const & array) {
     return Eigen::Map< Eigen::Matrix<T,Eigen::Dynamic,1> >(
         array.getData(),
         array.template getSize<1>() * array.template getSize<0>()
@@ -43,8 +43,8 @@ getVectorView(ndarray::Array<T,2,2> const & array) {
 }
 
 template <typename T, int C>
-inline ndarray::Array<T,2,((C>=1) ? 1:0)> window(
-    ndarray::Array<T,2,C> const & input, 
+inline ndarray::Array<T, 2, ((C>=1) ? 1:0)> window(
+    ndarray::Array<T, 2, C> const & input, 
     lsst::afw::geom::Box2I const & box
 ) {
     return input[ndarray::view
@@ -54,8 +54,8 @@ inline ndarray::Array<T,2,((C>=1) ? 1:0)> window(
 }
 
 template <typename T, int C>
-inline ndarray::Array<T,3,((C>=1) ? 1:0)> window(
-    ndarray::Array<T,3,C> const & input, 
+inline ndarray::Array<T, 3, ((C>=1) ? 1:0)> window(
+    ndarray::Array<T, 3, C> const & input, 
     lsst::afw::geom::Box2I const & box
 ) {
     return input[ndarray::view

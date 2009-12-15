@@ -35,10 +35,7 @@ class Model;
  *  \sa Model
  *  \sa ModelProjection
  */
-class ModelFactory : 
-    protected boost::enable_shared_from_this<ModelFactory>, 
-    private boost::noncopyable 
-{
+class ModelFactory : private boost::noncopyable {
 public:
     typedef boost::shared_ptr<ModelFactory> Ptr;
     typedef boost::shared_ptr<ModelFactory const> ConstPtr;
@@ -69,7 +66,7 @@ public:
     virtual int const getNonlinearParameterSize() const = 0;
 
     /// \brief Return the minimum number of linear parameters in Models produced by this factory.
-    virtual int const getMinLinearParareterSize() const = 0;
+    virtual int const getMinLinearParameterSize() const = 0;
 
     /// \brief Return the maximum number of linear parameters in Models produced by this factory.
     virtual int const getMaxLinearParameterSize() const = 0;
