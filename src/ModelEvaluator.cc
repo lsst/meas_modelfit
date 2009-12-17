@@ -1,192 +1,174 @@
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/matrices.h"
+#include "lsst/afw/detection/Footprint.h"
+#include "lsst/afw/image/MaskedImage.h"
 
 namespace multifit = lsst::meas::multifit;
 namespace detection = lsst::afw::detection;
 
+template <typename ImageT>
 class CompressFunctor : 
-    detection::FootprintFunctor<multifit::MaskedImage> {
+    public detection::FootprintFunctor<lsst::afw::image::MaskedImage<ImageT> > {
 public:
-    CompressFuntor(
-        multifit::MaskedImage const & src,
+    typedef lsst::afw::image::MaskedImage<ImageT> MaskedImage;
+    CompressFunctor(
+        MaskedImage const & src,
         ndarray::Array<multifit::Pixel, 1, 1> const & imageDest,
         ndarray::Array<multifit::Pixel, 1, 1> const & varianceDest
-    ) : lsst::afw::detection::FootprintFunctor(src),
+    ) : detection::FootprintFunctor<MaskedImage>(src),
         _imageDest(imageDest),
-        _varianceDest(varianceDest),        
+        _varianceDest(varianceDest)        
     {}
 
     virtual void reset(detection::Footprint const & footprint) {
-        if(imageDest.getSize() != footprint.getNpix() || 
-            varianceDest.getSize() != footprint.getNPix()) {
+        if(_imageDest.getSize<0>() != footprint.getNpix() || 
+            _varianceDest.getSize<0>() != footprint.getNpix()) {
             throw LSST_EXCEPT(lsst::pex::exceptions::LengthErrorException,
                 "Destination vectors are not correct length");    
         }
         _imageIter = _imageDest.begin();
-        _variaceIter = _varianceDest.begin(); 
+        _varianceIter = _varianceDest.begin(); 
     }
     virtual void operator()(
-        typename multifit::ModelEvaluator::MaskedImage::xy_locator loc,
+        typename MaskedImage::xy_locator loc,
         int x,
         int y
     ) {
        *_imageIter = loc.image();
-       *_varianceIter = loc.var();
+       *_varianceIter = loc.variance();
        ++_imageIter;
        ++_varianceIter;
     }
 private:
     ndarray::Array<multifit::Pixel, 1, 1> const & _imageDest;
     ndarray::Array<multifit::Pixel, 1, 1> const & _varianceDest;
-    ndarray::Array<multifit::Pixel, 1, 1>::iterator _imageIter, _varianceIter;
+    ndarray::Array<multifit::Pixel, 1, 1>::Iterator _imageIter, _varianceIter;
+};
+
+template class CompressFunctor<float>;
+template class CompressFunctor<double>;
 
 
-}
-
-void multifit::ModelEvaluator::Frame::compressExposure() {
-    if(!exposure || !imageVector || !variaceVector) {
-        return;
-    }
-    CompressFunctor functor(
-        *exposure.getMaskedImage(), imageVector, varianceVector
-    );
-    functor.apply(*footprint);    
-}
-
-void multifit::ModelEvaluator::setExposureList(
-    CalibratedExposureList const & exposureList,
-    int nMinPix
+template <typename ImageT>
+void multifit::ModelEvaluator::Traits<ImageT>::setExposureList(
+    ModelEvaluator & evaluator,
+    CalibratedExposureList const & exposureList
 ) {
-    int nExposures = exposureList.size();
-    _projectionList.clear();
+    evaluator._projectionList.clear();
+    evaluator._validProducts = 0;
 
-
-    int nLinear = _model->getLinearParameterSize();
-    int nNonLinear = _model->getNonlinearParameterSize();
+    int nLinear = evaluator._model->getLinearParameterSize();
+    int nNonlinear = evaluator._model->getNonlinearParameterSize();
 
     int pixSum;
 
-    ModelProjectionPtr projection;
-    ExposurePtr exposurePtr;
-    MaskedImagePtr maskedImagePtr;
-    FootprintPtr footprintPtr;
-    KernelPtr kernelPtr;
-    WcsPtr wcsPtr;    
-    double photFactor;    
-    
-    CalibratedExposureIterator exposureIter(exposuresList.begin());
-    CalibratedExposureIterator const & exposureEnd(exposureList.end());
+    ModelProjection::Ptr projection;
+    ExposureConstPtr exposure;
+    FootprintConstPtr footprint;
+    KernelConstPtr kernel;
+    WcsConstPtr wcs;    
+  
+    //exposures which contain fewer than _nMinPix pixels will be rejected
+    //construct a list containing only those exposure which were not rejected
+    std::list<ExposureConstPtr> goodExposureList;
 
     // loop to create projections
-    for( ; exposureIter != exposureEnd; ++exposureIter) {
-        boost::tie(exposurePtr, kernelPtr, photFactor) = *exposureIter;
-        wcsPtr = exposurePtr->getWcs();        
-        footprintPtr = _model->computeProjectionFootprint(
-            *kernelPtr, 
-            wcsPtr,
-            photoFactor
+    for(typename CalibratedExposureList::const_iterator i(exposureList.begin()), 
+        end(exposureList.end()); i != end; ++i
+    ) {
+        boost::tie(exposure, kernel) = *i;
+        wcs = exposure->getWcs();        
+        footprint = evaluator._model->computeProjectionFootprint(
+            kernel, 
+            wcs
         );
-        maskedImagePtr = exposurePtr->getMaskedImage();
-        footprintPtr = fixFootprint(footprintPtr, maskedImagePtr);
+        MaskedImage const & maskedImage = exposure->getMaskedImage();
+        footprint = fixFootprint(footprint, maskedImage.getMask());
 
         //ignore exposures with too few pixels        
-        if (footprintPtr->getNPix() < nMinPix) {
-            continue
-        }
-
-        ModelProjectionPtr projectionPtr = _model->makeProjection(
-            *kernelPtr, wcsPtr, footprintPtr, photFactor, _activeProducts
-        );
-
-        Frame frame(projectionPtr, exposurePtr, kernelPtr, 
-            wcsPtr, footprintPtr);
+        if (footprint->getNpix() >= evaluator._nMinPix) {
+            ProjectionFrame frame(
+                evaluator._model->makeProjection(kernel, wcs, footprint)
+            );
       
-        _projectionList.push_back(frame);
-        pixSum += footprintPtr->getNpix();
+            evaluator._projectionList.push_back(frame);
+            goodExposureList.push_back(exposure);
+
+            pixSum += footprint->getNpix();
+        }
     }
 
     //  allocate matrix buffers
-    _imageVector = ndarray::allocate<Allocator>(pixSum);
-    _varianceVector = ndarray::allocate<Allocator>(pixSum);
+    evaluator._imageVector = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    evaluator._varianceVector = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
 
-    if(_activeProducts & ModelProjection::MODEL_IMAGE) {
-        _modelImage = ndarray::allocate<Allocator>(pixSum);
-    }
-    if(_activeProducts & ModelProjection::LINEAR_PARAMETER_DERIVATIVE) {
-        _linearParameterDerivative = ndarray::allocate<Allocator>(
-            ndarray::MakeVector(nLiear, pixSum)
-        );
-    }
-    if(_activeProducts & ModelProjection::NONLINEAR_PARAMETER_DERIVATIVE) {
-        _nonlinearParameterDerivative = ndarray::allocate<Allocator>(
-            ndarray::MakeVector(nNonlinear, pixSum)
-        );    
-    }
+    evaluator._modelImage = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    evaluator._linearParameterDerivative = ndarray::allocate<Allocator>(
+        ndarray::makeVector(nLinear, pixSum)
+    );
+    evaluator._nonlinearParameterDerivative = ndarray::allocate<Allocator>(
+        ndarray::makeVector(nNonlinear, pixSum)
+    );    
     
     int nPix;
     int pixelStart = 0, pixelEnd;
 
-    FrameIterator frameIter(_projectionList.begin());
-    FrameIterator const & FrameEnd(_projectionList.end());
-        
+    typename std::list<ExposureConstPtr>::const_iterator exposureIter(
+        goodExposureList.begin()
+    );
     //loop to assign matrix buffers to each projection Frame
-    for( ; frameIter != frameEnd; ++frameIter) {
-        Frame & frame(*frameIter);
-        nPix = frame.footprint->getNpix();
+    for(ProjectionFrameList::iterator i(evaluator._projectionList.begin()), 
+        end(evaluator._projectionList.end()); i != end; ++end
+    ) {
+        ProjectionFrame & frame(*i);
+        nPix = frame.getFootprint()->getNpix();
         pixelEnd = pixelStart + nPix;
 
-        frame.imageVector = _imageVector[ndarray::view(pixelStart, pixelEnd)];
-        frame.varianceVector = 
-            _varianceVector[ndarray::view(pixelStart, pixelEnd)];
-        frame.compressExposure();
-
-        if(_activeProducts & ModelProjection::MODEL_IMAGE) {            
-            frame.modelImage = _modelImage[ndarray::view(pixelStart, pixelEnd)];
-            frame.projection->setModelImageBuffer(frame.modelImage);            
-        }
-        if(_activeProducts & ModelProjection::LINEAR_PARAMETER_DERIVATIVE) {
-            frame.linearParameterDerivative = _linearParameterDerivative[
-                ndarray::view()(pixelStart, pixelEnd)
-            ];
-            frame.projection->setLinearParameterDerivativeBuffer(
-                frame.linearParameterDerivative
-            );
-        }
-        if(_activeProducts & ModelProjection::NONLINEAR_PARAMETER_DERIVATIVE) {
-            frame.nonlinearParameterDerivative = _nonlinearParameterDerivative[
-                ndarray::view()(pixelStart, pixelEnd)
-            ];
-            frame.projection->setNonlinearParameterDerivativeBuffer(
-                frame.nonlinearParameterDerivative
-            );
-        }
-        if(_activeProducts & ModelProjection::PSF_PARAMETER_DERIVATIVE) {
-            int nPsf = frame.projection->getPsfParameterSize();
-            frame.linearParameterDerivative = ndarray::allocate<Allocator>(
-                ndarray::makeVector(nPsf, nPix)
-            );
-            frame.projection->setPsfParameterDerivativeBuffer(
-                frame.psfParameterDerivative
-            );
-        }
-        if(_activeProducts & ModelProjection::WCS_PARAMETER_DERIVATIVE) {
-            int nWcs = frame.projection->getWcsParameterSize();
-            frame.wcsParameterDerivative = ndarray::allocate<Allocator> (
-                ndarray::makeVector(nWcs, nPix)
-            );
-            frame.projection->setWcsParameterDerivativeBuffer(
-                frame.wcsParameterDerivative
-            );
-        }
+        // set image/variance buffers
+        ndarray::shallow(frame._imageVector) = evaluator._imageVector[
+            ndarray::view(pixelStart, pixelEnd)
+        ];
+        ndarray::shallow(frame._varianceVector) = evaluator._varianceVector[
+            ndarray::view(pixelStart, pixelEnd)
+        ];
+        compressExposure(frame, *exposureIter); 
+        
+        //set modelImage buffer
+        frame._projection->setModelImageBuffer(
+            evaluator._modelImage[ndarray::view(pixelStart, pixelEnd)]
+        );
+        
+        //set linear buffer
+        frame._projection->setLinearParameterDerivativeBuffer(
+            evaluator._linearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
+        );
+        //set nonlinear buffer
+        frame._projection->setNonlinearParameterDerivativeBuffer(
+            evaluator._nonlinearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
+        );
 
         pixelStart = pixelEnd;
+        ++exposureIter;
     }
-
 }
 
-multifit::ModelEvaluator::FootprintPtr multifit::ModelEvaluator::fixFootprint(
-    FootprintPtr const & footprint,
-    MaskPtr const & mask
+template <typename ImageT>
+void multifit::ModelEvaluator::Traits<ImageT>::compressExposure(
+    ProjectionFrame & frame,
+    ExposureConstPtr const & exposure 
+) {
+    CompressFunctor<ImageT> functor(
+        exposure->getMaskedImage(), 
+        frame._imageVector, 
+        frame._varianceVector
+    );
+    functor.apply(*frame.getFootprint());    
+}
+
+template <typename ImageT>
+multifit::FootprintConstPtr multifit::ModelEvaluator::Traits<ImageT>::fixFootprint(
+    FootprintConstPtr const & footprint,
+    typename MaskedImage::MaskPtr const & mask
 ) {
     lsst::afw::image::BBox const maskBBox(
         mask->getXY0(), mask->getWidth(), mask->getHeight()
@@ -205,7 +187,7 @@ multifit::ModelEvaluator::FootprintPtr multifit::ModelEvaluator::fixFootprint(
 
     int x0, x1, y;
     for( ; spanIter != spanEnd; ++spanIter) {
-        Footprint::Span const & span(**spanIter);
+        detection::Span const & span(**spanIter);
         y = span.getY();
         x0 = span.getX0();
         x1 = span.getX1();
@@ -216,8 +198,7 @@ multifit::ModelEvaluator::FootprintPtr multifit::ModelEvaluator::fixFootprint(
         }
         if(x0 < maskX0) x0 = maskX0;
         if(x1 > maskX1) x1 = maskX1;
-        Mask::x_iterator maskIter = 
-            mask.x_at(spanIter->getX0(), spanIter->getY());
+        typename Traits<ImageT>::MaskedImage::Mask::x_iterator maskIter = mask->x_at(x0, y);
 
         //loop over all span locations, slicing the span at maskedPixels
         for(int x = x0; x <= x1; ++x) {            
@@ -227,7 +208,7 @@ multifit::ModelEvaluator::FootprintPtr multifit::ModelEvaluator::fixFootprint(
                     //add beginning of spanto the fixedFootprint
                     //the fixed span contains all the unmasked pixels up to,
                     //but not including this masked pixel
-                    fixedFootprint.addSpan(y, x0, x - 1);                
+                    fixedFootprint->addSpan(y, x0, x - 1);                
                 }
                 //set the next fixed Span to start after this pixel
                 x0 = x + 1;
@@ -238,7 +219,7 @@ multifit::ModelEvaluator::FootprintPtr multifit::ModelEvaluator::fixFootprint(
         }
         //add last section of span
         if(x0 <= x1) {
-            fixedFootprint.addSpan(y, x0, x1);
+            fixedFootprint->addSpan(y, x0, x1);
         }
     }
    
@@ -247,88 +228,38 @@ multifit::ModelEvaluator::FootprintPtr multifit::ModelEvaluator::fixFootprint(
 }
 
 ndarray::Array<multifit::Pixel const, 1, 1> multifit::ModelEvaluator::computeModelImage() {
-    if(!(_activeProducts & ModelProjection::MODEL_IMAGE)) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Product MODEL_IMAGE is not enabled."
-        );
-    }
-    if(!(_validProducts & ModelProjection::MODEL_IMAGE)) {
-        FrameIterator i(_projectionList.begin());
-        FrameIterator const & end(_projectionList.end());
+    if(!(_validProducts & MODEL_IMAGE)) {
+        ProjectionFrameIterator i(_projectionList.begin());
+        ProjectionFrameIterator const & end(_projectionList.end());
         for( ; i  != end; ++i) {
-            i->projection->computeModelImage();
+            i->computeModelImage();
         }
     }    
     return _modelImage;
 }
 
 ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeLinearParameterDerivative() {
-    if(!(_activeProducts & ModelProjection::LINEAR_PARAMETER_DERIVATIVE)) {     
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Product MODEL_IMAGE is not enabled."
-        );
-    }
     if (!(_validProducts & LINEAR_PARAMETER_DERIVATIVE)) {
-        FrameIterator i(_projectionList.begin());
-        FrameIterator const & end(_projectionList.end());
+        ProjectionFrameIterator i(_projectionList.begin());
+        ProjectionFrameIterator const & end(_projectionList.end());
         for( ; i  != end; ++i) {
-            i->projection->computeLinearParameterDerivative();
+            i->computeLinearParameterDerivative();
         }
+        _validProducts |= LINEAR_PARAMETER_DERIVATIVE;
     }    
     return _linearParameterDerivative;
 }
 
 ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
-    if (!(_activeProducts & NONLINEAR_PARAMETER_DERIVATIVE)) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Product NONLINEAR_PARAMETER_DERIVATIVE is not enabled."
-        );
-    }
-    if(!(_validProducts & ModelProjection::NONLINEAR_PARAMETER_DERIVATIVE)) {
-        FrameIterator i(_projectionList.begin());
-        FrameIterator const & end(_projectionList.end());
+    if(!(_validProducts & NONLINEAR_PARAMETER_DERIVATIVE)) {
+        ProjectionFrameIterator i(_projectionList.begin());
+        ProjectionFrameIterator const & end(_projectionList.end());
         for( ; i  != end; ++i) {
-            i->projection->computeNonlinearParameterDerivative();
+            i->computeNonlinearParameterDerivative();
         }
+        _validProducts |= NONLINEAR_PARAMETER_DERIVATIVE;
     }    
     return _nonlinearParameterDerivative;
-}
-
-ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeWcsParameterDerivative() {
-    if (!(_activeProducts & WCS_PARAMETER_DERIVATIVE)) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Product WCS_PARAMETER_DERIVATIVE is not enabled."
-        );
-    }
-    if(!(_validProducts & ModelProjection::WCS_PARAMETER_DERIVATIVE)) {
-        FrameIterator i(_projectionList.begin());
-        FrameIterator const & end(_projectionList.end());
-        for( ; i  != end; ++i) {
-            i->projection->computeWcsParameterDerivative();
-        }
-    }    
-    return _wcsParameterDerivative;
-}
-
-ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computePsfParameterDerivative() {
-    if(!(_activeProducts & ModelProjection::PSF_PARAMETER_DERIVATIVE)) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Product PSF_PARAMETER_DERIVATIVE is not enabled."
-        );    
-    }
-    if(!(_validProducts & ModelProjection::PSF_PARAMETER_DERIVATIVE)) {
-        FrameIterator i(_projectionList.begin());
-        FrameIterator const & end(_projectionList.end());
-        for( ; i  != end; ++i) {
-            i->projection->computePsfParameterDerivative();
-        }
-    }    
-    return _linearParameterDerivative;
 }
 
 #if 0 

@@ -3,6 +3,7 @@
 
 #include <boost/make_shared.hpp>
 
+#include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/components/Morphology.h"
 
 namespace lsst {
@@ -30,7 +31,7 @@ public:
 
     /// \brief Return an ellipse core that bounds the morphology.
     virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
-        return boost::make_shared<lsst::afw::math::ellipses::LogShear>();
+        return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();
     }
 
     /**
@@ -39,7 +40,7 @@ public:
      *  Typically used only by the owning ComponentModel.
      */
     virtual MorphologyProjection::Ptr makeProjection(
-        int kernelSize,
+        lsst::afw::geom::Extent2I kernelDimensions,
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) const;
 

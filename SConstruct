@@ -8,24 +8,10 @@ import lsst.SConsUtils as scons
 
 # List the direct *and indirect* pacakage dependencies of your package here.
 # Indirect dependencies are needed to get header files.
-dependencies = [
-		"boost", 
-		"python", 
-		"minuit",
-        "cfitsio",
-		"wcslib",
-		"utils", 
-		"pex_exceptions", 
-		"eigen", 
-		"daf_base", 
-		"daf_data",
-		"daf_persistence",
-		"pex_logging",
-		"pex_exceptions",
-		"pex_policy",
-		"security",	
-        "gsl",
-		"afw"]
+dependencies = ["boost", "python", "minuit", "cfitsio", "wcslib", "utils", 
+    "pex_exceptions", "eigen", "daf_base", "daf_data", "daf_persistence",
+		"pex_logging", "pex_exceptions", "pex_policy", "security", "gsl", "afw"
+	]
 
 env = scons.makeEnv(
     # The name of your package goes here.

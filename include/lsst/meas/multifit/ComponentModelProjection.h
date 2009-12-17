@@ -61,8 +61,7 @@ protected:
         ComponentModel::ConstPtr const & model,
         KernelConstPtr const & kernel,
         WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor
+        FootprintConstPtr const & footprint
     );
 
     /**
@@ -84,15 +83,15 @@ protected:
      *  by subclasses.
      */
     //@{
-    virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix);
-    virtual void _computeWcsParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix);
+    virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
+    virtual void _computeWcsParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     //@}
 
     /**
      *  Compute the derivative of the model image with respect to image-coordinate translations
      *  (Footprint-compressed).
      */
-    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
+    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
 
     /**
      *  Compute the derivative of the model image with respect to its projected morphology
@@ -102,7 +101,7 @@ protected:
      *  nonlinear morphology parameters, and must transform according to the
      *  MorphologyProjection's getParameterJacobian() and getTransformDerivative() outputs.
      */
-    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
+    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
 
     /**
      *  \brief Handle a linear parameter change broadcast from the associated Model.
@@ -113,8 +112,6 @@ protected:
     virtual void _handleLinearParameterChange() {
         ModelProjection::_handleLinearParameterChange();
         _morphologyProjection->_handleLinearParameterChange();
-        _validProducts &= (~TRANSLATION_DERIVATIVE);
-        _validProducts &= (~PROJECTED_PARAMETER_DERIVATIVE);
     }
 
     /**
@@ -126,8 +123,6 @@ protected:
     virtual void _handleNonlinearParameterChange() {
         ModelProjection::_handleNonlinearParameterChange();
         _morphologyProjection->_handleMorphologyParameterChange();
-        _validProducts &= (~TRANSLATION_DERIVATIVE);
-        _validProducts &= (~PROJECTED_PARAMETER_DERIVATIVE);
     }
 
     components::MorphologyProjection::Ptr _getMorphologyProjection() { 
@@ -141,21 +136,24 @@ private:
     void _ensureTranslationDerivative();
     void _ensureProjectedParameterDerivative();
 
-    MatrixMap getAstrometryParameterMatrixView(ndarray::Array<Pixel,2,2> const & array) {
-        return MatrixMap(
+    MatrixMapBlock getAstrometryParameterMatrixView(ndarray::Array<Pixel,2,1> const & array) {
+        MatrixMap map(
             array.getData(), 
-            array.getSize<1>(), 
+            array.getStride<0>(), 
             getModel()->getAstrometry()->getAstrometryParameterSize()
         );
+        return MatrixMapBlock(map, 0, 0, array.getSize<1>(), map.cols());
+
     }
 
-    MatrixMap getMorphologyParameterMatrixView(ndarray::Array<Pixel,2,2> const & array) {
-        int offset = getModel()->getAstrometry()->getAstrometryParameterSize() * array.getStride<0>();
-        return MatrixMap(
-            array.getData() + offset,
-            array.getSize<1>(), 
+    MatrixMapBlock getMorphologyParameterMatrixView(ndarray::Array<Pixel,2,1> const & array) {
+        int offset = getModel()->getAstrometry()->getAstrometryParameterSize();
+        MatrixMap map(
+            array.getData(),
+            array.getStride<0>(), 
             getModel()->getMorphology()->getMorphologyParameterSize()
         );
+        return MatrixMapBlock(map, 0, offset, array.getSize<1>(), map.cols());
     }
 
     TranslationMatrixMap getTranslationMatrixView() {
@@ -166,7 +164,7 @@ private:
         );
     }
 
-    MatrixMap getProjectedParameterMatrixView() {
+    MatrixMapBlock getProjectedParameterMatrixView() {
         return getMatrixView(_projectedParameterDerivative);
     }
 

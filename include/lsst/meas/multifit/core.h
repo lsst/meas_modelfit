@@ -23,8 +23,6 @@ typedef Parameter const * ParameterConstIterator;
 typedef Eigen::VectorXd ParameterVector;
 typedef Eigen::aligned_allocator<char> Allocator;
 
-typedef lsst::afw::image::MaskedImage<Pixel> MaskedImage;
-typedef lsst::afw::image::Exposure<Pixel> Exposure;
 typedef lsst::afw::math::Kernel Kernel;
 typedef lsst::afw::image::Wcs Wcs;
 typedef lsst::afw::detection::Footprint Footprint;

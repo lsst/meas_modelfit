@@ -64,7 +64,6 @@ public:
     ndarray::Array<Pixel const,3,1> computeLinearParameterDerivative() {
         if (!_matrixValid) {
             _kLPD = _parent->_getMorphologyProjection()->computeLinearParameterDerivative();
-            _kLPD *= _parent->getPhotFactor();
             _parent->_shifter->apply(_kLPD.begin(),_kLPD.end());
             _unconvolvedMatrix = _kLPD;
             _parent->_applyKernel(_kLPD.begin(),_kLPD.end());
@@ -180,8 +179,7 @@ private:
             kernelImage;
         ndarray::differentiate(1, _kTD[0]);
         ndarray::differentiate(0, _kTD[1]);
-        _kPPD = _parent->_getMorphologyProjection()->computeProjectedParameterDerivative() *
-            _parent->getPhotFactor();
+        _kPPD = _parent->_getMorphologyProjection()->computeProjectedParameterDerivative(); 
         _parent->_shifter->apply(_kPPD.begin(), _kPPD.end());
         _parent->_applyKernel(_kPPD.begin(), _kPPD.end());
         _ifft->execute();
@@ -269,27 +267,25 @@ int const multifit::FourierModelProjection::getPsfParameterSize() const {
 }
 
 void multifit::FourierModelProjection::_convolve(
-    lsst::afw::math::Kernel::ConstPtr const & kernel
+    KernelConstPtr const & kernel
 ) { 
     lsst::afw::geom::PointD point = _getPsfPosition(); 
-    _kernelVisitor.reset(lsst::afw::image:PointD(point.getX(), point.getY()));
-    if (!_kernelVisitor->hasDerivatives()) {
-        disableProducts(PSF_PARAMETER_DERIVATIVE);
-    }
-    if (getActiveProducts() & PSF_PARAMETER_DERIVATIVE) {
+    _kernelVisitor = kernel->computeFourierConvolutionVisitor(
+        lsst::afw::image::PointD(point.getX(), point.getY())
+    );
+    if(_psfMatrixHandler){
         _psfMatrixHandler.reset(new PsfMatrixHandler(this));
-    } else {
-        _psfMatrixHandler.reset();
     }
     _linearMatrixHandler->handleNonlinearParameterChange();
     if (_nonlinearMatrixHandler) {
         _nonlinearMatrixHandler->handleParameterChange();
     }
+
 }
 
 void multifit::FourierModelProjection::_computeLinearParameterDerivative(
-    ndarray::Array<Pixel,2,2> const & output
-) {
+    ndarray::Array<Pixel,2,1> const & output
+) {    
     _wf->compress(
         _linearMatrixHandler->computeLinearParameterDerivative(),
         output
@@ -297,8 +293,11 @@ void multifit::FourierModelProjection::_computeLinearParameterDerivative(
 }
 
 void multifit::FourierModelProjection::_computePsfParameterDerivative(
-    ndarray::Array<Pixel,2,2> const & output
+    ndarray::Array<Pixel,2,1> const & output
 ) {
+    if(!_psfMatrixHandler)
+        _psfMatrixHandler.reset(new PsfMatrixHandler(this));
+
     _wf->compress(
         _psfMatrixHandler->computePsfParameterDerivative(),
         output
@@ -306,7 +305,7 @@ void multifit::FourierModelProjection::_computePsfParameterDerivative(
 }
 
 void multifit::FourierModelProjection::_computeTranslationDerivative(
-    ndarray::Array<Pixel,2,2> const & output
+    ndarray::Array<Pixel,2,1> const & output
 ) {
     _wf->compress(
         _nonlinearMatrixHandler->computeTranslationDerivative(),
@@ -315,7 +314,7 @@ void multifit::FourierModelProjection::_computeTranslationDerivative(
 }
 
 void multifit::FourierModelProjection::_computeProjectedParameterDerivative(
-    ndarray::Array<Pixel,2,2> const & output
+    ndarray::Array<Pixel,2,1> const & output
 ) {
     _wf->compress(
         _nonlinearMatrixHandler->computeProjectedParameterDerivative(), 
@@ -346,35 +345,16 @@ void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
     _shifter->handleNonlinearParameterChange();
 }
 
-int multifit::FourierModelProjection::_enableProducts(int toAdd) {
-    if (toAdd & PSF_PARAMETER_DERIVATIVE) {
-        if (!_kernelVisitor->hasDerivative()) toAdd |= (~PSF_PARAMETER_DERIVATIVE);
-    }
-    if ((toAdd & NONLINEAR_PARAMETER_DERIVATIVE) && !_nonlinearMatrixHandler) {
-        _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
-    }
-    if ((toAdd & PSF_PARAMETER_DERIVATIVE) && !_psfMatrixHandler) {
-        _psfMatrixHandler.reset(new PsfMatrixHandler(this));
-    }
-    return toAdd;
-}
-
-int multifit::FourierModelProjection::_disableProducts(int toRemove) {
-    toRemove &= (~MODEL_IMAGE) & (~LINEAR_PARAMETER_DERIVATIVE);
-    return toRemove;
-}
-
 multifit::FourierModelProjection::FourierModelProjection(
     ComponentModel::ConstPtr const & model,
-    Kernel::ConstPtr const & kernel,
-    Wcs::ConstPtr const & wcs,
-    Footprint::ConstPtr const & footprint,
-    double photFactor,
-    int activeProducts
-) : ComponentModelProjection(model,kernel,wcs,footprint,photFactor),
-    _kernelVisitor(), _wf(), _outerBBox(), _innerBBox()
+    KernelConstPtr const & kernel,
+    WcsConstPtr const & wcs,
+    FootprintConstPtr const & footprint
+) : ComponentModelProjection(model,kernel,wcs,footprint),
+    _kernelVisitor(), _wf(), 
+    _outerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I()),
+    _innerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I())
 {
-    enableProducts(activeProducts);
     _convolve(kernel);
     _setDimensions();
 }
@@ -389,21 +369,33 @@ void multifit::FourierModelProjection::_setDimensions() {
     lsst::afw::geom::Point2I bboxMax = bboxMin + dimensions;
     _outerBBox = lsst::afw::geom::Box2I(bboxMin, bboxMax);
     // Right now, _innerBBox is defined relative to exposure    
-    int padding = getMorphologyProjection()->getPadding();
+    lsst::afw::geom::Extent2I padding = getMorphologyProjection()->getPadding();
+    //TODO: change to shrink inner box asymetrically by padding Extent
+    int maxPadding = std::max(padding.getX(), padding.getY());
     _innerBBox = _outerBBox;
-    _innerBBox.expand(-padding);
+    _innerBBox.expand(-maxPadding);
 
     //TODO: convert footprint to use geom::Box2I
-    //_innerBBox.setIntersection(getFootprint()->getBBox());
+    lsst::afw::image::BBox deprecatedBBox = getFootprint()->getBBox();
+    lsst::afw::geom::Box2I footprintBBox(
+        lsst::afw::geom::Point2I::makeXY(
+            deprecatedBBox.getX0(), deprecatedBBox.getY0()
+        ),
+        lsst::afw::geom::Extent2I::makeXY(
+            deprecatedBBox.getWidth(),
+            deprecatedBBox.getHeight()
+        )
+    );
+    _innerBBox.setIntersection(footprintBBox);
     _wf = boost::make_shared<WindowedFootprint>(*getFootprint(), _innerBBox);
 
     // But now, and forevermore, _innerBBox is defined relative to _outerBBox.
-    _innerBBox.shift(-_outerBBox.getMin());
-    _kernelVisitor->fft(_outerBBox.getWidth, _outerBBox.getHeight());    
+    _innerBBox.shift(lsst::afw::geom::Point2I(0) - _outerBBox.getMin());
+    _kernelVisitor->fft(_outerBBox.getWidth(), _outerBBox.getHeight());    
     _linearMatrixHandler.reset(new LinearMatrixHandler(this));
-    if (getActiveProducts() & NONLINEAR_PARAMETER_DERIVATIVE)
+    if (_nonlinearMatrixHandler)
         _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
-    if (getActiveProducts() & PSF_PARAMETER_DERIVATIVE)
+    if (_psfMatrixHandler)
         _psfMatrixHandler.reset(new PsfMatrixHandler(this));
 }
 
@@ -440,4 +432,4 @@ void multifit::FourierModelProjection::_applyKernel(
     _applyKernel(iter, end, kernelImage);
 }
 
-multifit::FourierModelProjection::~FourierModelProjection() {}
+multifit::FourierModelProjection::~FourierModelProjection(){};

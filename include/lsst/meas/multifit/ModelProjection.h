@@ -30,18 +30,6 @@ public:
     typedef boost::shared_ptr<ModelProjection> Ptr;
     typedef boost::shared_ptr<ModelProjection const> ConstPtr;
 
-    /**
-     *  \brief Bitflags to inform a ModelProjection which of its
-     *  products it will be expected to produce.
-     */
-    enum ProductFlag {
-        MODEL_IMAGE = 1<<0,
-        LINEAR_PARAMETER_DERIVATIVE = 1<<1,
-        NONLINEAR_PARAMETER_DERIVATIVE = 1<<2,
-        WCS_PARAMETER_DERIVATIVE = 1<<3,
-        PSF_PARAMETER_DERIVATIVE = 1<<4,
-    };
-
     virtual ~ModelProjection() {}
 
     /// \brief Return the Model instance this is a projection of.
@@ -68,10 +56,10 @@ public:
      */
     //@{
     ndarray::Array<Pixel const,1,1> computeModelImage();
-    ndarray::Array<Pixel const,2,2> computeLinearParameterDerivative();
-    ndarray::Array<Pixel const,2,2> computeNonlinearParameterDerivative();
-    ndarray::Array<Pixel const,2,2> computeWcsParameterDerivative();
-    ndarray::Array<Pixel const,2,2> computePsfParameterDerivative();
+    ndarray::Array<Pixel const,2,1> computeLinearParameterDerivative();
+    ndarray::Array<Pixel const,2,1> computeNonlinearParameterDerivative();
+    ndarray::Array<Pixel const,2,1> computeWcsParameterDerivative();
+    ndarray::Array<Pixel const,2,1> computePsfParameterDerivative();
     //@}
 
     /**
@@ -83,38 +71,26 @@ public:
      */
     //@{
     void setModelImageBuffer(ndarray::Array<Pixel,1,1> const & buffer);
-    void setLinearParameterDerivativeBuffer(ndarray::Array<Pixel,2,2> const & buffer);
-    void setNonlinearParameterDerivativeBuffer(ndarray::Array<Pixel,2,2> const & buffer);
-    void setWcsParameterDerivativeBuffer(ndarray::Array<Pixel,2,2> const & buffer);
-    void setPsfParameterDerivativeBuffer(ndarray::Array<Pixel,2,2> const & buffer);
+    void setLinearParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
+    void setNonlinearParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
+    void setWcsParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
+    void setPsfParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
     //@}
 
-    /// \brief Notify the ModelProjection of additional products it will be expected to compute.
-    void enableProducts(int toAdd) { _activeProducts |= _enableProducts(toAdd); }
-
-    /// \brief Notify the ModelProjection that it will not be expected to compute certain products.
-    void disableProducts(int toRemove) { _activeProducts &= (~_disableProducts(toRemove)); }
-
-    /// \brief Return a bitwise OR of the products the ModelProjection is able to compute.
-    int const getActiveProducts() const { return _activeProducts; }
-
-    /// \brief Return the photometric scaling factor for this projection.
-    double getPhotFactor() const { return _photFactor; }
-
     /// \brief Return the World Coordinate System object for this projection.
-    WcsConstPtr const & getWCS() const { return _wcs; }
+    WcsConstPtr const & getWcs() const { return _wcs; }
 
     /// \brief Return the Footprint the image representation will be computed on.
     FootprintConstPtr const & getFootprint() const { return _footprint; }
 
 protected:
 
+
     /// \brief Construct a projection.
     ModelProjection(
         Model::ConstPtr const & model,
         WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor
+        FootprintConstPtr const & footprint
     );
 
     /**
@@ -127,17 +103,11 @@ protected:
      */
     //@{
     virtual void _computeModelImage(ndarray::Array<Pixel,1,1> const & vector);
-    virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
-    virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
-    virtual void _computeWcsParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
-    virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
+    virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
+    virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
+    virtual void _computeWcsParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
+    virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
     //@}
-
-    /// \brief Enable additional products, and return a bitflag of those successfully enabled.
-    virtual int _enableProducts(int toAdd) = 0;
-
-    /// \brief Disable products, and return a bitflag of those successfully disabled.
-    virtual int _disableProducts(int toRemove) = 0;
 
     /**
      *  \brief Handle a linear parameter change broadcast from the associated Model.
@@ -154,21 +124,27 @@ protected:
     virtual void _handleNonlinearParameterChange();
 
 private:
-
     friend class Model;
+    
+    enum ProductFlag {
+        MODEL_IMAGE = 1<<0,
+        LINEAR_PARAMETER_DERIVATIVE = 1<<1,
+        NONLINEAR_PARAMETER_DERIVATIVE = 1<<2,
+        WCS_PARAMETER_DERIVATIVE = 1<<3,
+        PSF_PARAMETER_DERIVATIVE = 1<<4,
+    };
 
-    int _activeProducts;
     int _validProducts;
-    double _photFactor;
+
     Model::ConstPtr _model;
     FootprintConstPtr _footprint;
     WcsConstPtr _wcs;
 
     ndarray::Array<Pixel, 1, 1> _modelImage;
-    ndarray::Array<Pixel, 2, 2> _linearParameterDerivative;
-    ndarray::Array<Pixel, 2, 2> _nonlinearParameterDerivative;
-    ndarray::Array<Pixel, 2, 2> _wcsParameterDerivative;
-    ndarray::Array<Pixel, 2, 2> _psfParameterDerivative;
+    ndarray::Array<Pixel, 2, 1> _linearParameterDerivative;
+    ndarray::Array<Pixel, 2, 1> _nonlinearParameterDerivative;
+    ndarray::Array<Pixel, 2, 1> _wcsParameterDerivative;
+    ndarray::Array<Pixel, 2, 1> _psfParameterDerivative;
 };
 
 }}} // namespace lsst::meas::multifit

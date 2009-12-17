@@ -1,7 +1,7 @@
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 #include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 
-namespace components = multifit::components;
+namespace components = lsst::meas::multifit::components;
 
 components::Morphology::Ptr components::PointSourceMorphology::create(
     boost::shared_ptr<ParameterVector const> const & linearParameters,
@@ -11,11 +11,11 @@ components::Morphology::Ptr components::PointSourceMorphology::create(
 }
 
 components::MorphologyProjection::Ptr components::PointSourceMorphology::makeProjection(
-    int kernelSize,
+    lsst::afw::geom::Extent2I const kernelDimensions,
     lsst::afw::geom::AffineTransform::ConstPtr const & transform
 ) const {
     return boost::make_shared<PointSourceMorphologyProjection>(
         boost::static_pointer_cast<PointSourceMorphology const>(shared_from_this()),
-        kernelSize, transform
+        kernelDimensions, transform
     );
 }

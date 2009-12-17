@@ -15,7 +15,7 @@ void multifit::Model::setNonlinearParameters(ParameterConstIterator const parame
     _broadcastNonlinearParameterChange();
 }
 
-void multifit::Model::broadcastLinearParameterChange() {
+void multifit::Model::_broadcastLinearParameterChange() const {
     ProjectionList::iterator const & end(_projectionList.end());
     ProjectionList::iterator i(_projectionList.begin());
     while (i != end) {
@@ -29,7 +29,7 @@ void multifit::Model::broadcastLinearParameterChange() {
     }
 }
 
-void multifit::Model::broadcastNonlinearParameterChange() {
+void multifit::Model::_broadcastNonlinearParameterChange() const {
     ProjectionList::iterator const & end(_projectionList.end());
     ProjectionList::iterator i = _projectionList.begin();
     while (i != end) {
@@ -44,7 +44,7 @@ void multifit::Model::broadcastNonlinearParameterChange() {
 }
 
 void multifit::Model::_registerProjection(
-    ModelProjection::Ptr const & projection
+    boost::shared_ptr<ModelProjection> const & projection
 ) const {
     ProjectionWeakPtr weak(projection);
     _projectionList.push_back(weak);

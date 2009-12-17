@@ -40,11 +40,11 @@ public:
         );
     }
 
-    ~FourierModelProjection();
+    virtual ~FourierModelProjection();
 
 protected:
 
-    friend class multifit::ComponentModel;
+    friend class lsst::meas::multifit::ComponentModel;
 
     /**
      *  @name ConvolvableImplementation
@@ -59,14 +59,11 @@ protected:
      *  @name ProtectedProductComputers
      */
     //@{
-    virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix);
-    virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix);
-    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,2> const & matrix);
-    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix);
+    virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
+    virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
+    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,1> const & matrix);
+    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     //@}
-
-    virtual int _enableProducts(int toAdd);
-    virtual int _disableProducts(int toRemove);
 
     virtual void _handleLinearParameterChange();
     virtual void _handleNonlinearParameterChange();
@@ -85,9 +82,7 @@ private:
         ComponentModel::ConstPtr const & model,
         KernelConstPtr const & kernel,
         WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor,
-        int activeProducts = 0
+        FootprintConstPtr const & footprint
     );
 
     void _setDimensions();

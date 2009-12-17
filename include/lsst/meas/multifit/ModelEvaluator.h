@@ -6,91 +6,101 @@
 #include "Eigen/Core"
 #include "Eigen/LU"
 
-#include "ndarray_fwd.hpp"
+#include "ndarray.hpp"
 
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
-#include "lsst/meas/multifit/projections/ModelProjection.h"
+#include "lsst/meas/multifit/ModelProjection.h"
 
 namespace lsst {
 namespace meas {
 namespace multifit{
 
+
 class ModelEvaluator {
-public:  
-    typedef boost::shared_ptr<projections::ModelProjection> ModelProjectionPtr;
-    typedef boost::tuple<Exposure::Ptr, KernelConstPtr, double> CalibratedExposure;
-    typedef std::list<CalibratedExposure> CalibratedExposureList;
+public:     
+    class ProjectionFrame {        
+        ProjectionFrame(){}
+        ProjectionFrame(ProjectionFrame const & other) : _projection(other._projection) {}
+        explicit ProjectionFrame(ModelProjection::Ptr const & projection) : _projection(projection) {} 
 
-    struct ProjectionFrame {        
-        Frame(){}
-        Frame(Frame const & other) 
-          : projection(other.projection),
-            exposure(other.exposure),
-            kernel(other.kernel),
-            wcs(other.wcs),
-            footprint(other.footprint)
-        {}
-        Frame(
-            ModelProjectionPtr const & projectionPtr, 
-            Exposure::Ptr const & exposurePtr, 
-            KernelConstPtr const & kernelPtr, 
-            WcsConstPtr const & wcsPtr, 
-            FootprintConstPtr const &footprintPtr
-        ) : projection(projectionPtr), 
-            exposure(exposurePtr),
-            kernel(kernelPtr),
-            wcs(wcsPtr),
-            footprint(footprintPtr)
-        {}
+        ModelProjection::ConstPtr const getModelProjection() const {return _projection;}
+        WcsConstPtr const & getWcs() const {return _projection->getWcs();}
+        FootprintConstPtr const & getFootprint() const {return _projection->getFootprint();}
+        
+        ndarray::Array<Pixel const, 1, 1> const getImageVector() const {return _imageVector;}
+        ndarray::Array<Pixel const, 1, 1> const getVarianceVector() const {return _varianceVector;}
+        ndarray::Array<Pixel const, 1, 1> const computeModelImage() {
+            return _projection->computeModelImage();
+        }
+        ndarray::Array<Pixel const, 2, 1> const computeLinearParameterDerivative() {
+            return _projection->computeLinearParameterDerivative();
+        }
+        ndarray::Array<Pixel const, 2, 1> const computeNonlinearParameterDerivative() {
+            return _projection->computeNonlinearParameterDerivative();
+        }
 
-        void compressExposure();
+    private:
+        template<typename ImageT> friend class Traits;
+        friend class ModelEvaluator;
 
-        ModelProjectionPtr const projection;
-        Exposure::Ptr const exposure;
-        KernelConstPtr const kernel;
-        WcsConstPtr const wcs;
-        FootprintConstPtr const footprint;
-
-        //references into larger matrices
-        ndarray::Array<const Pixel, 1, 1> const imageVector;
-        ndarray::Array<const Pixel, 1, 1> const varianceVector;
-        ndarray::Array<Pixel, 1, 1> const modelImage;
-        ndarray::Array<Pixel, 2, 2> const linearParameterDerivative;
-        ndarray::Array<Pixel, 2, 2> const nonlinearParameterDerivative;
-        ndarray::Array<Pixel, 2, 2> const wcsParameterDerivative;
-        ndarray::Array<Pixel, 2, 2> const psfParameterDerivative;
+        ModelProjection::Ptr _projection;
+        ndarray::Array<Pixel, 1, 1> _imageVector;
+        ndarray::Array<Pixel, 1, 1> _varianceVector;
     };
-     
+   
+    template<typename ImageT> 
+    class Traits{
+        typedef typename lsst::afw::image::MaskedImage<ImageT> MaskedImage;
+        typedef typename lsst::afw::image::Exposure<ImageT> Exposure;
+        typedef typename boost::shared_ptr<Exposure> ExposureConstPtr;
+        typedef typename boost::tuple<ExposureConstPtr, KernelConstPtr> CalibratedExposure;
+        typedef typename std::list<CalibratedExposure> CalibratedExposureList;
+        
+        static void setExposureList(ModelEvaluator &, CalibratedExposureList const &);
+        static void compressExposure(ProjectionFrame &, ExposureConstPtr const &);
+        static FootprintConstPtr fixFootprint(
+            FootprintConstPtr const &, typename MaskedImage::MaskPtr const &
+        );
+    };
+
     typedef std::list<ProjectionFrame> ProjectionFrameList;
 
-    explicit ModelEvaluator(Model::ConstPtr model, int activeProducts=0) :    
-        _activeProducts(activeProducts), 
-        _validProducts(0), 
+    explicit ModelEvaluator(Model::ConstPtr const & model, int const nMinPix=-1) 
+      : _validProducts(0),
         _model(model->clone())
-    {}
-
-    ModelEvaluator(
-        Model::ConstPtr model, 
-        CalibratedExposureList const & exposureList, 
-        int activeProducts = 0
-    ) : _activeProducts(activeProducts), 
-        _validProducts(0), 
-        _model(model->clone()) 
     {
-        setExposureList(exposureList);
+        setMinPixels(nMinPix);
     }
 
-    void setExposureList(
-        CalibratedExposureList const & exposureList, 
-        int nMinPix = 0
-    );
+    template<typename ImageT>
+    ModelEvaluator(
+        Model::ConstPtr const & model, 
+        typename Traits<ImageT>::CalibratedExposureList const & exposureList,
+        int const nMinPix = -1
+    ) : _validProducts(0),
+        _model(model->clone()) 
+    {        
+        setMinPixels(nMinPix);
+        setExposureList<ImageT>(exposureList);
+    }
 
+    int const & getMinPixels() const {return _nMinPix;}
+    void setMinPixels(int const nMinPix) {
+        _nMinPix = (nMinPix > 0)? nMinPix : -1;
+    }
+
+    template <typename ImageT>
+    void setExposureList(
+        typename Traits<ImageT>::CalibratedExposureList const & exposureList
+    ) {
+        Traits<ImageT>::setExposureList(*this, exposureList);
+    }
+    
     ndarray::Array<Pixel const, 1, 1> computeModelImage();
     ndarray::Array<Pixel const, 2, 2> computeLinearParameterDerivative();
     ndarray::Array<Pixel const, 2, 2> computeNonlinearParameterDerivative();
-    ndarray::Array<Pixel const, 2, 2> computeWcsParameterDerivative();
-    ndarray::Array<Pixel const, 2, 2> computePsfParameterDerivative();
+
 
     int const getLinearParameterSize() const {
         return _model->getLinearParameterSize();
@@ -99,43 +109,66 @@ public:
         return _model->getNonlinearParameterSize();
     }
     ParameterVector const & getLinearParameters() const {
-        return _model->getLinearParameters();
+        return _model->getLinearParameterVector();
     }
     ParameterVector const & getNonlinearParameters() const {
-        return _model->getNonlinearParameters();
+        return _model->getNonlinearParameterVector();
     }
 
     void setLinearParameters(
         ParameterConstIterator const & parameterIterator
-    ) {
+    ) {    
         _model->setLinearParameters(parameterIterator);
+        _validProducts &= (~MODEL_IMAGE);
+        _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
     }
     void setNonlinearParameters(
-        ParameterCosntIterator const & parameterIterator
+        ParameterConstIterator const & parameterIterator
     ) {
         _model->setNonlinearParameters(parameterIterator);
+        _validProducts &= (~MODEL_IMAGE);
+        _validProducts &= (~LINEAR_PARAMETER_DERIVATIVE);
+        _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
     }
-    
+   
     Model::ConstPtr getModel() const {return _model;}
     int const getNProjections() const {return _projectionList.size();}
 
-    FrameList const & getProjectionList() const {return _projectionList;}
+    ProjectionFrameList const & getProjectionList() const {
+        return _projectionList;
+    }
 
 private:        
-    typedef ProjectionFrameList::iterator ProjectionFrameIterator;    
-    typedef CalibratedExposureList::const_iterator CalibratedExposureIterator;
+    typedef ProjectionFrameList::iterator ProjectionFrameIterator;
     typedef Footprint::SpanList SpanList;
 
-    int _activeProducts;
+    enum ProductFlag {
+        MODEL_IMAGE = 1<<0,
+        LINEAR_PARAMETER_DERIVATIVE = 1<<1,
+        NONLINEAR_PARAMETER_DERIVATIVE = 1<<2,
+    };
+
+    int _nMinPix;
     int _validProducts;
-    Model::ConstPtr _model;    
-
+    Model::Ptr _model;    
     ProjectionFrameList _projectionList;
-
+    
+        
+    template<typename ImageT>
     static FootprintConstPtr fixFootprint(
-        FootprintPtr const &, 
-        MaskedImagePtr const &
-    );
+        FootprintConstPtr const & footprint, 
+        typename Traits<ImageT>::MaskedImage::MaskPtr const & mask
+    ) {
+        return Traits<ImageT>::fixFootprint(footprint, mask);
+    }
+
+    template<typename ImageT>
+    static void compressExposure(
+        ProjectionFrame & frame,
+        typename Traits<ImageT>::ExposureConstPtr const & exposure
+    ) {
+        Traits<ImageT>::compressExposure(frame, exposure);
+    }
 
     ndarray::Array<Pixel, 1, 1> _imageVector;
     ndarray::Array<Pixel, 1, 1> _varianceVector;

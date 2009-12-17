@@ -45,8 +45,7 @@ public:
      */
     virtual Footprint::Ptr computeProjectionFootprint(
         KernelConstPtr const & kernel,
-        WcsConstPtr const & wcs,
-        double photFactor
+        WcsConstPtr const & wcs
     ) const = 0;
 
     /**
@@ -55,8 +54,7 @@ public:
      */
     virtual lsst::afw::geom::Box2D computeProjectionEnvelope(
         KernelConstPtr const & kernel,
-        WcsConstPtr const & wcs,
-        double photFactor
+        WcsConstPtr const & wcs
     ) const = 0;
 
     /**
@@ -116,9 +114,7 @@ public:
     virtual boost::shared_ptr<ModelProjection> makeProjection(
         KernelConstPtr const & kernel,
         WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint,
-        double photFactor,
-        int activeProducts = 0
+        FootprintConstPtr const & footprint
     ) const = 0;
 
 protected:

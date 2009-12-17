@@ -1,7 +1,8 @@
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 #include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 
-namespace components = multifit::components;
+namespace multifit = lsst::meas::multifit;
+namespace components =lsst::meas::multifit::components;
 
 components::PointSourceMorphologyProjection::ParameterJacobianMatrix const & 
 components::PointSourceMorphologyProjection::computeProjectedParameterJacobian() const {
@@ -15,12 +16,12 @@ components::PointSourceMorphologyProjection::computeTransformParameterJacobian()
     return m;
 }
 
-ndarray::FourierArray<Pixel,3,3>
+ndarray::FourierArray<multifit::Pixel,3,3>
 components::PointSourceMorphologyProjection::computeLinearParameterDerivative() {
     return _linearParameterDerivative;
 }
 
-ndarray::FourierArray<Pixel,3,3>
+ndarray::FourierArray<multifit::Pixel,3,3>
 components::PointSourceMorphologyProjection::computeProjectedParameterDerivative() {
     return ndarray::FourierArray<Pixel,3,3>(
         0,
@@ -35,9 +36,9 @@ components::PointSourceMorphologyProjection::computeProjectedParameterDerivative
 
 components::PointSourceMorphologyProjection::PointSourceMorphologyProjection(
     PointSourceMorphology::ConstPtr const & morphology,
-    int kernelSize, 
-    lsst::afw::AffineTransform::ConstPtr const & transform
-) : FourierMorphologyProjection(morphology,kernelSize,transform),
+    lsst::afw::geom::Extent2I const kernelDimensions, 
+    lsst::afw::geom::AffineTransform::ConstPtr const & transform
+) : FourierMorphologyProjection(morphology,kernelDimensions,transform),
     _linearParameterDerivative()
 {
     ndarray::shallow(_linearParameterDerivative) = ndarray::FourierTransform<Pixel,2>::initializeK(

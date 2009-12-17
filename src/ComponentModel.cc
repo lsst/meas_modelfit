@@ -7,8 +7,7 @@ namespace multifit = lsst::meas::multifit;
 
 multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     KernelConstPtr const & kernel,
-    WcsConstPtr const & wcs,
-    double photFactor
+    WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
     int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
@@ -23,8 +22,7 @@ multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
 
 lsst::afw::geom::Box2D multifit::ComponentModel::computeProjectionEnvelope(
     KernelConstPtr const & kernel,
-    WcsConstPtr const & wcs,
-    double photFactor
+    WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
     int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
@@ -52,14 +50,12 @@ void multifit::ComponentModel::_handleNonlinearParameterChange() {
 multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
     KernelConstPtr const & kernel,
     WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint,
-    double photFactor,
-    int activeProducts
+    FootprintConstPtr const & footprint
 ) const {
     ModelProjection::Ptr projection(
         new FourierModelProjection(
             boost::static_pointer_cast<ComponentModel const>(shared_from_this()),
-            kernel, wcs, footprint, photFactor, activeProducts
+            kernel, wcs, footprint 
         )
     );
     _registerProjection(projection);

@@ -13,10 +13,13 @@ namespace multifit {
 typedef Eigen::aligned_allocator<char> Allocator;
 
 typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> > MatrixMap;
+typedef Eigen::Block<MatrixMap> MatrixMapBlock;
 typedef Eigen::Map<Eigen::Matrix<Pixel, 1, Eigen::Dynamic> > VectorMap;
 
-inline MatrixMap getMatrixView(ndarray::Array<Pixel const,2,2> const & array) {
-    return MatrixMap(array.getData(), array.getSize<1>(), array.getSize<0>());
+
+inline MatrixMapBlock getMatrixView(ndarray::Array<Pixel const,2,1> const & array) {
+    MatrixMap map(array.getData(), array.getStride<0>(), array.getSize<0>());
+    return MatrixMapBlock(map, 0, 0, array.getSize<1>(), array.getSize<0>());
 }
 
 inline VectorMap getVectorView(ndarray::Array<Pixel const,1,1> const & array) {

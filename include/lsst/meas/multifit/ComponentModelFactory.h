@@ -93,7 +93,7 @@ public:
     
     virtual ~ComponentModelFactory() {}
 
-private:
+protected:
     ComponentModelFactory(
         components::Astrometry::ConstPtr const & astrometryTemplate,
         components::Morphology::ConstPtr const & morphologyTemplate
@@ -101,6 +101,7 @@ private:
         _morphologyTemplate(morphologyTemplate) 
     {}
 
+private:
     components::Astrometry::ConstPtr _astrometryTemplate;
     components::Morphology::ConstPtr _morphologyTemplate;
 };

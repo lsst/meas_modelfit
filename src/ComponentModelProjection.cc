@@ -7,10 +7,9 @@ multifit::ComponentModelProjection::ComponentModelProjection(
     ComponentModel::ConstPtr const & model,
     KernelConstPtr const & kernel,
     WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint,
-    double photFactor
-) : ModelProjection(model, wcs, footprint, photFactor),
-    _validProducts(0), 
+    FootprintConstPtr const & footprint
+) : ModelProjection(model, wcs, footprint),
+    _validProducts(0),
     //TODO: need wcs linearize api
     //_transform(wcs->linearize(model->getAstrometry()->apply())),
     _morphologyProjection(), 
@@ -26,7 +25,7 @@ multifit::ComponentModelProjection::ComponentModelProjection(
 }
 
 void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
-    ndarray::Array<Pixel,2,2> const & matrix
+    ndarray::Array<Pixel,2,1> const & matrix
 ) {
     _ensureTranslationDerivative();
     getAstrometryParameterMatrixView(matrix) = getTranslationMatrixView() * 
@@ -37,7 +36,7 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
 }
 
 void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
-    ndarray::Array<Pixel,2,2> const & matrix
+    ndarray::Array<Pixel,2,1> const & matrix
 ) {
     _ensureTranslationDerivative();
     getAstrometryParameterMatrixView(matrix) = getTranslationMatrixView() *
