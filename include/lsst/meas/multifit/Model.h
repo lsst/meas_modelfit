@@ -44,7 +44,7 @@ public:
      *  \brief Create a Footprint that would contain a projection of the Model.
      */
     virtual Footprint::Ptr computeProjectionFootprint(
-        KernelConstPtr const & kernel,
+        PsfConstPtr const & psf,
         WcsConstPtr const & wcs
     ) const = 0;
 
@@ -53,7 +53,7 @@ public:
      *  projection of the Model.
      */
     virtual lsst::afw::geom::Box2D computeProjectionEnvelope(
-        KernelConstPtr const & kernel,
+        PsfConstPtr const & psf,
         WcsConstPtr const & wcs
     ) const = 0;
 
@@ -112,7 +112,7 @@ public:
      *  \brief Create a ModelProjection object associated with this.
      */
     virtual boost::shared_ptr<ModelProjection> makeProjection(
-        KernelConstPtr const & kernel,
+        PsfConstPtr const & psf,
         WcsConstPtr const & wcs,
         FootprintConstPtr const & footprint
     ) const = 0;

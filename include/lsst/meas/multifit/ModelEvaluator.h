@@ -16,7 +16,6 @@ namespace lsst {
 namespace meas {
 namespace multifit{
 
-
 class ModelEvaluator {
 public:     
     class ProjectionFrame {        
@@ -54,7 +53,7 @@ public:
         typedef typename lsst::afw::image::MaskedImage<ImageT> MaskedImage;
         typedef typename lsst::afw::image::Exposure<ImageT> Exposure;
         typedef typename boost::shared_ptr<Exposure> ExposureConstPtr;
-        typedef typename boost::tuple<ExposureConstPtr, KernelConstPtr> CalibratedExposure;
+        typedef typename boost::tuple<ExposureConstPtr, PsfConstPtr> CalibratedExposure;
         typedef typename std::list<CalibratedExposure> CalibratedExposureList;
         
         static void setExposureList(ModelEvaluator &, CalibratedExposureList const &);

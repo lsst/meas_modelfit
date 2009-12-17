@@ -50,7 +50,7 @@ protected:
      *  @name ConvolvableImplementation
      */
     //@{
-    virtual void _convolve(KernelConstPtr const & kernel);
+    virtual void _convolve(PsfConstPtr const & psf);
 
     virtual bool isConvolved() const { return _kernelVisitor; }
     //@}
@@ -80,7 +80,7 @@ private:
     
     FourierModelProjection(
         ComponentModel::ConstPtr const & model,
-        KernelConstPtr const & kernel,
+        PsfConstPtr const & psf,
         WcsConstPtr const & wcs,
         FootprintConstPtr const & footprint
     );

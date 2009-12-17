@@ -5,7 +5,7 @@ namespace multifit = lsst::meas::multifit;
 
 multifit::ComponentModelProjection::ComponentModelProjection(
     ComponentModel::ConstPtr const & model,
-    KernelConstPtr const & kernel,
+    PsfConstPtr const & psf,
     WcsConstPtr const & wcs,
     FootprintConstPtr const & footprint
 ) : ModelProjection(model, wcs, footprint),
@@ -18,7 +18,7 @@ multifit::ComponentModelProjection::ComponentModelProjection(
 {
     _morphologyProjection = model->getMorphology()->makeProjection(
         lsst::afw::geom::ExtentI::makeXY(
-            kernel->getWidth(), kernel->getHeight()
+            psf->getWidth(), psf->getHeight()
         ), 
         _transform
     );

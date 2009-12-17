@@ -267,10 +267,10 @@ int const multifit::FourierModelProjection::getPsfParameterSize() const {
 }
 
 void multifit::FourierModelProjection::_convolve(
-    KernelConstPtr const & kernel
+    PsfConstPtr const & psf
 ) { 
     lsst::afw::geom::PointD point = _getPsfPosition(); 
-    _kernelVisitor = kernel->computeFourierConvolutionVisitor(
+    _kernelVisitor = psf->getKernel()->computeFourierConvolutionVisitor(
         lsst::afw::image::PointD(point.getX(), point.getY())
     );
     if(_psfMatrixHandler){
@@ -347,15 +347,15 @@ void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
 
 multifit::FourierModelProjection::FourierModelProjection(
     ComponentModel::ConstPtr const & model,
-    KernelConstPtr const & kernel,
+    PsfConstPtr const & psf,
     WcsConstPtr const & wcs,
     FootprintConstPtr const & footprint
-) : ComponentModelProjection(model,kernel,wcs,footprint),
+) : ComponentModelProjection(model,psf,wcs,footprint),
     _kernelVisitor(), _wf(), 
     _outerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I()),
     _innerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I())
 {
-    _convolve(kernel);
+    _convolve(psf);
     _setDimensions();
 }
 

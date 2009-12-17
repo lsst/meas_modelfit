@@ -33,8 +33,8 @@ public:
         lsst::afw::geom::Extent2I kernelDimensions(getKernelDimensions());
         
         return lsst::afw::geom::Extent2I::makeXY(
-            kernelDimensions.getX() /2 + 1,
-            kernelDimensions.getY() /2 + 1
+            kernelDimensions.getX()/2 + 1,
+            kernelDimensions.getY()/2 + 1
         ); 
     }
 

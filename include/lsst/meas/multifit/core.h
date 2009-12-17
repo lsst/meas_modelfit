@@ -7,6 +7,7 @@
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/math/Kernel.h"
+#include "lsst/meas/algorithms/PSF.h"
 #include "lsst/afw/detection/Footprint.h"
 
 namespace lsst {
@@ -23,10 +24,12 @@ typedef Parameter const * ParameterConstIterator;
 typedef Eigen::VectorXd ParameterVector;
 typedef Eigen::aligned_allocator<char> Allocator;
 
+typedef lsst::meas::algorithms::PSF Psf;
 typedef lsst::afw::math::Kernel Kernel;
 typedef lsst::afw::image::Wcs Wcs;
 typedef lsst::afw::detection::Footprint Footprint;
 
+typedef boost::shared_ptr<Psf const> PsfConstPtr;
 typedef boost::shared_ptr<Kernel const> KernelConstPtr;
 typedef boost::shared_ptr<Wcs const> WcsConstPtr;
 typedef boost::shared_ptr<Footprint const> FootprintConstPtr;

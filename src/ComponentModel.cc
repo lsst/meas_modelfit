@@ -6,11 +6,11 @@ namespace multifit = lsst::meas::multifit;
 //-- ComponentModel ------------------------------------------------------------
 
 multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
-    KernelConstPtr const & kernel,
+    PsfConstPtr const & psf,
     WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
+    int kernelSize = std::max(psf->getWidth(), psf->getHeight());
     ellipse->grow(kernelSize/2+1);
 
     //TODO: need wcs linearize api
@@ -21,11 +21,11 @@ multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
 }
 
 lsst::afw::geom::Box2D multifit::ComponentModel::computeProjectionEnvelope(
-    KernelConstPtr const & kernel,
+    PsfConstPtr const & psf,
     WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
+    int kernelSize = std::max(psf->getWidth(), psf->getHeight());
     ellipse->grow(kernelSize/2+1);
     //TODO::need api for linearizing a wcs solution
     //ellipse->transform(*wcs->linearize(ellipse->getCenter()));
@@ -48,14 +48,14 @@ void multifit::ComponentModel::_handleNonlinearParameterChange() {
 }
 
 multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
-    KernelConstPtr const & kernel,
+    PsfConstPtr const & psf,
     WcsConstPtr const & wcs,
     FootprintConstPtr const & footprint
 ) const {
     ModelProjection::Ptr projection(
         new FourierModelProjection(
             boost::static_pointer_cast<ComponentModel const>(shared_from_this()),
-            kernel, wcs, footprint 
+            psf, wcs, footprint 
         )
     );
     _registerProjection(projection);

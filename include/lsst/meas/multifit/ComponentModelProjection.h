@@ -59,7 +59,7 @@ protected:
     /// \brief Construct a projection.
     ComponentModelProjection(
         ComponentModel::ConstPtr const & model,
-        KernelConstPtr const & kernel,
+        PsfConstPtr const & psf,
         WcsConstPtr const & wcs,
         FootprintConstPtr const & footprint
     );

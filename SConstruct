@@ -10,7 +10,8 @@ import lsst.SConsUtils as scons
 # Indirect dependencies are needed to get header files.
 dependencies = ["boost", "python", "minuit", "cfitsio", "wcslib", "utils", 
     "pex_exceptions", "eigen", "daf_base", "daf_data", "daf_persistence",
-		"pex_logging", "pex_exceptions", "pex_policy", "security", "gsl", "afw"
+		"pex_logging", "pex_exceptions", "pex_policy", "security", "gsl", "afw",
+		"meas_algorithms"
 	]
 
 env = scons.makeEnv(
@@ -43,6 +44,7 @@ env = scons.makeEnv(
         ["gsl", "gsl/gsl_rng.h", "gslcblas gsl"],       
         ["eigen", "Eigen/Core.h"],
         ["afw", "lsst/afw.h", "afw:C++"],
+        ["meas_algorithms", "lsst/meas/algorithms.h", "meas_algorithms:C++"],
     ]
 )
 

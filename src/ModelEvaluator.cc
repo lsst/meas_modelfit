@@ -65,7 +65,7 @@ void multifit::ModelEvaluator::Traits<ImageT>::setExposureList(
     ModelProjection::Ptr projection;
     ExposureConstPtr exposure;
     FootprintConstPtr footprint;
-    KernelConstPtr kernel;
+    PsfConstPtr psf;
     WcsConstPtr wcs;    
   
     //exposures which contain fewer than _nMinPix pixels will be rejected
@@ -76,10 +76,10 @@ void multifit::ModelEvaluator::Traits<ImageT>::setExposureList(
     for(typename CalibratedExposureList::const_iterator i(exposureList.begin()), 
         end(exposureList.end()); i != end; ++i
     ) {
-        boost::tie(exposure, kernel) = *i;
+        boost::tie(exposure, psf) = *i;
         wcs = exposure->getWcs();        
         footprint = evaluator._model->computeProjectionFootprint(
-            kernel, 
+            psf, 
             wcs
         );
         MaskedImage const & maskedImage = exposure->getMaskedImage();
@@ -88,7 +88,7 @@ void multifit::ModelEvaluator::Traits<ImageT>::setExposureList(
         //ignore exposures with too few pixels        
         if (footprint->getNpix() >= evaluator._nMinPix) {
             ProjectionFrame frame(
-                evaluator._model->makeProjection(kernel, wcs, footprint)
+                evaluator._model->makeProjection(psf, wcs, footprint)
             );
       
             evaluator._projectionList.push_back(frame);
