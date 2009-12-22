@@ -134,7 +134,7 @@ public:
    
     Model::ConstPtr getModel() const {return _model;}
     int const getNProjections() const {return _projectionList.size();}
-
+    int const getNPixels() const {return _imageVector.getSize<0>();}
     ProjectionFrameList const & getProjectionList() const {
         return _projectionList;
     }
