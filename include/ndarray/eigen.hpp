@@ -8,6 +8,11 @@
  *  \note This file is not included by the main "ndarray.hpp" header file.
  */
 
+/** 
+ * \defgroup EigenGroup Eigen
+ * Interoperability with the Eigen 2 linear algebra library.
+ */
+
 #include "ndarray.hpp"
 #include <Eigen/Core>
 
@@ -115,7 +120,7 @@ typename boost::enable_if_c<
 >::type
 #else
 /**
- *  \ingroup MainGroup
+ *  \ingroup EigenGroup
  *  \brief Create a 1D Array view into an Eigen object.
  *
  *  The created Array does not own a reference to its data, so the user is responsible for 
@@ -143,7 +148,7 @@ typename boost::enable_if_c<
 >::type
 #else
 /**
- *  \ingroup MainGroup
+ *  \ingroup EigenGroup
  *  \brief Create a 2D Array view into an Eigen object.
  *
  *  The created Array does not own a reference to its data, so the user is responsible for 
@@ -168,7 +173,7 @@ viewMatrixAsArray(Matrix & matrix) {
 }
 
 /**
- *  \ingroup MainGroup
+ *  \ingroup EigenGroup
  *  \brief Create an Eigen::Map to an Array.
  *
  *  The first template parameter specifies an Eigen type
@@ -187,7 +192,7 @@ viewArrayAs(Array<typename Matrix::Scalar,N,N> const & array) {
 
 /// \cond SPECIALIZATIONS
 /**
- *  \ingroup MainGroup
+ *  \ingroup EigenGroup
  *  \brief Create an Eigen::Map to an Array (const specialization).
  *
  *  The first template parameter specifies an Eigen type

@@ -66,12 +66,12 @@ public:
 
     /// \brief Return a Vector of the sizes of all dimensions.
     Index getShape() const { return getSelf().getShape(); }
-    
+
     /// \briref Return the total number of elements in the expression.
     int getNumElements() const { return getSelf().getNumElements(); }
 
     /* ------------------------- STL Compatibility -------------------------- */
-    
+
     typedef Value value_type;
     typedef Iterator iterator;
     typedef Iterator const_iterator;

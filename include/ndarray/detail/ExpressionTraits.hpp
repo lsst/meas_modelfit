@@ -10,7 +10,6 @@
 #include "ndarray/detail/ArrayTraits.hpp"
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_same.hpp>
-#include <boost/iterator/counting_iterator.hpp>
 
 namespace ndarray {
 namespace detail {
@@ -37,6 +36,7 @@ struct ExpressionTraits< Array<T,N,C> > {
     typedef typename ArrayTraits<Self>::Iterator Iterator;
     typedef typename ArrayTraits<Self>::Reference Reference;
     typedef typename ArrayTraits<Self>::Value Value;
+    typedef boost::mpl::false_ IsScalar;
 };
 
 /**
@@ -53,6 +53,7 @@ struct ExpressionTraits< UnaryOpExpression<Operand,UnaryFunction,N> > {
         typename ExpressionTraits<Operand>::Reference,UnaryFunction,N-1
         > Value;
     typedef Value Reference;
+    typedef boost::mpl::false_ IsScalar;
 };
 
 /**
@@ -67,6 +68,7 @@ struct ExpressionTraits< UnaryOpExpression<Operand,UnaryFunction,1> > {
     typedef UnaryOpIterator<Operand,UnaryFunction> Iterator;
     typedef Element Reference;
     typedef Element Value;
+    typedef boost::mpl::false_ IsScalar;
 };
 
 /**
@@ -84,6 +86,7 @@ struct ExpressionTraits< BinaryOpExpression<Operand1,Operand2,BinaryFunction,N> 
         typename ExpressionTraits<Operand2>::Reference,
         BinaryFunction, N-1 > Reference;
     typedef Reference Value;
+    typedef boost::mpl::false_ IsScalar;
     BOOST_STATIC_ASSERT((ND::value == ExpressionTraits<Operand2>::ND::value));
 };
 
@@ -99,21 +102,8 @@ struct ExpressionTraits< BinaryOpExpression<Operand1,Operand2,BinaryFunction,1> 
     typedef BinaryOpIterator<Operand1,Operand2,BinaryFunction> Iterator;
     typedef Element Value;
     typedef Element Reference;
+    typedef boost::mpl::false_ IsScalar;
     BOOST_STATIC_ASSERT((ND::value == ExpressionTraits<Operand2>::ND::value));
-};
-
-/**
- *  \internal \brief ExpressionTraits specialization for CountingExpression.
- *
- *  \ingroup InternalGroup
- */
-template <>
-struct ExpressionTraits<CountingExpression> {
-    typedef int Element;
-    typedef boost::mpl::int_<1> ND;
-    typedef boost::counting_iterator<int> Iterator;
-    typedef int Value;
-    typedef int Reference;
 };
 
 } // namespace ndarray::detail

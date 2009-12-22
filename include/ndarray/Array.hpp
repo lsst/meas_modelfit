@@ -14,51 +14,7 @@
 #include "ndarray/detail/ArrayAccess.hpp"
 #include "ndarray/views.hpp"
 
-#ifndef DOXYGEN
-#define NDARRAY_GENERAL_ASSIGN(OP,SCALAR_IMPL,EXPR_IMPL)                \
-    template <typename OtherT>                                          \
-    Array const &                                                       \
-    operator OP(Expression<OtherT> const & expr) const {                \
-        NDARRAY_ASSERT(expr.getShape() == this->getShape());            \
-        EXPR_IMPL(OP);                                                  \
-        return *this;                                                   \
-    }                                                                   \
-    template <typename ScalarT>                                         \
-    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type \
-    operator OP(ScalarT const & scalar) const {                         \
-        SCALAR_IMPL(OP);                                                \
-        return *this;                                                   \
-    }
-#else // DOXYGEN
-#define NDARRAY_GENERAL_ASSIGN(OP,SCALAR_IMPL,EXPR_IMPL)                \
-    template <typename OtherT>                                          \
-    Array const &                                                       \
-    operator OP(Expression<OtherT> const & expr) const;                 \
-    template <typename ScalarT>                                         \
-    Array const &                                                       \
-    operator OP(ScalarT const & scalar) const;
-#endif
-
-#define NDARRAY_BASIC_ASSIGN_SCALAR(OP)         \
-    std::fill(this->begin(),this->end(),scalar)
-
-#define NDARRAY_BASIC_ASSIGN_EXPR(OP)                   \
-    std::copy(expr.begin(),expr.end(),this->begin())
-
-#define NDARRAY_AUGMENTED_ASSIGN_SCALAR(OP)                             \
-    Iterator const i_end = this->end();                                 \
-    for (Iterator i = this->begin(); i != i_end; ++i) (*i) OP scalar
-
-#define NDARRAY_AUGMENTED_ASSIGN_EXPR(OP)                               \
-    Iterator const i_end = this->end();                                 \
-    typename OtherT::Iterator j = expr.begin();                         \
-    for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) OP (*j)
-
-#define NDARRAY_BASIC_ASSIGN                                            \
-    NDARRAY_GENERAL_ASSIGN(=,NDARRAY_BASIC_ASSIGN_SCALAR,NDARRAY_BASIC_ASSIGN_EXPR)
-
-#define NDARRAY_AUGMENTED_ASSIGN(OP)                                    \
-    NDARRAY_GENERAL_ASSIGN(OP,NDARRAY_AUGMENTED_ASSIGN_SCALAR,NDARRAY_AUGMENTED_ASSIGN_EXPR)
+#include <boost/iterator/counting_iterator.hpp>
 
 namespace ndarray {
 
@@ -192,6 +148,26 @@ public:
     /// \brief Return a single subarray (for ND > 1) or element for (ND==1).
     using detail::ArrayImpl<Array>::operator[];
 
+    /// \brief Return a view of the array with the order of the dimensions reversed.
+    Array<T,N,0> transpose() const {
+        Index order;
+        std::copy(boost::counting_iterator<int>(0),boost::counting_iterator<int>(N),order.rbegin());
+        return transpose(order);
+    }
+
+    /// \brief Return a view of the array with the dimensions permuted.
+    Array<T,N,0> transpose(Index const & order) const {
+        Index newShape;
+        Index newStrides;
+        Index oldShape = getShape();
+        Index oldStrides = getStrides();
+        for (int n=0; n<N; ++n) {
+            newShape[n] = oldShape[order[n]];
+            newStrides[n] = oldStrides[order[n]];
+        }
+        return Array<T,N,0>(getData(),Core::create(newShape,newStrides,getOwner()));
+    }
+
     /// \brief Deep assignment operator.
     Array const & operator=(Array const & other) const {
         if (&other != this) {
@@ -201,17 +177,277 @@ public:
         return *this;
     }
 
-    NDARRAY_BASIC_ASSIGN
-    NDARRAY_AUGMENTED_ASSIGN(+=)
-    NDARRAY_AUGMENTED_ASSIGN(-=)
-    NDARRAY_AUGMENTED_ASSIGN(*=)
-    NDARRAY_AUGMENTED_ASSIGN(/=)
-    NDARRAY_AUGMENTED_ASSIGN(%=)
-    NDARRAY_AUGMENTED_ASSIGN(^=)
-    NDARRAY_AUGMENTED_ASSIGN(&=)
-    NDARRAY_AUGMENTED_ASSIGN(|=)
-    NDARRAY_AUGMENTED_ASSIGN(<<=)
-    NDARRAY_AUGMENTED_ASSIGN(>>=)
+    /**
+     *  @name Assignment and Augmented Assignment Operators
+     *
+     *  Standard array assignment is deep, and requires that
+     *  the array being assigned to has the same shape as
+     *  the input array expression.  Scalar assignment sets
+     *  all elements of an array to a single value.
+     */
+    /// @{
+
+    /// \brief = assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator =(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        std::copy(expr.begin(),expr.end(),this->begin());
+        return *this;
+    }
+
+    /// \brief = assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator =(ScalarT const & scalar) const {
+        std::fill(this->begin(),this->end(),scalar);
+        return *this;
+    }
+
+    /// \brief += assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator +=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) += (*j);
+        return *this;
+    }
+
+    /// \brief += assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator +=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) += scalar;
+        return *this;
+    }
+
+    /// \brief -= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator -=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) -= (*j);
+        return *this;
+    }
+
+    /// \brief -= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator -=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) -= scalar;
+        return *this;
+    }
+
+    /// \brief *= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator *=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) *= (*j);
+        return *this;
+    }
+
+    /// \brief *= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator *=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) *= scalar;
+        return *this;
+    }
+
+    /// \brief /= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator /=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) /= (*j);
+        return *this;
+    }
+
+    /// \brief /= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator /=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) /= scalar;
+        return *this;
+    }
+
+    /// \brief %= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator %=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) %= (*j);
+        return *this;
+    }
+
+    /// \brief %= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator %=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) %= scalar;
+        return *this;
+    }
+
+    /// \brief ^= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator ^=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) ^= (*j);
+        return *this;
+    }
+
+    /// \brief ^= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator ^=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) ^= scalar;
+        return *this;
+    }
+
+    /// \brief &= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator &=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) &= (*j);
+        return *this;
+    }
+
+    /// \brief &= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator &=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) &= scalar;
+        return *this;
+    }
+
+    /// \brief |= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator |=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) |= (*j);
+        return *this;
+    }
+
+    /// \brief |= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator |=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) |= scalar;
+        return *this;
+    }
+
+    /// \brief <<= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator <<=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) <<= (*j);
+        return *this;
+    }
+
+    /// \brief <<= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator <<=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) <<= scalar;
+        return *this;
+    }
+
+    /// \brief >>= assignment of arrays and array expressions.
+    template <typename OtherT>
+    Array const &
+    operator >>=(Expression<OtherT> const & expr) const {
+        NDARRAY_ASSERT(expr.getShape() == this->getShape());
+        Iterator const i_end = this->end();
+        typename OtherT::Iterator j = expr.begin();
+        for (Iterator i = this->begin(); i != i_end; ++i, ++j) (*i) >>= (*j);
+        return *this;
+    }
+
+    /// \brief >>= assignment of scalars.
+    template <typename ScalarT>
+#ifndef DOXYGEN
+    typename boost::enable_if<boost::is_convertible<ScalarT,Element>, Array const &>::type
+#else
+    Array const &
+#endif
+    operator >>=(ScalarT const & scalar) const {
+        Iterator const i_end = this->end();
+        for (Iterator i = this->begin(); i != i_end; ++i) (*i) >>= scalar;
+        return *this;
+    }
+    ///@}
 
 private:
     template <typename T1, int N1, int C1> friend class Array;
@@ -228,13 +464,5 @@ private:
 };
 
 } // namespace ndarray
-
-#undef NDARRAY_BASIC_ASSIGN
-#undef NDARRAY_BASIC_ASSIGN_SCALAR
-#undef NDARRAY_BASIC_ASSIGN_EXPR
-#undef NDARRAY_AUGMENTED_ASSIGN
-#undef NDARRAY_AUGMENTED_ASSIGN_SCALAR
-#undef NDARRAY_AUGMENTED_ASSIGN_EXPR
-#undef NDARRAY_GENERAL_ASSIGN
 
 #endif // !NDARRAY_Array_hpp_INCLUDED

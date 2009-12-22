@@ -16,46 +16,6 @@
 /// \cond MACROS
 #define NDARRAY_MAKE_VECTOR_MAX 8
 
-#define NDARRAY_VECTOR_ASSIGN(OP)                                       \
-    /** \brief Augmented OP assignment from another vector. */          \
-    template <typename U>                                               \
-    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type \
-    operator OP (Vector<U,N> const & other) {                           \
-        typename Vector<U,N>::ConstIterator j = other.begin();          \
-        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) OP (*j);  \
-        return *this;                                                   \
-    }                                                                   \
-    /** \brief Augmented OP assignment from a scalar. */                \
-    template <typename U>                                               \
-    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type \
-    operator OP (U scalar) {         \
-        for (Iterator i = begin(); i != end(); ++i) (*i) OP scalar;     \
-        return *this;                                                   \
-    }
-
-#define NDARRAY_VECTOR_BINARY_OP(OP)                                    \
-    /** \brief Operator overload for Vector OP Vector. */               \
-    template <typename T, typename U, int N>                            \
-    Vector<typename Promote<T,U>::Type,N>                               \
-    operator OP(Vector<T,N> const & a, Vector<U,N> const & b) {         \
-        Vector<typename Promote<T,U>::Type,N> r(a);                     \
-        return r OP ## = b;                                             \
-    }                                                                   \
-    /** \brief Operator overload for Vector OP Scalar. */               \
-    template <typename T, typename U, int N>                            \
-    Vector<typename Promote<T,U>::Type,N>                               \
-    operator OP(Vector<T,N> const & a, U b) { \
-        Vector<typename Promote<T,U>::Type,N> r(a);                     \
-        return r OP ## = b;                                             \
-    }                                                                   \
-    /** \brief Operator overload for Scalar OP Vector. */               \
-    template <typename T, typename U, int N>                            \
-    Vector<typename Promote<T,U>::Type,N>                               \
-    operator OP(U a, Vector<T,N> const & b) { \
-        Vector<typename Promote<T,U>::Type,N> r(a);                     \
-        return r OP ## = b;                                             \
-    }
-
 #define NDARRAY_MAKE_VECTOR_ARG_SPEC(Z,I,DATA) T v ## I
 #define NDARRAY_MAKE_VECTOR_SET_SPEC(Z,I,DATA) r[I] = v ## I;
 
@@ -219,17 +179,182 @@ struct Vector {
         return r;
     }
 
-    NDARRAY_VECTOR_ASSIGN(=)
-    NDARRAY_VECTOR_ASSIGN(+=)
-    NDARRAY_VECTOR_ASSIGN(-=)
-    NDARRAY_VECTOR_ASSIGN(*=)
-    NDARRAY_VECTOR_ASSIGN(/=)
-    NDARRAY_VECTOR_ASSIGN(%=)
-    NDARRAY_VECTOR_ASSIGN(&=)
-    NDARRAY_VECTOR_ASSIGN(^=)
-    NDARRAY_VECTOR_ASSIGN(|=)
-    NDARRAY_VECTOR_ASSIGN(<<=)
-    NDARRAY_VECTOR_ASSIGN(>>=)
+    
+    /// \brief Augmented = assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator = (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) = (*j);
+        return *this;
+    }
+    /// \brief Augmented = assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator = (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) = scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented += assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator += (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) += (*j);
+        return *this;
+    }
+    /// \brief Augmented += assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator += (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) += scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented -= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator -= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) -= (*j);
+        return *this;
+    }
+    /// \brief Augmented -= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator -= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) -= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented *= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator *= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) *= (*j);
+        return *this;
+    }
+    /// \brief Augmented *= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator *= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) *= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented /= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator /= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) /= (*j);
+        return *this;
+    }
+    /// \brief Augmented /= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator /= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) /= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented %= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator %= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) %= (*j);
+        return *this;
+    }
+    /// \brief Augmented %= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator %= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) %= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented &= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator &= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) &= (*j);
+        return *this;
+    }
+    /// \brief Augmented &= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator &= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) &= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented ^= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator ^= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) ^= (*j);
+        return *this;
+    }
+    /// \brief Augmented ^= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator ^= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) ^= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented |= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator |= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) |= (*j);
+        return *this;
+    }
+    /// \brief Augmented |= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator |= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) |= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented <<= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator <<= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) <<= (*j);
+        return *this;
+    }
+    /// \brief Augmented <<= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator <<= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) <<= scalar;
+        return *this;
+    }
+    
+    /// \brief Augmented >>= assignment from another vector.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator >>= (Vector<U,N> const & other) {
+        typename Vector<U,N>::ConstIterator j = other.begin();
+        for (Iterator i = begin(); i != end(); ++i, ++j) (*i) >>= (*j);
+        return *this;
+    }
+    /// \brief Augmented >>= assignment from a scalar.
+    template <typename U>
+    typename boost::enable_if<boost::is_convertible<U,T>,Vector&>::type
+    operator >>= (U scalar) {
+        for (Iterator i = begin(); i != end(); ++i) (*i) >>= scalar;
+        return *this;
+    }
 
     T elems[N];
 };
@@ -277,38 +402,241 @@ Vector<T,N> makeVector(T v1, T v2, ..., T vN);
 template <typename T, int N>
 inline Vector<T,N> operator~(Vector<T,N> const & vector) {
     Vector<T,N> r(vector);
-    for (typename Vector<T,N>::Iterator i = r.begin(); i != r.end(); ++i) (*i) = -(*i);
+    for (typename Vector<T,N>::Iterator i = r.begin(); i != r.end(); ++i) (*i) = ~(*i);
     return r;    
 }
 
 /** \brief Unary negation for Vector. */
 template <typename T, int N>
-inline Vector<T,N> operator-(Vector<T,N> const & vector) {
+inline Vector<T,N> operator!(Vector<T,N> const & vector) {
     Vector<T,N> r(vector);
-    for (typename Vector<T,N>::Iterator i = r.begin(); i != r.end(); ++i) (*i) = ~(*i);
+    for (typename Vector<T,N>::Iterator i = r.begin(); i != r.end(); ++i) (*i) = !(*i);
     return r;
 }
 
-NDARRAY_VECTOR_BINARY_OP(+)
-NDARRAY_VECTOR_BINARY_OP(-)
-NDARRAY_VECTOR_BINARY_OP(*)
-NDARRAY_VECTOR_BINARY_OP(/)
-NDARRAY_VECTOR_BINARY_OP(%)
-NDARRAY_VECTOR_BINARY_OP(&)
-NDARRAY_VECTOR_BINARY_OP(^)
-NDARRAY_VECTOR_BINARY_OP(|)
-NDARRAY_VECTOR_BINARY_OP(<<)
-NDARRAY_VECTOR_BINARY_OP(>>)
+
+    /// \brief Operator overload for Vector + Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator +(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r += b;
+    }
+    /** \brief Operator overload for Vector + Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator +(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r += b;
+    }
+    /** \brief Operator overload for Scalar + Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator +(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r += b;
+    }
+
+    /// \brief Operator overload for Vector - Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator -(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r -= b;
+    }
+    /** \brief Operator overload for Vector - Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator -(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r -= b;
+    }
+    /** \brief Operator overload for Scalar - Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator -(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r -= b;
+    }
+
+    /// \brief Operator overload for Vector * Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator *(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r *= b;
+    }
+    /** \brief Operator overload for Vector * Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator *(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r *= b;
+    }
+    /** \brief Operator overload for Scalar * Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator *(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r *= b;
+    }
+
+    /// \brief Operator overload for Vector / Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator /(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r /= b;
+    }
+    /** \brief Operator overload for Vector / Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator /(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r /= b;
+    }
+    /** \brief Operator overload for Scalar / Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator /(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r /= b;
+    }
+
+    /// \brief Operator overload for Vector % Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator %(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r %= b;
+    }
+    /** \brief Operator overload for Vector % Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator %(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r %= b;
+    }
+    /** \brief Operator overload for Scalar % Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator %(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r %= b;
+    }
+
+    /// \brief Operator overload for Vector & Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator &(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r &= b;
+    }
+    /** \brief Operator overload for Vector & Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator &(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r &= b;
+    }
+    /** \brief Operator overload for Scalar & Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator &(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r &= b;
+    }
+
+    /// \brief Operator overload for Vector ^ Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator ^(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r ^= b;
+    }
+    /** \brief Operator overload for Vector ^ Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator ^(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r ^= b;
+    }
+    /** \brief Operator overload for Scalar ^ Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator ^(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r ^= b;
+    }
+
+    /// \brief Operator overload for Vector | Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator |(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r |= b;
+    }
+    /** \brief Operator overload for Vector | Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator |(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r |= b;
+    }
+    /** \brief Operator overload for Scalar | Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator |(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r |= b;
+    }
+
+    /// \brief Operator overload for Vector << Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator <<(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r <<= b;
+    }
+    /** \brief Operator overload for Vector << Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator <<(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r <<= b;
+    }
+    /** \brief Operator overload for Scalar << Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator <<(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r <<= b;
+    }
+
+    /// \brief Operator overload for Vector >> Vector.
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator >>(Vector<T,N> const & a, Vector<U,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r >>= b;
+    }
+    /** \brief Operator overload for Vector >> Scalar. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator >>(Vector<T,N> const & a, U b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r >>= b;
+    }
+    /** \brief Operator overload for Scalar >> Vector. */
+    template <typename T, typename U, int N>
+    Vector<typename Promote<T,U>::Type,N>
+    operator >>(U a, Vector<T,N> const & b) {
+        Vector<typename Promote<T,U>::Type,N> r(a);
+        return r >>= b;
+    }
 
 /// @}
 
 }
-
-#undef NDARRAY_MAKE_VECTOR_MAX
-#undef NDARRAY_MAKE_VECTOR_SPEC
-#undef NDARRAY_MAKE_VECTOR_ARG_SPEC
-#undef NDARRAY_MAKE_VECTOR_SET_SPEC
-#undef NDARRAY_VECTOR_BINARY_OP
-#undef NDARRAY_VECTOR_ASSIGN
 
 #endif // !NDARRAY_Vector_hpp_INCLUDED

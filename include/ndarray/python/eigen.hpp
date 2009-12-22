@@ -54,7 +54,8 @@ public:
     static PyObject * toPython(
         Matrix const & input, ///< Input C++ object.
         PyObject * owner = NULL,
-        bool writeable = true
+        bool writeable = true,
+        bool squeeze = false
     ) {
         Array<Scalar,2> array(ndarray::viewMatrixAsArray(const_cast<Matrix&>(input)));
         PyPtr pyArray;
@@ -63,9 +64,16 @@ public:
         } else {
             pyArray = PyPtr(PyConverter< Array<Scalar const,2> >::toPython(array,owner),false);
         }
-        PyPtr r = makeNumpyMatrix(pyArray);
+        PyPtr r;
+        if (squeeze) {
+            r.reset(PyArray_Squeeze(reinterpret_cast<PyArrayObject*>(pyArray.get())));
+        } else {
+            r = makeNumpyMatrix(pyArray);
+        }
+        if (!r) return NULL;
         Py_XINCREF(r.get());
         return r.get();
+
     }
 
     /**
@@ -161,6 +169,17 @@ struct PyConverter< Eigen::Block<MatrixType,BlockRows,BlockCols,PacketAccess,Eig
     : public detail::EigenPyConverter< 
         Eigen::Block<MatrixType,BlockRows,BlockCols,PacketAccess,Eigen::HasDirectAccess> 
     > 
+{};
+
+/**
+ *  \ingroup PythonGroup
+ *  \brief Specialization of PyConverter for Eigen::Transpose.
+ */
+template <typename Scalar, int Rows, int Cols, int Options, int MaxRows, int MaxCols>
+struct PyConverter< Eigen::Transpose< Eigen::Matrix<Scalar,Rows,Cols,Options,MaxRows,MaxCols> > >
+    : public detail::EigenPyConverter< 
+          Eigen::Transpose< Eigen::Matrix<Scalar,Rows,Cols,Options,MaxRows,MaxCols> > 
+      > 
 {};
 
 } // namespace ndarray

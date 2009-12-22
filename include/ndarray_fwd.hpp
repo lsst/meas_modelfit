@@ -46,7 +46,7 @@ struct ArrayImpl;
 
 template <typename ExpressionT> struct ExpressionTraits;
 
-struct CountingExpression;
+class CountingExpression;
 
 template <
     typename Operand,

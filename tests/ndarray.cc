@@ -327,3 +327,31 @@ BOOST_AUTO_TEST_CASE(assignment) {
         }
     }
 }
+
+
+BOOST_AUTO_TEST_CASE(transpose) {
+    double data[3*4*2] = { 
+         0, 1, 2, 3, 4, 5, 6, 7,
+         8, 9,10,11,12,13,14,15,
+        16,17,18,19,20,21,22,23,
+    };
+    ndarray::Vector<int,3> shape = ndarray::makeVector(3,4,2);
+    ndarray::Vector<int,3> strides = ndarray::makeVector(8,2,1);
+    ndarray::Array<double,3,3> a = ndarray::external(data,shape,strides);
+    ndarray::Array<double const,3> b = a.transpose();
+    ndarray::Array<double const,3> c = a.transpose(ndarray::makeVector(1,0,2));
+    for (int i=0; i<shape[0]; ++i) {
+        for (int j=0; j<shape[1]; ++j) {
+            for (int k=0; k<shape[2]; ++k) {
+                BOOST_CHECK_EQUAL(a[i][j][k],b[k][j][i]);
+                BOOST_CHECK_EQUAL(a[i][j][k],c[j][i][k]);
+            }
+        }
+    }
+    BOOST_CHECK(ndarray::shallow(a[ndarray::view()(1)(1)]) == ndarray::shallow(b[ndarray::view(1)(1)()]));
+    BOOST_CHECK(ndarray::shallow(a[ndarray::view(0)()(1)]) == ndarray::shallow(b[ndarray::view(1)()(0)]));
+    BOOST_CHECK(ndarray::shallow(a[ndarray::view(0)(0)()]) == ndarray::shallow(b[ndarray::view()(0)(0)]));
+    BOOST_CHECK(ndarray::shallow(a[ndarray::view()(1)(1)]) == ndarray::shallow(c[ndarray::view(1)()(1)]));
+    BOOST_CHECK(ndarray::shallow(a[ndarray::view(0)()(1)]) == ndarray::shallow(c[ndarray::view()(0)(1)]));
+    BOOST_CHECK(ndarray::shallow(a[ndarray::view(0)(0)()]) == ndarray::shallow(c[ndarray::view(0)(0)()]));
+}

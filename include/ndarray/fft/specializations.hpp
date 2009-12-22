@@ -11,6 +11,7 @@
 #include "ndarray/fft/FourierTraits.hpp"
 
 namespace ndarray {
+/// \cond INTERNAL
 namespace detail {
 
 /**
@@ -123,6 +124,7 @@ struct ArrayAccess< FourierArray<T,N,C> > {
 };
 
 } // namespace ndarray::detail
+/// \endcond
 } // namespace ndarray
 
 #endif // !NDARRAY_FFT_specializations_hpp_INCLUDED

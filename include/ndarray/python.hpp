@@ -19,21 +19,32 @@
  *  functions between ndarray objects, notably Array and
  *  Vector, and Python Numpy objects.
  *
- *  \note The Numpy C-API header files must be included
- *  <em>before</em> ndarray-python.hpp, and the
- *  <b><tt>import_array()</tt></b> and
- *  <b><tt>import_ufunc()</tt></b> functions must be
- *  called appropriately (see the Numpy C-API documentation
- *  for more details).
+ *  \note initializePython() must be called before using
+ *  the rest of the ndarray Python support library.
  */
 
-/// \defgroup PythonInternalGroup Python Support Internals
+/// \internal \defgroup PythonInternalGroup Python Support Internals
 
-/// \internal @namespace ndarray::detail \brief Internal namespace for ndarray Python support.
-
+#include "Python.h"
 #include "ndarray.hpp"
 #include "ndarray/python/numpy.hpp"
 #include "ndarray/python/ufunctors.hpp"
 #include "ndarray/python/Vector.hpp"
+
+namespace ndarray {
+
+/**
+ *  \brief Initialize ndarray Python support.
+ *
+ *  This function must be called in the module initialization
+ *  section of any C++ extension module that uses ndarray,
+ *  before any other parts of the ndarray Python support
+ *  library are used.
+ *
+ *  \ingroup PythonGroup
+ */
+void initializePython();
+
+}
 
 #endif // !NDARRAY_python_hpp_INCLUDED

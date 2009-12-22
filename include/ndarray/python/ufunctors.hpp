@@ -15,7 +15,7 @@ template <typename TUnaryFunctor,
           typename TResult=typename TUnaryFunctor::result_type>
 struct PyUnaryUFunctor {
 
-    static PyObject* __call__(TUnaryFunctor const& self, PyObject* input, PyObject* output) {
+    static PyObject* _call_(TUnaryFunctor const& self, PyObject* input, PyObject* output) {
         PyObject* input_array = PyArray_FROM_OTF(input,detail::NumpyTraits<TArgument>::getCode(),
                                                  NPY_ALIGNED);
         if (input_array == NULL) return NULL;
@@ -59,7 +59,7 @@ template <typename TUnaryFunctor,
           typename TResult=typename TUnaryFunctor::result_type>
 struct PyBinaryUFunctor {
 
-    static PyObject* __call__(TUnaryFunctor const& self, PyObject* input1, PyObject* input2, 
+    static PyObject* _call_(TUnaryFunctor const& self, PyObject* input1, PyObject* input2, 
                               PyObject* output) {
         PyObject* input1_array = PyArray_FROM_OTF(input1,detail::NumpyTraits<TArgument1>::getCode(),
                                                   NPY_ALIGNED);

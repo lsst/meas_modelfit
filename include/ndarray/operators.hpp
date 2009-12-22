@@ -1,3 +1,4 @@
+
 #ifndef NDARRAY_operators_hpp_INCLUDED
 #define NDARRAY_operators_hpp_INCLUDED
 
@@ -12,82 +13,9 @@
 #include "ndarray/detail/UnaryOp.hpp"
 #include "ndarray/detail/BinaryOp.hpp"
 
-#define NDARRAY_FUNCTION_TAG(NAME,BASE,OP)                              \
-    /** \internal @class NAME  */                                       \
-    /** \brief An AdaptableFunctionTag for the OP operation. */ \
-    /** \ingroup InternalGroup */                                       \
-    struct NAME : public AdaptableFunctionTag<NAME> {                   \
-        template <typename A, typename B>                               \
-        struct ScalarFunction : public BASE<A,B> {                      \
-            typename BASE<A,B>::result_type operator()(                 \
-                typename BASE<A,B>::ParamA a,                           \
-                typename BASE<A,B>::ParamB b                            \
-            ) const {                                                   \
-                return a OP b;                                          \
-            }                                                           \
-        };                                                              \
-    };
-#ifndef DOXYGEN
-#define NDARRAY_BINARY_OP(TAG,OP)                                       \
-    /** \brief A lazy 'array OP scalar' operator. */                    \
-    template <typename Operand, typename Scalar>                        \
-    typename boost::enable_if<                                          \
-        typename detail::ExpressionTraits<Scalar>::IsScalar,            \
-        detail::UnaryOpExpression< Operand, typename TAG::template ExprScalar<Operand,Scalar>::Bound > \
-    >::type                                                              \
-    operator OP(Expression<Operand> const & operand, Scalar const & scalar) { \
-        return vectorize(TAG::template ExprScalar<Operand,Scalar>::bind(scalar),operand); \
-    }                                                                   \
-    /** \brief A lazy 'scalar OP array' operator. */                    \
-    template <typename Operand, typename Scalar>                        \
-    typename boost::enable_if<                                          \
-        typename detail::ExpressionTraits<Scalar>::IsScalar,            \
-        detail::UnaryOpExpression< Operand, typename TAG::template ScalarExpr<Operand,Scalar>::Bound > \
-    >::type                                                              \
-    operator OP(Scalar const & scalar, Expression<Operand> const & operand) { \
-        return vectorize(TAG::template ScalarExpr<Operand,Scalar>::bind(scalar),operand); \
-    }                                                                   \
-    /** \brief A lazy 'array OP array' operator. */                    \
-    template <typename Operand1, typename Operand2>                     \
-    detail::BinaryOpExpression< Operand1, Operand2,                     \
-                                typename TAG::template ExprExpr<Operand1,Operand2>::BinaryFunction > \
-    operator OP(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) { \
-        return vectorize(                                               \
-            typename TAG::template ExprExpr<Operand1,Operand2>::BinaryFunction(), \
-            operand1,                                                   \
-            operand2                                                   \
-        );                                                              \
-    }
-#define NDARRAY_UNARY_OP(FUNCTOR,OP)                                    \
-    /** \brief A lazy unary OP operator for arrays. */                  \
-    template <typename Operand>                                         \
-    detail::UnaryOpExpression< Operand, FUNCTOR<typename detail::ExpressionTraits<Operand>::Element> > \
-    operator OP(Expression<Operand> const & operand) {                  \
-        return vectorize(FUNCTOR<typename detail::ExpressionTraits<Operand>::Element>(),operand); \
-    }
-#else // DOXYGEN
-#define NDARRAY_BINARY_OP(TAG,OP)                                       \
-    /** \brief A lazy 'array OP scalar' operator. */                    \
-    template <typename Operand, typename Scalar>                        \
-    <unspecified-expression-type>                                      \
-    operator OP(Expression<Operand> const & operand, Scalar const & scalar); \
-    /** \brief A lazy 'scalar OP array' operator. */                    \
-    template <typename Operand, typename Scalar>                        \
-    <unspecified-expression-type>                                       \
-    operator OP(Scalar const & scalar, Expression<Operand> const & operand); \
-    /** \brief A lazy 'array OP array' operator. */                    \
-    template <typename Operand1, typename Operand2>                     \
-    <unspecified-expression-type>                                       \
-    operator OP(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2);
-#define NDARRAY_UNARY_OP(FUNCTOR,OP)                                    \
-    /** \brief A lazy unary OP operator for arrays. */                  \
-    template <typename Operand>                                         \
-    <unspecified-expression-type>                                       \
-    operator OP(Expression<Operand> const & operand);
-#endif
-
 namespace ndarray {
 
+/// \cond INTERNAL
 namespace detail {
 
 /** 
@@ -178,53 +106,1035 @@ struct BitwiseNot {
     result_type operator()(argument_type arg) const { return ~arg; }
 };
 
-NDARRAY_FUNCTION_TAG(PlusTag,PromotingBinaryFunction,+)
-NDARRAY_FUNCTION_TAG(MinusTag,PromotingBinaryFunction,-)
-NDARRAY_FUNCTION_TAG(MultipliesTag,PromotingBinaryFunction,*)
-NDARRAY_FUNCTION_TAG(DividesTag,PromotingBinaryFunction,/)
-NDARRAY_FUNCTION_TAG(ModulusTag,PromotingBinaryFunction,%)
-NDARRAY_FUNCTION_TAG(BitwiseXorTag,PromotingBinaryFunction,^)
-NDARRAY_FUNCTION_TAG(BitwiseOrTag,PromotingBinaryFunction,|)
-NDARRAY_FUNCTION_TAG(BitwiseAndTag,PromotingBinaryFunction,|)
-NDARRAY_FUNCTION_TAG(BitwiseLeftShiftTag,PromotingBinaryFunction,<<)
-NDARRAY_FUNCTION_TAG(BitwiseRightShiftTag,PromotingBinaryFunction,>>)
 
-NDARRAY_FUNCTION_TAG(EqualToTag,BinaryPredicate,==)
-NDARRAY_FUNCTION_TAG(NotEqualToTag,BinaryPredicate,!=)
-NDARRAY_FUNCTION_TAG(LessTag,BinaryPredicate,<)
-NDARRAY_FUNCTION_TAG(GreaterTag,BinaryPredicate,>)
-NDARRAY_FUNCTION_TAG(LessEqualTag,BinaryPredicate,<=)
-NDARRAY_FUNCTION_TAG(GreaterEqualTag,BinaryPredicate,>=)
-NDARRAY_FUNCTION_TAG(LogicalAnd,BinaryPredicate,&&)
-NDARRAY_FUNCTION_TAG(LogicalOr,BinaryPredicate,||)
+    struct PlusTag : public AdaptableFunctionTag<PlusTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a + b;
+            }
+        };
+    };
+
+    struct MinusTag : public AdaptableFunctionTag<MinusTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a - b;
+            }
+        };
+    };
+
+    struct MultipliesTag : public AdaptableFunctionTag<MultipliesTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a * b;
+            }
+        };
+    };
+
+    struct DividesTag : public AdaptableFunctionTag<DividesTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a / b;
+            }
+        };
+    };
+
+    struct ModulusTag : public AdaptableFunctionTag<ModulusTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a % b;
+            }
+        };
+    };
+
+    struct BitwiseXorTag : public AdaptableFunctionTag<BitwiseXorTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a ^ b;
+            }
+        };
+    };
+
+    struct BitwiseOrTag : public AdaptableFunctionTag<BitwiseOrTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a | b;
+            }
+        };
+    };
+
+    struct BitwiseAndTag : public AdaptableFunctionTag<BitwiseAndTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a | b;
+            }
+        };
+    };
+
+    struct BitwiseLeftShiftTag : public AdaptableFunctionTag<BitwiseLeftShiftTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a << b;
+            }
+        };
+    };
+
+    struct BitwiseRightShiftTag : public AdaptableFunctionTag<BitwiseRightShiftTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public PromotingBinaryFunction<A,B> {
+            typename PromotingBinaryFunction<A,B>::result_type operator()(
+                typename PromotingBinaryFunction<A,B>::ParamA a,
+                typename PromotingBinaryFunction<A,B>::ParamB b
+            ) const {
+                return a >> b;
+            }
+        };
+    };
+
+
+    struct EqualToTag : public AdaptableFunctionTag<EqualToTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a == b;
+            }
+        };
+    };
+
+    struct NotEqualToTag : public AdaptableFunctionTag<NotEqualToTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a != b;
+            }
+        };
+    };
+
+    struct LessTag : public AdaptableFunctionTag<LessTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a < b;
+            }
+        };
+    };
+
+    struct GreaterTag : public AdaptableFunctionTag<GreaterTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a > b;
+            }
+        };
+    };
+
+    struct LessEqualTag : public AdaptableFunctionTag<LessEqualTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a <= b;
+            }
+        };
+    };
+
+    struct GreaterEqualTag : public AdaptableFunctionTag<GreaterEqualTag> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a >= b;
+            }
+        };
+    };
+
+    struct LogicalAnd : public AdaptableFunctionTag<LogicalAnd> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a && b;
+            }
+        };
+    };
+
+    struct LogicalOr : public AdaptableFunctionTag<LogicalOr> {
+        template <typename A, typename B>
+        struct ScalarFunction : public BinaryPredicate<A,B> {
+            typename BinaryPredicate<A,B>::result_type operator()(
+                typename BinaryPredicate<A,B>::ParamA a,
+                typename BinaryPredicate<A,B>::ParamB b
+            ) const {
+                return a || b;
+            }
+        };
+    };
 
 } // namespace ndarray::detail
+/// \endcond
 
 /// \addtogroup OpGroup
 /// @{
-NDARRAY_BINARY_OP(detail::PlusTag,+)
-NDARRAY_BINARY_OP(detail::MinusTag,-)
-NDARRAY_BINARY_OP(detail::MultipliesTag,*)
-NDARRAY_BINARY_OP(detail::DividesTag,/)
-NDARRAY_BINARY_OP(detail::ModulusTag,%)
-NDARRAY_BINARY_OP(detail::BitwiseXorTag,^)
-NDARRAY_BINARY_OP(detail::BitwiseOrTag,|)
-NDARRAY_BINARY_OP(detail::BitwiseAndTag,|)
-NDARRAY_BINARY_OP(detail::BitwiseLeftShiftTag,<<)
-NDARRAY_BINARY_OP(detail::BitwiseRightShiftTag,>>)
 
-NDARRAY_BINARY_OP(detail::EqualToTag,==)
-NDARRAY_BINARY_OP(detail::NotEqualToTag,!=)
-NDARRAY_BINARY_OP(detail::LessTag,<)
-NDARRAY_BINARY_OP(detail::GreaterTag,>)
-NDARRAY_BINARY_OP(detail::LessEqualTag,<=)
-NDARRAY_BINARY_OP(detail::GreaterEqualTag,>=)
-NDARRAY_BINARY_OP(detail::LogicalAnd,&&)
-NDARRAY_BINARY_OP(detail::LogicalOr,||)
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::PlusTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator +(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::PlusTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
 
-NDARRAY_UNARY_OP(std::negate,-)
-NDARRAY_UNARY_OP(std::logical_not,!)
-NDARRAY_UNARY_OP(detail::BitwiseNot,~)
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::PlusTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator +(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::PlusTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::PlusTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator +(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::PlusTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::MinusTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator -(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::MinusTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::MinusTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator -(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::MinusTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::MinusTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator -(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::MinusTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::MultipliesTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator *(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::MultipliesTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::MultipliesTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator *(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::MultipliesTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::MultipliesTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator *(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::MultipliesTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::DividesTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator /(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::DividesTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::DividesTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator /(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::DividesTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::DividesTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator /(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::DividesTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::ModulusTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator %(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::ModulusTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::ModulusTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator %(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::ModulusTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::ModulusTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator %(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::ModulusTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseXorTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator ^(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::BitwiseXorTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseXorTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator ^(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::BitwiseXorTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::BitwiseXorTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator ^(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::BitwiseXorTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseOrTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator |(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::BitwiseOrTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseOrTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator |(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::BitwiseOrTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::BitwiseOrTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator |(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::BitwiseOrTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseAndTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator |(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::BitwiseAndTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseAndTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator |(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::BitwiseAndTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::BitwiseAndTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator |(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::BitwiseAndTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseLeftShiftTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator <<(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::BitwiseLeftShiftTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseLeftShiftTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator <<(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::BitwiseLeftShiftTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::BitwiseLeftShiftTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator <<(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::BitwiseLeftShiftTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseRightShiftTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator >>(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::BitwiseRightShiftTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::BitwiseRightShiftTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator >>(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::BitwiseRightShiftTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::BitwiseRightShiftTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator >>(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::BitwiseRightShiftTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::EqualToTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator ==(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::EqualToTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::EqualToTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator ==(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::EqualToTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::EqualToTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator ==(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::EqualToTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::NotEqualToTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator !=(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::NotEqualToTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::NotEqualToTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator !=(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::NotEqualToTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::NotEqualToTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator !=(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::NotEqualToTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LessTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator <(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::LessTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LessTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator <(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::LessTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::LessTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator <(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::LessTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::GreaterTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator >(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::GreaterTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::GreaterTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator >(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::GreaterTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::GreaterTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator >(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::GreaterTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LessEqualTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator <=(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::LessEqualTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LessEqualTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator <=(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::LessEqualTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::LessEqualTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator <=(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::LessEqualTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::GreaterEqualTag::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator >=(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::GreaterEqualTag::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::GreaterEqualTag::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator >=(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::GreaterEqualTag::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::GreaterEqualTag::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator >=(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::GreaterEqualTag::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LogicalAnd::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator &&(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::LogicalAnd::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LogicalAnd::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator &&(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::LogicalAnd::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::LogicalAnd::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator &&(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::LogicalAnd::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LogicalOr::template ExprScalar<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator ||(Expression<Operand> const & operand, Scalar const & scalar) {
+        return vectorize(detail::LogicalOr::template ExprScalar<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand, typename Scalar>
+#ifndef DOXYGEN
+    typename boost::enable_if<
+        typename detail::ExpressionTraits<Scalar>::IsScalar,
+        detail::UnaryOpExpression< Operand, typename detail::LogicalOr::template ScalarExpr<Operand,Scalar>::Bound >
+    >::type
+#else
+    <unspecified-expression-type>
+#endif
+    operator ||(Scalar const & scalar, Expression<Operand> const & operand) {
+        return vectorize(detail::LogicalOr::template ScalarExpr<Operand,Scalar>::bind(scalar),operand);
+    }
+
+    template <typename Operand1, typename Operand2>
+#ifndef DOXYGEN
+    detail::BinaryOpExpression< 
+         Operand1, Operand2,
+         typename detail::LogicalOr::template ExprExpr<Operand1,Operand2>::BinaryFunction
+    >
+#else
+    <unspecified-expression-type>
+#endif
+    operator ||(Expression<Operand1> const & operand1, Expression<Operand2> const & operand2) {
+        return vectorize(
+            typename detail::LogicalOr::template ExprExpr<Operand1,Operand2>::BinaryFunction(),
+            operand1,
+            operand2
+        );
+    }
+
+
+    template <typename Operand>
+#ifndef DOXYGEN
+    detail::UnaryOpExpression< Operand, std::negate<typename detail::ExpressionTraits<Operand>::Element> >
+#else
+    <unspecified-expression-type>
+#endif
+    operator -(Expression<Operand> const & operand) {
+        return vectorize(std::negate<typename detail::ExpressionTraits<Operand>::Element>(),operand);
+    }
+
+    template <typename Operand>
+#ifndef DOXYGEN
+    detail::UnaryOpExpression< Operand, std::logical_not<typename detail::ExpressionTraits<Operand>::Element> >
+#else
+    <unspecified-expression-type>
+#endif
+    operator !(Expression<Operand> const & operand) {
+        return vectorize(std::logical_not<typename detail::ExpressionTraits<Operand>::Element>(),operand);
+    }
+
+    template <typename Operand>
+#ifndef DOXYGEN
+    detail::UnaryOpExpression< Operand, detail::BitwiseNot<typename detail::ExpressionTraits<Operand>::Element> >
+#else
+    <unspecified-expression-type>
+#endif
+    operator ~(Expression<Operand> const & operand) {
+        return vectorize(detail::BitwiseNot<typename detail::ExpressionTraits<Operand>::Element>(),operand);
+    }
 /// @}
 
 template <typename Scalar>
@@ -292,9 +1202,5 @@ sum(Expression<Derived> const & expr) {
 
 
 } // namespace ndarray
-
-#undef NDARRAY_FUNCTION_TAG
-#undef NDARRAY_BINARY_OP
-#undef NDARRAY_UNARY_OP
 
 #endif // !NDARRAY_operators_hpp_INCLUDED

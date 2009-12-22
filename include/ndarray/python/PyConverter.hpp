@@ -1,10 +1,14 @@
 #ifndef NDARRAY_PYTHON_PyConverter_hpp_INCLUDED
 #define NDARRAY_PYTHON_PyConverter_hpp_INCLUDED
 
-/** 
+/**
  *  @file ndarray/python/PyConverter.hpp
  *  \brief Python C-API conversions for standard numeric types.
  */
+#include <Python.h>
+
+#include <boost/intrusive_ptr.hpp>
+#include <complex>
 
 namespace boost {
 inline void intrusive_ptr_add_ref(PyObject * obj) { Py_INCREF(obj); }

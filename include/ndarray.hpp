@@ -12,6 +12,7 @@
 #include "ndarray/operators.hpp"
 #include "ndarray/casts.hpp"
 #include "ndarray/formatting.hpp"
+#include "ndarray/arange.hpp"
 
 /** 
  * \mainpage Overview
@@ -92,14 +93,11 @@
  * the remaining dimensions.
  *
  * \section downloads Downloads
- * http://dls.physics.ucdavis.edu/~jbosch/software/ndarray/releases
- *
- * \section contact Contact
- * Jim Bosch <jbosch@physics.ucdavis.edu>
+ * http://code.google.com/p/ndarray/downloads/list
  *
  * \section License
  * %ndarray is distributed under a simple BSD-like license:
- * http://dls.physics.ucdavis.edu/~jbosch/software/ndarray/COPYING
+ * http://ndarray.googlecode.com/svn/trunk/COPYING
  */
 
 /** 

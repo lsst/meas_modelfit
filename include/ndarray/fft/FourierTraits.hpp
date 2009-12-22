@@ -11,6 +11,7 @@
 #include <boost/shared_ptr.hpp>
 
 namespace ndarray {
+/// \cond INTERNAL
 namespace detail {
 
 /**
@@ -67,6 +68,7 @@ struct FourierTraits<std::complex<U> const,true> {
 /// \endcond
 
 } // namespace ndarray::detail
+/// \endcond
 } // namespace ndarray
 
 #endif // !NDARRAY_FFT_FourierTraits_hpp_INCLUDED

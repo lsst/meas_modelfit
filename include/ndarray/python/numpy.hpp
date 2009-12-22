@@ -6,6 +6,16 @@
  *  \brief Python C-API conversions between ndarray and numpy.
  */
 
+#define PY_ARRAY_UNIQUE_SYMBOL NDARRAY_ARRAY_API
+#define PY_UFUNC_UNIQUE_SYMBOL NDARRAY_UFUNC_API
+#ifndef NDARRAY_PYTHON_MAIN
+#define NO_IMPORT_ARRAY
+#define NO_IMPORT_UFUNC
+#endif
+#include "Python.h"
+#include "numpy/arrayobject.h"
+#include "numpy/ufuncobject.h"
+
 #include "ndarray.hpp"
 #include "ndarray/python/PyConverter.hpp"
 
@@ -146,7 +156,7 @@ struct PyConverter< Array<T,N,C> > : public detail::PyConverterBase< Array<T,N,C
      *  \return true on success, false on failure (with a Python exception set).
      */
     static bool fromPythonStage2(
-        PyPtr const & input,  ///< Result of check().
+        PyPtr const & input,  ///< Result of fromPythonStage1().
         Array<T,N,C> & output ///< Reference to existing output C++ object.
     ) {
         int flags = NPY_ALIGNED;

@@ -13,6 +13,7 @@
 #include "ndarray/fft/FourierArray.hpp"
 
 namespace ndarray {
+/// \cond INTERNAL
 namespace detail {
 
 /**
@@ -103,6 +104,7 @@ struct FourierOps<T,1> {
 };
 
 } // namespace ndarray::detail
+/// \endcond
 
 /**
  *  \brief Perform a Fourier-space translation transform.

@@ -53,6 +53,17 @@ env.Help("""
 LSST Multifit Implementation.
 """)
 
+# Explicit build for m4-generated headers, since SCons doesn't do dependency
+# checking on those.
+env.Append(M4FLAGS="-I%s" % os.path.join(os.path.abspath('.'),'m4'))
+generated = ["include/ndarray/Array.hpp",
+             "include/ndarray/operators.hpp",
+             "include/ndarray/Vector.hpp",
+             "include/ndarray/fft/FFTWTraits.hpp",
+             ]
+headers = [env.M4(filename, "%s.m4" % filename) for filename in generated]
+env.Depends(headers, Glob("#m4/*.m4"))
+
 ###############################################################################
 # Boilerplate below here.  Do not modify.
 
