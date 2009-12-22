@@ -12,6 +12,7 @@
 #include <ndarray_fwd.hpp>
 
 #include "lsst/meas/multifit/core.h"
+#include "lsst/afw/geom/Box.h"
 
 namespace lsst{
 namespace meas {
@@ -52,7 +53,7 @@ public:
      *  \brief Create an image-coordinate bounding box that would contain a
      *  projection of the Model.
      */
-    virtual lsst::afw::geom::Box2D computeProjectionEnvelope(
+    virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         PsfConstPtr const & psf,
         WcsConstPtr const & wcs
     ) const = 0;

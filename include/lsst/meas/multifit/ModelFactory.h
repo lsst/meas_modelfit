@@ -78,6 +78,8 @@ private:
     static RegistryMap _registry;
 };
 
+
+
 }}} // namespace lsst::meas::multifit
 
 #endif // !LSST_MEAS_MULTIFIT_MODEL_FACTORY_H

@@ -6,7 +6,7 @@ namespace multifit = lsst::meas::multifit;
 
 multifit::WindowedFootprint::WindowedFootprint (
     lsst::afw::detection::Footprint const & fp,
-    lsst::afw::geom::Box2I const & window
+    lsst::afw::geom::BoxI const & window
 ) : 
     _nPix(fp.getNpix()), 
     _window(window) 

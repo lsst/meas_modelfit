@@ -103,9 +103,9 @@ private:
     ///< maps footprint to handler output arrays
     WindowedFootprint::Ptr _wf;     
     ///< bounding box of padded arrays relative to exposure
-    lsst::afw::geom::Box2I _outerBBox; 
+    lsst::afw::geom::BoxI _outerBBox; 
     ///< bounding box of unpadded arrays relative to _outerBBox
-    lsst::afw::geom::Box2I _innerBBox;
+    lsst::afw::geom::BoxI _innerBBox;
 
     class Shifter;
     class LinearMatrixHandler;

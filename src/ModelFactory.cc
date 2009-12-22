@@ -4,6 +4,8 @@
 
 namespace multifit = lsst::meas::multifit;
 
+multifit::ModelFactory::RegistryMap multifit::ModelFactory::_registry = multifit::ModelFactory::RegistryMap();
+
 multifit::ModelFactory::ConstPtr multifit::ModelFactory::lookupFactory(
     std::string const & name
 ) {

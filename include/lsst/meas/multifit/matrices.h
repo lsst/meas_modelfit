@@ -4,6 +4,7 @@
 #include <Eigen/Core>
 #include <ndarray.hpp>
 
+#include "lsst/afw/geom/Box.h"
 #include "lsst/meas/multifit/core.h"
 
 namespace lsst {
@@ -48,7 +49,7 @@ getCompressedVectorView(ndarray::Array<T,2,2> const & array) {
 template <typename T, int C>
 inline ndarray::Array<T, 2, ((C>=1) ? 1:0)> window(
     ndarray::Array<T, 2, C> const & input, 
-    lsst::afw::geom::Box2I const & box
+    lsst::afw::geom::BoxI const & box
 ) {
     return input[ndarray::view
         (box.getMinY(), box.getMaxY()+1)
@@ -59,7 +60,7 @@ inline ndarray::Array<T, 2, ((C>=1) ? 1:0)> window(
 template <typename T, int C>
 inline ndarray::Array<T, 3, ((C>=1) ? 1:0)> window(
     ndarray::Array<T, 3, C> const & input, 
-    lsst::afw::geom::Box2I const & box
+    lsst::afw::geom::BoxI const & box
 ) {
     return input[ndarray::view
         ()

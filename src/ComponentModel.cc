@@ -20,7 +20,7 @@ multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     return boost::make_shared<Footprint>();
 }
 
-lsst::afw::geom::Box2D multifit::ComponentModel::computeProjectionEnvelope(
+lsst::afw::geom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     PsfConstPtr const & psf,
     WcsConstPtr const & wcs
 ) const {

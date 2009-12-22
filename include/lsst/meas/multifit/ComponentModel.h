@@ -3,6 +3,8 @@
 
 #include <boost/make_shared.hpp>
 
+#include "lsst/afw/geom/Box.h"
+
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
@@ -39,7 +41,7 @@ public:
     /**
      *  \brief Create an image-coordinate bounding box that would contain a projection of the Model.
      */
-    virtual lsst::afw::geom::Box2D computeProjectionEnvelope(
+    virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         PsfConstPtr const & psf,
         WcsConstPtr const & wcs
     ) const;

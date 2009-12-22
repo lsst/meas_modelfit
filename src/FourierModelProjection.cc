@@ -324,7 +324,8 @@ void multifit::FourierModelProjection::_computeProjectedParameterDerivative(
 
 void multifit::FourierModelProjection::_handleLinearParameterChange() {
     ComponentModelProjection::_handleLinearParameterChange();
-    if (_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions()) {
+
+    if (lsst::afw::geom::any(_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions())) {
         _setDimensions();
     } else {
         _linearMatrixHandler->handleLinearParameterChange();
@@ -335,7 +336,7 @@ void multifit::FourierModelProjection::_handleLinearParameterChange() {
 
 void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
     ComponentModelProjection::_handleNonlinearParameterChange();
-    if (_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions()) {
+    if (lsst::afw::geom::any(_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions())) {
         _setDimensions();
     } else {
         _linearMatrixHandler->handleNonlinearParameterChange();
@@ -367,17 +368,15 @@ void multifit::FourierModelProjection::_setDimensions() {
         int(std::floor(centerOnExposure.getY() - dimensions.getY()/2))
     );
     lsst::afw::geom::Point2I bboxMax = bboxMin + dimensions;
-    _outerBBox = lsst::afw::geom::Box2I(bboxMin, bboxMax);
+    _outerBBox = lsst::afw::geom::BoxI(bboxMin, bboxMax);
     // Right now, _innerBBox is defined relative to exposure    
     lsst::afw::geom::Extent2I padding = getMorphologyProjection()->getPadding();
-    //TODO: change to shrink inner box asymetrically by padding Extent
-    int maxPadding = std::max(padding.getX(), padding.getY());
     _innerBBox = _outerBBox;
-    _innerBBox.expand(-maxPadding);
+    _innerBBox.grow(-padding);
 
     //TODO: convert footprint to use geom::Box2I
     lsst::afw::image::BBox deprecatedBBox = getFootprint()->getBBox();
-    lsst::afw::geom::Box2I footprintBBox(
+    lsst::afw::geom::BoxI footprintBBox(
         lsst::afw::geom::Point2I::makeXY(
             deprecatedBBox.getX0(), deprecatedBBox.getY0()
         ),
@@ -386,7 +385,7 @@ void multifit::FourierModelProjection::_setDimensions() {
             deprecatedBBox.getHeight()
         )
     );
-    _innerBBox.setIntersection(footprintBBox);
+    _innerBBox.clip(footprintBBox);
     _wf = boost::make_shared<WindowedFootprint>(*getFootprint(), _innerBBox);
 
     // But now, and forevermore, _innerBBox is defined relative to _outerBBox.

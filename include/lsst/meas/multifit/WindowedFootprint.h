@@ -19,7 +19,7 @@ public:
 
     WindowedFootprint(
         lsst::afw::detection::Footprint const & fp, 
-        lsst::afw::geom::Box2I const & window
+        lsst::afw::geom::BoxI const & window
     );
 
     int const getNpix() const {return _nPix;}
@@ -163,7 +163,7 @@ private:
 
     int _nPix;
     SpanMap _spanList;
-    lsst::afw::geom::Box2I _window;    
+    lsst::afw::geom::BoxI _window;    
 };
 
 }}}
