@@ -60,14 +60,15 @@ BOOST_AUTO_TEST_CASE(MatrixBasic) {
     BOOST_CHECK_EQUAL(mArray.getOwner(), mView.getOwner());
     BOOST_CHECK_EQUAL(mViewEigen.data(), mView.getData());
 
-    BOOST_CHECK_NO_THROW(mView[paramEnd-paramStart][pixEnd-pixStart] = 0);
-    BOOST_CHECK_NO_THROW(mViewEigen(pixEnd-pixStart, paramEnd-paramStart) = 0);
+
 
     int pixel = 8, param = 3;
-    int val = 42;
+    Pixel val = 42;
     mArray[param][pixel] = val;
 
     BOOST_CHECK_EQUAL(mEigen(pixel, param), val);
     BOOST_CHECK_EQUAL(mView[param - paramStart][pixel - pixStart], val);
     BOOST_CHECK_EQUAL(mViewEigen(pixel - pixStart, param -paramStart), val);
+    BOOST_CHECK_NO_THROW(mView[paramEnd-paramStart][pixEnd-pixStart] = 0);
+    BOOST_CHECK_NO_THROW(mViewEigen(pixEnd-pixStart, paramEnd-paramStart) = 0);
 }

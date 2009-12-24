@@ -64,6 +64,8 @@ public:
     ndarray::Array<Pixel const,3,1> computeLinearParameterDerivative() {
         if (!_matrixValid) {
             _kLPD = _parent->_getMorphologyProjection()->computeLinearParameterDerivative();
+            if(!_parent->_shifter)
+                _parent->_shifter.reset(new Shifter(_parent));
             _parent->_shifter->apply(_kLPD.begin(),_kLPD.end());
             _unconvolvedMatrix = _kLPD;
             _parent->_applyKernel(_kLPD.begin(),_kLPD.end());
@@ -180,6 +182,9 @@ private:
         ndarray::differentiate(1, _kTD[0]);
         ndarray::differentiate(0, _kTD[1]);
         _kPPD = _parent->_getMorphologyProjection()->computeProjectedParameterDerivative(); 
+        if(!_parent->_shifter)
+            _parent->_shifter.reset(new Shifter(_parent));
+
         _parent->_shifter->apply(_kPPD.begin(), _kPPD.end());
         _parent->_applyKernel(_kPPD.begin(), _kPPD.end());
         _ifft->execute();
@@ -263,6 +268,8 @@ private:
 
 int const multifit::FourierModelProjection::getPsfParameterSize() const {
     //TODO: test if _kernelVisitor is null, throw exception if needed
+    if(!_kernelVisitor)
+        return 0;
     return _kernelVisitor->getNParameters();
 }
 
@@ -276,16 +283,19 @@ void multifit::FourierModelProjection::_convolve(
     if(_psfMatrixHandler){
         _psfMatrixHandler.reset(new PsfMatrixHandler(this));
     }
-    _linearMatrixHandler->handleNonlinearParameterChange();
+    if(_linearMatrixHandler) {
+        _linearMatrixHandler->handleNonlinearParameterChange();
+    }
     if (_nonlinearMatrixHandler) {
         _nonlinearMatrixHandler->handleParameterChange();
     }
-
 }
 
 void multifit::FourierModelProjection::_computeLinearParameterDerivative(
     ndarray::Array<Pixel,2,1> const & output
-) {    
+) { 
+    if(!_linearMatrixHandler)
+        _linearMatrixHandler.reset(new LinearMatrixHandler(this));
     _wf->compress(
         _linearMatrixHandler->computeLinearParameterDerivative(),
         output
@@ -307,6 +317,9 @@ void multifit::FourierModelProjection::_computePsfParameterDerivative(
 void multifit::FourierModelProjection::_computeTranslationDerivative(
     ndarray::Array<Pixel,2,1> const & output
 ) {
+    if(!_nonlinearMatrixHandler)
+        _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
+    
     _wf->compress(
         _nonlinearMatrixHandler->computeTranslationDerivative(),
         output
@@ -316,6 +329,8 @@ void multifit::FourierModelProjection::_computeTranslationDerivative(
 void multifit::FourierModelProjection::_computeProjectedParameterDerivative(
     ndarray::Array<Pixel,2,1> const & output
 ) {
+    if(!_nonlinearMatrixHandler)
+        _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
     _wf->compress(
         _nonlinearMatrixHandler->computeProjectedParameterDerivative(), 
         output
@@ -343,6 +358,9 @@ void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
         if (_nonlinearMatrixHandler) _nonlinearMatrixHandler->handleParameterChange();
         if (_psfMatrixHandler) _psfMatrixHandler->handleParameterChange();
     }
+    if(!_shifter)
+        _shifter.reset(new Shifter(this));
+
     _shifter->handleNonlinearParameterChange();
 }
 

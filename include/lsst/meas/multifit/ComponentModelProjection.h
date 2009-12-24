@@ -41,7 +41,7 @@ public:
     }
 
     /// \brief Return the AffineTransform that maps global coordinates to image coordinates.
-    lsst::afw::geom::AffineTransform::ConstPtr getTransform() const { return _transform; }
+    lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const { return _transform; }
 
     /// \brief Return the number of parameters that specify the coordinate transformation.
     virtual int const getWcsParameterSize() const { return WCS_PARAMETER_SIZE; }

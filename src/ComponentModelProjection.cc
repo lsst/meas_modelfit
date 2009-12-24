@@ -11,7 +11,7 @@ multifit::ComponentModelProjection::ComponentModelProjection(
 ) : ModelProjection(model, wcs, footprint),
     _validProducts(0),
     //TODO: need wcs linearize api
-    //_transform(wcs->linearize(model->getAstrometry()->apply())),
+    _transform(boost::make_shared<lsst::afw::geom::AffineTransform>()),
     _morphologyProjection(), 
     _translationDerivative(), 
     _projectedParameterDerivative()

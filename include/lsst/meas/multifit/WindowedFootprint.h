@@ -23,11 +23,12 @@ public:
     );
 
     int const getNpix() const {return _nPix;}
+    lsst::afw::geom::BoxI const & getWindow() const {return _window;}
 
-    template <typename T, typename U, int C, int D>
+    template <typename T, typename U, int C>
     void compress (
         ndarray::Array<T, 2, C> const & src, 
-        ndarray::Array<U, 1, D> const & dest
+        ndarray::Array<U, 1, 1> const & dest
     ) const {
         if(_window.getWidth() != src.template getSize<1>() ||
             _window.getHeight() != src.template getSize<0>()){
@@ -46,15 +47,15 @@ public:
         Iterator spanIter(_spanList.begin());
         Iterator const & spanEnd(_spanList.end());
 
-        typename ndarray::Array<U,1,C>::Iterator destIter(dest.begin());
+        U * destIter = dest.getData();
         for (; spanIter != spanEnd; ++spanIter) {
             WindowedSpan const & span(**spanIter);
             int spanWidth = span.getWidth();
             if (span.inWindow()) {
-                ndarray::Array<T,1,C> row = src[span.getY()];
+                T * row = src[span.getY()].getData();
                 std::copy(
-                    row.begin() + span.getX0(), 
-                    row.begin() + spanWidth,
+                    row + span.getX0(), 
+                    row + span.getX0() + spanWidth,
                     destIter
                 );            
             }
@@ -74,7 +75,7 @@ public:
 
         typename ndarray::Array<T,N,C>::Iterator const & srcEnd(src.end());
         typename ndarray::Array<T,N,C>::Iterator srcIter(src.begin());
-        typename ndarray::Array<U,N-1,C>::Iterator destIter(dest.begin());
+        typename ndarray::Array<U,N-1,D>::Iterator destIter(dest.begin());
         
         for (; srcIter != srcEnd; ++srcIter, ++destIter) {
             compress(*srcIter,*destIter);
@@ -82,10 +83,10 @@ public:
     }
 
 
-    template <typename T, typename U, int C, int D> 
+    template <typename T, typename U, int C> 
     void expand (
-        ndarray::Array<T, 1, C> const & src,
-        ndarray::Array<U, 2, D> const & dest
+        ndarray::Array<T, 1, 1> const & src,
+        ndarray::Array<U, 2, C> const & dest
     ) const {
         if(_window.getWidth() != dest.template getSize<1>() ||
             _window.getHeight() != dest.template getSize<0>()){
@@ -103,17 +104,15 @@ public:
 
         Iterator spanIter(_spanList.begin());
         Iterator const & spanEnd(_spanList.end());
-
-        typename ndarray::Array<T,1,C>::Iterator srcIter(dest.begin());
+        T * srcIter(src.getData());
         for (; spanIter != spanEnd; ++spanIter) {
             WindowedSpan const & span(**spanIter);
             int spanWidth = span.getWidth();
             if (span.inWindow()) {
-                ndarray::Array<U,1,C> row = dest[span.getY()];
                 std::copy(
                     srcIter, 
                     srcIter + spanWidth,
-                    row.begin() + span.getX0()                
+                    dest[span.getY()].getData() + span.getX0()                
                 );            
             }
             srcIter += spanWidth;
@@ -131,7 +130,7 @@ public:
         }
         typename ndarray::Array<T,N-1,C>::Iterator const & srcEnd(src.end());
         typename ndarray::Array<T,N-1,C>::Iterator srcIter(src.begin());
-        typename ndarray::Array<U,N,C>::Iterator destIter(dest.begin());
+        typename ndarray::Array<U,N,D>::Iterator destIter(dest.begin());
 
         for (; srcIter != srcEnd; ++srcIter, ++destIter) {
             expand(*srcIter,*destIter);
