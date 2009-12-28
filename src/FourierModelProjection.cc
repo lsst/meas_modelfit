@@ -164,18 +164,17 @@ private:
 
         lsst::afw::math::FourierCutout::Ptr fourierCutout = 
             _parent->_kernelVisitor->getFourierImage();
+
+        ndarray::FourierArray<Pixel, 2, 2> kernelImage;
         
-        ndarray::FourierArray<Pixel, 2, 2> kernelImage(
-            fourierCutout->getImageWidth(),
-            ndarray::external(
-                fourierCutout->begin(),
-                ndarray::makeVector(
-                    fourierCutout->getFourierHeight(),
-                    fourierCutout->getFourierWidth()
-                ),
-                ndarray::makeVector(fourierCutout->getFourierWidth(), 1),
-                fourierCutout->getOwner()
-            )
+        ndarray::shallow(kernelImage) = ndarray::external(
+            fourierCutout->begin(),
+            ndarray::makeVector(
+                fourierCutout->getFourierHeight(),
+                fourierCutout->getFourierWidth()
+            ),
+            ndarray::makeVector(fourierCutout->getFourierWidth(), 1),
+            fourierCutout->getOwner()
         );
         _kTD[0] = _kTD[1] = _parent->_linearMatrixHandler->computeUnconvolvedImage() *
             kernelImage;
