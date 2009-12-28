@@ -40,7 +40,7 @@ public:
      *  Typically used only by the owning ComponentModel.
      */
     virtual MorphologyProjection::Ptr makeProjection(
-        lsst::afw::geom::Extent2I kernelDimensions,
+        lsst::afw::geom::Extent2I const & kernelDimensions,
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) const;
 

@@ -17,10 +17,13 @@
 
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
+
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/PointSourceModelFactory.h"
 
+#include "lsst/meas/multifit/components/Astrometry.h"
+#include "lsst/meas/multifit/components/PointSourceMorphology.h"
 
 using namespace std;
 namespace measAlg = lsst::meas::algorithms;
@@ -39,11 +42,29 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
 
     multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>();
     multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.5);
-    multifit::FootprintConstPtr fp = boost::make_shared<detection::Footprint>(
-        lsst::afw::image::BCircle(lsst::afw::image::PointI(35, 65), 25)
-    );
+    multifit::FootprintConstPtr fp = psModel->computeProjectionFootprint(psf, wcs);
+    
+    BOOST_CHECK(fp->getNpix() > 0);
     multifit::ModelProjection::Ptr projection = psModel->makeProjection(psf, wcs, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), psModel);
+   
+    multifit::ParameterVector linear(psModel->getLinearParameterSize());
+    multifit::ParameterVector nonlinear(psModel->getNonlinearParameterSize());
 
+    linear = psModel->getLinearParameterVector();
+    nonlinear = psModel->getNonlinearParameterVector();
 
+    BOOST_CHECK_EQUAL(linear[0], flux);
+    BOOST_CHECK_EQUAL(nonlinear[0], centroid[0]);
+    BOOST_CHECK_EQUAL(nonlinear[1], centroid[1]);
+
+    multifit::FourierModelProjection::Ptr asFourierProjection =
+        boost::static_pointer_cast<multifit::FourierModelProjection>(projection);
+
+    BOOST_CHECK(asFourierProjection);
+    BOOST_CHECK_NO_THROW(projection->computeModelImage());
+    BOOST_CHECK_NO_THROW(projection->computeLinearParameterDerivative());
+    BOOST_CHECK_NO_THROW(projection->computeNonlinearParameterDerivative());
+    BOOST_CHECK_NO_THROW(projection->computePsfParameterDerivative());
+    BOOST_CHECK_NO_THROW(projection->computeWcsParameterDerivative());
 }

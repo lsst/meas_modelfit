@@ -11,7 +11,7 @@ components::Morphology::Ptr components::PointSourceMorphology::create(
 }
 
 components::MorphologyProjection::Ptr components::PointSourceMorphology::makeProjection(
-    lsst::afw::geom::Extent2I const kernelDimensions,
+    lsst::afw::geom::Extent2I const & kernelDimensions,
     lsst::afw::geom::AffineTransform::ConstPtr const & transform
 ) const {
     return boost::make_shared<PointSourceMorphologyProjection>(

@@ -276,6 +276,9 @@ int const multifit::FourierModelProjection::getPsfParameterSize() const {
 void multifit::FourierModelProjection::_convolve(
     PsfConstPtr const & psf
 ) { 
+    if(!psf || !psf->getKernel()) 
+        return;
+
     lsst::afw::geom::PointD point = _getPsfPosition(); 
     _kernelVisitor = psf->getKernel()->computeFourierConvolutionVisitor(
         lsst::afw::image::PointD(point.getX(), point.getY())
@@ -296,6 +299,7 @@ void multifit::FourierModelProjection::_computeLinearParameterDerivative(
 ) { 
     if(!_linearMatrixHandler)
         _linearMatrixHandler.reset(new LinearMatrixHandler(this));
+    
     _wf->compress(
         _linearMatrixHandler->computeLinearParameterDerivative(),
         output
@@ -385,8 +389,7 @@ void multifit::FourierModelProjection::_setDimensions() {
         int(std::floor(centerOnExposure.getX() - dimensions.getX()/2)),
         int(std::floor(centerOnExposure.getY() - dimensions.getY()/2))
     );
-    lsst::afw::geom::Point2I bboxMax = bboxMin + dimensions;
-    _outerBBox = lsst::afw::geom::BoxI(bboxMin, bboxMax);
+    _outerBBox = lsst::afw::geom::BoxI(bboxMin, dimensions);
     // Right now, _innerBBox is defined relative to exposure    
     lsst::afw::geom::Extent2I padding = getMorphologyProjection()->getPadding();
     _innerBBox = _outerBBox;
@@ -399,7 +402,7 @@ void multifit::FourierModelProjection::_setDimensions() {
             deprecatedBBox.getX0(), deprecatedBBox.getY0()
         ),
         lsst::afw::geom::Extent2I::makeXY(
-            deprecatedBBox.getWidth(),
+            deprecatedBBox.getWidth(), 
             deprecatedBBox.getHeight()
         )
     );

@@ -33,15 +33,13 @@ public:
         );
     }
 
-    /// \brief Return the MorphologyProjection object this projection is based on.
-    components::FourierMorphologyProjection::ConstPtr getMorphologyProjection() const { 
-        return boost::static_pointer_cast<components::FourierMorphologyProjection const>(
-            getMorphologyProjection()
-        );
-    }
-
     virtual ~FourierModelProjection();
 
+    components::FourierMorphologyProjection::ConstPtr getMorphologyProjection() const {
+        return boost::static_pointer_cast<components::FourierMorphologyProjection const>(
+            ComponentModelProjection::getMorphologyProjection()
+        );
+    }
 protected:
 
     friend class lsst::meas::multifit::ComponentModel;
@@ -68,14 +66,12 @@ protected:
     virtual void _handleLinearParameterChange();
     virtual void _handleNonlinearParameterChange();
 
-    components::FourierMorphologyProjection::Ptr _getMorphologyProjection() { 
+    components::FourierMorphologyProjection::Ptr _getMorphologyProjection() {
         return boost::static_pointer_cast<components::FourierMorphologyProjection>(
-            _getMorphologyProjection()
+            ComponentModelProjection::_getMorphologyProjection()
         );
     }
-
 private:
-
     typedef ndarray::FourierTransform<Pixel,2> FFT;
     
     FourierModelProjection(

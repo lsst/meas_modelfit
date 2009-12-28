@@ -78,7 +78,7 @@ protected:
      */
     MorphologyProjection(
         boost::shared_ptr<Morphology const> const & morphology,
-        lsst::afw::geom::Extent2I kernelDimensions, 
+        lsst::afw::geom::Extent2I const & kernelDimensions, 
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) : _morphology(morphology), 
         _kernelDimensions(kernelDimensions), 

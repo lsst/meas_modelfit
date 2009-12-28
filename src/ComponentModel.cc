@@ -1,6 +1,8 @@
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
 
+#include "lsst/meas/multifit/footprintUtils.h"
+
 namespace multifit = lsst::meas::multifit;
 
 //-- ComponentModel ------------------------------------------------------------
@@ -10,14 +12,14 @@ multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    int kernelSize = std::max(psf->getWidth(), psf->getHeight());
-    ellipse->grow(kernelSize/2+1);
-
+    if (psf) {
+        int kernelSize = std::max(psf->getWidth(), psf->getHeight());
+        ellipse->grow(kernelSize/2+1);
+    }
     //TODO: need wcs linearize api
     //ellipse->transform(*wcs->linearize(ellipse->getCenter()));
 
-    //TODO::make footprint from ellipse
-    return boost::make_shared<Footprint>();
+    return makeFootprint(*ellipse);
 }
 
 lsst::afw::geom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
@@ -25,8 +27,11 @@ lsst::afw::geom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    int kernelSize = std::max(psf->getWidth(), psf->getHeight());
-    ellipse->grow(kernelSize/2+1);
+    if (psf) {
+        int kernelSize = std::max(psf->getWidth(), psf->getHeight());
+        ellipse->grow(kernelSize/2+1);
+    }
+
     //TODO::need api for linearizing a wcs solution
     //ellipse->transform(*wcs->linearize(ellipse->getCenter()));
     return ellipse->computeEnvelope();
