@@ -63,6 +63,10 @@ protected:
     virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     //@}
 
+    virtual bool hasPsfParameterDerivative() const {
+        return _kernelVisitor->hasDerivatives() && _kernelVisitor->getNParameters() > 0;
+    }
+
     virtual void _handleLinearParameterChange();
     virtual void _handleNonlinearParameterChange();
 

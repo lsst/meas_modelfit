@@ -17,11 +17,12 @@ typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> > Matrix
 typedef Eigen::Block<MatrixMap> MatrixMapBlock;
 typedef Eigen::Map<Eigen::Matrix<Pixel, 1, Eigen::Dynamic> > VectorMap;
 
-
+#if 0 // TODO: Reimplement this when Eigen::Map has a constructor that takes strides.
 inline MatrixMapBlock getMatrixView(ndarray::Array<Pixel const,2,1> const & array) {
     MatrixMap map(array.getData(), array.getStride<0>(), array.getSize<0>());
     return MatrixMapBlock(map, 0, 0, array.getSize<1>(), array.getSize<0>());
 }
+#endif
 
 inline VectorMap getVectorView(ndarray::Array<Pixel const,1,1> const & array) {
     return VectorMap(array.getData(), array.getSize<0>());

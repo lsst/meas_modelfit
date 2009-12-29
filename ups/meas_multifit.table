@@ -4,7 +4,7 @@ setupRequired(boost >= 1.37.0)
 setupRequired(utils >= 3.4)
 setupRequired(afw >= 3.3.17)
 setupRequired(pex_exceptions >= 3.2)
-setupRequired(meas_algorithms >= 3.0.9)
+setupRequired(meas_algorithms >= 3.0.11)
 
 # The following is boilerplate for all packages.
 setupRequired(base >= 3.1)

@@ -103,6 +103,14 @@ protected:
      */
     virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
 
+    virtual bool hasWcsParameterDerivative() const { return false; }
+
+    virtual bool hasTranslationDerivative() const { return true; }
+
+    virtual bool hasProjectedParameterDerivative() const {
+        return getMorphologyProjection()->getMorphology()->getMorphologyParameterSize() > 0;
+    }
+
     /**
      *  \brief Handle a linear parameter change broadcast from the associated Model.
      *
@@ -136,6 +144,7 @@ private:
     void _ensureTranslationDerivative();
     void _ensureProjectedParameterDerivative();
 
+#if 0 // TODO: Reimplement this when Eigen::Map has a constructor that takes strides.
     MatrixMapBlock getAstrometryParameterMatrixView(ndarray::Array<Pixel,2,1> const & array) {
         MatrixMap map(
             array.getData(), 
@@ -156,16 +165,17 @@ private:
         return MatrixMapBlock(map, 0, offset, array.getSize<1>(), map.cols());
     }
 
+    MatrixMapBlock getProjectedParameterMatrixView() {
+        return getMatrixView(_projectedParameterDerivative);
+    }
+#endif
+
     TranslationMatrixMap getTranslationMatrixView() {
         return TranslationMatrixMap(
             _translationDerivative.getData(),
             _translationDerivative.getSize<1>(),
             2
         );
-    }
-
-    MatrixMapBlock getProjectedParameterMatrixView() {
-        return getMatrixView(_projectedParameterDerivative);
     }
 
     int _validProducts;

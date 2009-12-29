@@ -32,7 +32,10 @@ public:
 
     virtual int const getWcsParameterSize() const {return 0;}
     virtual int const getPsfParameterSize() const {return 0;}
-    
+   
+    virtual bool hasWcsParameterDerivative() const {return false;}
+    virtual bool hasPsfParameterDerivative() const {return false;}
+
     int getLinearChange() const {return _linearChange;}
     int getNonlinearChange() const {return _nonlinearChange;}
 protected:

@@ -77,6 +77,17 @@ public:
     void setPsfParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
     //@}
 
+    /**
+     *  @name ProductEnableCheckers
+     */
+    //@{
+    bool hasModelImage() const { return true; }
+    bool hasLinearParameterDerivative() const { return getLinearParameterSize() > 0; }
+    bool hasNonlinearParameterDerivative() const { return getNonlinearParameterSize() > 0; }
+    virtual bool hasWcsParameterDerivative() const = 0;
+    virtual bool hasPsfParameterDerivative() const = 0;
+    //@}
+
     /// \brief Return the World Coordinate System object for this projection.
     WcsConstPtr const & getWcs() const { return _wcs; }
 

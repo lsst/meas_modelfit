@@ -28,7 +28,8 @@ BOOST_AUTO_TEST_CASE(MatrixBasic) {
         ndarray::makeVector(nParam, nPix)
     );
     //but eigen is pix by params
-    multifit::MatrixMapBlock mEigen = multifit::getMatrixView(mArray);
+    multifit::MatrixMap mEigenMap(mArray.getData(), mArray.getStride<0>(), mArray.getSize<0>());
+    multifit::MatrixMapBlock mEigen(mEigenMap, 0, 0, mArray.getSize<1>(), mArray.getSize<0>());
 
     //check casting from fully contiguous ndarray to eigen
     BOOST_CHECK_EQUAL(mEigen.cols(), nParam);
@@ -36,8 +37,6 @@ BOOST_AUTO_TEST_CASE(MatrixBasic) {
     BOOST_CHECK_EQUAL(mEigen.cols(), mArray.getSize<0>());
     BOOST_CHECK_EQUAL(mEigen.rows(), mArray.getSize<1>());
     BOOST_CHECK_EQUAL(mEigen.data(), mArray.getData());
-
-
 
     int pixStart = 4, pixEnd = 9;
     int paramStart = 0, paramEnd = 4;
@@ -52,7 +51,7 @@ BOOST_AUTO_TEST_CASE(MatrixBasic) {
     ndarray::shallow(mView) = multifit::window(mArray, mViewBox);
 
     //and test casting from non fully contiguous ndarray to eigen
-    multifit::MatrixMapBlock mViewEigen = multifit::getMatrixView(mView);
+    multifit::MatrixMapBlock mViewEigen(multifit::getMatrixView(mView));
     BOOST_CHECK_EQUAL(mViewEigen.cols(), paramEnd - paramStart + 1);
     BOOST_CHECK_EQUAL(mViewEigen.rows(), pixEnd - pixStart + 1);
     BOOST_CHECK_EQUAL(mViewEigen.cols(), mView.getSize<0>());
@@ -60,12 +59,12 @@ BOOST_AUTO_TEST_CASE(MatrixBasic) {
     BOOST_CHECK_EQUAL(mArray.getOwner(), mView.getOwner());
     BOOST_CHECK_EQUAL(mViewEigen.data(), mView.getData());
 
-
-
     int pixel = 8, param = 3;
     Pixel val = 42;
     mArray[param][pixel] = val;
 
+    BOOST_CHECK_EQUAL(&mEigen(0,0), &mArray[0][0]);
+    BOOST_CHECK_EQUAL(&mEigen(pixel,param), &mArray[param][pixel]);
     BOOST_CHECK_EQUAL(mEigen(pixel, param), val);
     BOOST_CHECK_EQUAL(mView[param - paramStart][pixel - pixStart], val);
     BOOST_CHECK_EQUAL(mViewEigen(pixel - pixStart, param -paramStart), val);

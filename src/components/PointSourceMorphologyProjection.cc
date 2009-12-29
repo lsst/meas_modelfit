@@ -23,7 +23,8 @@ components::PointSourceMorphologyProjection::computeLinearParameterDerivative() 
 
 ndarray::FourierArray<multifit::Pixel,3,3>
 components::PointSourceMorphologyProjection::computeProjectedParameterDerivative() {
-    return ndarray::FourierArray<Pixel,3,3>(
+    return ndarray::FourierArray<Pixel,3,3>();
+#if 0
         0,
         ndarray::FourierArray<Pixel,3,3>::Base(
             ndarray::external(
@@ -32,6 +33,7 @@ components::PointSourceMorphologyProjection::computeProjectedParameterDerivative
             )
         )
     );
+#endif
 }
 
 components::PointSourceMorphologyProjection::PointSourceMorphologyProjection(

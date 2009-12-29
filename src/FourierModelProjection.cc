@@ -130,12 +130,12 @@ class multifit::FourierModelProjection::NonlinearMatrixHandler : boost::noncopya
 public:
     void handleParameterChange() { _valid = false; }
     
-    ndarray::Array<Pixel const,3,1> computeTranslationDerivative() { 
-        recompute(); 
+    ndarray::Array<Pixel const,3,1> computeTranslationDerivative() {
+        recompute();
         return _finalTD; 
     }
-    ndarray::Array<Pixel const,3,1> computeProjectedParameterDerivative() { 
-        recompute(); 
+    ndarray::Array<Pixel const,3,1> computeProjectedParameterDerivative() {
+        recompute();
         return _finalPPD; 
     }
 
@@ -151,41 +151,34 @@ public:
             _kFull, 
             _xFull
         );
-        ndarray::shallow(_kTD) = _kFull[ndarray::view(0, 2)];
-        ndarray::shallow(_kPPD) = _kFull[ndarray::view(2, _kFull.getSize<0>())];
         ndarray::Array<Pixel,3,1> finalFull(window(_xFull, _parent->_innerBBox));
-        ndarray::shallow(_finalTD) = finalFull[ndarray::view(0, 2)];
-        ndarray::shallow(_finalPPD) = finalFull[ndarray::view(2, finalFull.getSize<0>())];
+        if (_parent->hasTranslationDerivative()) {
+            ndarray::shallow(_kTD) = _kFull[ndarray::view(0, 2)];
+            ndarray::shallow(_finalTD) = finalFull[ndarray::view(0, 2)];
+        }
+        if (_parent->hasProjectedParameterDerivative()) {
+            ndarray::shallow(_kPPD) = _kFull[ndarray::view(2, _kFull.getSize<0>())];
+            ndarray::shallow(_finalPPD) = finalFull[ndarray::view(2, finalFull.getSize<0>())];
+        }
     }
 
 private:
     void recompute() {
-        if (_valid) return;
-
-        lsst::afw::math::FourierCutout::Ptr fourierCutout = 
-            _parent->_kernelVisitor->getFourierImage();
-
-        ndarray::FourierArray<Pixel, 2, 2> kernelImage;
-        
-        ndarray::shallow(kernelImage) = ndarray::external(
-            fourierCutout->begin(),
-            ndarray::makeVector(
-                fourierCutout->getFourierHeight(),
-                fourierCutout->getFourierWidth()
-            ),
-            ndarray::makeVector(fourierCutout->getFourierWidth(), 1),
-            fourierCutout->getOwner()
-        );
-        _kTD[0] = _kTD[1] = _parent->_linearMatrixHandler->computeUnconvolvedImage() *
-            kernelImage;
-        ndarray::differentiate(1, _kTD[0]);
-        ndarray::differentiate(0, _kTD[1]);
-        _kPPD = _parent->_getMorphologyProjection()->computeProjectedParameterDerivative(); 
-        if(!_parent->_shifter)
-            _parent->_shifter.reset(new Shifter(_parent));
-
-        _parent->_shifter->apply(_kPPD.begin(), _kPPD.end());
-        _parent->_applyKernel(_kPPD.begin(), _kPPD.end());
+        if (_valid) 
+            return;
+        if (_parent->hasTranslationDerivative()) {
+            _kTD[0] = _kTD[1] = _parent->_linearMatrixHandler->computeUnconvolvedImage();
+            _parent->_applyKernel(_kTD.begin(),_kTD.end());
+            ndarray::differentiate(1, _kTD[0]);
+            ndarray::differentiate(0, _kTD[1]);
+        }
+        if (_parent->hasProjectedParameterDerivative()) {
+            _kPPD = _parent->_getMorphologyProjection()->computeProjectedParameterDerivative(); 
+            if(!_parent->_shifter)
+                _parent->_shifter.reset(new Shifter(_parent));
+            _parent->_shifter->apply(_kPPD.begin(), _kPPD.end());
+            _parent->_applyKernel(_kPPD.begin(), _kPPD.end());
+        }
         _ifft->execute();
         _valid = true;
     }
@@ -208,35 +201,40 @@ public:
     void handleParameterChange() { _valid = false; }
     
     ndarray::Array<Pixel const,3,1> computePsfParameterDerivative() {
-        if (!_valid) {
-            lsst::afw::math::FourierCutout::Ptr fourierCutout = 
-                _parent->_kernelVisitor->getFourierDerivativeImageList()[0];
+        if (_valid) 
+            return _final;
+        
+        lsst::afw::math::FourierCutout::Ptr fourierCutout = 
+            _parent->_kernelVisitor->getFourierDerivativeImageList()[0];
 
-            ndarray::FourierArray<Pixel, 3, 3> fourierDerivative(
-                fourierCutout->getImageWidth(),
-                ndarray::external(
-                    fourierCutout->begin(),
-                    ndarray::makeVector(
-                        _parent->_kernelVisitor->getNParameters(), 
-                        fourierCutout->getFourierHeight(),
-                        fourierCutout->getFourierWidth()
-                    ),
-                    ndarray::makeVector(
-                        fourierCutout->getFourierSize(),
-                        fourierCutout->getFourierWidth(),
-                        1
-                    ),
-                    fourierCutout->getOwner()
-                )
-            );
-            _k = fourierDerivative;
-            _parent->_applyKernel(
-                _k.begin(), _k.end(),
-                _parent->_linearMatrixHandler->computeUnconvolvedImage()
-            );
-            _ifft->execute();
-            _valid = true;
-        }
+        ndarray::Array<std::complex<Pixel>,3,3> externalImg(
+            ndarray::external(
+                fourierCutout->begin(),
+                ndarray::makeVector(
+                    _parent->_kernelVisitor->getNParameters(), 
+                    fourierCutout->getFourierHeight(),
+                    fourierCutout->getFourierWidth()
+                ),
+                ndarray::makeVector(
+                    fourierCutout->getFourierSize(),
+                    fourierCutout->getFourierWidth(),
+                    1
+                ),
+                fourierCutout->getOwner()
+            )
+        );
+        ndarray::FourierArray<Pixel, 3, 3> fourierDerivative(
+            fourierCutout->getImageWidth(),
+            externalImg
+        );
+        _k = fourierDerivative;
+        _parent->_applyKernel(
+            _k.begin(), _k.end(),
+            _parent->_linearMatrixHandler->computeUnconvolvedImage()
+        );
+            
+        _ifft->execute();
+        _valid = true;
         return _final;
     }
 
@@ -432,11 +430,12 @@ void multifit::FourierModelProjection::_applyKernel(
     ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
     ndarray::FourierArray<Pixel,3,3>::Iterator const & end
 ) const {
+
     lsst::afw::math::FourierCutout::Ptr fourierCutout = 
         _kernelVisitor->getFourierImage();
-        
-    ndarray::FourierArray<Pixel, 2, 2> kernelImage(
-        fourierCutout->getImageWidth(),
+    // TODO: investigate why this fails if moved inside the
+    // FourierArray constructor call.
+    ndarray::Array<std::complex<Pixel>, 2, 2> externalImg(
         ndarray::external(
             fourierCutout->begin(),
             ndarray::makeVector(
@@ -447,7 +446,10 @@ void multifit::FourierModelProjection::_applyKernel(
             fourierCutout->getOwner()
         )
     );
-
+    ndarray::FourierArray<Pixel, 2, 2> kernelImage(
+        fourierCutout->getImageWidth(),
+        externalImg
+    );
     _applyKernel(iter, end, kernelImage);
 }
 

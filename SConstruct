@@ -10,9 +10,9 @@ import lsst.SConsUtils as scons
 # Indirect dependencies are needed to get header files.
 dependencies = ["boost", "python", "minuit", "cfitsio", "wcslib", "utils", 
     "pex_exceptions", "eigen", "daf_base", "daf_data", "daf_persistence",
-		"pex_logging", "pex_exceptions", "pex_policy", "security", "gsl", "afw",
-		"meas_algorithms"
-	]
+        "pex_logging", "pex_exceptions", "pex_policy", "security", "gsl", "afw",
+        "meas_algorithms", "fftw"
+    ]
 
 env = scons.makeEnv(
     # The name of your package goes here.
@@ -31,13 +31,13 @@ env = scons.makeEnv(
         ["python", "Python.h"],
         ["utils", "lsst/utils/Utils.h", "utils:C++"],
         ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"],   
-		["cfitsio", "fitsio.h", "m cfitsio", "ffopen"],
+        ["cfitsio", "fitsio.h", "m cfitsio", "ffopen"],
         ["wcslib", "wcslib/wcs.h", "m wcs"],
         ["xpa", "xpa.h", "xpa", "XPAPuts"],
-		["minuit", "Minuit/FCNBase.h", "lcg_Minuit:C++"],
-		["daf_base", "lsst/daf/base.h", "daf_base:C++"],
-		["pex_policy", "lsst/pex/policy/Policy.h", "pex_policy:C++"],
-		["pex_logging", "lsst/pex/logging/Trace.h", "pex_logging:C++"],
+        ["minuit", "Minuit/FCNBase.h", "lcg_Minuit:C++"],
+        ["daf_base", "lsst/daf/base.h", "daf_base:C++"],
+        ["pex_policy", "lsst/pex/policy/Policy.h", "pex_policy:C++"],
+        ["pex_logging", "lsst/pex/logging/Trace.h", "pex_logging:C++"],
         ["security", "lsst/security/Security.h", "security:C++"],
         ["daf_persistence", "lsst/daf/persistence/Persistence.h", "daf_persistence:C++"],
         ["daf_data", "lsst/daf/data/LsstBase.h", "daf_data:C++"],
@@ -45,6 +45,7 @@ env = scons.makeEnv(
         ["eigen", "Eigen/Core.h"],
         ["afw", "lsst/afw.h", "afw:C++"],
         ["meas_algorithms", "lsst/meas/algorithms.h", "meas_algorithms:C++"],
+        ["fftw", "fftw3.h"],
     ]
 )
 

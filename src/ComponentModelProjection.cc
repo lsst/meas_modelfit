@@ -27,23 +27,89 @@ multifit::ComponentModelProjection::ComponentModelProjection(
 void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
     ndarray::Array<Pixel,2,1> const & matrix
 ) {
-    _ensureTranslationDerivative();
-    getAstrometryParameterMatrixView(matrix) = getTranslationMatrixView() * 
-        _transform->matrix().linear() * getModel()->getAstrometry()->differentiate();
-    _ensureProjectedParameterDerivative();
-    getMorphologyParameterMatrixView(matrix) = getProjectedParameterMatrixView() *
-        _morphologyProjection->computeProjectedParameterJacobian();
+    if (hasTranslationDerivative()) {
+        _ensureTranslationDerivative();
+        // TODO: Move this into an inline function when possible.
+        MatrixMap astrometryMap(
+            matrix.getData(),
+            matrix.getStride<0>(),
+            getModel()->getAstrometry()->getAstrometryParameterSize()
+        );                      
+        MatrixMapBlock astrometryView(astrometryMap, 0, 0, matrix.getSize<1>(), matrix.getSize<0>());
+        // END TODO
+        TranslationMatrixMap translationView(getTranslationMatrixView());
+        components::Astrometry::DerivativeMatrix astrometryDerivative(
+            getModel()->getAstrometry()->differentiate()
+        );
+        astrometryView = translationView * _transform->matrix().linear() * astrometryDerivative;
+    }
+    if (hasProjectedParameterDerivative()) {
+        _ensureProjectedParameterDerivative();
+        // TODO: Move this into an inline function when possible.
+        int offset = getModel()->getAstrometry()->getAstrometryParameterSize();
+        MatrixMap morphologyMap(
+            matrix.getData(),
+            matrix.getStride<0>(), 
+            getModel()->getMorphology()->getMorphologyParameterSize()
+        );
+        MatrixMapBlock morphologyView(morphologyMap, 0, offset, matrix.getSize<1>(), morphologyMap.cols());
+        // END TODO
+        // TODO: Move this into an inline function when possible.
+        MatrixMap projectedMap(
+            _projectedParameterDerivative.getData(),
+            _projectedParameterDerivative.getStride<0>(), 
+            _projectedParameterDerivative.getSize<0>()
+        );
+        MatrixMapBlock projectedView(
+            projectedMap,
+            0, 0,
+            _projectedParameterDerivative.getSize<1>(), projectedParameterDerivative.getSize<0>()
+        );
+        // END TODO
+        morphologyView = projectedView * _morphologyProjection->computeProjectedParameterJacobian();
+    }
 }
 
 void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
     ndarray::Array<Pixel,2,1> const & matrix
 ) {
-    _ensureTranslationDerivative();
-    getAstrometryParameterMatrixView(matrix) = getTranslationMatrixView() *
-        _transform->dTransform(getModel()->getAstrometry()->apply());
-    _ensureProjectedParameterDerivative();
-    getMorphologyParameterMatrixView(matrix) += getProjectedParameterMatrixView() *
-        _morphologyProjection->computeTransformParameterJacobian();    
+    if (hasTranslationDerivative()) {
+        _ensureTranslationDerivative();
+        MatrixMap astrometryMap(
+            matrix.getData(),
+            matrix.getStride<0>(),
+            getModel()->getAstrometry()->getAstrometryParameterSize()
+        );                      
+        MatrixMapBlock astrometryView(astrometryMap, 0, 0, matrix.getSize<1>(), matrix.getSize<0>());
+        astrometryView = getTranslationMatrixView() *
+            _transform->dTransform(getModel()->getAstrometry()->apply());
+    }
+    if (hasProjectedParameterDerivative()) {
+        _ensureProjectedParameterDerivative();
+        // TODO: Move this into an inline function when possible.
+        int offset = getModel()->getAstrometry()->getAstrometryParameterSize();
+        MatrixMap morphologyMap(
+            matrix.getData(),
+            matrix.getStride<0>(), 
+            getModel()->getMorphology()->getMorphologyParameterSize()
+        );
+        MatrixMapBlock morphologyView(morphologyMap, 0, offset, matrix.getSize<1>(), morphologyMap.cols());
+        // END TODO
+        // TODO: Move this into an inline function when possible.
+        MatrixMap projectedMap(
+            _projectedParameterDerivative.getData(),
+            _projectedParameterDerivative.getStride<0>(), 
+            _projectedParameterDerivative.getSize<0>()
+        );
+        MatrixMapBlock projectedView(
+            projectedMap,
+            0, 0,
+            _projectedParameterDerivative.getSize<1>(), projectedParameterDerivative.getSize<0>()
+        );
+        // END TODO
+	morphologyView += projectedView *
+            _morphologyProjection->computeTransformParameterJacobian();
+    }
 }
 
 void multifit::ComponentModelProjection::_ensureTranslationDerivative() {

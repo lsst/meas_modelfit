@@ -16,16 +16,16 @@ multifit::ModelProjection::ModelProjection(
     _nonlinearParameterDerivative(),
     _wcsParameterDerivative(), 
     _psfParameterDerivative()
-{}
-
-ndarray::Array<multifit::Pixel const,1,1> multifit::ModelProjection::computeModelImage() {
+{
     if (_footprint->getNpix() <= 0) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
-            "Cannot compute model image of size 0"
+            "Cannot create model projection with empty footprint."
         );
     }
+}
 
+ndarray::Array<multifit::Pixel const,1,1> multifit::ModelProjection::computeModelImage() {
     if (_modelImage.empty()) {
         ndarray::shallow(_modelImage) = ndarray::allocate<Allocator>(
             ndarray::makeVector(_footprint->getNpix())
@@ -40,13 +40,12 @@ ndarray::Array<multifit::Pixel const,1,1> multifit::ModelProjection::computeMode
 }
 
 ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeLinearParameterDerivative() {
-    if (_footprint->getNpix() <= 0 || getLinearParameterSize() <=0) {
+    if (!hasLinearParameterDerivative()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
-            "Cannot compute linear parameter derivative of size 0"
+            "Cannot compute linear parameter derivative."
         );
     }
-
     if (_linearParameterDerivative.empty()) {
         ndarray::shallow(_linearParameterDerivative) = ndarray::allocate<Allocator>(
             ndarray::makeVector(getLinearParameterSize(),_footprint->getNpix())
@@ -61,10 +60,10 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeLine
 }
 
 ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeNonlinearParameterDerivative() {
-    if (_footprint->getNpix() <= 0 || getNonlinearParameterSize() <=0) {
+    if (!hasNonlinearParameterDerivative()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
-            "Cannot compute nonlinear parameter derivative of size 0"
+            "Cannot compute nonlinear parameter derivative."
         );
     }
     if (_nonlinearParameterDerivative.empty()) {
@@ -81,10 +80,10 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeNonl
 }
 
 ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeWcsParameterDerivative() {
-    if (_footprint->getNpix() <= 0 || getWcsParameterSize() <=0) {
+    if (!hasWcsParameterDerivative()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
-            "Cannot compute wcs parameter derivative of size 0"
+            "Cannot compute wcs parameter derivative."
         );
     }
     if (_wcsParameterDerivative.empty()) {
@@ -101,13 +100,12 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeWcsP
 }
 
 ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computePsfParameterDerivative() {
-    if (_footprint->getNpix() <= 0 || getPsfParameterSize() <=0) {
+    if (!hasPsfParameterDerivative()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
-            "Cannot compute psf parameter derivative of size 0"
+            "Cannot compute psf parameter derivative."
         );
     }
-
     if (_psfParameterDerivative.empty()) {
         ndarray::shallow(_psfParameterDerivative) = ndarray::allocate<Allocator>(
             ndarray::makeVector(getPsfParameterSize(),_footprint->getNpix())
@@ -130,6 +128,12 @@ void multifit::ModelProjection::setModelImageBuffer(ndarray::Array<Pixel,1,1> co
 }
 
 void multifit::ModelProjection::setLinearParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer) {
+    if (!hasLinearParameterDerivative()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Projection has no linear parameter derivative."
+        );
+    }
     if (buffer.getSize<1>() != _footprint->getNpix()) {
         throw std::invalid_argument("Linear parameter derivative buffer's image dimension "
                                     "must match Footprint size.");
@@ -145,6 +149,12 @@ void multifit::ModelProjection::setLinearParameterDerivativeBuffer(ndarray::Arra
 void multifit::ModelProjection::setNonlinearParameterDerivativeBuffer(
     ndarray::Array<Pixel,2,1> const & buffer
 ) {
+    if (!hasNonlinearParameterDerivative()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Projection has no nonlinear parameter derivative."
+        );
+    }
     if (buffer.getSize<1>() != _footprint->getNpix()) {
         throw std::invalid_argument("Nonlinear parameter derivative buffer's image dimension "
                                     "must match Footprint size.");
@@ -158,6 +168,12 @@ void multifit::ModelProjection::setNonlinearParameterDerivativeBuffer(
 }
 
 void multifit::ModelProjection::setWcsParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer) {
+    if (!hasWcsParameterDerivative()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Projection has no wcs parameter derivative."
+        );
+    }
     if (buffer.getSize<1>() != _footprint->getNpix()) {
         throw std::invalid_argument("WCS parameter derivative buffer's image dimension "
                                     "must match Footprint size.");
@@ -171,6 +187,12 @@ void multifit::ModelProjection::setWcsParameterDerivativeBuffer(ndarray::Array<P
 }
 
 void multifit::ModelProjection::setPsfParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer) {
+    if (!hasPsfParameterDerivative()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Projection has no psf parameter derivative."
+        );
+    }
     if (buffer.getSize<1>() != _footprint->getNpix()) {
         throw std::invalid_argument("PSF parameter derivative buffer's image dimension "
                                     "must match Footprint size.");
@@ -184,8 +206,10 @@ void multifit::ModelProjection::setPsfParameterDerivativeBuffer(ndarray::Array<P
 }
 
 void multifit::ModelProjection::_computeModelImage(ndarray::Array<Pixel,1,1> const & vector) {
-    getVectorView(vector) = getMatrixView(computeLinearParameterDerivative()) *
-        _model->getLinearParameterVector();
+    ndarray::Array<Pixel,2,1> array(_model->computeLinearParameterDerivative());
+    MatrixMap map(array.getData(), array.getStride<0>(), array.getSize<0>());
+    MatrixMapBlock block(map, 0, 0, array.getSize<1>(), array.getSize<0>());
+    getVectorView(vector) = block * _model->getLinearParameterVector();
 }
 
 void multifit::ModelProjection::_handleLinearParameterChange() {
