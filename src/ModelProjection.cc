@@ -206,7 +206,7 @@ void multifit::ModelProjection::setPsfParameterDerivativeBuffer(ndarray::Array<P
 }
 
 void multifit::ModelProjection::_computeModelImage(ndarray::Array<Pixel,1,1> const & vector) {
-    ndarray::Array<Pixel,2,1> array(_model->computeLinearParameterDerivative());
+    ndarray::Array<Pixel const,2,1> array(computeLinearParameterDerivative());
     MatrixMap map(array.getData(), array.getStride<0>(), array.getSize<0>());
     MatrixMapBlock block(map, 0, 0, array.getSize<1>(), array.getSize<0>());
     getVectorView(vector) = block * _model->getLinearParameterVector();

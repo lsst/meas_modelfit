@@ -11,6 +11,7 @@
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
+#include "lsst/meas/multifit/footprintUtils.h"
 
 namespace lsst {
 namespace meas {
@@ -18,7 +19,8 @@ namespace multifit{
 
 class ModelEvaluator {
 public:     
-    class ProjectionFrame {        
+    class ProjectionFrame {
+    public:
         ProjectionFrame(){}
         ProjectionFrame(ProjectionFrame const & other) : _projection(other._projection) {}
         explicit ProjectionFrame(ModelProjection::Ptr const & projection) : _projection(projection) {} 
@@ -40,7 +42,6 @@ public:
         }
 
     private:
-        template<typename ImageT> friend class Traits;
         friend class ModelEvaluator;
 
         ModelProjection::Ptr _projection;
@@ -48,20 +49,17 @@ public:
         ndarray::Array<Pixel, 1, 1> _varianceVector;
     };
    
-    template<typename ImageT> 
+    template<typename ImagePixel, typename MaskPixel, typename VariancePixel> 
     class Traits{
-        typedef typename lsst::afw::image::MaskedImage<ImageT> MaskedImage;
-        typedef typename lsst::afw::image::Exposure<ImageT> Exposure;
-        typedef typename boost::shared_ptr<Exposure> ExposureConstPtr;
-        typedef typename boost::tuple<ExposureConstPtr, PsfConstPtr> CalibratedExposure;
+    public:                
+        typedef typename lsst::afw::image::Exposure<ImagePixel, MaskPixel, VariancePixel> Exposure;
+        typedef typename boost::shared_ptr<Exposure const> ExposureConstPtr;
+        typedef typename std::pair<ExposureConstPtr, PsfConstPtr> CalibratedExposure;
         typedef typename std::list<CalibratedExposure> CalibratedExposureList;
-        
-        static void setExposureList(ModelEvaluator &, CalibratedExposureList const &);
-        static void compressExposure(ProjectionFrame &, ExposureConstPtr const &);
-        static FootprintConstPtr fixFootprint(
-            FootprintConstPtr const &, typename MaskedImage::MaskPtr const &
-        );
-    };
+        typedef typename CalibratedExposureList::const_iterator CalibratedExposureIterator;
+        typedef typename std::list<ExposureConstPtr> ExposureList;
+
+    };        
 
     typedef std::list<ProjectionFrame> ProjectionFrameList;
 
@@ -72,30 +70,132 @@ public:
         setMinPixels(nMinPix);
     }
 
-    template<typename ImageT>
+    template<typename ImagePixel, typename MaskPixel, typename VariancePixel>
     ModelEvaluator(
         Model::ConstPtr const & model, 
-        typename Traits<ImageT>::CalibratedExposureList const & exposureList,
-        int const nMinPix = -1
+        typename Traits<ImagePixel, MaskPixel, VariancePixel>::CalibratedExposureList const & exposureList,
+        int const nMinPix = 0 
     ) : _validProducts(0),
         _model(model->clone()) 
     {        
         setMinPixels(nMinPix);
-        setExposureList<ImageT>(exposureList);
+        setExposureList<ImagePixel, MaskPixel, VariancePixel>(exposureList);
     }
 
     int const & getMinPixels() const {return _nMinPix;}
     void setMinPixels(int const nMinPix) {
-        _nMinPix = (nMinPix > 0)? nMinPix : -1;
+        _nMinPix = (nMinPix > 0)? nMinPix : 0;
     }
 
-    template <typename ImageT>
+    template<typename ImagePixel, typename MaskPixel, typename VariancePixel>
     void setExposureList(
-        typename Traits<ImageT>::CalibratedExposureList const & exposureList
+        typename Traits<ImagePixel, MaskPixel, VariancePixel>::CalibratedExposureList const & exposureList
     ) {
-        Traits<ImageT>::setExposureList(*this, exposureList);
+        typedef Traits<ImagePixel, MaskPixel, VariancePixel> Traits;
+        
+        _projectionList.clear();
+        _validProducts = 0;
+
+        int nLinear = getLinearParameterSize();
+        int nNonlinear = getNonlinearParameterSize();
+
+        int pixSum = 0;
+
+        ModelProjection::Ptr projection;
+        typename Traits::ExposureConstPtr exposure;
+        FootprintConstPtr footprint;
+        PsfConstPtr psf;
+        WcsConstPtr wcs;    
+  
+        //exposures which contain fewer than _nMinPix pixels will be rejected
+        //construct a list containing only those exposure which were not rejected
+        typename Traits::ExposureList goodExposureList;
+
+        // loop to create projections
+        for(typename Traits::CalibratedExposureIterator i(exposureList.begin()), end(exposureList.end());
+            i != end; ++i
+        ) {
+            exposure = i->first;
+            psf = i->second;
+            wcs = exposure->getWcs();        
+            footprint = _model->computeProjectionFootprint(psf, wcs);
+            footprint = clipAndMaskFootprint<MaskPixel>(
+                footprint, exposure->getMaskedImage().getMask()
+            );
+
+            //ignore exposures with too few contributing pixels        
+            if (footprint->getNpix() > _nMinPix) {
+                ProjectionFrame frame(
+                    _model->makeProjection(psf, wcs, footprint)
+                );
+      
+                _projectionList.push_back(frame);
+                goodExposureList.push_back(exposure);
+
+                pixSum += footprint->getNpix();
+            }
+        }
+
+        //  allocate matrix buffers
+        ndarray::shallow(_imageVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+        ndarray::shallow(_varianceVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+
+        ndarray::shallow(_modelImage) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+        ndarray::shallow(_linearParameterDerivative) = ndarray::allocate<Allocator>(
+            ndarray::makeVector(nLinear, pixSum)
+        );
+        ndarray::shallow(_nonlinearParameterDerivative) = ndarray::allocate<Allocator>(
+            ndarray::makeVector(nNonlinear, pixSum)
+        );    
+    
+        int nPix;
+        int pixelStart = 0, pixelEnd;
+
+        typename Traits::ExposureList::const_iterator exposureIter(goodExposureList.begin());
+
+        //loop to assign matrix buffers to each projection Frame
+        for(ProjectionFrameList::iterator i(_projectionList.begin()), end(_projectionList.end()); 
+            i != end; ++end
+        ) {
+            ProjectionFrame & frame(*i);
+            nPix = frame.getFootprint()->getNpix();
+            pixelEnd = pixelStart + nPix;
+
+            // set image/variance buffers
+            ndarray::shallow(frame._imageVector) = _imageVector[
+                ndarray::view(pixelStart, pixelEnd)
+            ];
+            ndarray::shallow(frame._varianceVector) = _varianceVector[
+                ndarray::view(pixelStart, pixelEnd)
+            ];
+        
+            CompressFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
+                (*exposureIter)->getMaskedImage(), 
+                frame._imageVector, 
+                frame._varianceVector
+            );
+            functor.apply(*frame.getFootprint());    
+
+        
+            //set modelImage buffer
+            frame._projection->setModelImageBuffer(
+                _modelImage[ndarray::view(pixelStart, pixelEnd)]
+            );
+        
+            //set linear buffer
+            frame._projection->setLinearParameterDerivativeBuffer(
+                _linearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
+            );
+            //set nonlinear buffer
+            frame._projection->setNonlinearParameterDerivativeBuffer(
+                _nonlinearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
+            );
+
+            pixelStart = pixelEnd;
+            ++exposureIter;
+        }   
     }
-   
+
     ndarray::Array<Pixel const, 1, 1> getImageVector() const {return _imageVector;}
     ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {return _varianceVector;}
     ndarray::Array<Pixel const, 1, 1> computeModelImage();
@@ -154,23 +254,6 @@ private:
     Model::Ptr _model;    
     ProjectionFrameList _projectionList;
     
-        
-    template<typename ImageT>
-    static FootprintConstPtr fixFootprint(
-        FootprintConstPtr const & footprint, 
-        typename Traits<ImageT>::MaskedImage::MaskPtr const & mask
-    ) {
-        return Traits<ImageT>::fixFootprint(footprint, mask);
-    }
-
-    template<typename ImageT>
-    static void compressExposure(
-        ProjectionFrame & frame,
-        typename Traits<ImageT>::ExposureConstPtr const & exposure
-    ) {
-        Traits<ImageT>::compressExposure(frame, exposure);
-    }
-
     ndarray::Array<Pixel, 1, 1> _imageVector;
     ndarray::Array<Pixel, 1, 1> _varianceVector;
     ndarray::Array<Pixel, 1, 1> _modelImage;

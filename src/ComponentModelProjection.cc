@@ -63,7 +63,7 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
         MatrixMapBlock projectedView(
             projectedMap,
             0, 0,
-            _projectedParameterDerivative.getSize<1>(), projectedParameterDerivative.getSize<0>()
+            _projectedParameterDerivative.getSize<1>(), _projectedParameterDerivative.getSize<0>()
         );
         // END TODO
         morphologyView = projectedView * _morphologyProjection->computeProjectedParameterJacobian();
@@ -104,7 +104,7 @@ void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
         MatrixMapBlock projectedView(
             projectedMap,
             0, 0,
-            _projectedParameterDerivative.getSize<1>(), projectedParameterDerivative.getSize<0>()
+            _projectedParameterDerivative.getSize<1>(), _projectedParameterDerivative.getSize<0>()
         );
         // END TODO
 	morphologyView += projectedView *

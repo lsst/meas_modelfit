@@ -65,6 +65,4 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
     BOOST_CHECK_NO_THROW(projection->computeModelImage());
     BOOST_CHECK_NO_THROW(projection->computeLinearParameterDerivative());
     BOOST_CHECK_NO_THROW(projection->computeNonlinearParameterDerivative());
-    BOOST_CHECK_NO_THROW(projection->computePsfParameterDerivative());
-    BOOST_CHECK_NO_THROW(projection->computeWcsParameterDerivative());
 }

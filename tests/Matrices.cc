@@ -51,7 +51,8 @@ BOOST_AUTO_TEST_CASE(MatrixBasic) {
     ndarray::shallow(mView) = multifit::window(mArray, mViewBox);
 
     //and test casting from non fully contiguous ndarray to eigen
-    multifit::MatrixMapBlock mViewEigen(multifit::getMatrixView(mView));
+    multifit::MatrixMap mViewEigenMap(mView.getData(), mView.getStride<0>(), mView.getSize<0>());
+    multifit::MatrixMapBlock mViewEigen(mViewEigenMap, 0, 0, mView.getSize<1>(), mView.getSize<0>());
     BOOST_CHECK_EQUAL(mViewEigen.cols(), paramEnd - paramStart + 1);
     BOOST_CHECK_EQUAL(mViewEigen.rows(), pixEnd - pixStart + 1);
     BOOST_CHECK_EQUAL(mViewEigen.cols(), mView.getSize<0>());
