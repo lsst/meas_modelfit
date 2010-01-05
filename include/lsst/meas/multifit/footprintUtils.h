@@ -102,14 +102,16 @@ public:
         _varianceDest(varianceDest)        
     {}
 
+    virtual void reset() {
+        _imageIter = _imageDest.begin();
+        _varianceIter = _varianceDest.begin(); 
+    }
     virtual void reset(lsst::afw::detection::Footprint const & footprint) {
         if(_imageDest.getSize<0>() != footprint.getNpix() || 
             _varianceDest.getSize<0>() != footprint.getNpix()) {
             throw LSST_EXCEPT(lsst::pex::exceptions::LengthErrorException,
                 "Destination vectors are not correct length");    
         }
-        _imageIter = _imageDest.begin();
-        _varianceIter = _varianceDest.begin(); 
     }
     virtual void operator()(
         typename MaskedImage::xy_locator loc,

@@ -2,7 +2,7 @@
 #define LSST_MEAS_MULTIFIT_MODEL_EVALUATOR_H
 
 #include <vector>
-
+#include <iostream>
 #include "Eigen/Core"
 #include "Eigen/LU"
 
@@ -17,7 +17,7 @@ namespace lsst {
 namespace meas {
 namespace multifit{
 
-class ModelEvaluator {
+class ModelEvaluator : public boost::noncopyable {
 public:     
     class ProjectionFrame {
     public:
@@ -155,7 +155,7 @@ public:
 
         //loop to assign matrix buffers to each projection Frame
         for(ProjectionFrameList::iterator i(_projectionList.begin()), end(_projectionList.end()); 
-            i != end; ++end
+            i != end; ++i
         ) {
             ProjectionFrame & frame(*i);
             nPix = frame.getFootprint()->getNpix();
@@ -168,13 +168,14 @@ public:
             ndarray::shallow(frame._varianceVector) = _varianceVector[
                 ndarray::view(pixelStart, pixelEnd)
             ];
-        
+            
             CompressFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
                 (*exposureIter)->getMaskedImage(), 
                 frame._imageVector, 
                 frame._varianceVector
             );
             functor.apply(*frame.getFootprint());    
+    
 
         
             //set modelImage buffer

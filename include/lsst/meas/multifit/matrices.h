@@ -15,7 +15,7 @@ typedef Eigen::aligned_allocator<char> Allocator;
 
 typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> > MatrixMap;
 typedef Eigen::Block<MatrixMap> MatrixMapBlock;
-typedef Eigen::Map<Eigen::Matrix<Pixel, 1, Eigen::Dynamic> > VectorMap;
+typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, 1> > VectorMap;
 
 #if 0 // TODO: Reimplement this when Eigen::Map has a constructor that takes strides.
 inline MatrixMapBlock getMatrixView(ndarray::Array<Pixel const,2,1> const & array) {

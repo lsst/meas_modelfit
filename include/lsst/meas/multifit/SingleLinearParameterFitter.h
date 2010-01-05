@@ -13,12 +13,14 @@ namespace meas {
 namespace multifit {
 class SingleLinearParameterFitter : public lsst::pex::policy::PolicyConfigured {
 public:
-    enum TerminationType {ITERATION, CHISQ, STEP};
+    enum TerminationType {ITERATION=1, CHISQ=2, STEP=4};
 
     struct Result {
         typedef boost::shared_ptr<Result> Ptr;
+
+        Result() : convergenceFlags(0), chisq(0), model(), sdqaMetrics() {}
         int convergenceFlags;
-        double chisq;
+        double chisq, dChisq;
         Model::ConstPtr model;
         lsst::daf::base::PropertySet sdqaMetrics;
     };

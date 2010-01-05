@@ -1,3 +1,5 @@
+#include <float.h>
+
 #include <Eigen/Core>
 #include <Eigen/QR>
 #include <Eigen/Cholesky>
@@ -16,8 +18,20 @@ multifit::SingleLinearParameterFitter::SingleLinearParameterFitter(
             "Invalid configuration policy - missing value \"terminationType\""
         );
     } 
-
-    terminationType = policy->getInt("terminationType");
+    
+    terminationType = 0;
+    std::vector<std::string> terminationVector(policy->getStringArray("terminationType"));
+    for(std::vector<std::string>::iterator i(terminationVector.begin()), end(terminationVector.end());
+        i != end; ++i
+    ) {
+        if((*i) == "chisq")
+            terminationType |= CHISQ;
+        else if((*i) == "iteration")
+            terminationType |= ITERATION;
+        else if((*i) == "step")
+            terminationType |= STEP; 
+    }
+    
     if(terminationType & ITERATION) {
         if(!policy->exists("iterationMax")) {
             throw LSST_EXCEPT(
@@ -61,29 +75,38 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
             "SingleLinearParameterFitter can only be applied to evaluators with 1 linear Parameter"
         );
     }
+    else if (evaluator.getNPixels() <= 0) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "ModelEvaluator has no associated exposures."
+        );
+    }
     Result::Ptr result = boost::make_shared<Result>();
     result->model = evaluator.getModel();    
     int nIterations = 0;
-    double chisq;
 
-    VectorMap image = getVectorView(evaluator.getImageVector());
-    VectorMap variance = getVectorView(evaluator.getVarianceVector());
-    Eigen::VectorXd data = image.cwise() / variance.cwise().sqrt();
+    VectorMap image(
+        evaluator.getImageVector().getData(),
+        evaluator.getNPixels()
+    );
+    VectorMap variance(
+        evaluator.getVarianceVector().getData(),
+        evaluator.getNPixels()
+    );
+    if(!(image.size() >0 && variance.size()> 0))
+        throw "foobared, something went to hell";
 
-    Eigen::VectorXd linear;
-    Eigen::VectorXd nonlinear;
+    Eigen::VectorXd data = (image.cwise() / (variance.cwise().sqrt()));
 
-    Eigen::VectorXd residual;
-    double newLinear;
     Eigen::VectorXd newLinearDNonlinear;
     Eigen::MatrixXd jacobian;
-    
+
+    double chisq, dChisq=DBL_MAX; 
     Eigen::VectorXd step;
     do {        
-        MatrixMap dLinear = MatrixMap(
+        VectorMap dLinear = VectorMap(
             evaluator.computeLinearParameterDerivative().getData(),
-            evaluator.getNPixels(),
-            evaluator.getLinearParameterSize()
+            evaluator.getNPixels()
         );
         MatrixMap dNonlinear = MatrixMap(
             evaluator.computeNonlinearParameterDerivative().getData(),
@@ -92,29 +115,32 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         );
 
 
-        Eigen::QR<Eigen::MatrixXd> qrLinear(dLinear);
+        Eigen::QR<Eigen::VectorXd> qrLinear(dLinear);
         
         //qr.matrixR() is a matrix with dimensions (1, 1), represent it as a double
         double R = qrLinear.matrixR()(0,0);
 
         //the new linear parameter as a funtion of the nonlinear parameters
-        newLinear = (qrLinear.matrixQ().transpose()*data)(0,0)/R;
+        double newLinear = (qrLinear.matrixQ().transpose()*data)(0,0)/R;
    
         //compute the residual as a function of the nonlinear parameters
-        residual = data - dLinear*newLinear;
+        Eigen::VectorXd residual = data - dLinear*newLinear;
 
         //compute the chisq
+        dChisq = chisq;
         chisq = (residual.dot(residual))/2;
+        dChisq -= chisq;
+        
 
         //compute derivative of new linear parameter w.r.t nonlinear parameters
         //this is a matrix with dimensions (nNonlinear, 1)
-        newLinearDNonlinear = dNonlinear.transpose()*(residual - dLinear*newLinear);
-        newLinearDNonlinear /= (R*R*newLinear);
+        Eigen::VectorXd dNewLinear = dNonlinear.transpose()*(residual - dLinear*newLinear);
+        dNewLinear /= (R*R*newLinear);
     
         //compute the jacobian of partial derivatives of the model w.r.t
         //nonlinear parameters
         //this is a matrix with dimensions (pixels, nNonlinear)
-        jacobian = -dNonlinear - dLinear*newLinearDNonlinear.transpose();
+        Eigen::MatrixXd jacobian = -dNonlinear - dLinear*dNewLinear.transpose();
 
         //compute the step to take on nonlinear parameters:
         //this is a matrix with dimensions (nNonlinear, 1)
@@ -122,13 +148,14 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
 
         (jacobian.transpose()*jacobian).llt().solveInPlace(step);
 
-        linear[0] = newLinear;
-        nonlinear = evaluator.getNonlinearParameters() + step;
-        evaluator.setLinearParameters(linear.data());
-        evaluator.setNonlinearParameters(nonlinear.data());
-    } while(!terminateIteration(chisq, nIterations, step));
+        Eigen::VectorXd newNonlinear = evaluator.getNonlinearParameters() + step;
+        evaluator.setLinearParameters(&newLinear);
+        evaluator.setNonlinearParameters(newNonlinear.data());
+        ++nIterations;
+    } while(!terminateIteration(dChisq, nIterations, step));
 
     result->chisq = chisq;
+    result->dChisq = dChisq;
     result->sdqaMetrics.set("nIterations", nIterations);
 
     return result;
