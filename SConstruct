@@ -8,7 +8,7 @@ import lsst.SConsUtils as scons
 
 # List the direct *and indirect* pacakage dependencies of your package here.
 # Indirect dependencies are needed to get header files.
-dependencies = ["boost", "python", "minuit", "cfitsio", "wcslib", "utils", 
+dependencies = ["boost", "python", "minuit2", "cfitsio", "wcslib", "utils", 
     "pex_exceptions", "eigen", "daf_base", "daf_data", "daf_persistence",
         "pex_logging", "pex_exceptions", "pex_policy", "security", "gsl", "afw",
         "meas_algorithms", "fftw"
@@ -29,12 +29,13 @@ env = scons.makeEnv(
         # If just a header is required, list it.
         ["boost", "boost/shared_ptr.hpp"],
         ["python", "Python.h"],
+        ["m", "math.h", "m", "sqrt"],
         ["utils", "lsst/utils/Utils.h", "utils:C++"],
         ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"],   
-        ["cfitsio", "fitsio.h", "m cfitsio", "ffopen"],
-        ["wcslib", "wcslib/wcs.h", "m wcs"],
+        ["cfitsio", "fitsio.h", "cfitsio", "ffopen"],
+        ["wcslib", "wcslib/wcs.h", "wcs"],
         ["xpa", "xpa.h", "xpa", "XPAPuts"],
-        ["minuit", "Minuit/FCNBase.h", "lcg_Minuit:C++"],
+        ["minuit2", "Minuit2/FCNBase.h", "Minuit2:C++"],
         ["daf_base", "lsst/daf/base.h", "daf_base:C++"],
         ["pex_policy", "lsst/pex/policy/Policy.h", "pex_policy:C++"],
         ["pex_logging", "lsst/pex/logging/Trace.h", "pex_logging:C++"],
@@ -43,8 +44,8 @@ env = scons.makeEnv(
         ["daf_data", "lsst/daf/data/LsstBase.h", "daf_data:C++"],
         ["gsl", "gsl/gsl_rng.h", "gslcblas gsl"],       
         ["eigen", "Eigen/Core.h"],
-        ["afw", "lsst/afw.h", "afw:C++"],
-        ["meas_algorithms", "lsst/meas/algorithms.h", "meas_algorithms:C++"],
+        ["afw", "lsst/afw/image/MaskedImage.h", "afw:C++"],
+        ["meas_algorithms", "lsst/meas/algorithms.h"],
         ["fftw", "fftw3.h"],
     ]
 )
