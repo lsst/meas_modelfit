@@ -13,15 +13,39 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=362                 // operator=  ignored
 
 %{
+#include "lsst/meas/algorithms/Centroid.h"
+#include "lsst/meas/algorithms/Photometry.h"
+#include "lsst/meas/algorithms/Shape.h"
+#include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
-#include "lsst/meas/multifit/ModelFactory.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
+#include "lsst/meas/multifit/ModelFactory.h"
+#include "lsst/meas/multifit/components/Astrometry.h"
+#include "lsst/meas/multifit/components/MorphologyProjection.h"
+#include "lsst/meas/multifit/components/Morphology.h"
+#include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
+#include "lsst/meas/multifit/ComponentModel.h"
+#include "lsst/meas/multifit/ComponentModelProjection.h"
+#include "lsst/meas/multifit/ComponentModelFactory.h"
+#include "lsst/meas/multifit/FourierModelProjection.h"
+#include "lsst/meas/multifit/PointSourceModelFactory.h"
+
 %}
+
+%inline %{
+namespace boost { }
+namespace lsst { namespace meas { namespace multifit { namespace components {} } } }    
+%}
+
+%ignore boost::noncopyable;
+namespace boost {
+    class noncopyable {};
+}
 
 %init %{
 %}
-/************************************************************************************************************/
+/******************************************************************************/
 
 %include "lsst/p_lsstSwig.i"
 %include "std_complex.i"
@@ -57,17 +81,54 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %import "lsst/afw/math/mathLib.i"
 %import "lsst/afw/geom/geomLib.i"
 
-
 %import "lsst/meas/algorithms/algorithmsLib.i"
 
-SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model);
+%include "lsst/meas/multifit/core.h"
+
+SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
 %include "lsst/meas/multifit/Model.h"
 
-SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection);
+SWIG_SHARED_PTR_DERIVED(PointSourceModelFactoryPtr, lsst::meas::multifit::ComponentModelFactory,
+    lsst::meas::multifit::PointSourceModelFactory)
+SWIG_SHARED_PTR_DERIVED(ComponentModelFactoryPtr, lsst::meas::multifit::ModelFactory,
+    lsst::meas::multifit::ComponentModelFactory)
+SWIG_SHARED_PTR(ModelFactoryPtr, lsst::meas::multifit::ModelFactory)
+
+%include "lsst/meas/multifit/ModelFactory.h"
+%include "lsst/meas/multifit/ComponentModelFactory.h"
+%include "lsst/meas/multifit/PointSourceModelFactory.h"
+
+
+SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
+%ignore lsst::meas::multifit::ModelProjection::computeModelImage;
+%ignore lsst::meas::multifit::ModelProjection::computeLinearParameterDerivative;
+%ignore lsst::meas::multifit::ModelProjection::computeNonlinearParameterDerivative;
+%ignore lsst::meas::multifit::ModelProjection::computeWcsParameterDerivative;
+%ignore lsst::meas::multifit::ModelProjection::computePsfParameterDerivative;
 %include "lsst/meas/multifit/ModelProjection.h"
 
-SWIG_SHARED_PTR(ModelFactoryPtr, lsst::meas::multifit::ModelFactory);
-%include "lsst/meas/multifit/ModelFactory.h"
+SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry)
+SWIG_SHARED_PTR(MorphologyProjectionPtr, lsst::meas::multifit::components::MorphologyProjection)
+SWIG_SHARED_PTR(MorphologyPtr, lsst::meas::multifit::components::Morphology)
+%include "lsst/meas/multifit/components/Astrometry.h"
+%include "lsst/meas/multifit/components/MorphologyProjection.h"
+%include "lsst/meas/multifit/components/Morphology.h"
 
-SWIG_SHARED_PTR(ModelEvalutatorPtr, lsst::meas::multifit::ModelEvaluator);
-%include "lsst/meas/multifit/ModelEvaluator.h"
+SWIG_SHARED_PTR_DERIVED(ComponentModelPtr, lsst::meas::multifit::Model, 	
+    lsst::meas::multifit::ComponentModel) 
+%include "lsst/meas/multifit/ComponentModel.h"
+
+SWIG_SHARED_PTR_DERIVED(ComponentModelProjectionPtr, lsst::meas::multifit::ModelProjection,
+    lsst::meas::multifit::ComponentModelProjection)
+%include "lsst/meas/multifit/ComponentModelProjection.h"
+    
+
+
+
+SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::ComponentModelProjection,
+    lsst::meas::multifit::FourierModelProjection)
+%include "lsst/meas/multifit/FourierModelProjection.h"
+
+
+
+

@@ -177,7 +177,6 @@ public:
             functor.apply(*frame.getFootprint());    
     
 
-        
             //set modelImage buffer
             frame._projection->setModelImageBuffer(
                 _modelImage[ndarray::view(pixelStart, pixelEnd)]
