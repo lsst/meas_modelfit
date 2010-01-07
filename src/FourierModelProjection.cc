@@ -264,7 +264,6 @@ private:
 // ----------------------------- FourierModelProjection ------------------------
 
 int const multifit::FourierModelProjection::getPsfParameterSize() const {
-    //TODO: test if _kernelVisitor is null, throw exception if needed
     if(!_kernelVisitor)
         return 0;
     return _kernelVisitor->getNParameters();

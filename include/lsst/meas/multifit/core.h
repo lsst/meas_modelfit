@@ -3,7 +3,8 @@
 
 #include <Eigen/Core>
 
-#include "lsst/afw/geom/ellipses.h"
+#include "lsst/afw/geom.h"
+#include "lsst/afw/geom/deprecated.h"
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/math/Kernel.h"

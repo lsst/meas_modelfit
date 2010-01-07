@@ -10,12 +10,16 @@ multifit::ComponentModelProjection::ComponentModelProjection(
     FootprintConstPtr const & footprint
 ) : ModelProjection(model, wcs, footprint),
     _validProducts(0),
-    //TODO: need wcs linearize api
-    _transform(boost::make_shared<lsst::afw::geom::AffineTransform>()),
     _morphologyProjection(), 
     _translationDerivative(), 
     _projectedParameterDerivative()
 {
+    lsst::afw::geom::AffineTransform linearApproximation(
+        wcs->getAffineTransform(lsst::afw::geom::convertToImage(getAstrometry()->apply()))
+    );
+    _transform = boost::make_shared<lsst::afw::geom::AffineTransform>(
+        linearApproximation.invert()
+    );
     _morphologyProjection = model->getMorphology()->makeProjection(
         lsst::afw::geom::ExtentI::make(
             psf->getWidth(), psf->getHeight()

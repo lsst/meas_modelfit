@@ -8,7 +8,7 @@ import lsst.SConsUtils as scons
 
 # List the direct *and indirect* pacakage dependencies of your package here.
 # Indirect dependencies are needed to get header files.
-dependencies = ["boost", "python", "minuit", "minuit2", "cfitsio", "wcslib", "utils", 
+dependencies = ["boost", "python", "minuit2", "cfitsio", "wcslib", "utils", 
     "pex_exceptions", "eigen", "daf_base", "daf_data", "daf_persistence",
         "pex_logging", "pex_exceptions", "pex_policy", "security", "gsl", "afw",
         "meas_algorithms", "fftw"
@@ -35,7 +35,7 @@ env = scons.makeEnv(
         ["cfitsio", "fitsio.h", "cfitsio", "ffopen"],
         ["wcslib", "wcslib/wcs.h", "wcs"],
         ["xpa", "xpa.h", "xpa", "XPAPuts"],
-        ["minuit", "Minuit/FCNBase.h", "lcg_Minuit:C++"], 
+        #["minuit", "Minuit/FCNBase.h", "lcg_Minuit:C++"], 
         ["minuit2", "Minuit2/FCNBase.h", "Minuit2:C++"],
         ["daf_base", "lsst/daf/base.h", "daf_base:C++"],
         ["pex_policy", "lsst/pex/policy/Policy.h", "pex_policy:C++"],
@@ -67,13 +67,20 @@ generated = ["include/ndarray/Array.hpp",
 headers = [env.M4(filename, "%s.m4" % filename) for filename in generated]
 env.Depends(headers, Glob("#m4/*.m4"))
 
+if True:
+    #
+    # Workaround SConsUtils failure to find numpy .h files. Fixed in sconsUtils >= 3.3.2
+    #
+    import numpy
+    env.Append(CCFLAGS = ["-I", numpy.get_include()])
+#
+
 ###############################################################################
 # Boilerplate below here.  Do not modify.
 
 pkg = env["eups_product"]
 env.libs[pkg] += env.getlibs(" ".join(dependencies))
 
-#
 # Build/install things
 #
 for d in Split("lib python/lsst/" + re.sub(r'_', "/", pkg) + " examples tests doc"):

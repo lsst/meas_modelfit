@@ -1,6 +1,5 @@
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
-
 #include "lsst/meas/multifit/footprintUtils.h"
 
 namespace multifit = lsst::meas::multifit;
@@ -16,8 +15,10 @@ multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
         int kernelSize = std::max(psf->getWidth(), psf->getHeight());
         ellipse->grow(kernelSize/2+1);
     }
-    //TODO: need wcs linearize api
-    //ellipse->transform(*wcs->linearize(ellipse->getCenter()));
+    lsst::afw::geom::AffineTransform linearApproximation(
+        wcs->getAffineTransform(lsst::afw::geom::convertToImage(ellipse->getCenter()))
+    );
+    ellipse->transform(linearApproximation.invert());
 
     return makeFootprint(*ellipse);
 }
@@ -32,8 +33,10 @@ lsst::afw::geom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
         ellipse->grow(kernelSize/2+1);
     }
 
-    //TODO::need api for linearizing a wcs solution
-    //ellipse->transform(*wcs->linearize(ellipse->getCenter()));
+    lsst::afw::geom::AffineTransform linearApproximation(
+        wcs->getAffineTransform(lsst::afw::geom::convertToImage(ellipse->getCenter()))
+    );
+    ellipse->transform(linearApproximation.invert());
     return ellipse->computeEnvelope();
 }
 
