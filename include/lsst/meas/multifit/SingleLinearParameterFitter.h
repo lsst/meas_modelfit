@@ -11,19 +11,22 @@
 namespace lsst {
 namespace meas {
 namespace multifit {
+
+struct SimpleFitResult {
+    typedef boost::shared_ptr<SimpleFitResult> Ptr;
+
+    SimpleFitResult() : convergenceFlags(0), chisq(0), model(), sdqaMetrics() {}
+    int convergenceFlags;
+    double chisq, dChisq;
+    Model::ConstPtr model;
+    lsst::daf::base::PropertySet sdqaMetrics;
+};
+
 class SingleLinearParameterFitter : public lsst::pex::policy::PolicyConfigured {
 public:
     enum TerminationType {ITERATION=1, CHISQ=2, STEP=4};
 
-    struct Result {
-        typedef boost::shared_ptr<Result> Ptr;
-
-        Result() : convergenceFlags(0), chisq(0), model(), sdqaMetrics() {}
-        int convergenceFlags;
-        double chisq, dChisq;
-        Model::ConstPtr model;
-        lsst::daf::base::PropertySet sdqaMetrics;
-    };
+    typedef SimpleFitResult Result;
 
     SingleLinearParameterFitter(lsst::pex::policy::Policy::Ptr const & policy);
 
