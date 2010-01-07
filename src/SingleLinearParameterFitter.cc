@@ -156,7 +156,7 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
 
     result->chisq = chisq;
     result->dChisq = dChisq;
-    result->sdqaMetrics.set("nIterations", nIterations);
+    result->sdqaMetrics->set("nIterations", nIterations);
 
     return result;
 }

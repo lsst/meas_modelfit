@@ -15,11 +15,16 @@ namespace multifit {
 struct SimpleFitResult {
     typedef boost::shared_ptr<SimpleFitResult> Ptr;
 
-    SimpleFitResult() : convergenceFlags(0), chisq(0), model(), sdqaMetrics() {}
+    SimpleFitResult() 
+        : convergenceFlags(0), 
+          chisq(0), dChisq(0),            
+          sdqaMetrics(new lsst::daf::base::PropertySet())
+    {}
+
     int convergenceFlags;
     double chisq, dChisq;
     Model::ConstPtr model;
-    lsst::daf::base::PropertySet sdqaMetrics;
+    lsst::daf::base::PropertySet::Ptr sdqaMetrics;
 };
 
 class SingleLinearParameterFitter : public lsst::pex::policy::PolicyConfigured {

@@ -78,6 +78,7 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
         return "%s (setup: %s)" % (version_svn, version_eups)
 %}
 
+%import "lsst/daf/base/baseLib.i"
 %import "lsst/afw/image/imageLib.i"
 %import "lsst/afw/detection/detectionLib.i"
 %import "lsst/afw/math/mathLib.i"
@@ -140,6 +141,8 @@ SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::Compone
 
 
 SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
+%ignore lsst::meas::multifit::ModelEvaluator::getImageVector;
+%ignore lsst::meas::multifit::ModelEvaluator::getVarianceVector;
 %ignore lsst::meas::multifit::ModelEvaluator::computeModelImage;
 %ignore lsst::meas::multifit::ModelEvaluator::computeLinearParameterDerivative;
 %ignore lsst::meas::multifit::ModelEvaluator::computeNonlinearParameterDerivative;
