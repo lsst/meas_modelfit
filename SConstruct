@@ -80,6 +80,12 @@ if True:
 
 pkg = env["eups_product"]
 env.libs[pkg] += env.getlibs(" ".join(dependencies))
+if True:
+    #
+    # Workaround SConsUtils failure to find numpy .h files. Fixed in sconsUtils >= 3.3.2
+    #
+    import numpy
+    env.Append(CCFLAGS = ["-I", numpy.get_include()])
 
 # Build/install things
 #

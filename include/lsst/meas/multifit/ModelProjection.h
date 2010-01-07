@@ -55,11 +55,13 @@ public:
      *  dimension (if any) corresponding to the parameter index.
      */
     //@{
+#ifndef SWIG
     ndarray::Array<Pixel const,1,1> computeModelImage();
     ndarray::Array<Pixel const,2,1> computeLinearParameterDerivative();
     ndarray::Array<Pixel const,2,1> computeNonlinearParameterDerivative();
     ndarray::Array<Pixel const,2,1> computeWcsParameterDerivative();
     ndarray::Array<Pixel const,2,1> computePsfParameterDerivative();
+#endif
     //@}
 
     /**

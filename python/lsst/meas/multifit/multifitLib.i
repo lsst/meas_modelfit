@@ -92,7 +92,8 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 
 %include "lsst/meas/multifit/core.h"
 
-%declareArray(lsst::meas::multifit::Pixel, 2, 1);
+%declareArray(lsst::meas::multifit::Pixel const, 1, 1);
+%declareArray(lsst::meas::multifit::Pixel const, 2, 1);
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
 %include "lsst/meas/multifit/Model.h"
@@ -109,12 +110,14 @@ SWIG_SHARED_PTR_DERIVED(PointSourceModelFactoryPtr, lsst::meas::multifit::Compon
 
 
 SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
-%ignore lsst::meas::multifit::ModelProjection::computeModelImage;
-%ignore lsst::meas::multifit::ModelProjection::computeLinearParameterDerivative;
-%ignore lsst::meas::multifit::ModelProjection::computeNonlinearParameterDerivative;
-%ignore lsst::meas::multifit::ModelProjection::computeWcsParameterDerivative;
-%ignore lsst::meas::multifit::ModelProjection::computePsfParameterDerivative;
 %include "lsst/meas/multifit/ModelProjection.h"
+%extend lsst::meas::multifit::ModelProjection {
+    %returnArray(computeModelImage, lsst::meas::multifit::Pixel const, 1, 1);
+    %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
+    %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
+    %returnArray(computeWcsParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
+    %returnArray(computePsfParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
+};
 
 SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry)
 SWIG_SHARED_PTR(MorphologyPtr, lsst::meas::multifit::components::Morphology)
@@ -147,13 +150,14 @@ SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::Compone
 
 
 SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
-%ignore lsst::meas::multifit::ModelEvaluator::getImageVector;
-%ignore lsst::meas::multifit::ModelEvaluator::getVarianceVector;
-%ignore lsst::meas::multifit::ModelEvaluator::computeModelImage;
-%ignore lsst::meas::multifit::ModelEvaluator::computeLinearParameterDerivative;
-%ignore lsst::meas::multifit::ModelEvaluator::computeNonlinearParameterDerivative;
-
 %include "lsst/meas/multifit/ModelEvaluator.h"
+%extend lsst::meas::multifit::ModelEvaluator {
+    %returnArray(getImageVector, lsst::meas::multifit::Pixel const, 1, 1);
+    %returnArray(getVarianceVector, lsst::meas::multifit::Pixel const, 1, 1);
+    %returnArray(computeModelImage, lsst::meas::multifit::Pixel const, 1, 1);
+    %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
+    %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
+};
 
 SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult)
 %include "lsst/meas/multifit/SingleLinearParameterFitter.h"

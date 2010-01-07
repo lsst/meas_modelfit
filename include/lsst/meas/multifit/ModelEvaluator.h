@@ -196,12 +196,13 @@ public:
         }   
     }
 
+#ifndef SWIG
     ndarray::Array<Pixel const, 1, 1> getImageVector() const {return _imageVector;}
     ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {return _varianceVector;}
     ndarray::Array<Pixel const, 1, 1> computeModelImage();
     ndarray::Array<Pixel const, 2, 2> computeLinearParameterDerivative();
     ndarray::Array<Pixel const, 2, 2> computeNonlinearParameterDerivative();
-
+#endif
 
     int const getLinearParameterSize() const {
         return _model->getLinearParameterSize();
