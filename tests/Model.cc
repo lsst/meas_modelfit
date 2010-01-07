@@ -76,15 +76,15 @@ public:
         multifit::WcsConstPtr const & wcs
     ) const {
         return lsst::afw::geom::BoxD(
-            lsst::afw::geom::PointD::makeXY(0, 0),
-            lsst::afw::geom::ExtentD::makeXY(10, 15)
+            lsst::afw::geom::PointD::make(0, 0),
+            lsst::afw::geom::ExtentD::make(10, 15)
         );
     }
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const {
         lsst::afw::geom::ellipses::Axes core(8, 6, 0);
         return boost::make_shared<lsst::afw::geom::ellipses::AxesEllipse>(
             core,
-            lsst::afw::geom::PointD::makeXY(5, 7.5)
+            lsst::afw::geom::PointD::make(5, 7.5)
         );
     }
 

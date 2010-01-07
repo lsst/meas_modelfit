@@ -20,7 +20,7 @@ namespace geom = lsst::afw::geom;
 namespace image = lsst::afw::image;
 
 BOOST_AUTO_TEST_CASE(WindowedFootprintBasic) {
-    geom::PointI min = geom::PointI::makeXY(3,4);
+    geom::PointI min = geom::PointI::make(3,4);
     int size = 20;
     geom::PointI max(min + geom::ExtentI(size-1));
 
@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE(WindowedFootprintBasic) {
     BOOST_CHECK_EQUAL(windowedFp.getWindow().getHeight(), fp.getBBox().getHeight());
     //shrink the window in a predicatble way
     //this is halving the size of the box, also the number of pixels
-    geomBBox.grow(geom::ExtentI::makeXY(0, -size/4));
+    geomBBox.grow(geom::ExtentI::make(0, -size/4));
 
     windowedFp = multifit::WindowedFootprint(fp, geomBBox);
     BOOST_CHECK_EQUAL(windowedFp.getWindow().getWidth(), fp.getBBox().getWidth());
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(WindowedFootprintBasic) {
 }
 
 BOOST_AUTO_TEST_CASE(WindowFootprintCompress) {
-    geom::PointI min = geom::PointI::makeXY(3,4);
+    geom::PointI min = geom::PointI::make(3,4);
     int size = 4;
 
     detection::Footprint fp(
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(WindowFootprintCompress) {
     );
     image::BBox imageBBox = fp.getBBox();
 
-    geom::BoxI geomBBox = geom::BoxI(min, geom::ExtentI::makeXY(size, size/2));
+    geom::BoxI geomBBox = geom::BoxI(min, geom::ExtentI::make(size, size/2));
     multifit::WindowedFootprint windowedFp(fp, geomBBox);
 
     BOOST_WARN(windowedFp.getNpix()>0);
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(WindowFootprintCompress) {
 }
 
 BOOST_AUTO_TEST_CASE(WindowedFootprintExpand) {
-    geom::PointI min = geom::PointI::makeXY(3,4);
+    geom::PointI min = geom::PointI::make(3,4);
     int size = 4;
 
     detection::Footprint fp(
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(WindowedFootprintExpand) {
     );
     image::BBox imageBBox = fp.getBBox();
 
-    geom::BoxI geomBBox = geom::BoxI(min, geom::ExtentI::makeXY(size, size/2));
+    geom::BoxI geomBBox = geom::BoxI(min, geom::ExtentI::make(size, size/2));
     multifit::WindowedFootprint windowedFp(fp, geomBBox);
 
 

@@ -7,4 +7,5 @@
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
 
+
 #endif

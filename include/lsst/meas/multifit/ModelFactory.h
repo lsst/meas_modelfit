@@ -75,7 +75,7 @@ public:
 
 private:
     typedef std::map<std::string,ModelFactory::ConstPtr> RegistryMap;
-    static RegistryMap _registry;
+    static RegistryMap & getRegistry();
 };
 
 

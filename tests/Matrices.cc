@@ -42,8 +42,8 @@ BOOST_AUTO_TEST_CASE(MatrixBasic) {
     int paramStart = 0, paramEnd = 4;
     //x== pix y == param
     lsst::afw::geom::BoxI mViewBox(
-        lsst::afw::geom::PointI::makeXY(pixStart, paramStart),
-        lsst::afw::geom::PointI::makeXY(pixEnd, paramEnd)
+        lsst::afw::geom::PointI::make(pixStart, paramStart),
+        lsst::afw::geom::PointI::make(pixEnd, paramEnd)
     );
 
     //now make a view into the master array

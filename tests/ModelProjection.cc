@@ -33,7 +33,7 @@ namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(FourierModelProjection) {
     multifit::PointSourceModelFactory psFactory;
-    lsst::afw::geom::PointD centroid = geom::PointD::makeXY(35,65);
+    lsst::afw::geom::PointD centroid = geom::PointD::make(35,65);
     double flux = 34.45;
     multifit::Model::Ptr psModel = psFactory.makeModel(flux, centroid);
     

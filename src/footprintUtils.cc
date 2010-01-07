@@ -14,7 +14,7 @@ lsst::afw::detection::Footprint::Ptr multifit::makeFootprint(
     lsst::afw::geom::ExtentD dp(lsst::afw::geom::PointD(0) -ellipse.getCenter());
     for (int y = envelope.getMinY(); y<yEnd; ++y) {
         int x = envelope.getMinX();
-        while (rf(lsst::afw::geom::PointD::makeXY(x,y) + dp) > 1.0) {
+        while (rf(lsst::afw::geom::PointD::make(x,y) + dp) > 1.0) {
             if (x >= xEnd) {
                 if (++y >= yEnd) 
                     return fp;
@@ -24,7 +24,7 @@ lsst::afw::detection::Footprint::Ptr multifit::makeFootprint(
             }
         }
         int start = x;
-        while (rf(lsst::afw::geom::PointD::makeXY(x,y) + dp) <= 1.0 && x < xEnd) 
+        while (rf(lsst::afw::geom::PointD::make(x,y) + dp) <= 1.0 && x < xEnd) 
             ++x;
 
         fp->addSpan(y, start, x-1);

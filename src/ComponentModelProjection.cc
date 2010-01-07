@@ -17,7 +17,7 @@ multifit::ComponentModelProjection::ComponentModelProjection(
     _projectedParameterDerivative()
 {
     _morphologyProjection = model->getMorphology()->makeProjection(
-        lsst::afw::geom::ExtentI::makeXY(
+        lsst::afw::geom::ExtentI::make(
             psf->getWidth(), psf->getHeight()
         ), 
         _transform

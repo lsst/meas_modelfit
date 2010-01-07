@@ -41,7 +41,7 @@ public:
 
     /// \brief Return the reference point (ra,dec).
     lsst::afw::geom::Point2D getRefPoint() const { 
-        return lsst::afw::geom::Point2D::makeXY(_astrometryParameterIter[0],_astrometryParameterIter[1]);
+        return lsst::afw::geom::Point2D::make(_astrometryParameterIter[0],_astrometryParameterIter[1]);
     }
 
     /**

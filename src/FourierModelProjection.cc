@@ -341,7 +341,7 @@ void multifit::FourierModelProjection::_computeProjectedParameterDerivative(
 void multifit::FourierModelProjection::_handleLinearParameterChange() {
     ComponentModelProjection::_handleLinearParameterChange();
 
-    if (lsst::afw::geom::any(_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions())) {
+    if (_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions()) {
         _setDimensions();
     } else {
         _linearMatrixHandler->handleLinearParameterChange();
@@ -352,7 +352,7 @@ void multifit::FourierModelProjection::_handleLinearParameterChange() {
 
 void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
     ComponentModelProjection::_handleNonlinearParameterChange();
-    if (lsst::afw::geom::any(_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions())) {
+    if (_getMorphologyProjection()->getDimensions() != _outerBBox.getDimensions()) {
         _setDimensions();
     } else {
         _linearMatrixHandler->handleNonlinearParameterChange();
@@ -382,7 +382,7 @@ multifit::FourierModelProjection::FourierModelProjection(
 void multifit::FourierModelProjection::_setDimensions() {
     lsst::afw::geom::Extent2I dimensions = getMorphologyProjection()->getDimensions();
     lsst::afw::geom::Point2D centerOnExposure = _getPsfPosition();
-    lsst::afw::geom::Point2I bboxMin = lsst::afw::geom::Point2I::makeXY(
+    lsst::afw::geom::Point2I bboxMin = lsst::afw::geom::Point2I::make(
         int(std::floor(centerOnExposure.getX() - dimensions.getX()/2)),
         int(std::floor(centerOnExposure.getY() - dimensions.getY()/2))
     );
@@ -395,10 +395,10 @@ void multifit::FourierModelProjection::_setDimensions() {
     //TODO: convert footprint to use geom::Box2I
     lsst::afw::image::BBox deprecatedBBox = getFootprint()->getBBox();
     lsst::afw::geom::BoxI footprintBBox(
-        lsst::afw::geom::Point2I::makeXY(
+        lsst::afw::geom::Point2I::make(
             deprecatedBBox.getX0(), deprecatedBBox.getY0()
         ),
-        lsst::afw::geom::Extent2I::makeXY(
+        lsst::afw::geom::Extent2I::make(
             deprecatedBBox.getWidth(), 
             deprecatedBBox.getHeight()
         )

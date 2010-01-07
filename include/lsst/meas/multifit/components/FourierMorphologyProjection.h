@@ -32,7 +32,7 @@ public:
     lsst::afw::geom::Extent2I const getPadding() const {
         lsst::afw::geom::Extent2I kernelDimensions(getKernelDimensions());
         
-        return lsst::afw::geom::Extent2I::makeXY(
+        return lsst::afw::geom::Extent2I::make(
             kernelDimensions.getX()/2 + 1,
             kernelDimensions.getY()/2 + 1
         ); 

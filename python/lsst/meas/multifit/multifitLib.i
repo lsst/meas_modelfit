@@ -33,6 +33,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/PointSourceModelFactory.h"
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
+#define NDARRAY_PYTHON_MAIN
 %}
 
 %inline %{
@@ -45,13 +46,16 @@ namespace boost {
     class noncopyable {};
 }
 
+%include "ndarray.i"
+
 %init %{
+    import_array();
 %}
 /******************************************************************************/
 
 %include "lsst/p_lsstSwig.i"
 %include "std_complex.i"
-	
+
 %lsst_exceptions();
 
 %pythoncode %{
@@ -87,6 +91,8 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %import "lsst/meas/algorithms/algorithmsLib.i"
 
 %include "lsst/meas/multifit/core.h"
+
+%declareArray(lsst::meas::multifit::Pixel, 2, 1);
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
 %include "lsst/meas/multifit/Model.h"
