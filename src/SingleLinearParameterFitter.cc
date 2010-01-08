@@ -101,7 +101,7 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
     Eigen::VectorXd newLinearDNonlinear;
     Eigen::MatrixXd jacobian;
 
-    double chisq, dChisq=DBL_MAX; 
+    double chisq=DBL_MAX, dChisq=DBL_MAX; 
     Eigen::VectorXd step;
     do {        
         VectorMap dLinear = VectorMap(
@@ -120,14 +120,16 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         //qr.matrixR() is a matrix with dimensions (1, 1), represent it as a double
         double R = qrLinear.matrixR()(0,0);
 
-        //the new linear parameter as a funtion of the nonlinear parameters
+        //the new linear parameter as a function of the nonlinear parameters
         double newLinear = (qrLinear.matrixQ().transpose()*data)(0,0)/R;
    
         //compute the residual as a function of the nonlinear parameters
         Eigen::VectorXd residual = data - dLinear*newLinear;
 
         //compute the chisq
-        dChisq = chisq;
+        if (nIterations > 0) {
+            dChisq = chisq;
+        }
         chisq = (residual.dot(residual))/2;
         dChisq -= chisq;
         

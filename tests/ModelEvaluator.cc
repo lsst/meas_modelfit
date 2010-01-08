@@ -26,8 +26,6 @@ namespace geom = lsst::afw::geom;
 namespace measAlg = lsst::meas::algorithms;
 
 BOOST_AUTO_TEST_CASE(ModelBasic) {
-    typedef multifit::ModelEvaluator::Traits<float, lsst::afw::image::MaskPixel,
-        lsst::afw::image::VariancePixel> Traits;
 
     multifit::ParameterVector linear(1), nonlinear (2);
     linear << 5;
@@ -35,30 +33,29 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     multifit::Model::Ptr model = multifit::makeModel("PointSource", linear, nonlinear);
 
     multifit::ModelEvaluator evaluator(model);
-    Traits::Exposure::Ptr exposure;
+    multifit::CharacterizedExposure<multifit::Pixel>::Ptr exposure;
 
     image::Wcs wcs(
         image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
     );
-    multifit::PsfConstPtr psf = 
+    multifit::Psf::Ptr psf = 
         measAlg::createPSF("DoubleGaussian", 19, 19, 1.5);
 
-    Traits::CalibratedExposureList exposureList;
+    std::list<multifit::CharacterizedExposure<multifit::Pixel>::Ptr> exposureList;
 
     //one exposure with full coverage
-    exposure = boost::make_shared<Traits::Exposure>(50, 50, wcs);
-    exposureList.push_back(Traits::CalibratedExposure(exposure, psf));
+    exposure = boost::make_shared< multifit::CharacterizedExposure<multifit::Pixel> >(50, 50, wcs, psf);
+    exposureList.push_back(exposure);
     
     //one exposure with partial coverage
-    exposure = boost::make_shared<Traits::Exposure>(50, 25, wcs),
-    exposureList.push_back(Traits::CalibratedExposure(exposure, psf));
+    exposure = boost::make_shared< multifit::CharacterizedExposure<multifit::Pixel> >(50, 25, wcs, psf);
+    exposureList.push_back(exposure);
     //one exposure with no coverage, by shifting image origin
-    exposure = boost::make_shared<Traits::Exposure>(5, 5, wcs);
+    exposure = boost::make_shared< multifit::CharacterizedExposure<multifit::Pixel> >(5, 5, wcs, psf);
     exposure->getMaskedImage().setXY0(150, 150);
-    exposureList.push_back(Traits::CalibratedExposure(exposure, psf));
+    exposureList.push_back(exposure);
 
-    evaluator.setExposureList<float, lsst::afw::image::MaskPixel, 
-        lsst::afw::image::VariancePixel>(exposureList);
+    evaluator.setExposureList(exposureList);
 
     ndarray::Array<multifit::Pixel const, 1, 1> img;
     ndarray::Array<multifit::Pixel const, 1, 1> var;

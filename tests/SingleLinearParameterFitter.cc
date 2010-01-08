@@ -27,8 +27,6 @@ namespace geom = lsst::afw::geom;
 namespace measAlg = lsst::meas::algorithms;
 
 BOOST_AUTO_TEST_CASE(FitterBasic) {
-    typedef multifit::ModelEvaluator::Traits<double, lsst::afw::image::MaskPixel,
-        lsst::afw::image::VariancePixel> Traits;
 
     multifit::ParameterVector linear(1), nonlinear (2);
     linear << 5;
@@ -45,10 +43,10 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
         image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
     );
 
-    image::Exposure<double>::Ptr exposure = image::Exposure<double>::Ptr(
-        new image::Exposure<double>(testImg, wcs)
+    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 9, 9, 3);
+    multifit::CharacterizedExposure<double>::Ptr exposure = multifit::CharacterizedExposure<double>::Ptr(
+        new image::CharacterizedExposure<double>(testImg, wcs, psf)
     );
-    multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 9, 9, 3);
 
     lsst::afw::image::Image<double> subImage(
         *testImg.getImage(), 
@@ -59,7 +57,7 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
     Traits::CalibratedExposureList exposureList;
 
     for(int i=0; i < 15; ++i) {
-        exposureList.push_back(Traits::CalibratedExposure(exposure, psf));
+        exposureList.push_back(exposure);
     }
     evaluator.setExposureList<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>(exposureList);
 

@@ -14,6 +14,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=362                 // operator=  ignored
 
 %{
+#include "lsst/afw/detection.h" // these sholdn't be necessary, but SWIG fails if they aren't there.
 #include "lsst/meas/algorithms/Centroid.h"
 #include "lsst/meas/algorithms/Photometry.h"
 #include "lsst/meas/algorithms/Shape.h"
@@ -47,6 +48,7 @@ namespace boost {
     class noncopyable {};
 }
 
+%include "std_list.i"
 %include "ndarray.i"
 
 %init %{
@@ -153,6 +155,21 @@ SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::Compone
 %include "lsst/meas/multifit/ComponentModelProjection.h"    
 %include "lsst/meas/multifit/FourierModelProjection.h"
 
+SWIG_SHARED_PTR_DERIVED(
+    CharacterizedExposureFPtr, 
+    lsst::afw::image::Exposure<float>,
+    lsst::meas::multifit::CharacterizedExposure<float>
+);                      
+SWIG_SHARED_PTR_DERIVED(
+    CharacterizedExposureDPtr, 
+    lsst::afw::image::Exposure<double>,
+    lsst::meas::multifit::CharacterizedExposure<double>
+);                      
+%include "lsst/meas/multifit/CharacterizedExposure.h"
+%template(CharacterizedExposureF) lsst::meas::multifit::CharacterizedExposure<float>;
+%template(CharacterizedExposureD) lsst::meas::multifit::CharacterizedExposure<double>;
+%template(CharacterizedExposureListF) std::list<lsst::meas::multifit::CharacterizedExposure<float>::Ptr>;
+%template(CharacterizedExposureListD) std::list<lsst::meas::multifit::CharacterizedExposure<double>::Ptr>;
 
 SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
 %nodefaultctor lsst::meas::multifit::ModelEvaluator;
@@ -163,6 +180,15 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
     %returnArray(computeModelImage, lsst::meas::multifit::Pixel const, 1, 1);
     %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
     %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
+    
+    // poor-man's %template for templated member functions (couldn't figure out how to do it with %template)
+    void setExposureList(
+        std::list<lsst::meas::multifit::CharacterizedExposure<float>::Ptr> const & exposureList
+    ) { self->setExposureList(exposureList); }
+    void setExposureList(
+        std::list<lsst::meas::multifit::CharacterizedExposure<double>::Ptr> const & exposureList
+    ) { self->setExposureList(exposureList); }
+    
 };
 
 SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult)
