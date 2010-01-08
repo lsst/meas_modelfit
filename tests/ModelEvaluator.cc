@@ -37,20 +37,23 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     multifit::ModelEvaluator evaluator(model);
     Traits::Exposure::Ptr exposure;
 
+    image::Wcs wcs(
+        image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
+    );
     multifit::PsfConstPtr psf = 
         measAlg::createPSF("DoubleGaussian", 19, 19, 1.5);
 
     Traits::CalibratedExposureList exposureList;
 
     //one exposure with full coverage
-    exposure = boost::make_shared<Traits::Exposure>(50, 50);
+    exposure = boost::make_shared<Traits::Exposure>(50, 50, wcs);
     exposureList.push_back(Traits::CalibratedExposure(exposure, psf));
     
     //one exposure with partial coverage
-    exposure = boost::make_shared<Traits::Exposure>(50, 25),
+    exposure = boost::make_shared<Traits::Exposure>(50, 25, wcs),
     exposureList.push_back(Traits::CalibratedExposure(exposure, psf));
     //one exposure with no coverage, by shifting image origin
-    exposure = boost::make_shared<Traits::Exposure>(5, 5);
+    exposure = boost::make_shared<Traits::Exposure>(5, 5, wcs);
     exposure->getMaskedImage().setXY0(150, 150);
     exposureList.push_back(Traits::CalibratedExposure(exposure, psf));
 

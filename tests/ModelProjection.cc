@@ -39,8 +39,10 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
     
     BOOST_CHECK_EQUAL(psModel->getLinearParameterSize(), 1);
     BOOST_CHECK_EQUAL(psModel->getNonlinearParameterSize(), 2);
+    multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
+        image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
+    );
 
-    multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>();
     multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.5);
     multifit::FootprintConstPtr fp = psModel->computeProjectionFootprint(psf, wcs);
     

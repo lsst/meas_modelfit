@@ -40,10 +40,13 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
     lsst::afw::image::MaskedImage<double> testImg(50,50);
     //add a bogus variance
     *testImg.getVariance() = 0.1;
-    image::Wcs::Ptr wcs(new image::Wcs());
+
+    image::Wcs wcs(
+        image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
+    );
 
     image::Exposure<double>::Ptr exposure = image::Exposure<double>::Ptr(
-        new image::Exposure<double>(testImg, *wcs)
+        new image::Exposure<double>(testImg, wcs)
     );
     multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 9, 9, 3);
 
