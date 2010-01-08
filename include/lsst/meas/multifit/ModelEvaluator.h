@@ -17,8 +17,10 @@ namespace lsst {
 namespace meas {
 namespace multifit{
 
-class ModelEvaluator : public boost::noncopyable {
-public:     
+class ModelEvaluator : boost::noncopyable {
+public:
+
+#ifndef SWIG
     class ProjectionFrame {
     public:
         ProjectionFrame(){}
@@ -196,7 +198,6 @@ public:
         }   
     }
 
-#ifndef SWIG
     ndarray::Array<Pixel const, 1, 1> getImageVector() const {return _imageVector;}
     ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {return _varianceVector;}
     ndarray::Array<Pixel const, 1, 1> computeModelImage();
@@ -236,9 +237,12 @@ public:
     Model::ConstPtr getModel() const {return _model;}
     int const getNProjections() const {return _projectionList.size();}
     int const getNPixels() const {return _imageVector.getSize<0>();}
+
+#ifndef SWIG
     ProjectionFrameList const & getProjectionList() const {
         return _projectionList;
     }
+#endif
 
 private:        
     typedef ProjectionFrameList::iterator ProjectionFrameIterator;

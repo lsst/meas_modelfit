@@ -5,6 +5,7 @@ Basic routines to talk to lsst::meas::multifit classes
 "
 %enddef
 
+
 %feature("autodoc", "1");
 %module(package="lsst.meas.multifit", docstring=multifitLib_DOCSTRING) multifitLib
 
@@ -53,6 +54,7 @@ namespace boost {
 %}
 /******************************************************************************/
 
+
 %include "lsst/p_lsstSwig.i"
 %include "std_complex.i"
 
@@ -92,8 +94,9 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 
 %include "lsst/meas/multifit/core.h"
 
-%declareArray(lsst::meas::multifit::Pixel const, 1, 1);
-%declareArray(lsst::meas::multifit::Pixel const, 2, 1);
+%declareArray(lsst::meas::multifit::Pixel, 1, 1);
+%declareArray(lsst::meas::multifit::Pixel, 2, 1);
+%declareEigenMatrix(lsst::meas::multifit::ParameterVector);
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
 %include "lsst/meas/multifit/Model.h"
@@ -109,6 +112,7 @@ SWIG_SHARED_PTR_DERIVED(PointSourceModelFactoryPtr, lsst::meas::multifit::Compon
 %include "lsst/meas/multifit/PointSourceModelFactory.h"
 
 
+
 SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
 %include "lsst/meas/multifit/ModelProjection.h"
 %extend lsst::meas::multifit::ModelProjection {
@@ -118,6 +122,7 @@ SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
     %returnArray(computeWcsParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
     %returnArray(computePsfParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
 };
+
 
 SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry)
 SWIG_SHARED_PTR(MorphologyPtr, lsst::meas::multifit::components::Morphology)
@@ -150,6 +155,7 @@ SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::Compone
 
 
 SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
+%nodefaultctor lsst::meas::multifit::ModelEvaluator;
 %include "lsst/meas/multifit/ModelEvaluator.h"
 %extend lsst::meas::multifit::ModelEvaluator {
     %returnArray(getImageVector, lsst::meas::multifit::Pixel const, 1, 1);
@@ -161,4 +167,3 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
 
 SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult)
 %include "lsst/meas/multifit/SingleLinearParameterFitter.h"
-
