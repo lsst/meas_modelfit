@@ -211,10 +211,10 @@ public:
         return _model->getNonlinearParameterSize();
     }
     ParameterVector const & getLinearParameters() const {
-        return _model->getLinearParameterVector();
+        return _model->getLinearParameters();
     }
     ParameterVector const & getNonlinearParameters() const {
-        return _model->getNonlinearParameterVector();
+        return _model->getNonlinearParameters();
     }
 
     void setLinearParameters(

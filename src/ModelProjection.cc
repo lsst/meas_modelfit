@@ -209,7 +209,7 @@ void multifit::ModelProjection::_computeModelImage(ndarray::Array<Pixel,1,1> con
     ndarray::Array<Pixel const,2,1> array(computeLinearParameterDerivative());
     MatrixMap map(array.getData(), array.getStride<0>(), array.getSize<0>());
     MatrixMapBlock block(map, 0, 0, array.getSize<1>(), array.getSize<0>());
-    getVectorView(vector) = block * _model->getLinearParameterVector();
+    getVectorView(vector) = block * _model->getLinearParameters();
 }
 
 void multifit::ModelProjection::_handleLinearParameterChange() {

@@ -95,5 +95,5 @@ void multifit::ComponentModel::_construct(
     ParameterConstIterator i = getNonlinearParameterIter();
     _astrometry = astrometryTemplate->create(i);
     i += _astrometry->getAstrometryParameterSize();
-    _morphology = morphologyTemplate->create(_linearParameterVector, i);
+    _morphology = morphologyTemplate->create(_linearParameters, i);
 }

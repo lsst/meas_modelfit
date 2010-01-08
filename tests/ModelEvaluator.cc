@@ -32,10 +32,7 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     multifit::ParameterVector linear(1), nonlinear (2);
     linear << 5;
     nonlinear << 25, 25;
-    multifit::ModelFactory::ConstPtr factory = 
-        multifit::ModelFactory::lookupFactory("PointSourceModelFactory");    
-    multifit::Model::Ptr model = 
-        factory->makeModel(1, linear.data(), nonlinear.data());
+    multifit::Model::Ptr model = multifit::makeModel("PointSource", linear, nonlinear);
 
     multifit::ModelEvaluator evaluator(model);
     Traits::Exposure::Ptr exposure;

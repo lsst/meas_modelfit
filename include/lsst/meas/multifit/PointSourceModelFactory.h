@@ -18,11 +18,11 @@ public:
         )
     {}
 
-    static bool registerMe();
+    static bool declareMe();
     Model::Ptr makeModel(double, lsst::afw::geom::Point2D const &);
 private:
     static std::string getName() {
-        return "PointSourceModelFactory";
+        return "PointSource";
     }
 };
 

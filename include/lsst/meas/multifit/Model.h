@@ -64,40 +64,46 @@ public:
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const = 0;
 
     /// \brief Return a vector of the linear parameters.
-    ParameterVector const & getLinearParameterVector() const { 
-        return *_linearParameterVector; 
+    ParameterVector const & getLinearParameters() const { 
+        return *_linearParameters; 
     }
 
     /// \brief Return an iterator to the beginning of the linear parameters.
     ParameterConstIterator getLinearParameterIter() const { 
-        return _linearParameterVector->data(); 
+        return _linearParameters->data(); 
     }
 
     /// \brief Return the number of linear parameters.
     int const getLinearParameterSize() const { 
-        return _linearParameterVector->size(); 
+        return _linearParameters->size(); 
     }
 
     /// \brief Set the linear parameters.
     void setLinearParameters(ParameterConstIterator parameterIter);
+    void setLinearParameters(ParameterVector const & parameters) {
+        setLinearParameters(parameters.data());
+    }
 
     /// \brief Return a vector of the nonlinear parameters.
-    ParameterVector const & getNonlinearParameterVector() const { 
-        return *_nonlinearParameterVector; 
+    ParameterVector const & getNonlinearParameters() const { 
+        return *_nonlinearParameters; 
     }
 
     /// \brief Return an iterator to the beginning of the nonlinear parameters.
     ParameterConstIterator getNonlinearParameterIter() const { 
-        return _nonlinearParameterVector->data(); 
+        return _nonlinearParameters->data(); 
     }
 
     /// \brief Return the number of nonlinear parameters.
     int const getNonlinearParameterSize() const { 
-        return _nonlinearParameterVector->size(); 
+        return _nonlinearParameters->size(); 
     }
 
     /// \brief Set the nonlinear parameters.
     void setNonlinearParameters(ParameterConstIterator parameterIter);
+    void setNonlinearParameters(ParameterVector const & parameters) {
+        setNonlinearParameters(parameters.data());
+    }
 
     /**
      *  \brief Create a new Model with the same type and parameters.
@@ -124,8 +130,8 @@ protected:
 
     /// \brief Initialize the Model and allocate space for the parameter vectors.
     Model(int linearParameterSize, int nonlinearParameterSize)       
-      : _linearParameterVector(boost::make_shared<ParameterVector>(linearParameterSize)),
-        _nonlinearParameterVector(boost::make_shared<ParameterVector>(nonlinearParameterSize)),
+      : _linearParameters(boost::make_shared<ParameterVector>(linearParameterSize)),
+        _nonlinearParameters(boost::make_shared<ParameterVector>(nonlinearParameterSize)),
         _projectionList()
     {}
 
@@ -136,8 +142,8 @@ protected:
      * associated with the new Model
      */ 
     explicit Model(Model const & model) 
-      : _linearParameterVector(boost::make_shared<ParameterVector>(model.getLinearParameterVector())),
-        _nonlinearParameterVector(boost::make_shared<ParameterVector>(model.getNonlinearParameterVector())),
+      : _linearParameters(boost::make_shared<ParameterVector>(model.getLinearParameters())),
+        _nonlinearParameters(boost::make_shared<ParameterVector>(model.getNonlinearParameters())),
         _projectionList()
     {}
 
@@ -166,8 +172,8 @@ protected:
     /// \brief Add a newly-created projection to the list of listeners.
     void _registerProjection(boost::shared_ptr<ModelProjection> const & projection) const;
 
-    boost::shared_ptr<ParameterVector> _linearParameterVector;
-    boost::shared_ptr<ParameterVector> _nonlinearParameterVector;
+    boost::shared_ptr<ParameterVector> _linearParameters;
+    boost::shared_ptr<ParameterVector> _nonlinearParameters;
 
 private:
     friend class ModelFactory;

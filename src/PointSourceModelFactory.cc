@@ -2,18 +2,18 @@
 #include <boost/make_shared.hpp>
 namespace multifit = lsst::meas::multifit;
 
-bool multifit::PointSourceModelFactory::registerMe() {
-    static bool isRegistered = false;
+bool multifit::PointSourceModelFactory::declareMe() {
+    static bool isDeclared = false;
 
-    if(!isRegistered) {
-        ModelFactory::registerFactory(
+    if(!isDeclared) {
+        ModelFactory::declare(
             getName(), 
             boost::make_shared<PointSourceModelFactory const>()
         );
-        isRegistered = true;
+        isDeclared = true;
     }
 
-    return isRegistered;
+    return isDeclared;
 }
 
 multifit::Model::Ptr multifit::PointSourceModelFactory::makeModel(
@@ -22,10 +22,11 @@ multifit::Model::Ptr multifit::PointSourceModelFactory::makeModel(
     ParameterVector linear(1);
     linear << flux;
     return ComponentModelFactory::makeModel(
-        1, linear.data(), position.asVector().data()
+        linear, 
+        position.asVector()
     ); 
 }
 
 namespace {
- bool isRegistered = multifit::PointSourceModelFactory::registerMe();
+ bool isDeclared = multifit::PointSourceModelFactory::declareMe();
 }

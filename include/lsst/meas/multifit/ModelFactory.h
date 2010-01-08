@@ -41,14 +41,14 @@ public:
     typedef boost::shared_ptr<ModelFactory const> ConstPtr;
 
     /// \brief Retrieve the factory registered with the given name.
-    static ModelFactory::ConstPtr lookupFactory(std::string const & name);
+    static ModelFactory::ConstPtr lookup(std::string const & name);
     
     /**
      *  \brief Register a factory with the given name.
      *
      *  \return true on success, false if the given name is already in use.
      */
-    static bool registerFactory(std::string const & name, ModelFactory::ConstPtr const & factory);
+    static bool declare(std::string const & name, ModelFactory::ConstPtr const & factory);
 
     /**
      *  \brief Create a Model.
@@ -56,10 +56,9 @@ public:
      *  \todo Add another constructor that takes direct measurement quantities for use
      *  in initializing from detection-stage results.
      */
-    virtual boost::shared_ptr<Model> makeModel(
-        int linearParameterSize,
-        ParameterConstIterator linearParameters,
-        ParameterConstIterator nonlinearParameters
+    virtual boost::shared_ptr<Model> makeModel(        
+        ParameterVector const & linearParameters,
+        ParameterVector const & nonlinearParameters
     ) const = 0;
     
     /// \brief Return the number of nonlinear parameters in Models produced by this factory.
@@ -78,6 +77,14 @@ private:
     static RegistryMap & getRegistry();
 };
 
+/**
+ * Factory function to return a Model
+ */
+boost::shared_ptr<Model> makeModel(
+    std::string const & type, 
+    ParameterVector const & linearParameters, 
+    ParameterVector const & nonlinearParameters
+);
 
 
 }}} // namespace lsst::meas::multifit

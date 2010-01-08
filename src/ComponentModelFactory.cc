@@ -5,16 +5,15 @@ namespace multifit = lsst::meas::multifit;
 
 // ComponentModelFactory -------------------------------------------------------
 multifit::Model::Ptr multifit::ComponentModelFactory::makeModel(
-    int linearParameterSize,
-    ParameterConstIterator linearParameterIter,
-    ParameterConstIterator nonlinearParameterIter
+    ParameterVector const & linearParameters,
+    ParameterVector const & nonlinearParameters
 ) const {
     Model::Ptr model(
         new ComponentModel(
-            linearParameterSize, _astrometryTemplate, _morphologyTemplate
+            linearParameters.size(), _astrometryTemplate, _morphologyTemplate
         )
     );
-    model->setLinearParameters(linearParameterIter);
-    model->setNonlinearParameters(nonlinearParameterIter);
+    model->setLinearParameters(linearParameters);
+    model->setNonlinearParameters(nonlinearParameters);
     return model;
 }

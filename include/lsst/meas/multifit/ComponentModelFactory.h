@@ -45,9 +45,8 @@ public:
      *  \brief Create a ComponentModel.
      */
     virtual Model::Ptr makeModel(
-        int linearParameterSize,
-        ParameterConstIterator linearParameterIter,
-        ParameterConstIterator nonlinearParameterIter
+        ParameterVector const & linearParameters,
+        ParameterVector const & nonlinearParameters
     ) const;
 
     /**

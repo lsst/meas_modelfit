@@ -51,8 +51,8 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
     multifit::ParameterVector linear(psModel->getLinearParameterSize());
     multifit::ParameterVector nonlinear(psModel->getNonlinearParameterSize());
 
-    linear = psModel->getLinearParameterVector();
-    nonlinear = psModel->getNonlinearParameterVector();
+    linear = psModel->getLinearParameters();
+    nonlinear = psModel->getNonlinearParameters();
 
     BOOST_CHECK_EQUAL(linear[0], flux);
     BOOST_CHECK_EQUAL(nonlinear[0], centroid[0]);

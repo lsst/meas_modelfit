@@ -9,7 +9,7 @@ multifit::ModelFactory::RegistryMap & multifit::ModelFactory::getRegistry() {
     return registry;
 }
 
-multifit::ModelFactory::ConstPtr multifit::ModelFactory::lookupFactory(
+multifit::ModelFactory::ConstPtr multifit::ModelFactory::lookup(
     std::string const & name
 ) {
     RegistryMap::const_iterator i = getRegistry().find(name);
@@ -22,7 +22,7 @@ multifit::ModelFactory::ConstPtr multifit::ModelFactory::lookupFactory(
     return i->second;
 }
 
-bool multifit::ModelFactory::registerFactory(
+bool multifit::ModelFactory::declare(
     std::string const & name, 
     ModelFactory::ConstPtr const & factory
 ) {
@@ -31,4 +31,13 @@ bool multifit::ModelFactory::registerFactory(
     return result.second;
 }
 
+multifit::Model::Ptr multifit::makeModel(
+    std::string const & type, 
+    ParameterVector const & linearParameters,
+    ParameterVector const & nonlinearParameters
+) {
+    ModelFactory::ConstPtr factory = ModelFactory::lookup(type);
+
+    return factory->makeModel(linearParameters, nonlinearParameters);
+}
 

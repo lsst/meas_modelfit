@@ -4,13 +4,13 @@
 namespace multifit = lsst::meas::multifit;
 
 void multifit::Model::setLinearParameters(ParameterConstIterator const parameters) {
-    std::copy(parameters, parameters + getLinearParameterSize(), _linearParameterVector->data());
+    std::copy(parameters, parameters + getLinearParameterSize(), _linearParameters->data());
     _handleLinearParameterChange();
     _broadcastLinearParameterChange();
 }
 
 void multifit::Model::setNonlinearParameters(ParameterConstIterator const parameters) {
-    std::copy(parameters, parameters + getNonlinearParameterSize(), _nonlinearParameterVector->data());
+    std::copy(parameters, parameters + getNonlinearParameterSize(), _nonlinearParameters->data());
     _handleNonlinearParameterChange();
     _broadcastNonlinearParameterChange();
 }
