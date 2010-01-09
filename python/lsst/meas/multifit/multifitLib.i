@@ -18,7 +18,9 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/algorithms/Centroid.h"
 #include "lsst/meas/algorithms/Photometry.h"
 #include "lsst/meas/algorithms/Shape.h"
+#include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/multifit/core.h"
+#include "lsst/meas/multifit/footprintUtils.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
@@ -96,9 +98,21 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 
 %include "lsst/meas/multifit/core.h"
 
+%declareArray(lsst::meas::multifit::Pixel const, 1, 1);
+%declareArray(lsst::meas::multifit::Pixel const, 2, 1);
 %declareArray(lsst::meas::multifit::Pixel, 1, 1);
 %declareArray(lsst::meas::multifit::Pixel, 2, 1);
 %declareEigenMatrix(lsst::meas::multifit::ParameterVector);
+
+%include "lsst/meas/multifit/footprintUtils.h"
+%template(compressImageF) lsst::meas::multifit::compressImage<float, 
+    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
+%template(compressImageD) lsst::meas::multifit::compressImage<double, 
+    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
+%template(expandImageF) lsst::meas::multifit::expandImage<float, 
+    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
+%template(expandImageD) lsst::meas::multifit::expandImage<double, 
+    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
 %include "lsst/meas/multifit/Model.h"
@@ -144,7 +158,7 @@ SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyProjectionPtr,
 %include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 %include "lsst/meas/multifit/components/PointSourceMorphology.h"
 
-SWIG_SHARED_PTR_DERIVED(ComponentModelPtr, lsst::meas::multifit::Model, 	
+SWIG_SHARED_PTR_DERIVED(ComponentModelPtr, lsst::meas::multifit::Model,     
     lsst::meas::multifit::ComponentModel) 
 %include "lsst/meas/multifit/ComponentModel.h"
 

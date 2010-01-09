@@ -11,7 +11,7 @@ def main():
     factory = mf.PointSourceModelFactory()
     position = lsst.afw.geom.PointD()
     model = factory.makeModel(1.0,position)
-    print model.getNonlinearParameterVector()
+    print model.getNonlinearParameters()
     proj = model.makeProjection(psf,wcs,model.computeProjectionFootprint(psf,wcs))
     proj.computeModelImage()
     proj.computeLinearParameterDerivative()
