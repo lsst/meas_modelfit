@@ -29,37 +29,36 @@ namespace measAlg = lsst::meas::algorithms;
 BOOST_AUTO_TEST_CASE(FitterBasic) {
 
     multifit::ParameterVector linear(1), nonlinear (2);
-    linear << 5;
+    linear << 1;
     nonlinear << 25, 25;
     multifit::Model::Ptr model = multifit::makeModel("PointSource", linear, nonlinear);
 
     multifit::ModelEvaluator evaluator(model);
 
-    lsst::afw::image::MaskedImage<double> testImg(50,50);
-    //add a bogus variance
-    *testImg.getVariance() = 0.1;
-
     image::Wcs wcs(
-        image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
+        image::PointD(0,0), image::PointD(0,0), Eigen::Matrix2d::Identity()
     );
 
     multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 9, 9, 3);
-    multifit::CharacterizedExposure<double>::Ptr exposure = multifit::CharacterizedExposure<double>::Ptr(
-        new image::CharacterizedExposure<double>(testImg, wcs, psf)
-    );
+    multifit::CharacterizedExposure<double>::Ptr exposure = 
+        boost::make_shared<multifit::CharacterizedExposure<double> >(50, 50, wcs, psf);
+
+    //add a bogus variance
+    lsst::afw::image::Image<float>::Ptr variance = exposure->getMaskedImage().getVariance();
+    *variance = 0.1;
 
     lsst::afw::image::Image<double> subImage(
-        *testImg.getImage(), 
+        *exposure->getMaskedImage().getImage(), 
         lsst::afw::image::BBox(lsst::afw::image::PointI(20, 20), 9,9)
     );
-    psf->getKernel()->computeImage(subImage, false);
+    psf->getKernel()->computeImage(subImage, true);
 
-    Traits::CalibratedExposureList exposureList;
+    std::list<multifit::CharacterizedExposure<double>::Ptr> exposureList;
 
     for(int i=0; i < 15; ++i) {
         exposureList.push_back(exposure);
     }
-    evaluator.setExposureList<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>(exposureList);
+    evaluator.setExposureList(exposureList);
 
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
     fitterPolicy->add("terminationType", "iteration");    

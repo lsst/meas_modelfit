@@ -6,16 +6,12 @@ import lsst.meas.multifit as measMult
 import numpy
 import numpy.random
 
-def makeImageStack(depth):
-    psFactory = measMult.PointSourceModelFactory()
-    psModel = psFactory.makeModel(1.0, afwGeom.makePointD(0,0))
-
-    
+def makeImageStack(model, depth):
     psf = measAlg.createPSF("DoubleGaussian", 9, 9, 3)
     wcs = afwImage.createWcs(afwImage.PointD(0,0), afwImage.PointD(0,0), 1, 0, 0, 1)
     
-    fp = psModel.computeProjectionFootprint(psf, wcs)
-    psProjection = psModel.makeProjection(psf, wcs, fp)
+    fp = model.computeProjectionFootprint(psf, wcs)
+    psProjection = model.makeProjection(psf, wcs, fp)
 
     bbox = fp.getBBox()
     nPix = fp.getNpix();
@@ -24,9 +20,9 @@ def makeImageStack(depth):
     
     sigma = 0.5
 
-    expList = []
+    expList = measMult.CharacterizedExposureListD()
     for i in xrange(depth):
-        exp = afwImage.ExposureD(bbox.getWidth(), bbox.getHeight())
+        exp = measMult.CharacterizedExposureD(bbox.getWidth(), bbox.getHeight(), wcs, psf)
         mi = exp.getMaskedImage()
         mi.setXY0(bbox.getX0(), bbox.getY0())
         
@@ -41,7 +37,10 @@ def makeImageStack(depth):
     return expList
         
 def writeImageStack(depth, baseName):
-    expList = makeImageStack(depth)
+    psFactory = measMult.PointSourceModelFactory()
+    psModel = psFactory.makeModel(1.0, afwGeom.makePointD(0,0))
+    
+    expList = makeImageStack(psModel, depth)
     for i, exp in enumerate(expList):
         filename = baseName +"_%d"%i
         exp.writeFits(filename)

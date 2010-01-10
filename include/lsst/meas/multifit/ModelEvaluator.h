@@ -63,7 +63,6 @@ public:
         setMinPixels(nMinPix);
     }
 
-#ifndef SWIG
     template <typename ImagePixel, typename MaskPixel, typename VariancePixel>
     ModelEvaluator(
         Model::ConstPtr const & model, 
@@ -77,7 +76,6 @@ public:
         setMinPixels(nMinPix);
         setExposureList(exposureList);
     }
-
     template<typename ImagePixel, typename MaskPixel, typename VariancePixel>
     void setExposureList(
         std::list< boost::shared_ptr< CharacterizedExposure<
@@ -85,6 +83,7 @@ public:
             > > > const & exposureList
     );
 
+#ifndef SWIG
     ndarray::Array<Pixel const, 1, 1> getImageVector() const {return _imageVector;}
     ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {return _varianceVector;}
     ndarray::Array<Pixel const, 1, 1> computeModelImage();
