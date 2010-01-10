@@ -14,7 +14,6 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=362                 // operator=  ignored
 
 %{
-#include "lsst/meas/multifit/test.h"
 #include "lsst/afw/detection.h" // these sholdn't be necessary, but SWIG fails if they aren't there.
 #include "lsst/meas/algorithms/Centroid.h"
 #include "lsst/meas/algorithms/Photometry.h"

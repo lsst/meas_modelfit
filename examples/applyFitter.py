@@ -17,9 +17,7 @@ def applyFitter():
     
     fitterPolicy = pexPolicy.Policy()
     fitterPolicy.add("terminationType", "iteration")
-    fitterPolicy.add("terminationType", "chisq")
     fitterPolicy.add("iterationMax", 200)
-    fitterPolicy.add("chisqThreshold", 1.0)
 
     fitter = measMult.SingleLinearParameterFitter(fitterPolicy)
     result = fitter.apply(modelEvaluator)
