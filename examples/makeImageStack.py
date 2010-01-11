@@ -7,7 +7,7 @@ import numpy
 import numpy.random
 
 def makeImageStack(model, depth):
-    psf = measAlg.createPSF("DoubleGaussian", 9, 9, 3)
+    psf = measAlg.createPSF("DoubleGaussian", 13, 13, 3)
     wcs = afwImage.createWcs(afwImage.PointD(0,0), afwImage.PointD(0,0), 1, 0, 0, 1)
     
     fp = model.computeProjectionFootprint(psf, wcs)
