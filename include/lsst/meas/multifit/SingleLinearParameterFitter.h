@@ -1,6 +1,8 @@
 #ifndef LSST_MEAS_MULTIFIT_SINGLE_LINEAR_PARAMETER_FITTER_H
 #define LSST_MEAS_MULTIFIT_SINGLE_LINEAR_PARAMETER_FITTER_H
 
+#include <float.h>
+
 #include "lsst/pex/policy/PolicyConfigured.h"
 #include "lsst/daf/base/PropertySet.h"
 
@@ -12,12 +14,21 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
+
+
 struct SimpleFitResult {
+    enum BasicConvergenceFlags {
+        CONVERGED = 1,
+        MAX_ITERATION_REACHED = 2,
+        DCHISQ_THRESHOLD_REACHED = 4,
+        STEP_THRESHOLD_REACHED = 8
+    };
+
     typedef boost::shared_ptr<SimpleFitResult> Ptr;
 
     SimpleFitResult() 
         : convergenceFlags(0), 
-          chisq(0), dChisq(0),            
+          chisq(DBL_MAX), dChisq(DBL_MAX),            
           sdqaMetrics(new lsst::daf::base::PropertySet())
     {}
 
@@ -29,7 +40,7 @@ struct SimpleFitResult {
 
 class SingleLinearParameterFitter : public lsst::pex::policy::PolicyConfigured {
 public:
-    enum TerminationType {ITERATION=1, CHISQ=2, STEP=4};
+    enum TerminationType {ITERATION=1, DCHISQ=2, STEP=4};
 
     typedef SimpleFitResult Result;
 
@@ -38,18 +49,10 @@ public:
     Result::Ptr apply(ModelEvaluator &) const;
 
 private:
-    bool terminateIteration(
-        double const & chisq, int const & nIterations, Eigen::VectorXd const & step
-    ) const {
-        return ((terminationType & ITERATION) && nIterations >= iterationMax) ||
-            ((terminationType & CHISQ) && chisq <= chisqThreshold) ||
-            ((terminationType & STEP) && step.norm() <= stepThreshold); 
-     }
-
-    int terminationType;
-    int iterationMax;
-    double chisqThreshold;
-    double stepThreshold;
+    int _terminationType;
+    int _iterationMax;
+    double _dChisqThreshold;
+    double _stepThreshold;
     
 };
 

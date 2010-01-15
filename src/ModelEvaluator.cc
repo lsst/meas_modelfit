@@ -3,6 +3,7 @@
 #include "lsst/meas/multifit/footprintUtils.h"
 #include "lsst/afw/image/MaskedImage.h"
 
+#include <iostream>
 namespace multifit = lsst::meas::multifit;
 
 template<typename ImagePixel, typename MaskPixel, typename VariancePixel>

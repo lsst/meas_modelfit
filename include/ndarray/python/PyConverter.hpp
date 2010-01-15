@@ -10,10 +10,13 @@
 #include <boost/intrusive_ptr.hpp>
 #include <complex>
 
+
+#if 0
 namespace boost {
 inline void intrusive_ptr_add_ref(PyObject * obj) { Py_INCREF(obj); }
 inline void intrusive_ptr_release(PyObject * obj) { Py_DECREF(obj); }
 }
+#endif
 
 namespace ndarray {
 

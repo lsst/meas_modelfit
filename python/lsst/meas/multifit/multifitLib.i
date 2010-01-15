@@ -14,10 +14,12 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=362                 // operator=  ignored
 
 %{
-#include "lsst/afw/detection.h" // these sholdn't be necessary, but SWIG fails if they aren't there.
+// these sholdn't be necessary, but SWIG fails if they aren't there.
+#include "lsst/afw/detection.h" 
 #include "lsst/meas/algorithms/Centroid.h"
 #include "lsst/meas/algorithms/Photometry.h"
 #include "lsst/meas/algorithms/Shape.h"
+
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/footprintUtils.h"
@@ -53,6 +55,9 @@ namespace boost {
 %include "std_list.i"
 %include "ndarray.i"
 
+%{
+#include "lsst/afw/numpyTypemaps.h"
+%}
 %init %{
     import_array();
 %}
@@ -89,14 +94,23 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %}
 
 %import "lsst/daf/base/baseLib.i"
+%import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/image/imageLib.i"
 %import "lsst/afw/detection/detectionLib.i"
 %import "lsst/afw/math/mathLib.i"
-%import "lsst/afw/geom/geomLib.i"
+
 
 %import "lsst/meas/algorithms/algorithmsLib.i"
 
 %include "lsst/meas/multifit/core.h"
+
+%define %downcast(BaseType, DerivedType...)
+   %extend DerivedType {
+       static boost::shared_ptr<DerivedType > swigConvert(boost::shared_ptr<BaseType> const & ptr) {
+           return boost::dynamic_pointer_cast<DerivedType >(ptr);
+       }
+   }
+%enddef 
 
 %declareArray(lsst::meas::multifit::Pixel const, 1, 1);
 %declareArray(lsst::meas::multifit::Pixel const, 2, 1);
@@ -127,6 +141,9 @@ SWIG_SHARED_PTR_DERIVED(PointSourceModelFactoryPtr, lsst::meas::multifit::Compon
 %include "lsst/meas/multifit/ComponentModelFactory.h"
 %include "lsst/meas/multifit/PointSourceModelFactory.h"
 
+%downcast(lsst::meas::multifit::ModelFactory, lsst::meas::multifit::ComponentModelFactory);
+%downcast(lsst::meas::multifit::ModelFactory, lsst::meas::multifit::PointSourceModelFactory);
+%downcast(lsst::meas::multifit::ComponentModelFactory, lsst::meas::multifit::PointSourceModelFactory);
 
 
 SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
@@ -162,12 +179,18 @@ SWIG_SHARED_PTR_DERIVED(ComponentModelPtr, lsst::meas::multifit::Model,
     lsst::meas::multifit::ComponentModel) 
 %include "lsst/meas/multifit/ComponentModel.h"
 
+%downcast(lsst::meas::multifit::Model, lsst::meas::multifit::ComponentModel);
+
 SWIG_SHARED_PTR_DERIVED(ComponentModelProjectionPtr, lsst::meas::multifit::ModelProjection,
     lsst::meas::multifit::ComponentModelProjection)
 SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::ComponentModelProjection,
     lsst::meas::multifit::FourierModelProjection)
 %include "lsst/meas/multifit/ComponentModelProjection.h"    
 %include "lsst/meas/multifit/FourierModelProjection.h"
+
+%downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::FourierModelProjection);
+%downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::ComponentModelProjection);
+%downcast(lsst::meas::multifit::ComponentModelProjection, lsst::meas::multifit::FourierModelProjection);
 
 SWIG_SHARED_PTR_DERIVED(
     CharacterizedExposureFPtr, 

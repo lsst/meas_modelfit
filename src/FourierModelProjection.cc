@@ -1,5 +1,6 @@
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include <ndarray/fft.hpp>
+#include <iostream>
 
 #include "lsst/afw/image/Utils.h"
 #include "lsst/afw/geom.h"
@@ -19,18 +20,18 @@ public:
     ) {
         if (!_valid) {
             lsst::afw::geom::Point2D translation(
-                _parent->_outerBBox.getMin()
+                _parent->_getPsfPosition() - lsst::afw::geom::PointD(_parent->_outerBBox.getMin())
             );
-            translation = lsst::afw::geom::Point2D(
-                _parent->_getPsfPosition() - translation
-            );
+
             _factor = 1.0;
-            ndarray::shift(
+
+            ndarray::shift(                
                 ndarray::makeVector(translation.getY(), translation.getX()), 
                 _factor
             );
             _valid = true;
         }
+
         for (; iter != end; ++iter) {
             *iter *= _factor;
         }
@@ -44,7 +45,7 @@ public:
                 _parent->_outerBBox.getWidth()
             )
         ))
-    {}
+    { }
 
 private:
     FourierModelProjection * _parent;
@@ -109,6 +110,7 @@ public:
                 _parent->_outerBBox.getWidth()
             )
         );
+
         ndarray::shallow(_finalLPD) = window(_xLPD, _parent->_innerBBox);
     }
 
@@ -279,6 +281,7 @@ void multifit::FourierModelProjection::_convolve(
     _kernelVisitor = psf->getKernel()->computeFourierConvolutionVisitor(
         lsst::afw::image::PointD(point.getX(), point.getY())
     );
+    
     if(_psfMatrixHandler){
         _psfMatrixHandler.reset(new PsfMatrixHandler(this));
     }
@@ -378,35 +381,41 @@ multifit::FourierModelProjection::FourierModelProjection(
     _setDimensions();
 }
 
+/**
+ * Determine size of all arrays
+ *
+ * Called at initialization, and (rarely) when parameters change significantly
+ * 
+ */
 void multifit::FourierModelProjection::_setDimensions() {
     lsst::afw::geom::Extent2I dimensions = getMorphologyProjection()->getDimensions();
-    lsst::afw::geom::Point2D centerOnExposure = _getPsfPosition();
+    lsst::afw::geom::PointD centerOnExposure = _getPsfPosition();
+
     lsst::afw::geom::Point2I bboxMin = lsst::afw::geom::Point2I::make(
         int(std::floor(centerOnExposure.getX() - dimensions.getX()/2)),
         int(std::floor(centerOnExposure.getY() - dimensions.getY()/2))
     );
+
     _outerBBox = lsst::afw::geom::BoxI(bboxMin, dimensions);
     // Right now, _innerBBox is defined relative to exposure    
     lsst::afw::geom::Extent2I padding = getMorphologyProjection()->getPadding();
     _innerBBox = _outerBBox;
     _innerBBox.grow(-padding);
-
+    
     //TODO: convert footprint to use geom::Box2I
-    lsst::afw::image::BBox deprecatedBBox = getFootprint()->getBBox();
-    lsst::afw::geom::BoxI footprintBBox(
-        lsst::afw::geom::Point2I::make(
-            deprecatedBBox.getX0(), deprecatedBBox.getY0()
-        ),
-        lsst::afw::geom::Extent2I::make(
-            deprecatedBBox.getWidth(), 
-            deprecatedBBox.getHeight()
-        )
-    );
+    lsst::afw::geom::BoxI footprintBBox = lsst::afw::geom::convertToGeom(getFootprint()->getBBox());
     _innerBBox.clip(footprintBBox);
+    if(_innerBBox.isEmpty()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "FourierModelProjection's footprint bounding box, and computed bounding box do not overlap"
+        );
+    }
     _wf = boost::make_shared<WindowedFootprint>(*getFootprint(), _innerBBox);
 
     // But now, and forevermore, _innerBBox is defined relative to _outerBBox.
     _innerBBox.shift(lsst::afw::geom::Point2I(0) - _outerBBox.getMin());
+
     _kernelVisitor->fft(_outerBBox.getWidth(), _outerBBox.getHeight());    
     _linearMatrixHandler.reset(new LinearMatrixHandler(this));
     if (_nonlinearMatrixHandler)

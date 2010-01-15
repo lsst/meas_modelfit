@@ -12,7 +12,8 @@
 #include "boost/test/floating_point_comparison.hpp"
 
 #include "lsst/afw/image/Exposure.h"
-
+#include <Eigen/Core>
+#include <Eigen/Array>
 #include "lsst/afw/geom/Box.h"
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/meas/multifit/core.h"
@@ -27,42 +28,40 @@ namespace geom = lsst::afw::geom;
 namespace measAlg = lsst::meas::algorithms;
 
 BOOST_AUTO_TEST_CASE(FitterBasic) {
+    multifit::PointSourceModelFactory psFactory;
+    multifit::Model::Ptr psModel = psFactory.makeModel(1, geom::makePointD(45, 45));
 
-    multifit::ParameterVector linear(1), nonlinear (2);
-    linear << 1;
-    nonlinear << 25, 25;
-    multifit::Model::Ptr model = multifit::makeModel("PointSource", linear, nonlinear);
+    image::PointD crPix(0, 0), crVal(45,45);
+    Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
+    image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
 
-    multifit::ModelEvaluator evaluator(model);
+    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 13, 13, 2);
+    multifit::FootprintConstPtr fp(psModel->computeProjectionFootprint(psf, wcs));
+    image::BBox bbox = fp->getBBox();
 
-    image::Wcs wcs(
-        image::PointD(0,0), image::PointD(0,0), Eigen::Matrix2d::Identity()
-    );
-
-    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 9, 9, 3);
     multifit::CharacterizedExposure<double>::Ptr exposure = 
-        boost::make_shared<multifit::CharacterizedExposure<double> >(50, 50, wcs, psf);
+        boost::make_shared<multifit::CharacterizedExposure<double> >(bbox.getWidth(), bbox.getHeight(), *wcs, psf);
+    exposure->getMaskedImage().setXY0(bbox.getX0(), bbox.getY0());
+    *exposure->getMaskedImage().getMask() = 0;
 
-    //add a bogus variance
-    lsst::afw::image::Image<float>::Ptr variance = exposure->getMaskedImage().getVariance();
-    *variance = 0.1;
+    multifit::ModelProjection::Ptr projection(psModel->makeProjection(psf, wcs, fp));
+    ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
+    ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
+    variance = 0.5;
 
-    lsst::afw::image::Image<double> subImage(
-        *exposure->getMaskedImage().getImage(), 
-        lsst::afw::image::BBox(lsst::afw::image::PointI(20, 20), 9,9)
-    );
-    psf->getKernel()->computeImage(subImage, true);
+    multifit::expandImage(*fp, exposure->getMaskedImage(), modelImage, variance);
 
     std::list<multifit::CharacterizedExposure<double>::Ptr> exposureList;
-
-    for(int i=0; i < 15; ++i) {
+    for(int i=0; i < 5; ++i) {
         exposureList.push_back(exposure);
     }
-    evaluator.setExposureList(exposureList);
-
+    multifit::ModelEvaluator evaluator(psModel, exposureList);
+        
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
     fitterPolicy->add("terminationType", "iteration");    
-    fitterPolicy->set("iterationMax", 2);
+    fitterPolicy->add("terminationType", "dChisq");
+    fitterPolicy->set("iterationMax", 5);
+    fitterPolicy->set("dChisqThreshold", 0.001);
     
     multifit::SingleLinearParameterFitter fitter(fitterPolicy);
    

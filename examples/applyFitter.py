@@ -9,15 +9,16 @@ import numpy.random
 from makeImageStack import makeImageStack
 
 def applyFitter():
-
     psFactory = measMult.PointSourceModelFactory()
-    psModel = psFactory.makeModel(1.0, afwGeom.makePointD(0,0))
-    exposureList = makeImageStack(psModel, 15)
+    psModel = psFactory.makeModel(1.0, afwGeom.makePointD(45,45))
+    exposureList = makeImageStack(psModel, 15, 45, 45)
     modelEvaluator = measMult.ModelEvaluator(psModel, exposureList)
     
     fitterPolicy = pexPolicy.Policy()
     fitterPolicy.add("terminationType", "iteration")
-    fitterPolicy.add("iterationMax", 200)
+    fitterPolicy.add("terminationType", "dChisq")
+    fitterPolicy.add("iterationMax", 5)
+    fitterPolicy.add("dChisqThreshold", 0.0001)
 
     fitter = measMult.SingleLinearParameterFitter(fitterPolicy)
     result = fitter.apply(modelEvaluator)

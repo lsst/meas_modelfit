@@ -14,12 +14,13 @@ multifit::ComponentModelProjection::ComponentModelProjection(
     _translationDerivative(), 
     _projectedParameterDerivative()
 {
-    lsst::afw::geom::AffineTransform linearApproximation(
-        wcs->getAffineTransform(lsst::afw::geom::convertToImage(getAstrometry()->apply()))
-    );
+    lsst::afw::geom::PointD center(getAstrometry()->apply());
+    lsst::afw::geom::AffineTransform wcsTransform(wcs->linearizeAt(center));
+    
     _transform = boost::make_shared<lsst::afw::geom::AffineTransform>(
-        linearApproximation.invert()
+        wcsTransform.invert()
     );
+
     _morphologyProjection = model->getMorphology()->makeProjection(
         lsst::afw::geom::ExtentI::make(
             psf->getWidth(), psf->getHeight()
@@ -45,7 +46,7 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
         components::Astrometry::DerivativeMatrix astrometryDerivative(
             getModel()->getAstrometry()->differentiate()
         );
-        astrometryView = translationView * _transform->matrix().linear() * astrometryDerivative;
+        astrometryView = translationView * _transform->getEigenTransform().linear() * astrometryDerivative;
     }
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();

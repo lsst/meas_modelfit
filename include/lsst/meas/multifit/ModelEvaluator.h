@@ -10,6 +10,7 @@
 #include "ndarray.hpp"
 
 #include "lsst/meas/multifit/core.h"
+#include "lsst/meas/multifit/matrices.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/footprintUtils.h"
@@ -35,6 +36,10 @@ public:
         
         ndarray::Array<Pixel const, 1, 1> const getImageVector() const {return _imageVector;}
         ndarray::Array<Pixel const, 1, 1> const getVarianceVector() const {return _varianceVector;}
+        Eigen::VectorXd const computeSigmaVector() const {
+            VectorMap variance (_varianceVector.getData(), getNPixels());
+            return variance.cwise().sqrt();
+        }
         ndarray::Array<Pixel const, 1, 1> const computeModelImage() {
             return _projection->computeModelImage();
         }
@@ -44,6 +49,8 @@ public:
         ndarray::Array<Pixel const, 2, 1> const computeNonlinearParameterDerivative() {
             return _projection->computeNonlinearParameterDerivative();
         }
+
+        int const getNPixels() const {return _imageVector.getSize<0>();}
 
     private:
         friend class ModelEvaluator;
@@ -86,6 +93,10 @@ public:
 #ifndef SWIG
     ndarray::Array<Pixel const, 1, 1> getImageVector() const {return _imageVector;}
     ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {return _varianceVector;}
+    Eigen::VectorXd const computeSigmaVector() const {
+        VectorMap variance (_varianceVector.getData(), getNPixels());
+        return variance.cwise().sqrt();
+    }
     ndarray::Array<Pixel const, 1, 1> computeModelImage();
     ndarray::Array<Pixel const, 2, 2> computeLinearParameterDerivative();
     ndarray::Array<Pixel const, 2, 2> computeNonlinearParameterDerivative();

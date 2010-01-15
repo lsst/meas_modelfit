@@ -55,7 +55,11 @@ lsst::afw::detection::Footprint::Ptr clipAndMaskFootprint(
         }
         if(x0 < maskX0) x0 = maskX0;
         if(x1 > maskX1) x1 = maskX1;
-        typename lsst::afw::image::Mask<MaskPixel>::x_iterator maskIter = mask->x_at(x0, y);
+
+        //lsst::afw::image iterators are always specified with respect to (0,0)
+        //regardless what the image::XY0 is set to.        
+        typename lsst::afw::image::Mask<MaskPixel>::x_iterator maskIter = 
+            mask->x_at(x0 - maskX0, y - maskY0);
 
         //loop over all span locations, slicing the span at maskedPixels
         for(int x = x0; x <= x1; ++x) {            

@@ -5,9 +5,21 @@ namespace multifit = lsst::meas::multifit;
 lsst::afw::detection::Footprint::Ptr multifit::makeFootprint(
     lsst::afw::geom::ellipses::Ellipse const & ellipse
 ) {
-    lsst::afw::detection::Footprint::Ptr fp(new lsst::afw::detection::Footprint());
-    lsst::afw::geom::ellipses::Core::RadialFraction rf(ellipse.getCore());
 
+    lsst::afw::image::PointI center(
+        static_cast<int>(ellipse.getCenter().getX()),
+        static_cast<int>(ellipse.getCenter().getY())
+    );
+
+    lsst::afw::detection::Footprint::Ptr fp(new lsst::afw::detection::Footprint());
+    lsst::afw::geom::ellipses::Axes axes(ellipse.getCore());
+    float radius = static_cast<float>(axes[lsst::afw::geom::ellipses::Axes::A]) + 1;
+
+    return boost::make_shared<lsst::afw::detection::Footprint>(
+        lsst::afw::image::BCircle(center, radius)
+    );
+
+#if 0
     lsst::afw::geom::BoxD envelope = ellipse.computeEnvelope();
     int const yEnd = static_cast<int>(envelope.getMaxY()) + 1;
     int const xEnd = static_cast<int>(envelope.getMaxX()) + 1;
@@ -30,6 +42,7 @@ lsst::afw::detection::Footprint::Ptr multifit::makeFootprint(
         fp->addSpan(y, start, x-1);
     }
     return fp;
+#endif
 }
 
 

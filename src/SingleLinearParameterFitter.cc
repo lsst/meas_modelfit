@@ -1,5 +1,7 @@
-#include <float.h>
-
+#include <cfloat>
+#include <cmath>
+#include <iostream>
+#include <Eigen/Array>
 #include <Eigen/Core>
 #include <Eigen/QR>
 #include <Eigen/Cholesky>
@@ -19,47 +21,47 @@ multifit::SingleLinearParameterFitter::SingleLinearParameterFitter(
         );
     } 
     
-    terminationType = 0;
+    _terminationType = 0;
     std::vector<std::string> terminationVector(policy->getStringArray("terminationType"));
     for(std::vector<std::string>::iterator i(terminationVector.begin()), end(terminationVector.end());
         i != end; ++i
     ) {
-        if((*i) == "chisq")
-            terminationType |= CHISQ;
+        if((*i) == "dChisq")
+            _terminationType |= DCHISQ;
         else if((*i) == "iteration")
-            terminationType |= ITERATION;
+            _terminationType |= ITERATION;
         else if((*i) == "step")
-            terminationType |= STEP; 
+            _terminationType |= STEP; 
     }
     
-    if(terminationType & ITERATION) {
+    if(_terminationType & ITERATION) {
         if(!policy->exists("iterationMax")) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::InvalidParameterException,
                 "Invalid configuration policy - missing value \"iterationMax\""
             );
         } else {
-            iterationMax = policy->getInt("iterationMax");   
+            _iterationMax = policy->getInt("iterationMax");   
         }
     }
-    if(terminationType & CHISQ) {
-        if(!policy->exists("chisqThreshold")) {
+    if(_terminationType & DCHISQ) {
+        if(!policy->exists("dChisqThreshold")) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::InvalidParameterException,
-                "Invalid configuration policy - missing value \"chisqThreshold\""
+                "Invalid configuration policy - missing value \"dChisqThreshold\""
             );
         } else {
-            chisqThreshold = policy->getDouble("chisqThreshold");   
+            _dChisqThreshold = std::abs(policy->getDouble("dChisqThreshold"));   
         }
     }
-    if(terminationType & STEP) {
+    if(_terminationType & STEP) {
         if(!policy->exists("stepThreshold")) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::InvalidParameterException,
                 "Invalid configuration policy - missing value \"stepThreshold\""
             );
         } else {
-            stepThreshold = policy->getDouble("stepThreshold");   
+            _stepThreshold = std::abs(policy->getDouble("stepThreshold"));   
         }
     }
 
@@ -83,46 +85,44 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
     }
     Result::Ptr result = boost::make_shared<Result>();
     result->model = evaluator.getModel();    
-    int nIterations = 0;
 
     VectorMap image(
         evaluator.getImageVector().getData(),
         evaluator.getNPixels()
-    );
-    VectorMap variance(
-        evaluator.getVarianceVector().getData(),
-        evaluator.getNPixels()
-    );
-    if(!(image.size() >0 && variance.size()> 0))
-        throw "foobared, something went to hell";
+    );    
+    Eigen::VectorXd sigma(evaluator.computeSigmaVector());
 
-    Eigen::VectorXd data = (image.cwise() / (variance.cwise().sqrt()));
-
+    Eigen::VectorXd data = (image.cwise() / sigma);
     Eigen::VectorXd newLinearDNonlinear;
     Eigen::MatrixXd jacobian;
 
+
+    int nIterations = 0;
     double chisq=DBL_MAX, dChisq=DBL_MAX; 
     Eigen::VectorXd step;
-    do {        
+    bool done = false;
+    while( !done) {  
+        ndarray::Array<Pixel const, 2, 1> dLinearArray(evaluator.computeLinearParameterDerivative());
+
         VectorMap dLinear = VectorMap(
             evaluator.computeLinearParameterDerivative().getData(),
             evaluator.getNPixels()
         );
+        dLinear.cwise() /= sigma;
+
         MatrixMap dNonlinear = MatrixMap(
             evaluator.computeNonlinearParameterDerivative().getData(),
             evaluator.getNPixels(),
             evaluator.getNonlinearParameterSize()
         );
+        for(int i = 0; i < dNonlinear.cols(); ++i) {
+            dNonlinear.col(i).cwise() /= sigma;
+        }
 
-
-        Eigen::QR<Eigen::VectorXd> qrLinear(dLinear);
+        double normDLinear = dLinear.squaredNorm();        
         
-        //qr.matrixR() is a matrix with dimensions (1, 1), represent it as a double
-        double R = qrLinear.matrixR()(0,0);
-
         //the new linear parameter as a function of the nonlinear parameters
-        double newLinear = (qrLinear.matrixQ().transpose()*data)(0,0)/R;
-   
+        double newLinear = dLinear.dot(data) / normDLinear;
         //compute the residual as a function of the nonlinear parameters
         Eigen::VectorXd residual = data - dLinear*newLinear;
 
@@ -137,7 +137,7 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         //compute derivative of new linear parameter w.r.t nonlinear parameters
         //this is a matrix with dimensions (nNonlinear, 1)
         Eigen::VectorXd dNewLinear = dNonlinear.transpose()*(residual - dLinear*newLinear);
-        dNewLinear /= (R*R*newLinear);
+        dNewLinear /= (normDLinear*newLinear);
     
         //compute the jacobian of partial derivatives of the model w.r.t
         //nonlinear parameters
@@ -154,11 +154,27 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         evaluator.setLinearParameters(&newLinear);
         evaluator.setNonlinearParameters(newNonlinear.data());
         ++nIterations;
-    } while(!terminateIteration(dChisq, nIterations, step));
+        
+        if (_terminationType & ITERATION && nIterations >= _iterationMax) {
+            done = true;
+            result->convergenceFlags |= Result::MAX_ITERATION_REACHED;
+        }
+        if( (_terminationType & DCHISQ) && (nIterations > 1) && (std::abs(dChisq) < _dChisqThreshold) ) {
+            done = true; 
+            result->convergenceFlags |= Result::DCHISQ_THRESHOLD_REACHED;
+            result->convergenceFlags |= Result::CONVERGED;
+        }
+        if( (_terminationType & STEP) && (nIterations > 1) && (step.norm() < _stepThreshold) ) {
+            done = true;
+            result->convergenceFlags |= Result::STEP_THRESHOLD_REACHED;
+            result->convergenceFlags |= Result::CONVERGED; 
+        }
+    };
 
     result->chisq = chisq;
     result->dChisq = dChisq;
     result->sdqaMetrics->set("nIterations", nIterations);
+    result->sdqaMetrics->set("finalNonlinearStepNorm", step.norm());
 
     return result;
 }

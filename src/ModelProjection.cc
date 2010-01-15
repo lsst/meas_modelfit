@@ -27,9 +27,13 @@ multifit::ModelProjection::ModelProjection(
 
 ndarray::Array<multifit::Pixel const,1,1> multifit::ModelProjection::computeModelImage() {
     if (_modelImage.empty()) {
-        ndarray::shallow(_modelImage) = ndarray::allocate<Allocator>(
-            ndarray::makeVector(_footprint->getNpix())
+        ndarray::Array<Pixel, 1, 1> buffer(
+            ndarray::allocate<Allocator>(
+                ndarray::makeVector(_footprint->getNpix())
+            )
         );
+        setModelImageBuffer(buffer);
+
         _validProducts &= (~MODEL_IMAGE);
     }
     if (!(_validProducts & MODEL_IMAGE)) {
@@ -47,9 +51,13 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeLine
         );
     }
     if (_linearParameterDerivative.empty()) {
-        ndarray::shallow(_linearParameterDerivative) = ndarray::allocate<Allocator>(
-            ndarray::makeVector(getLinearParameterSize(),_footprint->getNpix())
+        ndarray::Array<Pixel, 2, 1> buffer(
+            ndarray::allocate<Allocator>(
+                ndarray::makeVector(getLinearParameterSize(),_footprint->getNpix())
+            )
         );
+        setLinearParameterDerivativeBuffer(buffer);
+
         _validProducts &= (~LINEAR_PARAMETER_DERIVATIVE);
     }
     if (!(_validProducts & LINEAR_PARAMETER_DERIVATIVE)) {
@@ -67,9 +75,12 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeNonl
         );
     }
     if (_nonlinearParameterDerivative.empty()) {
-        ndarray::shallow(_nonlinearParameterDerivative) = ndarray::allocate<Allocator>(
-            ndarray::makeVector(getNonlinearParameterSize(),_footprint->getNpix())
+        ndarray::Array<Pixel, 2, 1> buffer(
+            ndarray::allocate<Allocator>(
+                ndarray::makeVector(getNonlinearParameterSize(),_footprint->getNpix())
+            )
         );
+        setNonlinearParameterDerivativeBuffer(buffer);
         _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
     }
     if (!(_validProducts & NONLINEAR_PARAMETER_DERIVATIVE)) {
@@ -87,9 +98,12 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeWcsP
         );
     }
     if (_wcsParameterDerivative.empty()) {
-        ndarray::shallow(_wcsParameterDerivative) = ndarray::allocate<Allocator>(
-            ndarray::makeVector(getWcsParameterSize(),_footprint->getNpix())
+        ndarray::Array<Pixel, 2, 1> buffer(
+            ndarray::allocate<Allocator>(
+                ndarray::makeVector(getWcsParameterSize(),_footprint->getNpix())
+            )
         );
+        setWcsParameterDerivativeBuffer(buffer);
         _validProducts &= (~WCS_PARAMETER_DERIVATIVE);
     }
     if (!(_validProducts & WCS_PARAMETER_DERIVATIVE)) {
@@ -107,9 +121,12 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computePsfP
         );
     }
     if (_psfParameterDerivative.empty()) {
-        ndarray::shallow(_psfParameterDerivative) = ndarray::allocate<Allocator>(
-            ndarray::makeVector(getPsfParameterSize(),_footprint->getNpix())
+        ndarray::Array<Pixel, 2, 1> buffer(
+            ndarray::allocate<Allocator>(
+                ndarray::makeVector(getPsfParameterSize(),_footprint->getNpix())
+            )
         );
+        setPsfParameterDerivativeBuffer(buffer);
         _validProducts &= (~PSF_PARAMETER_DERIVATIVE);
     }
     if (!(_validProducts & PSF_PARAMETER_DERIVATIVE)) {
@@ -143,6 +160,7 @@ void multifit::ModelProjection::setLinearParameterDerivativeBuffer(ndarray::Arra
                                     "must match linear parameter size.");
     }
     ndarray::shallow(_linearParameterDerivative) = buffer;
+    _linearParameterDerivative = 0.0;
     _validProducts &= (~LINEAR_PARAMETER_DERIVATIVE);
 }
 
@@ -164,6 +182,7 @@ void multifit::ModelProjection::setNonlinearParameterDerivativeBuffer(
                                     "must match nonlinear parameter size.");
     }
     ndarray::shallow(_nonlinearParameterDerivative) = buffer;
+    _nonlinearParameterDerivative = 0.0;
     _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
 }
 
@@ -183,6 +202,7 @@ void multifit::ModelProjection::setWcsParameterDerivativeBuffer(ndarray::Array<P
                                     "must match WCS parameter size.");
     }
     ndarray::shallow(_wcsParameterDerivative) = buffer;
+    _wcsParameterDerivative = 0.0;
     _validProducts &= (~WCS_PARAMETER_DERIVATIVE);
 }
 
@@ -202,6 +222,7 @@ void multifit::ModelProjection::setPsfParameterDerivativeBuffer(ndarray::Array<P
                                     "must match PSF parameter size.");
     }
     ndarray::shallow(_psfParameterDerivative) = buffer;
+    _psfParameterDerivative = 0.0;
     _validProducts &= (~PSF_PARAMETER_DERIVATIVE);
 }
 

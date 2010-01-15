@@ -11,15 +11,14 @@ multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
+    lsst::afw::geom::PointD center(ellipse->getCenter());
+    lsst::afw::geom::AffineTransform wcsTransform(wcs->linearizeAt(center));
+    
+    ellipse->transform(wcsTransform.invert()).inPlace();
     if (psf) {
         int kernelSize = std::max(psf->getWidth(), psf->getHeight());
         ellipse->grow(kernelSize/2+1);
     }
-    lsst::afw::geom::AffineTransform linearApproximation(
-        wcs->getAffineTransform(lsst::afw::geom::convertToImage(ellipse->getCenter()))
-    );
-    ellipse->transform(linearApproximation.invert());
-
     return makeFootprint(*ellipse);
 }
 
@@ -28,15 +27,14 @@ lsst::afw::geom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     WcsConstPtr const & wcs
 ) const {
     lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
+    lsst::afw::geom::PointD center(ellipse->getCenter());
+    lsst::afw::geom::AffineTransform wcsTransform(wcs->linearizeAt(center));
+    
+    ellipse->transform(wcsTransform.invert()).inPlace();
     if (psf) {
         int kernelSize = std::max(psf->getWidth(), psf->getHeight());
         ellipse->grow(kernelSize/2+1);
     }
-
-    lsst::afw::geom::AffineTransform linearApproximation(
-        wcs->getAffineTransform(lsst::afw::geom::convertToImage(ellipse->getCenter()))
-    );
-    ellipse->transform(linearApproximation.invert());
     return ellipse->computeEnvelope();
 }
 

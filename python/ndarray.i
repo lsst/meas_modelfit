@@ -38,7 +38,7 @@ PyObject * METHOD() {
 }
 %enddef
 
-%define %declareEigenMatrix(TYPE)
+%define %eigenMatrix(TYPE)
 %typemap(out) TYPE {
     $result = ndarray::PyConverter< TYPE >::toPython($1);
 }
