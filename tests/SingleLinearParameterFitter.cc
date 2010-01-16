@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
     Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
     image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
 
-    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 13, 13, 2);
+    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 19, 19, 2);
     multifit::FootprintConstPtr fp(psModel->computeProjectionFootprint(psf, wcs));
     image::BBox bbox = fp->getBBox();
 
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
     multifit::ModelProjection::Ptr projection(psModel->makeProjection(psf, wcs, fp));
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
     ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
-    variance = 0.5;
+    variance = 0.5*0.5;
 
     multifit::expandImage(*fp, exposure->getMaskedImage(), modelImage, variance);
 
@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
         exposureList.push_back(exposure);
     }
     multifit::ModelEvaluator evaluator(psModel, exposureList);
-        
+       
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
     fitterPolicy->add("terminationType", "iteration");    
     fitterPolicy->add("terminationType", "dChisq");

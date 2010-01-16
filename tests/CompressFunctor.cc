@@ -49,6 +49,17 @@ BOOST_AUTO_TEST_CASE(clipAndMaskFootprint) {
     BOOST_CHECK_EQUAL(fixedBBox.getMinY(), 1);
     BOOST_CHECK_EQUAL(fixedBBox.getMaxX(), 8);
     BOOST_CHECK_EQUAL(fixedBBox.getMaxY(), 8);
+
+
+    (*testMask)(4,4) = 1;
+    fixedFp = multifit::clipAndMaskFootprint<lsst::afw::image::MaskPixel>(fp, testMask);
+    fixedBBox = lsst::afw::geom::convertToGeom(fixedFp->getBBox());
+    BOOST_CHECK_EQUAL(fixedFp->getNpix(), 8*8 - 1);
+    BOOST_CHECK_EQUAL(fixedBBox.getMinX(), 1);
+    BOOST_CHECK_EQUAL(fixedBBox.getMinY(), 1);
+    BOOST_CHECK_EQUAL(fixedBBox.getMaxX(), 8);
+    BOOST_CHECK_EQUAL(fixedBBox.getMaxY(), 8);
+
 }
 
 BOOST_AUTO_TEST_CASE(CompressFunctorBasic) {

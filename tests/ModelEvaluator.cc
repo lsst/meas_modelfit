@@ -12,6 +12,7 @@
 #include "boost/test/floating_point_comparison.hpp"
 
 #include "lsst/afw/image/Exposure.h"
+#include "lsst/afw/image/MaskedImage.h"
 
 #include "lsst/afw/geom/Box.h"
 #include "lsst/afw/geom/ellipses.h"
@@ -26,37 +27,55 @@ namespace geom = lsst::afw::geom;
 namespace measAlg = lsst::meas::algorithms;
 
 BOOST_AUTO_TEST_CASE(ModelBasic) {
+    multifit::PointSourceModelFactory psFactory;
+    multifit::Model::Ptr psModel = psFactory.makeModel(1, geom::makePointD(45, 45));
 
-    multifit::ParameterVector linear(1), nonlinear (2);
-    linear << 5;
-    nonlinear << 25, 25;
-    multifit::Model::Ptr model = multifit::makeModel("PointSource", linear, nonlinear);
+    image::PointD crPix(0, 0), crVal(45,45);
+    Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
+    multifit::Wcs::Ptr wcs = boost::make_shared<multifit::Wcs> (crVal, crPix, cdMatrix);
 
-    multifit::ModelEvaluator evaluator(model);
-    multifit::CharacterizedExposure<multifit::Pixel>::Ptr exposure;
+    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 19, 19, 2);
+    multifit::FootprintConstPtr fp(psModel->computeProjectionFootprint(psf, wcs));
+    image::BBox bbox = fp->getBBox();
 
-    image::Wcs wcs(
-        image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
+    image::MaskedImage<double> mi(
+        bbox.getWidth(), 
+        bbox.getHeight() 
     );
-    multifit::Psf::Ptr psf = 
-        measAlg::createPSF("DoubleGaussian", 19, 19, 1.5);
+    mi.setXY0(bbox.getX0(), bbox.getY0());
+    *(mi.getMask()) = 0;
+
+    multifit::ModelProjection::Ptr projection(psModel->makeProjection(psf, wcs, fp));
+    ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
+    ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
+    variance = 0.5*0.5;
+
+    multifit::expandImage(*fp, mi, modelImage, variance);
 
     std::list<multifit::CharacterizedExposure<multifit::Pixel>::Ptr> exposureList;
 
+    multifit::CharacterizedExposure<double>::Ptr toAdd;
     //one exposure with full coverage
-    exposure = boost::make_shared< multifit::CharacterizedExposure<multifit::Pixel> >(50, 50, wcs, psf);
-    exposureList.push_back(exposure);
+    toAdd.reset(new multifit::CharacterizedExposure<multifit::Pixel>(mi, *wcs, psf));
+    exposureList.push_back(toAdd);
     
     //one exposure with partial coverage
-    exposure = boost::make_shared< multifit::CharacterizedExposure<multifit::Pixel> >(50, 25, wcs, psf);
-    exposureList.push_back(exposure);
+    image::BBox partial(image::PointI(0,0), bbox.getWidth() / 2, bbox.getHeight() /2);
+    image::MaskedImage<double> sub(mi, partial);
+    toAdd.reset(new multifit::CharacterizedExposure<multifit::Pixel> (sub, *wcs, psf));
+    exposureList.push_back(toAdd);
+
     //one exposure with no coverage, by shifting image origin
-    exposure = boost::make_shared< multifit::CharacterizedExposure<multifit::Pixel> >(5, 5, wcs, psf);
-    exposure->getMaskedImage().setXY0(150, 150);
-    exposureList.push_back(exposure);
+    bbox.shift(-bbox.getX0(), -bbox.getY0());
+    image::MaskedImage<double> offset(mi, bbox, true);
+    offset.setXY0(-1000, -1000);
+    toAdd.reset(new multifit::CharacterizedExposure<multifit::Pixel> (offset, *wcs, psf));
+    exposureList.push_back(toAdd);
 
-    evaluator.setExposureList(exposureList);
+    multifit::ModelEvaluator evaluator(psModel, exposureList);
 
+    BOOST_CHECK_EQUAL(evaluator.getNProjections(), 2);    
+    BOOST_CHECK(evaluator.getNPixels() < fp->getNpix()*2);
     ndarray::Array<multifit::Pixel const, 1, 1> img;
     ndarray::Array<multifit::Pixel const, 1, 1> var;
     ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
@@ -67,4 +86,16 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     ndarray::shallow(modelImg) = evaluator.computeModelImage();
     ndarray::shallow(lpd) = evaluator.computeLinearParameterDerivative();
     ndarray::shallow(npd) = evaluator.computeNonlinearParameterDerivative();
+    
+    for (int i = 0; i < evaluator.getNPixels(); ++i){
+        BOOST_CHECK_EQUAL(img[i], img[i]);
+        BOOST_CHECK_EQUAL(var[i], var[i]);
+        BOOST_CHECK_EQUAL(modelImg[i], modelImg[i]);
+
+        for (int j = 0; j < evaluator.getLinearParameterSize(); ++j)
+            BOOST_CHECK_EQUAL(lpd[j][i], lpd[j][i]);
+
+        for (int j = 0; j < evaluator.getNonlinearParameterSize(); ++j)
+            BOOST_CHECK_EQUAL(npd[j][i], npd[j][i]);
+    }
 }

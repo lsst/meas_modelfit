@@ -15,20 +15,14 @@ def initializeModelEvaluator():
     modelEvaluator = measMult.ModelEvaluator(psModel, exposureList)
 
     numpy.set_printoptions(threshold=100000)
-    print "Number of exposures in ModelEvaluator: %d"%modelEvaluator.getNProjections()
-    print "Number of total pixels in ModelEvaluator: %d"%modelEvaluator.getNPixels()
+    print "ModelEvaluator nProjections: %d"%modelEvaluator.getNProjections()
+    print "ModelEvaluator nPixels: %d"%modelEvaluator.getNPixels()
 
-    print "ModelEvaluator image vector:"
-    print modelEvaluator.getImageVector()
-
-    print "Model Evaluator ModelImage:"    
-    print modelEvaluator.computeModelImage()
-
-    print "Model Evaluator LinearParameterDerivative:"    
-    print modelEvaluator.computeLinearParameterDerivative()
-
-    print "Model Evaluator NoninearParameterDerivative:"    
-    print modelEvaluator.computeNonlinearParameterDerivative()
+    print "ModelEvaluator image vector: %s"%modelEvaluator.getImageVector()
+    print "ModelEvaluator variance vector: %s"%modelEvaluator.getVarianceVector()  
+    print "ModelEvaluator ModelImage: %s"%modelEvaluator.computeModelImage()
+    print "ModelEvaluator LinearParameterDerivative: %s"%modelEvaluator.computeLinearParameterDerivative()
+    print "ModelEvaluator NoninearParameterDerivative: %s"%modelEvaluator.computeNonlinearParameterDerivative()
 
 
 if __name__ == "__main__":

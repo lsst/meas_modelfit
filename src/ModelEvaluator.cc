@@ -45,10 +45,10 @@ void multifit::ModelEvaluator::setExposureList(
         psf = exposure->getPSF();
         wcs = exposure->getWcs();        
         footprint = _model->computeProjectionFootprint(psf, wcs);
+
         footprint = clipAndMaskFootprint<MaskPixel>(
             footprint, exposure->getMaskedImage().getMask()
         );
-
         //ignore exposures with too few contributing pixels        
         if (footprint->getNpix() > _nMinPix) {
             ProjectionFrame frame(

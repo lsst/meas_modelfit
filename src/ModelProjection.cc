@@ -141,6 +141,7 @@ void multifit::ModelProjection::setModelImageBuffer(ndarray::Array<Pixel,1,1> co
         throw std::invalid_argument("Model image buffer's size must match Footprint size.");
     }
     ndarray::shallow(_modelImage) = buffer;
+    _modelImage=0.0;
     _validProducts &= (~MODEL_IMAGE);
 }
 
