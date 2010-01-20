@@ -13,7 +13,6 @@ namespace multifit {
 
 /**
  *  \brief A projection of a Model to a particular set of observing conditions 
- *  (ABC).
  *
  *  ModelProjection represents a Model evaluated on a particular exposure, and
  *  provides functionality to create an image representation of the Model.
@@ -48,7 +47,7 @@ public:
     virtual int const getPsfParameterSize() const = 0;
 
     /**
-     *  @name PublicProductComputers
+     *  @name Public Product Computers
      *
      *  Each of these computes the Footprint-compressed product as a row-major array
      *  with the last dimension corresponding to the Footprint pixel index and the first
@@ -65,7 +64,7 @@ public:
     //@}
 
     /**
-     *  @name ProductBufferSetters
+     *  @name Product Buffer Setters
      *
      *  The compute[Product]() member functions can be set to fill and return externally
      *  allocated (and possibly shared) data.  After setting a buffer, only the
@@ -80,7 +79,7 @@ public:
     //@}
 
     /**
-     *  @name ProductEnableCheckers
+     *  @name Product Enabled Checkers
      */
     //@{
     bool hasModelImage() const { return true; }
@@ -99,7 +98,7 @@ public:
 protected:
 
 
-    /// \brief Construct a projection.
+
     ModelProjection(
         Model::ConstPtr const & model,
         WcsConstPtr const & wcs,
@@ -107,7 +106,7 @@ protected:
     );
 
     /**
-     *  @name ProtectedProductComputers
+     *  @name Protected Product Computers
      *
      *  Each of these computes a Footprint-compressed derivative of the projected Model's
      *  image representation with respect to a different set of parameters.  The base

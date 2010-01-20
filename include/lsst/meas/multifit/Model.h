@@ -78,11 +78,8 @@ public:
         return _linearParameters->size(); 
     }
 
-    /// \brief Set the linear parameters.
     void setLinearParameters(ParameterConstIterator parameterIter);
-    void setLinearParameters(ParameterVector const & parameters) {
-        setLinearParameters(parameters.data());
-    }
+    void setLinearParameters(ParameterVector const & parameters);
 
     /// \brief Return a vector of the nonlinear parameters.
     ParameterVector const & getNonlinearParameters() const { 
@@ -99,11 +96,8 @@ public:
         return _nonlinearParameters->size(); 
     }
 
-    /// \brief Set the nonlinear parameters.
     void setNonlinearParameters(ParameterConstIterator parameterIter);
-    void setNonlinearParameters(ParameterVector const & parameters) {
-        setNonlinearParameters(parameters.data());
-    }
+    void setNonlinearParameters(ParameterVector const & parameters);
 
     /**
      *  \brief Create a new Model with the same type and parameters.
@@ -128,7 +122,9 @@ protected:
     typedef boost::weak_ptr<ModelProjection> ProjectionWeakPtr;
     typedef std::list<ProjectionWeakPtr> ProjectionList;
 
-    /// \brief Initialize the Model and allocate space for the parameter vectors.
+    /**
+     * Initialize the Model and allocate space for the parameter vectors.
+     */
     Model(int linearParameterSize, int nonlinearParameterSize)       
       : _linearParameters(boost::make_shared<ParameterVector>(linearParameterSize)),
         _nonlinearParameters(boost::make_shared<ParameterVector>(nonlinearParameterSize)),
@@ -147,30 +143,32 @@ protected:
         _projectionList()
     {}
 
-    /// \brief Notify all associated ModelProjections that the linear parameters have changed.
     void _broadcastLinearParameterChange() const;
 
-    /// \brief Notify all associated ModelProjections that the nonlinear parameters have changed.
     void _broadcastNonlinearParameterChange() const;
 
     /**
      *  \brief Provide additional code for setLinearParameters().
      *
-     *  This will be called by setLinearParameters, after the parameter vector has been updated and
-     *  before the call to _broadcastLinearParameterChange().
+     *  This will be called by setLinearParameters, after the parameter 
+     *  vector has been updated and before the call to 
+     *  _broadcastLinearParameterChange().
      */
     virtual void _handleLinearParameterChange() {}
 
     /**
      *  \brief Provide additional code for setNonlinearParameters().
      *
-     *  This will be called by setNonlinearParameters, after the parameter vector has been updated
-     *  and before the call to _broadcastNonlinearParameterChange().
+     *  This will be called by setNonlinearParameters, after the parameter 
+     *  vector has been updated and before the call to 
+     *  _broadcastNonlinearParameterChange().
      */
     virtual void _handleNonlinearParameterChange() {}
 
     /// \brief Add a newly-created projection to the list of listeners.
-    void _registerProjection(boost::shared_ptr<ModelProjection> const & projection) const;
+    void _registerProjection(
+        boost::shared_ptr<ModelProjection> const & projection
+    ) const;
 
     boost::shared_ptr<ParameterVector> _linearParameters;
     boost::shared_ptr<ParameterVector> _nonlinearParameters;

@@ -12,7 +12,7 @@ Basic routines to talk to lsst::meas::multifit classes
 // Suppress swig complaints
 #pragma SWIG nowarn=314                 // print is a python keyword (--> _print)
 #pragma SWIG nowarn=362                 // operator=  ignored
-
+#pragma SWIG nowarn=401					// nothin known about base class X
 %{
 // these sholdn't be necessary, but SWIG fails if they aren't there.
 #include "lsst/afw/detection.h" 

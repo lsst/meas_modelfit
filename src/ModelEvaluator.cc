@@ -47,7 +47,7 @@ void multifit::ModelEvaluator::setExposureList(
         footprint = _model->computeProjectionFootprint(psf, wcs);
 
         footprint = clipAndMaskFootprint<MaskPixel>(
-            footprint, exposure->getMaskedImage().getMask()
+            *footprint, exposure->getMaskedImage().getMask()
         );
         //ignore exposures with too few contributing pixels        
         if (footprint->getNpix() > _nMinPix) {
@@ -94,14 +94,14 @@ void multifit::ModelEvaluator::setExposureList(
         ndarray::shallow(frame._varianceVector) = _varianceVector[
             ndarray::view(pixelStart, pixelEnd)
         ];
-            
-        CompressFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
+
+        // compress the exposure using the footprint
+        compressImage(
+            *frame.getFootprint(), 
             (*exposureIter)->getMaskedImage(), 
             frame._imageVector, 
             frame._varianceVector
         );
-        functor.apply(*frame.getFootprint());    
-    
 
         //set modelImage buffer
         frame._projection->setModelImageBuffer(
@@ -117,6 +117,7 @@ void multifit::ModelEvaluator::setExposureList(
             _nonlinearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
         );
 
+        
         pixelStart = pixelEnd;
         ++exposureIter;
     }   
