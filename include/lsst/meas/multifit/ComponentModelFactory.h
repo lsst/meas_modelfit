@@ -15,12 +15,12 @@ namespace multifit {
 class ComponentModel;
  
 /**
- *  \brief A factory and dynamic type object for ComponentModel (ABC).
+ *  A factory and dynamic type object for ComponentModel.
  *
- *  \sa ComponentModel
- *  \sa ComponentModelProjection
+ *  @sa ComponentModel
+ *  @sa ComponentModelProjection
  *
- *  \todo better documentation
+ *  @todo better documentation
  */
 class ComponentModelFactory : public ModelFactory {
 public:
@@ -29,7 +29,7 @@ public:
     typedef boost::shared_ptr<ComponentModelFactory const> ConstPtr;
 
     /**
-     *  \brief Construct a new ComponentModelFactory from template Astrometry 
+     *  Construct a new ComponentModelFactory from template Astrometry 
      *  and Morphology objects.
      */
     static ModelFactory::ConstPtr create(
@@ -42,7 +42,7 @@ public:
     }
     
     /**
-     *  \brief Create a ComponentModel.
+     *  Create a ComponentModel.
      */
     virtual Model::Ptr makeModel(
         ParameterVector const & linearParameters,
@@ -50,16 +50,16 @@ public:
     ) const;
 
     /**
-     * \brief compute the number of nonlinear parameters in Models produced by 
+     * compute the number of nonlinear parameters in Models produced by 
      * this factory.
      */
     virtual int const getNonlinearParameterSize() const {
-        return _astrometryTemplate->getAstrometryParameterSize() 
-            + _morphologyTemplate->getMorphologyParameterSize();
+        return _astrometryTemplate->getParameterSize() 
+            + _morphologyTemplate->getNonlinearParameterSize();
     }
 
     /**
-     * \brief Return the minimum number of linear parameters in Models produced 
+     * Return the minimum number of linear parameters in Models produced 
      * by this factory.
      */
     virtual int const getMinLinearParameterSize() const {
@@ -67,7 +67,7 @@ public:
     }
 
     /**
-     * \brief Return the maximum number of linear parameters in Models produced 
+     * Return the maximum number of linear parameters in Models produced 
      * by this factory.
      */
      virtual int const getMaxLinearParameterSize() const {
@@ -75,7 +75,7 @@ public:
     }
 
     /**
-     * \brief Return the Astrometry used as a template in constructing 
+     * Return the Astrometry used as a template in constructing 
      * ComponentModels.
      */
     components::Astrometry::ConstPtr getAstrometryTemplate() const { 
@@ -83,7 +83,7 @@ public:
     }
 
     /**
-     * \brief Return the Morphology used as a template in constructing 
+     * Return the Morphology used as a template in constructing 
      * ComponentModels.
      */
     components::Morphology::ConstPtr getMorphologyTemplate() const { 

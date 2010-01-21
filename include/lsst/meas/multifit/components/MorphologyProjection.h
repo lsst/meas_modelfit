@@ -16,9 +16,9 @@ namespace components {
 class Morphology;
 
 /**
- *  \brief A projection of a Morphology object.
+ * A projection of a Morphology object.
  *
- *  A MorphologyProjection should only exist as a data member of a ComponentModel.
+ * A MorphologyProjection should only exist as a data member of a ComponentModel.
  */
 class MorphologyProjection : private boost::noncopyable {
 public:
@@ -30,12 +30,12 @@ public:
 
     virtual ~MorphologyProjection() {}
 
-    /// \brief Return the Morphology this is a projection of.
+    /// Return the Morphology this is a projection of.
     boost::shared_ptr<Morphology const> getMorphology() const { 
         return _morphology; 
     }
 
-    /// \brief Return the kernel dimensions this MorphologyProjection expects.
+    /// Return the kernel dimensions this MorphologyProjection expects.
     lsst::afw::geom::Extent2I const & getKernelDimensions() const { 
         return _kernelDimensions; 
     }
@@ -46,35 +46,35 @@ public:
     }
 
     /**
-     *  \brief Return the matrix that maps the output of
-     *  ComponentModelProjection::computeProjectedParameterDerivative()
-     *  to the morphology block of the nonlinear parameter derivative.
+     *  Return the matrix that maps the output of 
+     *  ComponentModelProjection::computeProjectedParameterDerivative to the 
+     *  morphology block of the nonlinear parameter derivative.
      */
     virtual ParameterJacobianMatrix const & computeProjectedParameterJacobian() const = 0;
 
     /**
-     *  \brief Return the matrix that deprojects the output of
-     *  ComponentModelProjection::computeProjectedParameterDerivative() 
-     *  to the morphology terms of the WCS parameter derivative.
+     *  Return the matrix that deprojects the output of 
+     *  ComponentModelProjection::computeProjectedParameterDerivative to the 
+     *  morphology terms of the WCS parameter derivative.
      */
     virtual TransformJacobianMatrix const & computeTransformParameterJacobian() const = 0;
 
 protected:
 
     /**
-     *  \brief Handle a change in the linear parameters, as propogated by the owning
-     *  ComponentModelProjection.
+     * Handle a change in the linear parameters, as propogated by the owning
+     * ComponentModelProjection.
      */
     virtual void _handleLinearParameterChange() {}
 
     /**
-     *  \brief Handle a change in the (nonlinear) morphology parameters, as propogated by the
-     *  owning ComponentModelProjection.
+     * Handle a change in the (nonlinear) morphology parameters, as propogated by the
+     * owning ComponentModelProjection.
      */
-    virtual void _handleMorphologyParameterChange() {}
+    virtual void _handleNonlinearParameterChange() {}
 
     /**
-     *  \brief Construct a MorphologyProjection.
+     * Construct a MorphologyProjection.
      */
     MorphologyProjection(
         boost::shared_ptr<Morphology const> const & morphology,

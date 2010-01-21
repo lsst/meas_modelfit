@@ -4,7 +4,7 @@
 namespace multifit = lsst::meas::multifit;
 
 /**
- * @name ModelParameterSetters
+ * @name Model Parameter Setters
  *
  * Set the parameters of this model. 
  * All registered projections will be notified of change

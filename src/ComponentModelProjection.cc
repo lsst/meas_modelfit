@@ -3,6 +3,10 @@
 
 namespace multifit = lsst::meas::multifit;
 
+/**
+ * Construct a ComponentModelProjection
+ *
+ */
 multifit::ComponentModelProjection::ComponentModelProjection(
     ComponentModel::ConstPtr const & model,
     PsfConstPtr const & psf,
@@ -14,7 +18,7 @@ multifit::ComponentModelProjection::ComponentModelProjection(
     _translationDerivative(), 
     _projectedParameterDerivative()
 {
-    lsst::afw::geom::PointD center(getAstrometry()->apply());
+    lsst::afw::geom::PointD center(getAstrometry()->computePosition());
     lsst::afw::geom::AffineTransform wcsTransform(wcs->linearizeAt(center));
     
     _transform = boost::make_shared<lsst::afw::geom::AffineTransform>(
@@ -38,26 +42,35 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
         MatrixMap astrometryMap(
             matrix.getData(),
             matrix.getStride<0>(),
-            getModel()->getAstrometry()->getAstrometryParameterSize()
+            getModel()->getAstrometry()->getParameterSize()
         );                      
-        MatrixMapBlock astrometryView(astrometryMap, 0, 0, matrix.getSize<1>(), matrix.getSize<0>());
+        MatrixMapBlock astrometryView(
+            astrometryMap, 
+            0, 0, 
+            matrix.getSize<1>(), matrix.getSize<0>()
+        );
         // END TODO
         TranslationMatrixMap translationView(getTranslationMatrixView());
         components::Astrometry::DerivativeMatrix astrometryDerivative(
             getModel()->getAstrometry()->differentiate()
         );
-        astrometryView = translationView * _transform->getEigenTransform().linear() * astrometryDerivative;
+        astrometryView = translationView * 
+            _transform->getEigenTransform().linear() * astrometryDerivative;
     }
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();
         // TODO: Move this into an inline function when possible.
-        int offset = getModel()->getAstrometry()->getAstrometryParameterSize();
+        int offset = getModel()->getAstrometry()->getParameterSize();
         MatrixMap morphologyMap(
             matrix.getData(),
             matrix.getStride<0>(), 
-            getModel()->getMorphology()->getMorphologyParameterSize()
+            getModel()->getMorphology()->getNonlinearParameterSize()
         );
-        MatrixMapBlock morphologyView(morphologyMap, 0, offset, matrix.getSize<1>(), morphologyMap.cols());
+        MatrixMapBlock morphologyView(
+            morphologyMap, 
+            0, offset, 
+            matrix.getSize<1>(), morphologyMap.cols()
+        );
         // END TODO
         // TODO: Move this into an inline function when possible.
         MatrixMap projectedMap(
@@ -68,7 +81,8 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
         MatrixMapBlock projectedView(
             projectedMap,
             0, 0,
-            _projectedParameterDerivative.getSize<1>(), _projectedParameterDerivative.getSize<0>()
+            _projectedParameterDerivative.getSize<1>(), 
+            _projectedParameterDerivative.getSize<0>()
         );
         // END TODO
         morphologyView = projectedView * _morphologyProjection->computeProjectedParameterJacobian();
@@ -83,22 +97,31 @@ void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
         MatrixMap astrometryMap(
             matrix.getData(),
             matrix.getStride<0>(),
-            getModel()->getAstrometry()->getAstrometryParameterSize()
+            getModel()->getAstrometry()->getParameterSize()
         );                      
-        MatrixMapBlock astrometryView(astrometryMap, 0, 0, matrix.getSize<1>(), matrix.getSize<0>());
-        astrometryView = getTranslationMatrixView() *
-            _transform->dTransform(getModel()->getAstrometry()->apply());
+        MatrixMapBlock astrometryView(
+            astrometryMap, 
+            0, 0, 
+            matrix.getSize<1>(), matrix.getSize<0>()
+        );
+        astrometryView = getTranslationMatrixView() * _transform->dTransform(
+            getModel()->getAstrometry()->computePosition()
+        );
     }
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();
         // TODO: Move this into an inline function when possible.
-        int offset = getModel()->getAstrometry()->getAstrometryParameterSize();
+        int offset = getModel()->getAstrometry()->getParameterSize();
         MatrixMap morphologyMap(
             matrix.getData(),
             matrix.getStride<0>(), 
-            getModel()->getMorphology()->getMorphologyParameterSize()
+            getModel()->getMorphology()->getNonlinearParameterSize()
         );
-        MatrixMapBlock morphologyView(morphologyMap, 0, offset, matrix.getSize<1>(), morphologyMap.cols());
+        MatrixMapBlock morphologyView(
+            morphologyMap, 
+            0, offset, 
+            matrix.getSize<1>(), morphologyMap.cols()
+        );
         // END TODO
         // TODO: Move this into an inline function when possible.
         MatrixMap projectedMap(
@@ -109,7 +132,8 @@ void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
         MatrixMapBlock projectedView(
             projectedMap,
             0, 0,
-            _projectedParameterDerivative.getSize<1>(), _projectedParameterDerivative.getSize<0>()
+            _projectedParameterDerivative.getSize<1>(), 
+            _projectedParameterDerivative.getSize<0>()
         );
         // END TODO
 	morphologyView += projectedView *
@@ -117,6 +141,12 @@ void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
     }
 }
 
+/**
+ * Ensure's that _translationDerivative is up to date
+ *
+ * If _translationDerivative array has not been allocated, do so first.
+ * If it is not up to date, call _computeTranslationParameterDerivative
+ */
 void multifit::ComponentModelProjection::_ensureTranslationDerivative() {
     if (_translationDerivative.empty()) {
         ndarray::shallow(_translationDerivative) = ndarray::allocate<Allocator>(
@@ -129,6 +159,12 @@ void multifit::ComponentModelProjection::_ensureTranslationDerivative() {
     }
 }
 
+/**
+ * Ensure that _projectedParameterDerivative is up to date
+ *
+ * If _projectedParameterDerivative array has not been allocated, do so first.
+ * If it is not up to date, call _computeProjectedParameterDerivative
+ */
 void multifit::ComponentModelProjection::_ensureProjectedParameterDerivative() {
     if (_projectedParameterDerivative.empty()) {
         ndarray::shallow(_projectedParameterDerivative) =  ndarray::allocate<Allocator>(

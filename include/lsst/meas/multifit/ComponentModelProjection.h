@@ -12,41 +12,44 @@ namespace meas {
 namespace multifit {
 
 /**
- *  \brief A projection of a ComponentModel to a particular set of observing conditions.
+ *  A projection of a ComponentModel to a particular set of observing conditions.
  *  
- *  \sa ComponentModel
- *  \sa ComponentModelFactory
+ *  @sa ModelProjection
+ *  @sa ComponentModel
+ *  @sa ComponentModelFactory
  */
 class ComponentModelProjection : 
-    public ModelProjection, public lsst::afw::math::Convolvable {       
+    public ModelProjection  {       
 public:
     typedef boost::shared_ptr<ModelProjection> Ptr;
     typedef boost::shared_ptr<ModelProjection const> ConstPtr;
 
     static const int WCS_PARAMETER_SIZE = 6;
 
-    /// \brief Return the Model instance this is a projection of.
+    /// Model instance this projection is associated with.
     ComponentModel::ConstPtr getModel() const {
         return boost::static_pointer_cast<ComponentModel const>(ModelProjection::getModel());
     }
 
-    /// \brief Return the Astrometry object this projection is based on.
+    /// Astrometry object this projection is based on.
     components::Astrometry::ConstPtr getAstrometry() const { 
         return getModel()->getAstrometry(); 
     }
 
-    /// \brief Return the MorphologyProjection object this projection is based on.
+    /**
+     * Imutable reference to the MorphologyProjection object this projection is based on.
+     */
     components::MorphologyProjection::ConstPtr getMorphologyProjection() const {
         return _morphologyProjection;
     }
 
-    /// \brief Return the AffineTransform that maps global coordinates to image coordinates.
+    /// AffineTransform that maps global coordinates to image coordinates.
     lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const { return _transform; }
 
-    /// \brief Return the number of parameters that specify the coordinate transformation.
+    /// Number of parameters that specify the coordinate transformation.
     virtual int const getWcsParameterSize() const { return WCS_PARAMETER_SIZE; }
 
-    /// \brief Return the number of parameters that specify the PSF.
+    /// Number of parameters that specify the PSF.
     virtual int const getPsfParameterSize() const = 0;
 
 protected:
@@ -56,7 +59,6 @@ protected:
         PROJECTED_PARAMETER_DERIVATIVE = 1 << 1
     };
 
-    /// \brief Construct a projection.
     ComponentModelProjection(
         ComponentModel::ConstPtr const & model,
         PsfConstPtr const & psf,
@@ -65,18 +67,14 @@ protected:
     );
 
     /**
-     *  @name LocalizedConvolvableImplementation
+     * Compute the image-space (xy) coordinates where the PSF should be centered
      */
-    //@{
     virtual lsst::afw::geom::Point2D _getPsfPosition() const { 
-        return (*_transform)(getAstrometry()->apply()); 
+        return (*_transform)(getAstrometry()->computePosition()); 
     }
-    //@}
-
-    // ------------------------------------------------------------------- //
 
     /**
-     *  @name ProtectedProductComputers
+     *  @name Protected Product Computers
      *
      *  These are fully implemented by ComponentModel by delegating to _computeTranslationDerivative()
      *  and _computeProjectedParameterDerivative(), and should not generally by reimplemented
@@ -85,7 +83,7 @@ protected:
     //@{
     virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     virtual void _computeWcsParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
-    //@}
+
 
     /**
      *  Compute the derivative of the model image with respect to image-coordinate translations
@@ -102,37 +100,31 @@ protected:
      *  MorphologyProjection's getParameterJacobian() and getTransformDerivative() outputs.
      */
     virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
-
-    virtual bool hasWcsParameterDerivative() const { return false; }
-
-    virtual bool hasTranslationDerivative() const { return true; }
-
-    virtual bool hasProjectedParameterDerivative() const {
-        return getMorphologyProjection()->getMorphology()->getMorphologyParameterSize() > 0;
-    }
+    //@}
 
     /**
-     *  \brief Handle a linear parameter change broadcast from the associated Model.
-     *
-     *  This propogates the change to the stored MorphologyProjection object.  Subclasses
-     *  which override should ensure this implementation is still called.
+     *  @name Product Enabled Checkers
      */
+    //@{
+    virtual bool hasWcsParameterDerivative() const { return false; }
+    virtual bool hasTranslationDerivative() const { return true; }
+    virtual bool hasProjectedParameterDerivative() const {
+        return getMorphologyProjection()->getMorphology()->getNonlinearParameterSize() > 0;
+    }
+    //@}
+    
     virtual void _handleLinearParameterChange() {
         ModelProjection::_handleLinearParameterChange();
         _morphologyProjection->_handleLinearParameterChange();
     }
-
-    /**
-     *  \brief Handle a nonlinear parameter change broadcast from the associated Model.
-     *
-     *  This propogates the change to the stored MorphologyProjection object.  Subclasses
-     *  which override should ensure this implementation is still called.
-     */
     virtual void _handleNonlinearParameterChange() {
         ModelProjection::_handleNonlinearParameterChange();
-        _morphologyProjection->_handleMorphologyParameterChange();
+        _morphologyProjection->_handleNonlinearParameterChange();
     }
 
+    /**
+     * Mutable reference to the MorphologyProjection object this projection is based on.
+     */
     components::MorphologyProjection::Ptr _getMorphologyProjection() { 
         return _morphologyProjection;
     }
@@ -140,6 +132,7 @@ protected:
 private:
     
     typedef Eigen::Map< Eigen::Matrix<Pixel,Eigen::Dynamic,2> > TranslationMatrixMap;
+
 
     void _ensureTranslationDerivative();
     void _ensureProjectedParameterDerivative();
@@ -179,9 +172,12 @@ private:
     }
 
     int _validProducts;
+
     ///< Transform from global coordinates to this projection
     lsst::afw::geom::AffineTransform::ConstPtr _transform; 
+    ///< MorphologyProjection this ComponentModelProjection is based on
     components::MorphologyProjection::Ptr _morphologyProjection;
+
     ndarray::Array<Pixel,2,2> _translationDerivative;
     ndarray::Array<Pixel,2,2> _projectedParameterDerivative;
 };

@@ -11,39 +11,26 @@ namespace meas {
 namespace multifit {
 namespace components {
 
+/**
+ * Derived Morphology component for fitting static point-sources
+ */
 class PointSourceMorphology : public Morphology {
 public:
     typedef boost::shared_ptr<PointSourceMorphology> Ptr;
     typedef boost::shared_ptr<PointSourceMorphology const> ConstPtr;
 
-    // --- Template-mode functionality ----------------------------------------------------------------------
-
-    /// \brief Return the minimum number of linear parameters.
-    virtual int const getMinLinearParameterSize() const { return 1; }
-
-    /// \brief Return the maximum number of linear parameters.
-    virtual int const getMaxLinearParameterSize() const { return 1; }
-
-    /// \brief Return the number of (nonlinear) morphology parameters.
-    virtual int const getMorphologyParameterSize() const { return 0; }
-
-    // --- In-model functionality ---------------------------------------------------------------------------
-
-    /// \brief Return an ellipse core that bounds the morphology.
     virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
         return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();
     }
 
-    /**
-     *  \brief Create a new MorphologyProjection object.
-     *
-     *  Typically used only by the owning ComponentModel.
-     */
     virtual MorphologyProjection::Ptr makeProjection(
         lsst::afw::geom::Extent2I const & kernelDimensions,
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) const;
 
+    /**
+     * Named PointSourceMorphology constructor    
+     */
     static PointSourceMorphology::Ptr createTemplate() {
         return PointSourceMorphology::Ptr(new PointSourceMorphology());
     }       
@@ -51,33 +38,29 @@ public:
 protected:
 
     /**
-     *  \brief Default-construct a Morphology object to be used as a template.
+     *  Default-construct a Morphology object to be used as a template.
      */
     PointSourceMorphology() : Morphology() {}
 
     /**
-     *  \brief Construct a Morphology object for use inside a ComponentModel.
+     *  Construct a Morphology object for use inside a ComponentModel.
      *
-     *  \sa Morphology::create()
+     *  @sa Morphology::create()
      */
     PointSourceMorphology(
         boost::shared_ptr<ParameterVector const> const & linearParameterVector,
-        ParameterConstIterator morphologyParameterIter
-    ) : Morphology(linearParameterVector,morphologyParameterIter) {}
+        ParameterConstIterator nonlinearParameterIter
+    ) : Morphology(linearParameterVector,nonlinearParameterIter) {}
 
-    /**
-     *  \brief Construct a new Morphology using this as a template.
-     *
-     *  Typically used only by ComponentModel.
-     *
-     *  \param linearParameterVector The owning ComponentModel's linear parameter vector
-     *  \param morphologyParameterIter Iterator to the first Morphology-specific
-     *   parameter in the owning ComponentModel's nonlinear parameter vector.
-     */
     virtual Morphology::Ptr create(
         boost::shared_ptr<ParameterVector const> const & linearParameterVector,
-        ParameterConstIterator morphologyParameterIter 
+        ParameterConstIterator nonlinearParameterIter 
     ) const;
+
+    //derived Morphology template mode functions
+    virtual int const getMinLinearParameterSize() const { return 1; }
+    virtual int const getMaxLinearParameterSize() const { return 1; }
+    virtual int const getNonlinearParameterSize() const { return 0; }
 
 };
 

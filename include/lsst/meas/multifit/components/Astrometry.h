@@ -28,26 +28,41 @@ class Astrometry {
 public:
     typedef boost::shared_ptr<Astrometry> Ptr;
     typedef boost::shared_ptr<Astrometry const> ConstPtr;
-
-    typedef Eigen::Matrix<Pixel,2,Eigen::Dynamic> DerivativeMatrix;
+    typedef Eigen::Matrix<Pixel, 2, Eigen::Dynamic> DerivativeMatrix;
 
     virtual ~Astrometry() {}
 
-    /// \brief Default-construct an Astrometry object for use as a template.
+    /// Default-construct an Astrometry object for use as a template.
     Astrometry() : _astrometryParameterIter(NULL) {}
 
-    /// \brief Return the number of astrometric parameters.
-    virtual int const getAstrometryParameterSize() const { return 2; }
+    /// Return the number of astrometric parameters.
+    virtual int const getParameterSize() const { return 2; }
 
-    /// \brief Return the reference point (ra,dec).
-    lsst::afw::geom::Point2D getRefPoint() const { 
-        return lsst::afw::geom::Point2D::make(_astrometryParameterIter[0],_astrometryParameterIter[1]);
+    /**
+     * Return the reference point (ra,dec).
+     *
+     * For static sources, the computed position is equivalent to the reference
+     * point
+     *
+     * @sa computePosition
+     */
+    lsst::afw::geom::Point2D getReferencePoint() const { 
+        return lsst::afw::geom::Point2D::make(
+            _astrometryParameterIter[0], _astrometryParameterIter[1]
+        );
     }
 
     /**
      *  Return the computed point (ra,dec).
+     *
+     *  For static sources, the computed position is equivalent to the reference
+     *  point
+     *
+     *  @sa getReferencePoint
      */
-    virtual lsst::afw::geom::Point2D apply() const { return getRefPoint(); }
+    virtual lsst::afw::geom::Point2D computePosition() const { 
+        return getReferencePoint(); 
+    }
 
     /**
      *  Compute the derivative with respect to the astrometric parameters.
@@ -62,12 +77,12 @@ protected:
     friend class multifit::ComponentModel;
 
     /**
-     *  \brief Construct a new Astrometry object using this as a template.
+     *  Construct a new Astrometry object using this as a template.
      *
-     *  Typically only used by ComponentModel.  The passed iterator must
+     *  Only used by ComponentModel. The passed iterator must
      *  remain valid for the full lifetime of the Astrometry object.
      *
-     *  \param astrometryParameterIter pointer to the first Astrometry-specific
+     *  @param astrometryParameterIter pointer to the first Astrometry-specific
      *   parameter in the owning ComponentModel's nonlinear parameter vector 
      *   
      */
@@ -77,7 +92,7 @@ protected:
         return Astrometry::Ptr(new Astrometry(astrometryParameterIter));
     }
 
-    virtual void _handleAstrometryParameterChange() {}
+    virtual void _handleParameterChange() {}
 
 private:
 

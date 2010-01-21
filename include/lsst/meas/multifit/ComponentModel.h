@@ -18,11 +18,14 @@ namespace multifit {
 class ComponentModelProjection;
 
 /**
- *  \brief A Model defined by a Astrometry object and a Morphology.
+ *  Derived Model defined by its a Astrometry and a Morphology components.
  *
- *  \sa Model
- *  \sa ComponentModelFactory
- *  \sa ComponentModelProjection
+ *  The number of nonlinear parameters is the sum of the Astrometry parameters
+ *  and the Morphology parameters. When calling setNonlinearParameters on a
+ *  ComponentModel, the input ParameterVector must be organized as 
+ *  @sa Model
+ *  @sa ComponentModelFactory
+ *  @sa ComponentModelProjection
  */
 class ComponentModel : public Model {
 public:
@@ -30,80 +33,77 @@ public:
     typedef boost::shared_ptr<ComponentModel> Ptr;
     typedef boost::shared_ptr<ComponentModel const> ConstPtr;
 
-    /**
-     *  \brief Create a Footprint that would contain a projection of the Model.
-     */
     virtual Footprint::Ptr computeProjectionFootprint(
         PsfConstPtr const & psf,
         WcsConstPtr const & wcs
     ) const;
 
-    /**
-     *  \brief Create an image-coordinate bounding box that would contain a projection of the Model.
-     */
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         PsfConstPtr const & psf,
         WcsConstPtr const & wcs
     ) const;
 
-    /**
-     *  \brief Create an ra/dec bounding ellipse for the Model (does not include PSF broadening).
-     */
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const;
 
-    /**
-     *  \brief Create a new ComponentModel with the same type and parameters.
-     *
-     *  Associated ModelProjection objects are not copied or shared;
-     *  the new Model will not have any associated ModelProjections.
-     */
-    virtual Model::Ptr clone() const { return Model::Ptr(new ComponentModel(*this)); }
+    virtual Model::Ptr clone() const { 
+        return Model::Ptr(new ComponentModel(*this)); 
+    }
 
     /**
-     *  \brief Return the Astrometry component of the Model.
+     *  Immutable access to the Astrometry component.
      */
-    components::Astrometry::ConstPtr getAstrometry() const { return _astrometry; }
+    components::Astrometry::ConstPtr getAstrometry() const {
+        return _astrometry; 
+    }
 
     /**
-     *  \brief Return the Morphology component of the Model.
+     *  Immutable access to the the Morphology component.
      */
-    components::Morphology::ConstPtr getMorphology() const { return _morphology; }
+    components::Morphology::ConstPtr getMorphology() const { 
+        return _morphology; 
+    }
 
 protected:
 
-    /** 
-     *  \brief Create a ModelProjection object associated with this.
-     */
     virtual boost::shared_ptr<ModelProjection> makeProjection(
         PsfConstPtr const & psf,
         WcsConstPtr const & wcs,
         FootprintConstPtr const & footprint
     ) const;
 
-
 private:
     friend class ComponentModelFactory;
 
-    /// \brief Initialize the ComponentModel (does not set parameters).
     explicit ComponentModel(
         int linearParameterSize,
         components::Astrometry::ConstPtr const & astrometryTemplate,
         components::Morphology::ConstPtr const & morphologyTemplate
     );
-
-    /// \brief Deep-copy the Model.
     ComponentModel(ComponentModel const & model);
-
-    /// \brief Shared initialization code for ComponentModel constructors.
-    void _construct(
+    void _initializeComponents(
         components::Astrometry::ConstPtr const & astrometryTemplate,
         components::Morphology::ConstPtr const & morphologyTemplate
     );
 
-    /// \brief Notifies the Morphology object that the linear parameters have changed.
+
+    /**
+     * Iterator at the start of the nonlinear parameters relevant to the
+     * astrometry component
+     */
+    ParameterConstIterator _getAstrometryParameterIter() const {
+        return getNonlinearParameterIter();
+    }
+    /**
+     * Iterator at the start of the nonlinear parameters relevant to the
+     * morphology component
+     */
+    ParameterConstIterator _getMorphologyParameterIter() const {
+        return getNonlinearParameterIter() + _astrometry->getParameterSize();
+    }
+
+
     virtual void _handleLinearParameterChange();
 
-    /// \brief Notifies the Astrometry and Morphology objects that the nonlinear parameters have changed.
     virtual void _handleNonlinearParameterChange();
 
     components::Astrometry::Ptr _astrometry;
