@@ -158,12 +158,14 @@ ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeNon
     return _nonlinearParameterDerivative;
 }
 
-template void 
-multifit::ModelEvaluator::setExposureList(
-    std::list< boost::shared_ptr< CharacterizedExposure<float> > > const &
-);
 
-template void 
-multifit::ModelEvaluator::setExposureList(
-    std::list< boost::shared_ptr< CharacterizedExposure<double> > > const &
+template void multifit::ModelEvaluator::setExposureList<float, 
+    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+(
+    std::list<boost::shared_ptr<CharacterizedExposure<float> > > const &
+);
+template void multifit::ModelEvaluator::setExposureList<double, 
+    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+(
+    std::list<boost::shared_ptr<CharacterizedExposure<double> > > const &
 );

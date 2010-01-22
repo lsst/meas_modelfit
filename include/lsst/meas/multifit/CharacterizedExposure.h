@@ -54,10 +54,10 @@ public:
     
     /**
      * Construct as a subimage of an existing CharacterizedExposure.
-     *
+     * 
+     * @param src master-image to take a sub-image of
      * @param bbox specifies the offset and dimensions of the sub image within
-     * the parent image
-     *
+     *      the parent image
      * @param deep specifies whether a deep copy should be performed
      */
     CharacterizedExposure(

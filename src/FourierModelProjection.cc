@@ -8,8 +8,11 @@
 
 namespace multifit = lsst::meas::multifit;
 
-// -- multifit::FourierModelProjection::Shifter --------------------------------
-
+/**
+ * Manager of intermdiate products for doing shift operations
+ *
+ * @note Internal implementation detail of FourierModelProjection
+ */
 class multifit::FourierModelProjection::Shifter : private boost::noncopyable {
 public:
     void handleNonlinearParameterChange() { _valid = false; }
@@ -53,8 +56,12 @@ private:
     ndarray::FourierArray<Pixel,2,2> _factor;
 };
 
-// -- multifit::FourierModelProjection::LinearMatrixHandler --------------------
-
+/**
+ * Manager of intermdiate products for computing the derivative with respect to
+ * linear parameters
+ *
+ * @note Internal implementation detail of FourierModelProjection
+ */
 class multifit::FourierModelProjection::LinearMatrixHandler : boost::noncopyable {
 public:
     void handleLinearParameterChange() { _imageValid = false; }
@@ -126,8 +133,12 @@ private:
     ndarray::Array<Pixel,3,1> _finalLPD;
 };
 
-// -- multifit::FourierModelProjection::NonlinearMatrixHandler -----------------
-
+/**
+ * Manager of intermdiate products for computing the derivative with respect to
+ * nonlinear parameters
+ *
+ * @note Internal implementation detail of FourierModelProjection
+ */
 class multifit::FourierModelProjection::NonlinearMatrixHandler : boost::noncopyable {
 public:
     void handleParameterChange() { _valid = false; }
@@ -196,8 +207,12 @@ private:
     ndarray::Array<Pixel,3,1> _finalPPD;
 };
 
-// -- multifit::FourierModelProjection::PsfMatrixHandler -----------------------
-
+/**
+ * Manager of intermdiate products for computing the derivative with respect to
+ * psf parameters
+ *
+ * @note Internal implementation detail of FourierModelProjection
+ */
 class multifit::FourierModelProjection::PsfMatrixHandler : boost::noncopyable {
 public:
     void handleParameterChange() { _valid = false; }
@@ -271,6 +286,11 @@ int const multifit::FourierModelProjection::getPsfParameterSize() const {
     return _kernelVisitor->getNParameters();
 }
 
+/**
+ * Compute a locally evaluated ConvolutionVisitor from the PSF's
+ * kernel, and apply it to the model. This operation invalidates all
+ * intermediadiary products. 
+ */
 void multifit::FourierModelProjection::_convolve(
     PsfConstPtr const & psf
 ) { 
@@ -397,12 +417,12 @@ void multifit::FourierModelProjection::_setDimensions() {
     );
 
     _outerBBox = lsst::afw::geom::BoxI(bboxMin, dimensions);
-    // Right now, _innerBBox is defined relative to exposure    
+    
+    // At this point, _innerBBox is defined relative to exposure    
     lsst::afw::geom::Extent2I padding = getMorphologyProjection()->getPadding();
     _innerBBox = _outerBBox;
     _innerBBox.grow(-padding);
     
-    //TODO: convert footprint to use geom::Box2I
     lsst::afw::geom::BoxI footprintBBox = lsst::afw::geom::convertToGeom(getFootprint()->getBBox());
     _innerBBox.clip(footprintBBox);
     if(_innerBBox.isEmpty()) {
@@ -413,7 +433,7 @@ void multifit::FourierModelProjection::_setDimensions() {
     }
     _wf = boost::make_shared<WindowedFootprint>(*getFootprint(), _innerBBox);
 
-    // But now, and forevermore, _innerBBox is defined relative to _outerBBox.
+    // Shift _innerBBox to be defined relative to _outerBBox.
     _innerBBox.shift(lsst::afw::geom::Point2I(0) - _outerBBox.getMin());
 
     _kernelVisitor->fft(_outerBBox.getWidth(), _outerBBox.getHeight());    
@@ -424,16 +444,27 @@ void multifit::FourierModelProjection::_setDimensions() {
         _psfMatrixHandler.reset(new PsfMatrixHandler(this));
 }
 
+/**
+ * Utility function for convolving a collection of fourier-space images by a
+ * fourier-space kernel image
+ */
 void multifit::FourierModelProjection::_applyKernel(
     ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
     ndarray::FourierArray<Pixel,3,3>::Iterator const & end,
     ndarray::FourierArray<Pixel const,2,2> const & kernel
 ) const {
+
+    //iterate over collection of fourier-space images
     for (; iter != end; ++iter) {
+        //convolved by kernel-image
         *iter *= kernel;
     }    
 }
 
+/**
+ * Utility function for apply the projection's PSF's kernel-image to a
+ * collection of fourier-space images
+ */
 void multifit::FourierModelProjection::_applyKernel(
     ndarray::FourierArray<Pixel,3,3>::Iterator iter, 
     ndarray::FourierArray<Pixel,3,3>::Iterator const & end
@@ -441,8 +472,8 @@ void multifit::FourierModelProjection::_applyKernel(
 
     lsst::afw::math::FourierCutout::Ptr fourierCutout = 
         _kernelVisitor->getFourierImage();
-    // TODO: investigate why this fails if moved inside the
-    // FourierArray constructor call.
+   
+    //Create an Array over the fourierCutout allocated image
     ndarray::Array<std::complex<Pixel>, 2, 2> externalImg(
         ndarray::external(
             fourierCutout->begin(),
@@ -454,11 +485,14 @@ void multifit::FourierModelProjection::_applyKernel(
             fourierCutout->getOwner()
         )
     );
+    //Create a FourierArray using the above Array
     ndarray::FourierArray<Pixel, 2, 2> kernelImage(
         fourierCutout->getImageWidth(),
         externalImg
     );
+
+    //delegate to generic overload of this function
     _applyKernel(iter, end, kernelImage);
 }
 
-multifit::FourierModelProjection::~FourierModelProjection(){};
+multifit::FourierModelProjection::~FourierModelProjection() {}

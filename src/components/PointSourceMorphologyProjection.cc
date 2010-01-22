@@ -36,9 +36,12 @@ components::PointSourceMorphologyProjection::computeProjectedParameterDerivative
 #endif
 }
 
-components::PointSourceMorphologyProjection::PointSourceMorphologyProjection(
+/**
+ * Construct a PointSourceMorphologyProjection.
+ */
+lsst::meas::multifit::components::PointSourceMorphologyProjection::PointSourceMorphologyProjection(
     PointSourceMorphology::ConstPtr const & morphology,
-    lsst::afw::geom::Extent2I const kernelDimensions, 
+    lsst::afw::geom::Extent2I const & kernelDimensions, 
     lsst::afw::geom::AffineTransform::ConstPtr const & transform
 ) : FourierMorphologyProjection(morphology,kernelDimensions,transform),
     _linearParameterDerivative()

@@ -72,7 +72,7 @@ afwDet::Footprint::Ptr multifit::makeFootprint(
  */
 template <typename MaskPixel> 
 afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
-    afwDet::Footprint const & footprint,
+    lsst::afw::detection::Footprint const & footprint,
     typename lsst::afw::image::Mask<MaskPixel>::Ptr const & mask
 ) {
     lsst::afw::image::BBox const maskBBox(
@@ -148,13 +148,13 @@ afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
 //FootprintFunctor to compress an afw::Image to two ndarray::Array using a footprint
 template <typename ImagePixel, typename MaskPixel=lsst::afw::image::MaskPixel,
     typename VariancePixel=lsst::afw::image::VariancePixel>
-class CompressFunctor : public lsst::afw::detection::FootprintFunctor<
+class CompressImageFunctor : public lsst::afw::detection::FootprintFunctor<
         lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> > {
 public:
     typedef lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> MaskedImage;
     typedef lsst::afw::detection::FootprintFunctor<MaskedImage> FootprintFunctor;
 
-    CompressFunctor(
+    CompressImageFunctor(
         MaskedImage const & src,
         ndarray::Array<multifit::Pixel, 1, 1> const & imageDest,
         ndarray::Array<multifit::Pixel, 1, 1> const & varianceDest
@@ -189,8 +189,8 @@ private:
     ndarray::Array<multifit::Pixel, 1, 1>::Iterator _imageIter, _varianceIter;
 };
 
-template class CompressFunctor<float>;
-template class CompressFunctor<double>;
+template class CompressImageFunctor<float>;
+template class CompressImageFunctor<double>;
 
 /**
  * Compress an lsst::afw::image::MaskedImage into two ndarray::Array
@@ -211,7 +211,7 @@ void multifit::compressImage(
     ndarray::Array<Pixel, 1, 1> const & imageDest,
     ndarray::Array<Pixel, 1, 1> const & varianceDest
 ) {
-    CompressFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
+    CompressImageFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
         maskedImage, imageDest, varianceDest
     ); 
     functor.apply(footprint);
@@ -221,13 +221,13 @@ void multifit::compressImage(
 //FootprintFunctor to expand two ndarray::Array to an afw::Image using a footprint
 template <typename ImagePixel, typename MaskPixel=lsst::afw::image::MaskPixel, 
     typename VariancePixel=lsst::afw::image::VariancePixel>
-class  ExpandFunctor : public lsst::afw::detection::FootprintFunctor<
+class  ExpandImageFunctor : public lsst::afw::detection::FootprintFunctor<
         lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> > {
 public:
     typedef lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> MaskedImage;
     typedef lsst::afw::detection::FootprintFunctor<MaskedImage> FootprintFunctor;
 
-    ExpandFunctor(
+    ExpandImageFunctor(
         MaskedImage & dest,
         ndarray::Array<multifit::Pixel const, 1, 1> const & imageSrc,
         ndarray::Array<multifit::Pixel const, 1, 1> const & varianceSrc
@@ -262,8 +262,8 @@ private:
     ndarray::Array<multifit::Pixel const, 1, 1>::Iterator _imageIter, _varianceIter; 
 };
 
-template class ExpandFunctor<float>;
-template class ExpandFunctor<double>;
+template class ExpandImageFunctor<float>;
+template class ExpandImageFunctor<double>;
 
 /**
  * Expand two ndarray::Array to a full lsst::afw::image::MaskedImage
@@ -291,12 +291,11 @@ void multifit::expandImage(
     ndarray::Array<Pixel const, 1, 1> const & imageSrc,
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
 ) {
-    ExpandFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
+    ExpandImageFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
         maskedImage, imageSrc, varianceSrc
     ); 
     functor.apply(footprint);
 }
-
 
 
 

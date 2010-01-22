@@ -14,58 +14,35 @@ class PointSourceMorphologyProjection : public FourierMorphologyProjection {
 public:
     typedef boost::shared_ptr<PointSourceMorphologyProjection> Ptr;
     typedef boost::shared_ptr<PointSourceMorphologyProjection const> ConstPtr;
-
     typedef MorphologyProjection::ParameterJacobianMatrix ParameterJacobianMatrix;
     typedef MorphologyProjection::TransformJacobianMatrix TransformJacobianMatrix;
     
-    /// \brief Return the Morphology this is a projection of.
+    PointSourceMorphologyProjection(
+        boost::shared_ptr<PointSourceMorphology const> const & morphology,
+        lsst::afw::geom::Extent2I const & kernelDimensions, 
+        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+    ); 
+
+    /// Imutable access to the PointSourceMorphology this is a projection of.
     boost::shared_ptr<PointSourceMorphology const> getMorphology() const { 
         return boost::static_pointer_cast<PointSourceMorphology const>(
             MorphologyProjection::getMorphology()
         );
     }
 
-    /**
-     *  \brief Return the matrix that maps the output of
-     *  ComponentModelProjection::computeProjectedParameterDerivative()
-     *  to the morphology block of the nonlinear parameter derivative.
-     */
+    // MorphologyProjection --------------------------------------------------
     virtual ParameterJacobianMatrix const & computeProjectedParameterJacobian() const;
-
-    /**
-     *  \brief Return the matrix that deprojects the output of
-     *  ComponentModelProjection::computeProjectedParameterDerivative() 
-     *  to the morphology terms of the WCS parameter derivative.
-     */
     virtual TransformJacobianMatrix const & computeTransformParameterJacobian() const;
 
-    /// \brief Return the padded dimensions of the image representation of the model.
+    // FourierMorphologyProjection --------------------------------------------
     virtual lsst::afw::geom::Extent2I getDimensions() const {
         return getKernelDimensions() + getPadding() * 2;
     }
 
-    /**
-     *  Compute the derivative of the Fourier-space model with respect to the linear parameters.
-     */
     virtual ndarray::FourierArray<Pixel,3,3> computeLinearParameterDerivative();
-
-    /**
-     *  Compute the derivative of the Fourier-space model with respect to the 
-     *  projected nonlinear parameters.
-     */
     virtual ndarray::FourierArray<Pixel,3,3> computeProjectedParameterDerivative();
-
-    /**
-     *  \brief Construct a PointSourceMorphologyProjection.
-     */
-    PointSourceMorphologyProjection(
-        boost::shared_ptr<PointSourceMorphology const> const & morphology,
-        lsst::afw::geom::Extent2I const kernelDimensions, 
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
-    );
-
+    
 private:
-
     friend class PointSourceMorphology;
 
     ndarray::FourierArray<Pixel,3,3> _linearParameterDerivative;

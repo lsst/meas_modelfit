@@ -99,7 +99,7 @@ protected:
      *  will not be shared with the new Morphology.
      *
      *  @param linearParameterVector The owning ComponentModel's linear parameter vector
-     *  @param morphologyParameterIter Iterator to the first Morphology-specific
+     *  @param nonlinearParameterIter Iterator to the first Morphology-specific
      *   parameter in the owning ComponentModel's nonlinear parameter vector.
      */
     virtual Morphology::Ptr create(

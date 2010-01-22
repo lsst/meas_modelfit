@@ -19,49 +19,42 @@ namespace multifit {
 
 class FourierModelProjection : public ComponentModelProjection {
 public:
-
     typedef boost::shared_ptr<FourierModelProjection> Ptr;
     typedef boost::shared_ptr<FourierModelProjection const> ConstPtr;
 
-    /// \brief Return the number of parameters that specify the PSF.
     virtual int const getPsfParameterSize() const;
 
-    /// \brief Return the Model instance this is a projection of.
+    virtual ~FourierModelProjection();
+
+    /**
+     * Immutable access to the ComponentModel this is a projection of
+     */
     ComponentModel::ConstPtr getModel() const {
         return boost::static_pointer_cast<ComponentModel const>(
             ModelProjection::getModel()
         );
     }
 
-    virtual ~FourierModelProjection();
-
+    /**
+     * Immutable access to the FourierMorphologyProjection this is based on
+     */
     components::FourierMorphologyProjection::ConstPtr getMorphologyProjection() const {
         return boost::static_pointer_cast<components::FourierMorphologyProjection const>(
             ComponentModelProjection::getMorphologyProjection()
         );
     }
-protected:
 
+protected:
     friend class lsst::meas::multifit::ComponentModel;
 
-    /**
-     *  @name ConvolvableImplementation
-     */
-    //@{
     virtual void _convolve(PsfConstPtr const & psf);
-
+    /// Determine if a valid PSF been provided 
     virtual bool isConvolved() const { return _kernelVisitor; }
-    //@}
 
-    /**
-     *  @name ProtectedProductComputers
-     */
-    //@{
     virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
-    //@}
 
     virtual bool hasPsfParameterDerivative() const {
         return _kernelVisitor->hasDerivatives() && _kernelVisitor->getNParameters() > 0;
@@ -70,6 +63,9 @@ protected:
     virtual void _handleLinearParameterChange();
     virtual void _handleNonlinearParameterChange();
 
+    /**
+     * Mutable access to the FourierMorphologyProjection this is based on
+     */
     components::FourierMorphologyProjection::Ptr _getMorphologyProjection() {
         return boost::static_pointer_cast<components::FourierMorphologyProjection>(
             ComponentModelProjection::_getMorphologyProjection()
@@ -98,13 +94,13 @@ private:
         ndarray::FourierArray<Pixel,3,3>::Iterator const & end
     ) const;
 
-    ///< PSF/Kernel information.
+    // PSF/Kernel information.
     lsst::afw::math::FourierConvolutionVisitor::Ptr _kernelVisitor; 
-    ///< maps footprint to handler output arrays
+    // maps footprint to handler output arrays
     WindowedFootprint::Ptr _wf;     
-    ///< bounding box of padded arrays relative to exposure
+    // bounding box of padded arrays relative to exposure
     lsst::afw::geom::BoxI _outerBBox; 
-    ///< bounding box of unpadded arrays relative to _outerBBox
+    // bounding box of unpadded arrays relative to _outerBBox
     lsst::afw::geom::BoxI _innerBBox;
 
     class Shifter;

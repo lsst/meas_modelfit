@@ -14,21 +14,17 @@ namespace multifit {
 namespace components {
 
 /**
- *  \brief A MorphologyProjection object designed for use with FourierModelProjection.
+ *  A derived MorphologyProjection type designed for use with FourierModelProjection.
  */
 class FourierMorphologyProjection : public MorphologyProjection {
 public:
     typedef boost::shared_ptr<FourierMorphologyProjection> Ptr;
     typedef boost::shared_ptr<FourierMorphologyProjection const> ConstPtr;
     
-    /// \brief Return the padded dimensions of the image representation of the model.
+    /// The padded dimensions of the image representation of the model.
     virtual lsst::afw::geom::Extent2I getDimensions() const = 0;
 
-    /**
-     *  \brief Return the padding for the image representation (uniform on all sides).
-     *
-     *  \todo Make sure this calculation is correct.
-     */
+    /// compute the amount of padding needed for the image representation     
     lsst::afw::geom::Extent2I const getPadding() const {
         lsst::afw::geom::Extent2I kernelDimensions(getKernelDimensions());
         
@@ -52,7 +48,7 @@ public:
 protected:
 
     /**
-     *  \brief Construct a MorphologyProjection.
+     * Construct a FourierMorphologyProjection.
      */
     FourierMorphologyProjection(
         Morphology::ConstPtr const & morphology,
