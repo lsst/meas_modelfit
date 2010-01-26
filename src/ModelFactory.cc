@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Implementation of ModelFactory
+ */
 #include "lsst/meas/multifit/ModelFactory.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/pex/exceptions/Runtime.h"
@@ -5,7 +10,10 @@
 namespace multifit = lsst::meas::multifit;
 
 /**
- * Get a dictionary of ModelFactories indexed by name
+ * Get a registry of ModelFactories indexed by name
+ *
+ * This dictionary contains all ModelFactories which have been registered by
+ * calling ModelFactory::declare
  */
 multifit::ModelFactory::RegistryMap & multifit::ModelFactory::getRegistry() {
     static RegistryMap registry;
@@ -54,7 +62,14 @@ bool multifit::ModelFactory::declare(
 }
 
 /**
- * Construct a Model using the ModelFactory of declared by name type
+ * Free function for constructing a Model
+ *
+ * Wraps the lookup of a ModelFactory from registry, and using it to construct
+ * a model using the given parameter vectors
+ *
+ * @param type Name of the model factory to use to create the model
+ * @param linearParameters Fed directly to ModelFactory::makeModel
+ * @param nonlinearParameters Fed directly to ModelFactory::makeModel
  *
  * @throw lsst::pex::exceptions::NotFoundException if no ModelFactory has been
  * declared with given name

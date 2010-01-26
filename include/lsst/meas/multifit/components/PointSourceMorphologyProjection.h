@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Declaration of class PointSourceMorphologyProjection
+ */
 #ifndef LSST_MEAS_MULTIFIT_COMPONENTS_POINT_SOURCE_MORPHOLOGY_PROJECTION_H
 #define LSST_MEAS_MULTIFIT_COMPONENTS_POINT_SOURCE_MORPHOLOGY_PROJECTION_H
 
@@ -10,6 +15,10 @@ namespace components {
 
 class PointSourceMorphology;
 
+/**
+ * Subclass of FourierMorphologyProjection used to represent projections of 
+ * static point-sources
+ */
 class PointSourceMorphologyProjection : public FourierMorphologyProjection {
 public:
     typedef boost::shared_ptr<PointSourceMorphologyProjection> Ptr;

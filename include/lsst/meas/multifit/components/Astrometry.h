@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #ifndef LSST_MEAS_MULTIFIT_COMPONENTS_ASTROMETRY_H
 #define LSST_MEAS_MULTIFIT_COMPONENTS_ASTROMETRY_H
 
@@ -17,12 +18,13 @@ class ComponentModel;
 namespace components {
 
 /**
- *  \brief A concrete base class for component objects that decribe the position of 
+ *  Concrete base class for component objects that decribe the position of 
  *  a model.
  *
- *  The base class has only two parameters, the RA and DEC of the model.  Subclasses
- *  will generally treat this points as a "reference point" and add additional parameters
- *  that compute the output point relative to the reference point.
+ *  The base class has only two parameters, the RA and DEC of the model.  
+ *  Subclasses will generally treat this points as a "reference point" and add 
+ *  additional parameters that compute a position relative to the reference 
+ *  point.
  */
 class Astrometry {
 public:
@@ -92,20 +94,24 @@ protected:
         return Astrometry::Ptr(new Astrometry(astrometryParameterIter));
     }
 
+    /**
+     * Handle a change in the parameters.
+     */
     virtual void _handleParameterChange() {}
 
 private:
 
     /**
-     *  \brief Construct an Astrometry object for use inside a ComponentModel.
+     *  Construct an Astrometry object for use inside a ComponentModel.
      *
-     *  \sa Astrometry::create()
+     *  @sa Astrometry::create()
      */
     explicit Astrometry(
         ParameterConstIterator astrometryParameterIter
     ) : _astrometryParameterIter(astrometryParameterIter) {}
 
-    void operator=(Astrometry const & other) { assert(false); } // Assignment disabled.
+    //disable asignment
+    void operator=(Astrometry const & other) { assert(false); }
 
     ParameterConstIterator _astrometryParameterIter; 
 };

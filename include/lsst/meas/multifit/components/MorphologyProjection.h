@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #ifndef LSST_MEAS_MULTIFIT_COMPONENTS_MORPHOLOGY_PROJECTION_H
 #define LSST_MEAS_MULTIFIT_COMPONENTS_MORPHOLOGY_PROJECTION_H
 
@@ -18,7 +19,8 @@ class Morphology;
 /**
  * A projection of a Morphology object.
  *
- * A MorphologyProjection should only exist as a data member of a ComponentModel.
+ * A MorphologyProjection should only exist as a data member of a 
+ * ComponentModel.
  */
 class MorphologyProjection : private boost::noncopyable {
 public:
@@ -40,7 +42,10 @@ public:
         return _kernelDimensions; 
     }
 
-    /// \brief Return the AffineTransform that relates this projection to the global coordinate frame.
+    /**
+     * AffineTransform that transforms this projection to the global coordinate 
+     * space.
+     */
     lsst::afw::geom::AffineTransform::ConstPtr getTransform() const { 
         return _transform; 
     }
@@ -68,8 +73,8 @@ protected:
     virtual void _handleLinearParameterChange() {}
 
     /**
-     * Handle a change in the (nonlinear) morphology parameters, as propogated by the
-     * owning ComponentModelProjection.
+     * Handle a change in the nonlinear morphology parameters, as propogated 
+     * by the owning ComponentModelProjection.
      */
     virtual void _handleNonlinearParameterChange() {}
 

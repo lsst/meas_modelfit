@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/footprintUtils.h"

@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/matrices.h"
 #include "lsst/pex/exceptions/Runtime.h"

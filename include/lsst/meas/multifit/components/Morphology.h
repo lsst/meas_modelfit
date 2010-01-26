@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Declaration of base class Morphology
+ */
 #ifndef LSST_MEAS_MULTIFIT_COMPONENTS_MORPHOLOGY_H
 #define LSST_MEAS_MULTIFIT_COMPONENTS_MORPHOLOGY_H
 
@@ -19,14 +24,14 @@ class ComponentModelProjection;
 namespace components {
 
 /**
- *  An abstract class that describes the morphology (i.e. everything but the position)
- *  of a ComponentModel.
+ *  An abstract class that describes the morphology (i.e. everything but the 
+ *  position) of a ComponentModel.
  *
  *  Morphologies are used generally used by two classes, ComponentModel, and
  *  ComponentModelFactory. The former uses Morphology to interpret its
- *  parameters, and we refer to this mode of operation In-model mode. The latter uses 
- *  Morphology as a factory for other Morphology instances, and we refer to this latter
- *  mode as Template mode
+ *  parameters, and we refer to this mode of operation In-model mode. The latter
+ *  uses Morphology as a factory for other Morphology instances, and we refer to
+ *  this latter mode as Template mode
  */
 class Morphology : 
     public boost::enable_shared_from_this<Morphology>, 
@@ -45,7 +50,8 @@ public:
         if (!_linearParameterVector){
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::LogicErrorException,
-                "Linear parameter size is indeterminate for template morphologies."
+                "Linear parameter size is indeterminate for template "
+                "morphologies."
             );
         }
         return _linearParameterVector->size();
@@ -98,9 +104,10 @@ protected:
      *  Typically used only by ComponentModel. The parameters of this Morphology
      *  will not be shared with the new Morphology.
      *
-     *  @param linearParameterVector The owning ComponentModel's linear parameter vector
+     *  @param linearParameterVector The owning ComponentModel's linear 
+     *      parameter vector
      *  @param nonlinearParameterIter Iterator to the first Morphology-specific
-     *   parameter in the owning ComponentModel's nonlinear parameter vector.
+     *      parameter in the owning ComponentModel's nonlinear parameter vector.
      */
     virtual Morphology::Ptr create(
         boost::shared_ptr<ParameterVector const> const & linearParameterVector,
@@ -110,7 +117,8 @@ protected:
     /**
      *  Default-construct a Morphology object to be used as a template.
      *
-     *  A public constructor that delegates to this one should be available for leaf subclasses.
+     *  A public constructor that delegates to this one should be available for
+     *  leaf subclasses.
      */
     Morphology() : _linearParameterVector(), _nonlinearParameterIter(NULL) {}
 
@@ -151,18 +159,21 @@ protected:
     //@}
 
     /**
-     *  Handle a change in the linear parameters, as propogated by the owning ComponentModel.
+     *  Handle a change in the linear parameters, as propogated by the owning 
+     *  ComponentModel.
      */
     virtual void _handleLinearParameterChange() {}
 
     /**
-     *  Handle a change in the nonlinear (morphology) parameters, as propogated by the
-     *  owning ComponentModel.
+     *  Handle a change in the nonlinear (morphology) parameters, as propogated
+     *  by the owning ComponentModel.
      */
     virtual void _handleNonlinearParameterChange() {}
 
     /// Return an iterator to the Model's (nonlinear) morphology parameters.
-    ParameterConstIterator _getNonlinearParameterIter() const { return _nonlinearParameterIter; }
+    ParameterConstIterator _getNonlinearParameterIter() const { 
+        return _nonlinearParameterIter; 
+    }
 
 private:
     boost::shared_ptr<ParameterVector const> _linearParameterVector;

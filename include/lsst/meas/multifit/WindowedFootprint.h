@@ -1,3 +1,9 @@
+// -*- lsst-c++ -*-
+/**
+ * @file 
+ *
+ * Declaration of the WindowedFootprint class
+ */
 #ifndef LSST_MEAS_MULTIFIT_WINDOWED_FOOTPRINT_H
 #define LSST_MEAS_MULTIFIT_WINDOWED_FOOTPRINT_H
 

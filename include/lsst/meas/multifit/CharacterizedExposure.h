@@ -1,4 +1,9 @@
 // -*- lsst-c++ -*-
+/**
+ * @file
+ * Support for an Exposure characterized by a PSF
+ *
+ */
 #ifndef LSST_MEAS_MULTIFIT_CHARACTERIZED_EXPOSURE_H
 #define LSST_MEAS_MULTIFIT_CHARACTERIZED_EXPOSURE_H
 
@@ -65,11 +70,9 @@ public:
         lsst::afw::image::BBox const& bbox, 
         bool const deep=false
     ) : ExposureT(src,bbox,deep), _psf(src.getPSF()) {}
-       
+     
     bool hasPSF() const { return _psf; }
-
     PSF::Ptr getPSF() const { return _psf; }
-
     void setPSF(PSF::Ptr const & psf) { _psf = psf; }
 
 private:
@@ -79,4 +82,4 @@ private:
 }}}
 
 
-#endif // !LSST_MEAS_MULTIFIT_CHARACTERIZEDEXPOSURE_H
+#endif // !LSST_MEAS_MULTIFIT_CHARACTERIZED_EXPOSURE_H

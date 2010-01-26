@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include <ndarray/fft.hpp>
 #include <iostream>
@@ -279,6 +280,7 @@ private:
 };
 
 // ----------------------------- FourierModelProjection ------------------------
+
 
 int const multifit::FourierModelProjection::getPsfParameterSize() const {
     if(!_kernelVisitor)

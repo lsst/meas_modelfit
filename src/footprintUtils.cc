@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #include "lsst/meas/multifit/footprintUtils.h"
 
 namespace multifit = lsst::meas::multifit;

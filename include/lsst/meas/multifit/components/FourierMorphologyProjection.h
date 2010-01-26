@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Declaration of class FourierMorphologyProjection
+ */
 #ifndef LSST_MEAS_MULTIFIT_COMPONENTS_FOURIER_MORPHOLOGY_PROJECTION_H
 #define LSST_MEAS_MULTIFIT_COMPONENTS_FOURIER_MORPHOLOGY_PROJECTION_H
 
@@ -14,7 +19,8 @@ namespace multifit {
 namespace components {
 
 /**
- *  A derived MorphologyProjection type designed for use with FourierModelProjection.
+ *  A derived MorphologyProjection type designed for use with 
+ *  FourierModelProjection.
  */
 class FourierMorphologyProjection : public MorphologyProjection {
 public:
@@ -35,7 +41,8 @@ public:
     }
 
     /**
-     *  Compute the derivative of the Fourier-space model with respect to the linear parameters.
+     *  Compute the derivative of the Fourier-space model with respect to the 
+     *  linear parameters.
      */
     virtual ndarray::FourierArray<Pixel,3,3> computeLinearParameterDerivative() = 0;
 

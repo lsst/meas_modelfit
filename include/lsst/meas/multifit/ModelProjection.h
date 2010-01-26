@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Declaration of class ModelProjection.
+ */
 #ifndef LSST_MEAS_MULTIFIT_MODEL_PROJECTION_H
 #define LSST_MEAS_MULTIFIT_MODEL_PROJECTION_H
 
@@ -12,7 +17,7 @@ namespace meas {
 namespace multifit {
 
 /**
- *  \brief A projection of a Model to a particular set of observing conditions 
+ *  A projection of a Model to a particular set of observing conditions 
  *
  *  ModelProjection represents a Model evaluated on a particular exposure, and
  *  provides functionality to create an image representation of the Model.
@@ -20,8 +25,8 @@ namespace multifit {
  *  model parameters and calibration parameters can also be computed, with the
  *  necessary change-of-variables terms automatically included.
  *  
- *  \sa Model
- *  \sa ModelFactory
+ *  @sa Model
+ *  @sa ModelFactory
  */
 class ModelProjection : private boost::noncopyable {
 public:
@@ -31,27 +36,40 @@ public:
 
     virtual ~ModelProjection() {}
 
-    /// \brief Return the Model instance this is a projection of.
+    /// Model instance this is a projection of.
     Model::ConstPtr getModel() const { return _model; }
 
-    /// \brief Return the number of linear parameters.
-    int const getLinearParameterSize() const { return _model->getLinearParameterSize(); }
+    /// Number of linear parameters.
+    int const getLinearParameterSize() const { 
+        return _model->getLinearParameterSize(); 
+    }
 
-    /// \brief Return the number of nonlinear parameters.
+    /// Number of nonlinear parameters.
     int const getNonlinearParameterSize() const { return _model->getNonlinearParameterSize(); }
 
-    /// \brief Return the number of parameters that specify the coordinate transformation.
+    /// Number of parameters that specify the coordinate transformation.
     virtual int const getWcsParameterSize() const = 0;
 
-    /// \brief Return the number of parameters that specify the PSF.
+    /// Number of parameters that specify the PSF.
     virtual int const getPsfParameterSize() const = 0;
 
     /**
      *  @name Public Product Computers
      *
-     *  Each of these computes the Footprint-compressed product as a row-major array
-     *  with the last dimension corresponding to the Footprint pixel index and the first
-     *  dimension (if any) corresponding to the parameter index.
+     *  Each of these functions compute a footprint-compressed product as a 
+     *  row-major array with the last dimension corresponding to the 
+     *  footprint-mapped pixel index and the first dimension (if any) 
+     *  corresponding to the parameter index.
+     *
+     *  Derived classes of Model should not reimplement these methods, instead
+     *  they should implement the protected product computers, which these
+     *  functions delegate to.
+     *
+     *  @sa _computeModelImage
+     *  @sa _computeLinearParameterDerivative
+     *  @sa _computeNonlinearParameterDerivative
+     *  @sa _computeWcsParameterDerivative
+     *  @sa _computePsfParameterDerivative
      */
     //@{
 #ifndef SWIG
@@ -63,23 +81,14 @@ public:
 #endif
     //@}
 
-    /**
-     *  @name Product Buffer Setters
-     *
-     *  The compute[Product]() member functions can be set to fill and return externally
-     *  allocated (and possibly shared) data.  After setting a buffer, only the
-     *  ModelProjection should be allowed to modify it.
-     */
-    //@{
-    void setModelImageBuffer(ndarray::Array<Pixel,1,1> const & buffer);
-    void setLinearParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
-    void setNonlinearParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
-    void setWcsParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
-    void setPsfParameterDerivativeBuffer(ndarray::Array<Pixel,2,1> const & buffer);
-    //@}
+
 
     /**
      *  @name Product Enabled Checkers
+     *
+     *  These functions allow users to check if this model supports the various
+     *  products. Products will only be computed when the repective checker
+     *  returns true
      */
     //@{
     bool hasModelImage() const { return true; }
@@ -89,16 +98,18 @@ public:
     virtual bool hasPsfParameterDerivative() const = 0;
     //@}
 
-    /// \brief Return the World Coordinate System object for this projection.
+    /// The WCS associated with the observation this projection represents.
     WcsConstPtr const & getWcs() const { return _wcs; }
 
-    /// \brief Return the Footprint the image representation will be computed on.
+    /**
+     * Footprint the image representation will be computed on.
+     *
+     * This footprint determines the size of all computed products, and the
+     * mapping from compressed to uncompressed images
+     */
     FootprintConstPtr const & getFootprint() const { return _footprint; }
 
 protected:
-
-
-
     ModelProjection(
         Model::ConstPtr const & model,
         WcsConstPtr const & wcs,
@@ -108,28 +119,37 @@ protected:
     /**
      *  @name Protected Product Computers
      *
-     *  Each of these computes a Footprint-compressed derivative of the projected Model's
-     *  image representation with respect to a different set of parameters.  The base
-     *  ModelProjection guarantees it will call these with appropriately-sized arrays,
-     *  and only when the associated product flag is enabled.
+     *  Each of these computes a Footprint-compressed derivative of the 
+     *  projected Model's image representation with respect to a different set 
+     *  of parameters.  The base ModelProjection guarantees it will call these 
+     *  with appropriately-sized arrays, and only when the associated product 
+     *  flag is enabled.
      */
     //@{
     virtual void _computeModelImage(ndarray::Array<Pixel,1,1> const & vector);
-    virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
-    virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
-    virtual void _computeWcsParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
-    virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
+    virtual void _computeLinearParameterDerivative(
+        ndarray::Array<Pixel,2,1> const & matrix
+    ) = 0;
+    virtual void _computeNonlinearParameterDerivative(
+        ndarray::Array<Pixel,2,1> const & matrix
+    ) = 0;
+    virtual void _computeWcsParameterDerivative(
+        ndarray::Array<Pixel,2,1> const & matrix
+    ) = 0;
+    virtual void _computePsfParameterDerivative(
+        ndarray::Array<Pixel,2,1> const & matrix
+    ) = 0;
     //@}
 
     /**
-     *  \brief Handle a linear parameter change broadcast from the associated Model.
+     *  Handle a linear parameter change broadcast from the associated Model.
      *
      *  Subclasses which override must call the base class implementation.
      */
     virtual void _handleLinearParameterChange();
 
     /**
-     *  \brief Handle a nonlinear parameter change broadcast from the associated Model.
+     *  Handle a nonlinear parameter change broadcast from the associated Model.
      *
      *  Subclasses which override must call the base class implementation.
      */
@@ -137,6 +157,34 @@ protected:
 
 private:
     friend class Model;
+    friend class ModelEvaluator;
+
+    /**
+     *  @name Product Buffer Setters
+     *
+     *  The memory buffers on which the compute[Product]() member functions 
+     *  operate can be set externally. This allows ModelEvaluator to assign 
+     *  blocks of larger buffer to a ModelProjection. ModelProjection takes
+     *  ownership of the buffer given to it, and the buffer should not be
+     *  modified externally from the point on.
+     *
+     *  @sa ModelEvaluator
+     */
+    //@{
+    void setModelImageBuffer(ndarray::Array<Pixel,1,1> const & buffer);
+    void setLinearParameterDerivativeBuffer(
+        ndarray::Array<Pixel,2,1> const & buffer
+    );
+    void setNonlinearParameterDerivativeBuffer(
+        ndarray::Array<Pixel,2,1> const & buffer
+    );
+    void setWcsParameterDerivativeBuffer(
+        ndarray::Array<Pixel,2,1> const & buffer
+    );
+    void setPsfParameterDerivativeBuffer(
+        ndarray::Array<Pixel,2,1> const & buffer
+    );
+    //@} 
     
     enum ProductFlag {
         MODEL_IMAGE = 1<<0,

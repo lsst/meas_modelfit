@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Implementation of ModelEvaluator
+ */
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/matrices.h"
 #include "lsst/meas/multifit/footprintUtils.h"
@@ -6,17 +11,34 @@
 #include <iostream>
 namespace multifit = lsst::meas::multifit;
 
+/**
+ * Set the list of exposures used to evaluate the model
+ *
+ * This is an atomic operation which resets the state of this ModelEvaluator 
+ * completely. The ModelEvaluator will not be properly initialized until after
+ * this function is called.
+ *
+ * For each exposure in the list, a projection footprint of the model is 
+ * computed. If the projection footprint has more than \c getNMinPix pixels
+ * which fall within the bounding box of the exposure, then a projection is
+ * generated for that exposure.
+ *
+ * The pixel threshold can be set on construction or by calling setNMinPix
+ *
+ * Data and variance vectors are constructed by concactenating all the
+ * contributing pixels from each projection.
+ *
+ * @sa getNMinPix
+ * @sa setNMinPix
+ */
 template<typename ImagePixel, typename MaskPixel, typename VariancePixel>
 void multifit::ModelEvaluator::setExposureList(
     std::list< boost::shared_ptr< CharacterizedExposure<
             ImagePixel, MaskPixel, VariancePixel
         > > > const & exposureList
 ) { 
-    typedef std::list< 
-        boost::shared_ptr< 
-            CharacterizedExposure<ImagePixel,MaskPixel,VariancePixel> 
-        > 
-    > ExposureList;
+    typedef CharacterizedExposure<ImagePixel, MaskPixel, VariancePixel> CharacterizedExposure;
+    typedef std::list< boost::shared_ptr<CharacterizedExposure> > ExposureList;
     typedef typename ExposureList::const_iterator ExposureIterator;
     
     _projectionList.clear();
@@ -27,7 +49,7 @@ void multifit::ModelEvaluator::setExposureList(
 
     int pixSum = 0;
 
-    typename CharacterizedExposure<ImagePixel,MaskPixel,VariancePixel>::Ptr exposure;
+    typename CharacterizedExposure::Ptr exposure;
     ModelProjection::Ptr projection;
     FootprintConstPtr footprint;
     PsfConstPtr psf;
@@ -51,11 +73,9 @@ void multifit::ModelEvaluator::setExposureList(
         );
         //ignore exposures with too few contributing pixels        
         if (footprint->getNpix() > _nMinPix) {
-            ProjectionFrame frame(
+            _projectionList.push_back(
                 _model->makeProjection(psf, wcs, footprint)
             );
-      
-            _projectionList.push_back(frame);
             goodExposureList.push_back(exposure);
 
             pixSum += footprint->getNpix();
@@ -63,7 +83,7 @@ void multifit::ModelEvaluator::setExposureList(
     }
 
     //  allocate matrix buffers
-    ndarray::shallow(_imageVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    ndarray::shallow(_dataVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
     ndarray::shallow(_varianceVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
 
     ndarray::shallow(_modelImage) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
@@ -80,78 +100,85 @@ void multifit::ModelEvaluator::setExposureList(
     ExposureIterator exposureIter(goodExposureList.begin());
 
     //loop to assign matrix buffers to each projection Frame
-    for(ProjectionFrameList::iterator i(_projectionList.begin()), end(_projectionList.end()); 
+    for(ProjectionIterator i(_projectionList.begin()), end(_projectionList.end()); 
         i != end; ++i
     ) {
-        ProjectionFrame & frame(*i);
-        nPix = frame.getFootprint()->getNpix();
+        ModelProjection & projection(**i);
+        nPix = projection.getFootprint()->getNpix();
         pixelEnd = pixelStart + nPix;
-
-        // set image/variance buffers
-        ndarray::shallow(frame._imageVector) = _imageVector[
-            ndarray::view(pixelStart, pixelEnd)
-        ];
-        ndarray::shallow(frame._varianceVector) = _varianceVector[
-            ndarray::view(pixelStart, pixelEnd)
-        ];
 
         // compress the exposure using the footprint
         compressImage(
-            *frame.getFootprint(), 
+            *projection.getFootprint(), 
             (*exposureIter)->getMaskedImage(), 
-            frame._imageVector, 
-            frame._varianceVector
+            _dataVector[ndarray::view(pixelStart, pixelEnd)], 
+            _varianceVector[ndarray::view(pixelStart, pixelEnd)] 
         );
 
         //set modelImage buffer
-        frame._projection->setModelImageBuffer(
+        projection.setModelImageBuffer(
             _modelImage[ndarray::view(pixelStart, pixelEnd)]
         );
         
         //set linear buffer
-        frame._projection->setLinearParameterDerivativeBuffer(
+        projection.setLinearParameterDerivativeBuffer(
             _linearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
         );
         //set nonlinear buffer
-        frame._projection->setNonlinearParameterDerivativeBuffer(
+        projection.setNonlinearParameterDerivativeBuffer(
             _nonlinearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
         );
 
-        
         pixelStart = pixelEnd;
         ++exposureIter;
     }   
 }
 
+/**
+ * Compute the value of the model at every contributing pixel of every exposure
+ *
+ * @sa ModelProjection::computeModelImage
+ */
 ndarray::Array<multifit::Pixel const, 1, 1> multifit::ModelEvaluator::computeModelImage() {
     if(!(_validProducts & MODEL_IMAGE)) {
-        ProjectionFrameIterator i(_projectionList.begin());
-        ProjectionFrameIterator const & end(_projectionList.end());
-        for( ; i  != end; ++i) {
-            i->computeModelImage();
+        for( ProjectionIterator i(_projectionList.begin()), end(_projectionList.end());
+             i  != end; ++i
+        ) {
+            (*i)->computeModelImage();
         }
     }    
     return _modelImage;
 }
 
-ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeLinearParameterDerivative() {
+/**
+ * Compute the derivative of the model with respect to its linear parameters
+ *
+ * @sa ModelProjection::computeLinearParameterDerivative
+ */
+ndarray::Array<multifit::Pixel const, 2, 2> 
+multifit::ModelEvaluator::computeLinearParameterDerivative() {
     if (!(_validProducts & LINEAR_PARAMETER_DERIVATIVE)) {
-        ProjectionFrameIterator i(_projectionList.begin());
-        ProjectionFrameIterator const & end(_projectionList.end());
-        for( ; i  != end; ++i) {
-            i->computeLinearParameterDerivative();
+        for( ProjectionIterator i(_projectionList.begin()), 
+             end(_projectionList.end()); i  != end; ++i
+        ) {
+            (*i)->computeLinearParameterDerivative();
         }
         _validProducts |= LINEAR_PARAMETER_DERIVATIVE;
     }    
     return _linearParameterDerivative;
 }
 
+/**
+ * Compute the derivative of the model with respect to its nonlinear parameters
+ *
+ * @sa ModelProjection::computeNonlinearParameterDerivative
+ */
 ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
     if(!(_validProducts & NONLINEAR_PARAMETER_DERIVATIVE)) {
-        ProjectionFrameIterator i(_projectionList.begin());
-        ProjectionFrameIterator const & end(_projectionList.end());
-        for( ; i  != end; ++i) {
-            i->computeNonlinearParameterDerivative();
+        for( ProjectionIterator i(_projectionList.begin()), 
+             end(_projectionList.end()); i  != end; ++i
+        ) {
+            (*i)->computeNonlinearParameterDerivative();
         }
         _validProducts |= NONLINEAR_PARAMETER_DERIVATIVE;
     }    
@@ -159,6 +186,8 @@ ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeNon
 }
 
 
+
+//explicit templating
 template void multifit::ModelEvaluator::setExposureList<float, 
     lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
 (

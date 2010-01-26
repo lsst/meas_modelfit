@@ -1,3 +1,9 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Support for Models which are defined by an astrometry and a morphology
+ * component
+ */
 #ifndef LSST_MEAS_MULTIFIT_COMPONENT_MODEL_H
 #define LSST_MEAS_MULTIFIT_COMPONENT_MODEL_H
 

@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Support for viewing and evaluating a ComponentModel
+ */
 #ifndef LSST_MEAS_MULTIFIT_COMPONENT_MODEL_PROJECTION_H
 #define LSST_MEAS_MULTIFIT_COMPONENT_MODEL_PROJECTION_H
 
@@ -12,26 +17,32 @@ namespace meas {
 namespace multifit {
 
 /**
- *  A projection of a ComponentModel to a particular set of observing conditions.
+ *  A projection of a ComponentModel to a particular set of observing 
+ *  conditions.
  *  
  *  @sa ModelProjection
  *  @sa ComponentModel
- *  @sa ComponentModelFactory
  */
-class ComponentModelProjection : 
-    public ModelProjection  {       
+class ComponentModelProjection : public ModelProjection  {
 public:
     typedef boost::shared_ptr<ModelProjection> Ptr;
     typedef boost::shared_ptr<ModelProjection const> ConstPtr;
 
     static const int WCS_PARAMETER_SIZE = 6;
 
-    /// Model instance this projection is associated with.
+
+    /**
+     * Immutable access to the ComponentModel this is a projection of
+     */
     ComponentModel::ConstPtr getModel() const {
-        return boost::static_pointer_cast<ComponentModel const>(ModelProjection::getModel());
+        return boost::static_pointer_cast<ComponentModel const>(
+            ModelProjection::getModel()
+        );
     }
 
-    /// Astrometry object this projection is based on.
+    /**
+     * Immutable reference to the astrometry object this projection is based on.
+     */
     components::Astrometry::ConstPtr getAstrometry() const { 
         return getModel()->getAstrometry(); 
     }
@@ -44,12 +55,14 @@ public:
     }
 
     /// AffineTransform that maps global coordinates to image coordinates.
-    lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const { return _transform; }
+    lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const {
+        return _transform; 
+    }
 
-    /// Number of parameters that specify the coordinate transformation.
-    virtual int const getWcsParameterSize() const { return WCS_PARAMETER_SIZE; }
-
-    /// Number of parameters that specify the PSF.
+    // ModelProjection --------------------------------------------------------
+    virtual int const getWcsParameterSize() const { 
+        return WCS_PARAMETER_SIZE; 
+    }
     virtual int const getPsfParameterSize() const = 0;
 
 protected:
@@ -78,7 +91,9 @@ protected:
      *
      *  These are fully implemented by ComponentModel by delegating to _computeTranslationDerivative()
      *  and _computeProjectedParameterDerivative(), and should not generally by reimplemented
-     *  by subclasses.
+     *  by subclasses. Instead, subclasses should implement
+     *  _computeTranslationDerivative and _computeProjectedParameterDerivative
+     *  as needed
      */
     //@{
     virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
@@ -137,7 +152,8 @@ private:
     void _ensureTranslationDerivative();
     void _ensureProjectedParameterDerivative();
 
-#if 0 // TODO: Reimplement this when Eigen::Map has a constructor that takes strides.
+#if 0 
+    // TODO: Reimplement this when Eigen::Map has a constructor that takes strides.
     MatrixMapBlock getAstrometryParameterMatrixView(ndarray::Array<Pixel,2,1> const & array) {
         MatrixMap map(
             array.getData(), 
@@ -171,11 +187,11 @@ private:
         );
     }
 
+    // enable flags for the products this projection can compute
     int _validProducts;
-
-    ///< Transform from global coordinates to this projection
+    // Transform from global coordinates to this projection
     lsst::afw::geom::AffineTransform::ConstPtr _transform; 
-    ///< MorphologyProjection this ComponentModelProjection is based on
+    // MorphologyProjection this ComponentModelProjection is based on
     components::MorphologyProjection::Ptr _morphologyProjection;
 
     ndarray::Array<Pixel,2,2> _translationDerivative;

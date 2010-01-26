@@ -1,5 +1,12 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Collection of utility functions for creating and working with
+ * lsst::afw::detection::Footprint objects
+ */
 #ifndef LSST_MEAS_MULTIFIT_FOOTPRINT_UTILS_H
 #define LSST_MEAS_MULTIFIT_FOOTPRINT_UTILS_H
+
 
 #include "boost/shared_ptr.hpp"
 #include "ndarray.hpp"

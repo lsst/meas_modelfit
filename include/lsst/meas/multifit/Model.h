@@ -1,3 +1,9 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ *
+ * Declaration of the base Model class
+ */
 #ifndef LSST_MEAS_MULTIFIT_MODEL_H
 #define LSST_MEAS_MULTIFIT_MODEL_H
 
@@ -23,18 +29,19 @@ class ModelProjection;
 class ModelFactory;
 
 /**
- *  \brief A model for an astronomical object (ABC).
+ *  Base class for models of astronomical objects.
  *
- *  A Model's parameters are always in "global" (typically celestial) coordinates.
- *  A projection of the Model to a particular image coordinate system (along with
- *  convolution by the appropriate PSF and application of other observational effects)
- *  is represented by an instance of ModelProjection, which will generally be subclassed in
- *  tandem with Model and ModelFactory.  Model and ModelProjection participate in a
- *  Observer design pattern, with a Model broadcasting changes in its parameters to its
+ *  A Model's parameters are always in "global" (typically celestial) 
+ *  coordinates. A projection of the Model to a particular image coordinate 
+ *  system (along with convolution by the appropriate PSF and application of 
+ *  other observational effects) is represented by an instance of 
+ *  ModelProjection, which will generally be subclassed in tandem with Model 
+ *  and ModelFactory.  Model and ModelProjection participate in a Observer 
+ *  design pattern, with a Model broadcasting changes in its parameters to its
  *  associated ModelProjection objects.
  *
- *  \sa ModelFactory
- *  \sa ModelProjection
+ *  @sa ModelFactory
+ *  @sa ModelProjection
  */
 class Model : public boost::enable_shared_from_this<Model> {
 public:
@@ -42,7 +49,7 @@ public:
     typedef boost::shared_ptr<Model const> ConstPtr;
 
     /**
-     *  \brief Create a Footprint that would contain a projection of the Model.
+     *  Create a Footprint that would contain a projection of this Model.
      */
     virtual Footprint::Ptr computeProjectionFootprint(
         PsfConstPtr const & psf,
@@ -50,8 +57,8 @@ public:
     ) const = 0;
 
     /**
-     *  \brief Create an image-coordinate bounding box that would contain a
-     *  projection of the Model.
+     *  Create an image-coordinate bounding box that would contain a projection
+     *  of this Model.
      */
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         PsfConstPtr const & psf,
@@ -59,21 +66,30 @@ public:
     ) const = 0;
 
     /**
-     *  \brief Create an ra/dec bounding ellipse for the Model.
+     *  Create an ra/dec bounding ellipse for this Model.
      */
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const = 0;
 
-    /// \brief Return a vector of the linear parameters.
+    /**
+     * Immutable access to this Model's linear parameters 
+     */
     ParameterVector const & getLinearParameters() const { 
         return *_linearParameters; 
     }
 
-    /// \brief Return an iterator to the beginning of the linear parameters.
+    /**
+     * Immutable access to this Model's linear parameters 
+     *
+     * @return a constant iterator pointing at the beginning of the parameter
+     *      vector
+     */
     ParameterConstIterator getLinearParameterIter() const { 
         return _linearParameters->data(); 
     }
 
-    /// \brief Return the number of linear parameters.
+    /**
+     * Number of linear parameters in this Model
+     */
     int const getLinearParameterSize() const { 
         return _linearParameters->size(); 
     }
@@ -81,17 +97,26 @@ public:
     void setLinearParameters(ParameterConstIterator parameterIter);
     void setLinearParameters(ParameterVector const & parameters);
 
-    /// \brief Return a vector of the nonlinear parameters.
+    /**
+     * Immutable access to this Model's nonlinear parameters 
+     */
     ParameterVector const & getNonlinearParameters() const { 
         return *_nonlinearParameters; 
     }
 
-    /// \brief Return an iterator to the beginning of the nonlinear parameters.
+    /**
+     * Immutable access to this Model's nonlinear parameters 
+     *
+     * @return a constant iterator pointing at the beginning of the parameter
+     *      vector
+     */
     ParameterConstIterator getNonlinearParameterIter() const { 
         return _nonlinearParameters->data(); 
     }
 
-    /// \brief Return the number of nonlinear parameters.
+    /**
+     * Number of nonlinear parameters in this Model.
+     */
     int const getNonlinearParameterSize() const { 
         return _nonlinearParameters->size(); 
     }
@@ -100,7 +125,7 @@ public:
     void setNonlinearParameters(ParameterVector const & parameters);
 
     /**
-     *  \brief Create a new Model with the same type and parameters.
+     *  Create a new Model with the same type and parameter values.
      *
      *  Associated ModelProjection objects are not copied or shared;
      *  the new Model will not have any associated ModelProjections.
@@ -110,7 +135,7 @@ public:
     virtual ~Model() {}
 
     /** 
-     *  \brief Create a ModelProjection object associated with this.
+     *  Create a ModelProjection object associated with this.
      */
     virtual boost::shared_ptr<ModelProjection> makeProjection(
         PsfConstPtr const & psf,
@@ -132,7 +157,7 @@ protected:
     {}
 
     /**
-     * \brief Deep-copy the Model.
+     * Deep-copy the Model.
      *
      * This is a deep copy of the model parameters, projections will not be
      * associated with the new Model
@@ -148,7 +173,7 @@ protected:
     void _broadcastNonlinearParameterChange() const;
 
     /**
-     *  \brief Provide additional code for setLinearParameters().
+     *  Provide additional handling code for setting linear parameter.
      *
      *  This will be called by setLinearParameters, after the parameter 
      *  vector has been updated and before the call to 
@@ -157,7 +182,7 @@ protected:
     virtual void _handleLinearParameterChange() {}
 
     /**
-     *  \brief Provide additional code for setNonlinearParameters().
+     *  Provide additional handling code for setting nonlinear parameters.
      *
      *  This will be called by setNonlinearParameters, after the parameter 
      *  vector has been updated and before the call to 
@@ -165,7 +190,9 @@ protected:
      */
     virtual void _handleNonlinearParameterChange() {}
 
-    /// \brief Add a newly-created projection to the list of listeners.
+    /**
+     * Add a newly-created projection to the list of listeners.
+     */
     void _registerProjection(
         boost::shared_ptr<ModelProjection> const & projection
     ) const;
@@ -176,7 +203,8 @@ protected:
 private:
     friend class ModelFactory;
 
-    void operator=(Model const & other) { assert(false); } // Assignment disabled.
+    // disable assignment
+    void operator=(Model const & other) { assert(false); } 
 
     mutable ProjectionList _projectionList;
 };

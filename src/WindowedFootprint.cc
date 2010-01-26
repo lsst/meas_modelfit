@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #include <lsst/meas/multifit/WindowedFootprint.h>
 #include <ndarray.hpp>
 #include "lsst/pex/exceptions/Runtime.h"

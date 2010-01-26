@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
     ndarray::Array<multifit::Pixel const, 2, 2> lpd, npd;
 
-    ndarray::shallow(img) = evaluator.getImageVector();
+    ndarray::shallow(img) = evaluator.getDataVector();
     ndarray::shallow(var) = evaluator.getVarianceVector();
     ndarray::shallow(modelImg) = evaluator.computeModelImage();
     ndarray::shallow(lpd) = evaluator.computeLinearParameterDerivative();

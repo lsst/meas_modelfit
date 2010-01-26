@@ -1,4 +1,8 @@
 // -*- lsst-c++ -*-
+/**
+ * @file
+ * Includes declaration of ModelEvaluator
+ */
 #ifndef LSST_MEAS_MULTIFIT_MODEL_EVALUATOR_H
 #define LSST_MEAS_MULTIFIT_MODEL_EVALUATOR_H
 
@@ -10,7 +14,6 @@
 #include "ndarray.hpp"
 
 #include "lsst/meas/multifit/core.h"
-#include "lsst/meas/multifit/matrices.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/footprintUtils.h"
@@ -20,62 +23,46 @@ namespace lsst {
 namespace meas {
 namespace multifit{
 
+/**
+ * Manage projection of a model to a set of Exposures
+ *
+ * The ModelEvaluator abstracts the notion of multifit by composing
+ * grand-matrices which are populated, part by part, by
+ * ModelProjection objects created for each Exposure. 
+ *
+ */
 class ModelEvaluator : private boost::noncopyable {
 public:
-
-#ifndef SWIG
-    class ProjectionFrame {
-    public:
-        ProjectionFrame(){}
-        ProjectionFrame(ProjectionFrame const & other) : _projection(other._projection) {}
-        explicit ProjectionFrame(ModelProjection::Ptr const & projection) : _projection(projection) {} 
-
-        ModelProjection::ConstPtr const getModelProjection() const {return _projection;}
-        WcsConstPtr const & getWcs() const {return _projection->getWcs();}
-        FootprintConstPtr const & getFootprint() const {return _projection->getFootprint();}
-        
-        ndarray::Array<Pixel const, 1, 1> const getImageVector() const {return _imageVector;}
-        ndarray::Array<Pixel const, 1, 1> const getVarianceVector() const {return _varianceVector;}
-        Eigen::VectorXd const computeSigmaVector() const {
-            VectorMap variance (_varianceVector.getData(), getNPixels());
-            return variance.cwise().sqrt();
-        }
-        ndarray::Array<Pixel const, 1, 1> const computeModelImage() {
-            return _projection->computeModelImage();
-        }
-        ndarray::Array<Pixel const, 2, 1> const computeLinearParameterDerivative() {
-            return _projection->computeLinearParameterDerivative();
-        }
-        ndarray::Array<Pixel const, 2, 1> const computeNonlinearParameterDerivative() {
-            return _projection->computeNonlinearParameterDerivative();
-        }
-
-        int const getNPixels() const {return _imageVector.getSize<0>();}
-
-    private:
-        friend class ModelEvaluator;
-
-        ModelProjection::Ptr _projection;
-        ndarray::Array<Pixel, 1, 1> _imageVector;
-        ndarray::Array<Pixel, 1, 1> _varianceVector;
-    };
-    typedef std::list<ProjectionFrame> ProjectionFrameList;
-
-#endif
-    
-    explicit ModelEvaluator(Model::ConstPtr const & model, int const nMinPix=-1) 
+    typedef std::list<ModelProjection::Ptr> ProjectionList;
+   
+    /**
+     * Construct a ModelEvaluator
+     *
+     * @param model Model to manage
+     * @param nMinPix minimum number of pixels an exposure must contribute to 
+     *      the model's projected footprint to be used
+     */
+    explicit ModelEvaluator(Model::ConstPtr const & model, int const nMinPix=0) 
       : _validProducts(0),
         _model(model->clone())
     {
         setMinPixels(nMinPix);
     }
 
+    /**
+     * Construct a Model, and initialize the projections
+     *
+     * @param model Model to manage
+     * @param exposureList list of exposures to evaluate the model on
+     * @param nMinPix minimum number of pixels an exposure must contribute to 
+     *      the model's projected footprint to be used
+     */
     template <typename ImagePixel, typename MaskPixel, typename VariancePixel>
     ModelEvaluator(
         Model::ConstPtr const & model, 
-        std::list< boost::shared_ptr< CharacterizedExposure<
-                ImagePixel, MaskPixel, VariancePixel
-            > > > const & exposureList,
+        std::list< boost::shared_ptr< 
+            CharacterizedExposure<ImagePixel, MaskPixel, VariancePixel>
+        > > const & exposureList,
         int const nMinPix = 0 
     ) : _validProducts(0),
         _model(model->clone()) 
@@ -91,35 +78,116 @@ public:
     );
 
 #ifndef SWIG
-    ndarray::Array<Pixel const, 1, 1> getImageVector() const {return _imageVector;}
-    ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {return _varianceVector;}
+    /**
+     * Vector of image data from all contributing pixels from all the exposures
+     *
+     * The data vector is composed from the concactenation of each exposure's
+     * footprint-compressed image data. The resulting data vector is an
+     * abstraction of all the pixels this model is evaluated on.
+     *
+     * @sa getVarianceVector
+     */
+    ndarray::Array<Pixel const, 1, 1> getDataVector() const {
+        return _dataVector;
+    }
+    /**
+     * Vector of image variance from all contributing pixels from all the exposures
+     *
+     * The variance vector is composed from the concactenation of each 
+     * exposure's footprint-compressed image data. The resulting variance 
+     * vector is an abstraction of all the pixels this model is evaluated on.
+     *
+     * @sa getDataVector
+     */
+    ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {
+        return _varianceVector;
+    }
+    /**
+     * Compute the sigma for each contributing pixel from all exposure's
+     *
+     * The sigma vector is the component wise sqaure root of the variance.
+     *
+     * @sa getVarianceVector
+     */
     Eigen::VectorXd const computeSigmaVector() const {
         VectorMap variance (_varianceVector.getData(), getNPixels());
         return variance.cwise().sqrt();
     }
+
+    /**
+     * @name Model Product Computers
+     *     
+     * Each of these functions compute a footprint-compressed product as a
+     * row-major array with the inner dimension corresponding to the
+     * footprint-mapped pixel index, and the outer dimension (if any) 
+     * corresponding to the parameter index.
+     */
+    //@{
     ndarray::Array<Pixel const, 1, 1> computeModelImage();
     ndarray::Array<Pixel const, 2, 2> computeLinearParameterDerivative();
     ndarray::Array<Pixel const, 2, 2> computeNonlinearParameterDerivative();
+    //@}
 #endif
 
+    /**
+     * Pixel threshold used to discriminate exposures
+     *
+     * Only exposures on which the Model's footprint covers more than this
+     * threshold will be used to evaluate the model
+     */
     int const & getMinPixels() const {return _nMinPix;}
+
+    /**
+     * Pixel threshold used to discriminate exposures
+     *
+     * Only exposures on which the Model's footprint covers more than this
+     * threshold will be used to evaluate the model.
+     *
+     * To disable discrimination, call with nMinPIx <= 0
+     *
+     * @param nMinPix new threshold to to use to discard exposures with too few
+     *      contributing pixels. if nMinPix <= 0, no exposure's will be
+     *      discarded
+     */
     void setMinPixels(int const nMinPix) {
-        _nMinPix = (nMinPix > 0)? nMinPix : 0;
+        _nMinPix = (nMinPix < 0)? 0 : nMinPix;
     }
 
+    /**
+     * @name Model Accessors
+     *
+     * Vet access to the model by exposing a subset of Model's functionality
+     * directly
+     */
+    //@{
+    /**
+     * Number of linear parameters in the model
+     */
     int const getLinearParameterSize() const {
         return _model->getLinearParameterSize();
     }
+    /**
+     * Number of nonlinear parameters in the model
+     */
     int const getNonlinearParameterSize() const {
         return _model->getNonlinearParameterSize();
     }
+    /**
+     * Immutable access to the model's linear parameters
+     */
     ParameterVector const & getLinearParameters() const {
         return _model->getLinearParameters();
     }
+    /**
+     * Immutable access to the model's nonlinear parameters
+     */
     ParameterVector const & getNonlinearParameters() const {
         return _model->getNonlinearParameters();
     }
 
+    /**
+     * Set the model's linear parameters
+     */
     void setLinearParameters(
         ParameterConstIterator const & parameterIterator
     ) {    
@@ -127,6 +195,9 @@ public:
         _validProducts &= (~MODEL_IMAGE);
         _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
     }
+    /**
+     * Set the model's nonlinear parameters
+     */
     void setNonlinearParameters(
         ParameterConstIterator const & parameterIterator
     ) {
@@ -135,20 +206,37 @@ public:
         _validProducts &= (~LINEAR_PARAMETER_DERIVATIVE);
         _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
     }
-   
+    //@}  
+    
+    /**
+     * Immutable access to the model this evaluator is managing
+     */
     Model::ConstPtr getModel() const {return _model;}
+    /**
+     * number of exposures used
+     */
     int const getNProjections() const {return _projectionList.size();}
-    int const getNPixels() const {return _imageVector.getSize<0>();}
+    /**
+     * Number of total pixels accross all exposures used
+     */
+    int const getNPixels() const {return _dataVector.getSize<0>();}
 
-#ifndef SWIG
-    ProjectionFrameList const & getProjectionList() const {
+    /**
+     * List the ModelProjection objects
+     *
+     * The number of projections may not match the number of input exposures
+     * as the evluator discards any exposures with fewer than nMinPix
+     * pixels covered by the model's projected footprint.
+     */
+    ProjectionList const & getProjectionList() const {
         return _projectionList;
     }
-#endif
 
-private:        
-    typedef ProjectionFrameList::iterator ProjectionFrameIterator;
+private:   
+
+    typedef ProjectionList::iterator ProjectionIterator;
     typedef Footprint::SpanList SpanList;
+
 
     enum ProductFlag {
         MODEL_IMAGE = 1<<0,
@@ -159,9 +247,9 @@ private:
     int _nMinPix;
     int _validProducts;
     Model::Ptr _model;    
-    ProjectionFrameList _projectionList;
+    ProjectionList _projectionList;
     
-    ndarray::Array<Pixel, 1, 1> _imageVector;
+    ndarray::Array<Pixel, 1, 1> _dataVector;
     ndarray::Array<Pixel, 1, 1> _varianceVector;
     ndarray::Array<Pixel, 1, 1> _modelImage;
     ndarray::Array<Pixel, 2, 2> _linearParameterDerivative;

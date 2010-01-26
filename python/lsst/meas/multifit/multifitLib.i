@@ -210,7 +210,7 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
 %nodefaultctor lsst::meas::multifit::ModelEvaluator;
 %include "lsst/meas/multifit/ModelEvaluator.h"
 %extend lsst::meas::multifit::ModelEvaluator {
-    %returnArray(getImageVector, lsst::meas::multifit::Pixel const, 1, 1);
+    %returnArray(getDataVector, lsst::meas::multifit::Pixel const, 1, 1);
     %returnArray(getVarianceVector, lsst::meas::multifit::Pixel const, 1, 1);
     %returnArray(computeModelImage, lsst::meas::multifit::Pixel const, 1, 1);
     %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);

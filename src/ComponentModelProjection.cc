@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #include "lsst/meas/multifit/ComponentModelProjection.h"
 #include "lsst/meas/multifit/matrices.h"
 

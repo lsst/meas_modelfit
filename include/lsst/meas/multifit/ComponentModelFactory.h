@@ -1,5 +1,11 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Support for constructing ComponentModel
+ */
 #ifndef LSST_MEAS_MULTIFIT_COMPONENT_MODEL_FACTORY_H
 #define LSST_MEAS_MULTIFIT_COMPONENT_MODEL_FACTORY_H
+
 
 #include <boost/make_shared.hpp>
 
@@ -18,9 +24,6 @@ class ComponentModel;
  *  A factory and dynamic type object for ComponentModel.
  *
  *  @sa ComponentModel
- *  @sa ComponentModelProjection
- *
- *  @todo better documentation
  */
 class ComponentModelFactory : public ModelFactory {
 public:
@@ -93,6 +96,16 @@ public:
     virtual ~ComponentModelFactory() {}
 
 protected:
+
+    /**
+     * Construct a factory from component templates
+     *
+     * The factory will hold a pointer to the input component templates, when 
+     * it constructs a ComponentModel, it will feed the templates to the model.
+     * Model creation will result in a clone of the compoennt templates. The 
+     * value of parameters in the component templates are not copied upon model
+     * creation.
+     */
     ComponentModelFactory(
         components::Astrometry::ConstPtr const & astrometryTemplate,
         components::Morphology::ConstPtr const & morphologyTemplate

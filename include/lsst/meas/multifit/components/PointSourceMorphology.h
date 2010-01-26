@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Declaration of class PointSourceMorphology
+ */
 #ifndef LSST_MEAS_MULTIFIT_COMPONENTS_POINT_SOURCE_MORPHOLOGY_H
 #define LSST_MEAS_MULTIFIT_COMPONENTS_POINT_SOURCE_MORPHOLOGY_H
 
@@ -18,6 +23,7 @@ class PointSourceMorphology : public Morphology {
 public:
     typedef boost::shared_ptr<PointSourceMorphology> Ptr;
     typedef boost::shared_ptr<PointSourceMorphology const> ConstPtr;
+
 
     virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
         return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();

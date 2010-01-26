@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Declaration of class FourierModelProjection
+ */
 #ifndef LSST_MEAS_MULTIFIT_FOURIER_MODEL_PROEJECTION_H
 #define LSST_MEAS_MULTIFIT_FOURIER_MODEL_PROEJECTION_H
 
@@ -17,6 +22,10 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
+/**
+ * A derived type of ComponentModelProjection which is convolved in fourier
+ * space.
+ */
 class FourierModelProjection : public ComponentModelProjection {
 public:
     typedef boost::shared_ptr<FourierModelProjection> Ptr;
@@ -27,16 +36,7 @@ public:
     virtual ~FourierModelProjection();
 
     /**
-     * Immutable access to the ComponentModel this is a projection of
-     */
-    ComponentModel::ConstPtr getModel() const {
-        return boost::static_pointer_cast<ComponentModel const>(
-            ModelProjection::getModel()
-        );
-    }
-
-    /**
-     * Immutable access to the FourierMorphologyProjection this is based on
+     * Immutable reference to the FourierMorphologyProjection this is based on
      */
     components::FourierMorphologyProjection::ConstPtr getMorphologyProjection() const {
         return boost::static_pointer_cast<components::FourierMorphologyProjection const>(
@@ -64,7 +64,7 @@ protected:
     virtual void _handleNonlinearParameterChange();
 
     /**
-     * Mutable access to the FourierMorphologyProjection this is based on
+     * Mutable referece to the FourierMorphologyProjection this is based on
      */
     components::FourierMorphologyProjection::Ptr _getMorphologyProjection() {
         return boost::static_pointer_cast<components::FourierMorphologyProjection>(

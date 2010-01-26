@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file 
+ * Implementation of a SingleLinearParameterFitter
+ */
 #include <cfloat>
 #include <cmath>
 #include <iostream>
@@ -7,14 +12,36 @@
 #include <Eigen/Cholesky>
 
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
+#include "lsst/meas/multifit/core.h"
 #include "lsst/pex/exceptions/Runtime.h"
 
 namespace multifit = lsst::meas::multifit;
 
+/**
+ * Configure a SingleLinearParameterFitter with a policy
+ *
+ * Some default value may be provided by the dictionary 
+ */
 multifit::SingleLinearParameterFitter::SingleLinearParameterFitter(
     lsst::pex::policy::Policy::Ptr const & policy
-) : lsst::pex::policy::PolicyConfigured(policy) {
-    if(!policy->exists("terminationType")) {
+) : _policy(policy) {
+    if(!_policy)
+        _policy.reset(new lsst::pex::policy::Policy());
+
+    //load default policy
+    lsst::pex::policy::Policy::Ptr defaults(
+        lsst::pex::policy::Policy::createPolicy(*getDefaultPolicySource())
+    );
+    //merge in default values
+    if(defaults->canValidate()){
+        _policy->mergeDefaults(*defaults->getDictionary());
+    }
+    else {
+        _policy->mergeDefaults(*defaults);
+    }
+
+
+    if(!_policy->exists("terminationType")) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             "Invalid configuration policy - missing value \"terminationType\""
@@ -22,8 +49,8 @@ multifit::SingleLinearParameterFitter::SingleLinearParameterFitter(
     } 
     
     _terminationType = 0;
-    std::vector<std::string> terminationVector(policy->getStringArray("terminationType"));
-    for(std::vector<std::string>::iterator i(terminationVector.begin()), end(terminationVector.end());
+    std::vector<std::string> conditions(_policy->getStringArray("terminationType"));
+    for(std::vector<std::string>::iterator i(conditions.begin()), end(conditions.end());
         i != end; ++i
     ) {
         if((*i) == "dChisq")
@@ -35,39 +62,56 @@ multifit::SingleLinearParameterFitter::SingleLinearParameterFitter(
     }
     
     if(_terminationType & ITERATION) {
-        if(!policy->exists("iterationMax")) {
+        if(!_policy->exists("iterationMax")) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::InvalidParameterException,
                 "Invalid configuration policy - missing value \"iterationMax\""
             );
         } else {
-            _iterationMax = policy->getInt("iterationMax");   
+            _iterationMax = _policy->getInt("iterationMax");   
         }
     }
     if(_terminationType & DCHISQ) {
-        if(!policy->exists("dChisqThreshold")) {
+        if(!_policy->exists("dChisqThreshold")) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::InvalidParameterException,
                 "Invalid configuration policy - missing value \"dChisqThreshold\""
             );
         } else {
-            _dChisqThreshold = std::abs(policy->getDouble("dChisqThreshold"));   
+            _dChisqThreshold = std::abs(_policy->getDouble("dChisqThreshold"));   
         }
     }
     if(_terminationType & STEP) {
-        if(!policy->exists("stepThreshold")) {
+        if(!_policy->exists("stepThreshold")) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::InvalidParameterException,
                 "Invalid configuration policy - missing value \"stepThreshold\""
             );
         } else {
-            _stepThreshold = std::abs(policy->getDouble("stepThreshold"));   
+            _stepThreshold = std::abs(_policy->getDouble("stepThreshold"));   
         }
     }
-
-    lsst::pex::policy::PolicyConfigured::configured();
 }    
 
+/**
+ * Fit a model by applying this to a ModelEvaluator
+ *
+ * Use this configured fitter to compute the best-fit model for the given
+ * ModelEvaluator. The ModelEvluator must be properly initialized with the set
+ * of exposures to fit a model on. 
+ *
+ * The fitting loop will terminated when at least one of the termination 
+ * conditions specified to this fitter upon construction is met. 
+ *
+ * @param evaluator must be properly initialized externally, by setting
+ *      exposure list upon its construction, or by calling 
+ *      ModelEvaluator::setExposureList
+ * @return SimpleFitResult which contains information about the status of the
+ *      model fit upon termination.
+ *
+ * @sa lsst::meas::multifit::ModelEvaluator
+ * @sa lsst::meas::multifit::SimpleFitResult
+ */
 multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParameterFitter::apply(
     ModelEvaluator & evaluator
 ) const {
@@ -86,13 +130,13 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
     Result::Ptr result = boost::make_shared<Result>();
     result->model = evaluator.getModel();    
 
-    VectorMap image(
-        evaluator.getImageVector().getData(),
+    VectorMap data(
+        evaluator.getDataVector().getData(),
         evaluator.getNPixels()
     );    
     Eigen::VectorXd sigma(evaluator.computeSigmaVector());
 
-    Eigen::VectorXd data = (image.cwise() / sigma);
+    Eigen::VectorXd observed = (data.cwise() / sigma);
     Eigen::VectorXd newLinearDNonlinear;
     Eigen::MatrixXd jacobian;
 
@@ -122,9 +166,9 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         double normDLinear = dLinear.squaredNorm();        
         
         //the new linear parameter as a function of the nonlinear parameters
-        double newLinear = dLinear.dot(data) / normDLinear;
+        double newLinear = dLinear.dot(observed) / normDLinear;
         //compute the residual as a function of the nonlinear parameters
-        Eigen::VectorXd residual = data - dLinear*newLinear;
+        Eigen::VectorXd residual = observed - dLinear*newLinear;
 
         //compute the chisq
         if (nIterations > 0) {

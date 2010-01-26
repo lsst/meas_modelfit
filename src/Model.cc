@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 

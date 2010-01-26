@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Implementation of class PointSourceMorphologyProjection
+ */
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 #include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 

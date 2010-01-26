@@ -1,3 +1,8 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Declaration of class ModelFactory
+ */
 #ifndef LSST_MEAS_MULTIFIT_MODEL_FACTORY_H
 #define LSST_MEAS_MULTIFIT_MODEL_FACTORY_H
 
@@ -20,11 +25,12 @@ namespace multifit {
 class Model;
 
 /**
- *  \brief A factory and dynamic type object for Model (ABC).
+ * A factory and dynamic type object for Model.
  *
- *  A ModelFactory instance provides the only means of constructing Model objects,
- *  and also serves as a unique identifier for a particular type of model.
-*
+ *  A ModelFactory instance provides the only means of instantiating Model
+ *  objects, and also serves as a unique identifier for a particular type 
+ *  of model.
+ *
  *  The base ModelFactory contains a registry mapping string identifiers to
  *  ModelFactory instances.
  *
@@ -32,42 +38,45 @@ class Model;
  *  the number of nonlinear parameters produced Models will have, and specifies
  *  a range for the number of linear parameters.
  *
- *  \sa Model
- *  \sa ModelProjection
+ *  @sa Model
+ *  @sa ModelProjection
  */
 class ModelFactory : private boost::noncopyable {
 public:
     typedef boost::shared_ptr<ModelFactory> Ptr;
     typedef boost::shared_ptr<ModelFactory const> ConstPtr;
 
-    /// \brief Retrieve the factory registered with the given name.
     static ModelFactory::ConstPtr lookup(std::string const & name);
     
-    /**
-     *  \brief Register a factory with the given name.
-     *
-     *  \return true on success, false if the given name is already in use.
-     */
-    static bool declare(std::string const & name, ModelFactory::ConstPtr const & factory);
+    static bool declare(
+        std::string const & name, 
+        ModelFactory::ConstPtr const & factory
+    );
 
     /**
-     *  \brief Create a Model.
+     *  Create a Model.
      *
-     *  \todo Add another constructor that takes direct measurement quantities for use
-     *  in initializing from detection-stage results.
+     *  The type of model constructed, is determined by the type of factory
+     *  @param linearParameters specifies the number and value of linear
+     *      parameters of the model. The number of linear parameters must be
+     *      within the range 
+     *      [getMinLinearParameterSize():getMaxLinearParameterSize()]
+     *  @param nonlinearParameters specifies the value of the nonlinear
+     *      parameters of the model. The length of nonlinearParameters must
+     *      equal getNonlinearParameterSize()     
      */
     virtual boost::shared_ptr<Model> makeModel(        
         ParameterVector const & linearParameters,
         ParameterVector const & nonlinearParameters
     ) const = 0;
     
-    /// \brief Return the number of nonlinear parameters in Models produced by this factory.
+    /// Number of nonlinear parameters in Models produced by this factory.
     virtual int const getNonlinearParameterSize() const = 0;
 
-    /// \brief Return the minimum number of linear parameters in Models produced by this factory.
+    /// Minimum number of linear parameters in Models produced by this factory.
     virtual int const getMinLinearParameterSize() const = 0;
 
-    /// \brief Return the maximum number of linear parameters in Models produced by this factory.
+    /// Maximum number of linear parameters in Models produced by this factory.
     virtual int const getMaxLinearParameterSize() const = 0;
 
     virtual ~ModelFactory() {}
@@ -77,9 +86,6 @@ private:
     static RegistryMap & getRegistry();
 };
 
-/**
- * Factory function to return a Model
- */
 boost::shared_ptr<Model> makeModel(
     std::string const & type, 
     ParameterVector const & linearParameters, 

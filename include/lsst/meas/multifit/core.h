@@ -1,3 +1,9 @@
+// -*- lsst-c++ -*-
+/**
+ * @file
+ * Collection of useful typedefs used throughout the lsst::meas::multifit
+ * namespace
+ */
 #ifndef LSST_MEAS_MULTIFIT_CORE_H
 #define LSST_MEAS_MULTIFIT_CORE_H
 
@@ -20,8 +26,12 @@ typedef double Parameter;
 
 typedef Parameter * ParameterIterator;
 typedef Parameter const * ParameterConstIterator;
-typedef Eigen::VectorXd ParameterVector;
+
 typedef Eigen::aligned_allocator<char> Allocator;
+typedef Eigen::VectorXd ParameterVector;
+typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> > MatrixMap;
+typedef Eigen::Block<MatrixMap> MatrixMapBlock;
+typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, 1> > VectorMap;
 
 typedef lsst::meas::algorithms::PSF Psf;
 typedef lsst::afw::math::Kernel Kernel;
