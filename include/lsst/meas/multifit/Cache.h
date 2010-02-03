@@ -38,14 +38,12 @@ private:
 
 class Cache {
 public:    
+    typedef lsst::afw::math::Function2<double> FillFunction;
+
     Cache(
-        Eigen::MatrixXd const & dataPoints,
-        lsst::afw::geom::BoxD parameterBounds
-    );
-    Cache(
-        Eigen::MatrixXd const & dataPoints,
-        Eigen::VectorXd const & x,
-        Eigen::VectorXd const & y
+        lsst::afw::geom::Extent2I const & dimensions,
+        lsst::afw::geom::BoxD const & parameterBounds,
+        FillFunction::Ptr const & fillFunction
     );
 
     InterpolationFunction::ConstPtr getRowFunctor(double const & y) const;
@@ -62,15 +60,7 @@ public:
     double const & getColStep() const {return _xStep;}
     double const & getRowStep() const {return _yStep;}
 
-protected:    
-    Cache(
-        lsst::afw::geom::Extent2I const & dimensions,
-        lsst::afw::geom::BoxD const & parameterBounds,
-        bool computeHeaders = false
-    );
-
-    virtual ~Cache(){}
-
+private:    
     Eigen::MatrixXd _dataPoints;
     boost::shared_ptr<Eigen::VectorXd> _x, _y;
 

@@ -11,92 +11,15 @@
 namespace multifit = lsst::meas::multifit;
 
 multifit::Cache::Cache(
-    Eigen::MatrixXd const & dataPoints,
-    lsst::afw::geom::BoxD parameterBounds
-) : _dataPoints(dataPoints),
-    _x(new Eigen::VectorXd(dataPoints.cols())), 
-    _y(new Eigen::VectorXd(dataPoints.rows())),
-    _parameterBounds(parameterBounds),
-    _xStep(parameterBounds.getWidth() / dataPoints.cols()),
-    _yStep(parameterBounds.getHeight() / dataPoints.rows())
-{
-    if(dataPoints.rows() < 2 || dataPoints.cols() < 2) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "At least 2 data points needed in each parameter axis"
-        );
-    }
-
-    double x = parameterBounds.getMinX();
-    double y = parameterBounds.getMaxX();
-    for(int i = 0; i < _x->size() && i < _y->size(); ++i) {
-        (*_x)[i] = x;
-        (*_y)[i] = y;
-        x += _xStep;
-        y += _yStep;
-    }
-    //if more cols than rows
-    //fill in remaining column headers
-    for(int i = _y->size(); i < _x->size(); ++i) {
-        (*_x)[i] = x;
-        x += _xStep;
-    }
-    //if more rows than cols
-    //fill in remining row headers
-    for(int i = _x->size(); i < _y->size(); ++i) {
-        (*_y)[i] = y;
-        y += _yStep;
-    }
-};
-
-multifit::Cache::Cache(
-    Eigen::MatrixXd const & dataPoints,
-    Eigen::VectorXd const & x,
-    Eigen::VectorXd const & y
-) : _dataPoints(dataPoints), 
-    _x(new Eigen::VectorXd(x)), 
-    _y(new Eigen::VectorXd(y)) 
-{
-    if(dataPoints.rows() < 2 || dataPoints.cols() < 2) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "At least 2 data points needed in each parameter axis"
-        );
-    }
-    if(_dataPoints.cols() != _x->size()) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Length of x must match number of columns in dataPoints"
-        );
-    }  
-    if(_dataPoints.rows() != _y->size()) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Length of y must match number of rows in dataPoints"
-        );
-    }  
-   
-    lsst::afw::geom::PointD min = lsst::afw::geom::makePointD(
-        (*_x)[0], (*_y)[0]
-    );
-    lsst::afw::geom::PointD max = lsst::afw::geom::makePointD(
-        (*_x)[_x->size() -1], (*_y)[_y->size() - 1]
-    );
-    _parameterBounds = lsst::afw::geom::BoxD(min, max);
-    _xStep = _parameterBounds.getWidth() / _dataPoints.cols();
-    _yStep = _parameterBounds.getHeight() / _dataPoints.rows();
-} 
-
-multifit::Cache::Cache(
-    lsst::afw::geom::Extent2I const & dimensions,
+    lsst::afw::geom::Extent2I const& dimensions,
     lsst::afw::geom::BoxD const & parameterBounds,
-    bool computeHeaders
+    FillFunction::Ptr const & fillFunction
 ) : _dataPoints(dimensions.getY(), dimensions.getX()),
-    _x(new Eigen::VectorXd(dimensions.getX())),
+    _x(new Eigen::VectorXd(dimensions.getX())), 
     _y(new Eigen::VectorXd(dimensions.getY())),
     _parameterBounds(parameterBounds),
-    _xStep(parameterBounds.getWidth()/dimensions.getX()),
-    _yStep(parameterBounds.getHeight()/dimensions.getY())
+    _xStep(parameterBounds.getWidth() / dimensions.getX()),
+    _yStep(parameterBounds.getHeight() / dimensions.getY())
 {
     if(dimensions.getX() < 2 || dimensions.getY() < 2) {
         throw LSST_EXCEPT(
@@ -105,30 +28,33 @@ multifit::Cache::Cache(
         );
     }
 
-    if(computeHeaders) { 
-        double x = _parameterBounds.getMinX();
-        double y = _parameterBounds.getMinY();
-        for(int i = 0; i < _x->size() && i < _y->size(); ++i) {
-            (*_x)[i] = x;
-            (*_y)[i] = y;
-            x += _xStep;
-            y += _yStep;
-        }
-        //if more cols than rows
-        //fill in remaining column headers
-        for(int i = _y->size(); i < _x->size(); ++i) {
-            (*_x)[i] = x;
-            x += _xStep;
-        }
-        //if more rows than cols
-        //fill in remining row headers
-        for(int i = _x->size(); i < _y->size(); ++i) {
-            (*_y)[i] = y;
-            y += _yStep;
-        } 
-    }
-}
+    //loop over columns to precompute headers
+    double x = _parameterBounds.getMinX();
+    double * xHeader = _x->data();
+    for(int i = 0; i < dimensions.getX(); ++i, ++xHeader) {
+        *xHeader = x;
+        x += _xStep;
+    } 
 
+    double * yHeader = _y->data();
+    double y = _parameterBounds.getMinY();
+    
+    //outer loop over rows
+    for(int i = 0; i < dimensions.getY(); ++i, ++yHeader) {
+        *yHeader = y;
+        
+        x = _parameterBounds.getMinX();
+        //inner loop over columns
+        for (int j = 0; j < dimensions.getX(); ++j) {
+            //set grid point
+            _dataPoints(i,j) = (*fillFunction)(x, y);
+
+            x += _xStep;
+        }
+
+        y += _yStep;
+    }
+};
 
 multifit::InterpolationFunction::ConstPtr multifit::Cache::getRowFunctor(
     double const & y
