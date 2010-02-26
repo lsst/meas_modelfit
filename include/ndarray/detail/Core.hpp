@@ -82,6 +82,12 @@ public:
     /// \brief Set the stride of the Nth dimension.
     void setStride(int stride) { _stride = stride; }
 
+    /// \brief Recursively compute the offset to an element.
+    template <int M>
+    int computeOffset(Vector<int,M> const & index) const {
+        return index[M-N] * this->getStride() + Super::computeOffset(index);
+    }
+
     /// \brief Recursively fill a shape vector.
     template <int M>
     void fillShape(Vector<int,M> & shape) const {
@@ -153,6 +159,10 @@ public:
 
     int getSize() const { return 1; }
     int getStride() const { return 1; }
+
+    /// \brief Recursively compute the offset to an element.
+    template <int M>
+    int computeOffset(Vector<int,M> const & index) const { return 0; }
 
     /// \brief Return the shared_ptr that manages the lifetime of the array data.
     Owner getOwner() const { return _owner; }

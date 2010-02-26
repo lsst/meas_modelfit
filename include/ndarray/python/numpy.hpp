@@ -240,7 +240,7 @@ struct PyConverter< Array<T,N,C> > : public detail::PyConverterBase< Array<T,N,C
             reinterpret_cast<PyArrayObject*>(array.get())->base = owner;
         }
         Py_INCREF(array.get());
-        return array.get();
+        return PyArray_Return(reinterpret_cast<PyArrayObject*>(array.get()));
     }
 
     static PyTypeObject const * getPyType() { return &PyArray_Type; }

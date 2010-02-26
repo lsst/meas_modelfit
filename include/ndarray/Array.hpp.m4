@@ -147,6 +147,11 @@ public:
         return detail::buildView(*this,def._seq);
     }
 
+    /// \brief Return a single element from the array.
+    Element & operator[](Index const & i) const {
+        return *(getData() + _core->template computeOffset(i));
+    }
+
     /// \brief Return a single subarray (for ND > 1) or element for (ND==1).
     using detail::ArrayImpl<Array>::operator[];
 

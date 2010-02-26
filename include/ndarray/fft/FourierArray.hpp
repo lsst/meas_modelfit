@@ -142,6 +142,9 @@ public:
         return typename ResultOf<ViewT>::Type(_size,_base[def]);
     }
 
+    /// \brief Return a single element from the array.
+    Element & operator[](Index const & i) const { return _base[i]; }
+
     /// \brief Return a single subarray (for ND > 1) or element for (ND==1).
     using detail::ArrayImpl<FourierArray>::operator[];
 

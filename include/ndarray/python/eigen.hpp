@@ -134,7 +134,12 @@ public:
         NDARRAY_ASSERT(PyObject_IsInstance(p.get(),matrixType.get()));
         Array<Scalar,2,2> array;
         if (!PyConverter< Array<Scalar,2,2> >::fromPythonStage2(p,array)) return false;
-        output = ndarray::viewArrayAs<TrueMatrix>(array);
+        int rows = array.template getSize<0>();
+        int cols = array.template getSize<1>();
+        Eigen::Block<ndarray::EigenView<Scalar,2,2>,Rows::value,Cols::value> block(
+            ndarray::viewAsEigen(array), 0, 0, rows, cols
+        );
+        output = block;
         return true;
     }
 
@@ -181,6 +186,21 @@ struct PyConverter< Eigen::Transpose< Eigen::Matrix<Scalar,Rows,Cols,Options,Max
           Eigen::Transpose< Eigen::Matrix<Scalar,Rows,Cols,Options,MaxRows,MaxCols> > 
       > 
 {};
+
+/**
+ *  \ingroup PythonGroup
+ *  \brief Specialization of PyConverter for ndarray::EigenView
+ */
+template <typename T, int N, int C>
+struct PyConverter< EigenView<T,N,C> > : public detail::EigenPyConverter< EigenView<T,N,C> > {};
+
+/**
+ *  \ingroup PythonGroup
+ *  \brief Specialization of PyConverter for ndarray::TransposedEigenView
+ */
+template <typename T, int N, int C>
+struct PyConverter< TransposedEigenView<T,N,C> > : 
+    public detail::EigenPyConverter< TransposedEigenView<T,N,C> > {};
 
 } // namespace ndarray
 

@@ -10,8 +10,55 @@
 #include "ndarray/Array.hpp"
 #include <boost/type_traits/add_const.hpp>
 #include <boost/type_traits/remove_const.hpp>
+#include <boost/mpl/comparison.hpp>
+#include <boost/static_assert.hpp>
 
 namespace ndarray {
+
+namespace detail {
+
+template <typename Original, typename Casted>
+class ReinterpretDeleter {
+    boost::shared_ptr<Original> _original;
+public:
+    void operator()(Casted * p) { _original.reset(); }
+    explicit ReinterpretDeleter(boost::shared_ptr<Original> const & original) : _original(original) {}
+
+    static boost::shared_ptr<Casted> makeOwner(boost::shared_ptr<Original> const & original) {
+        return boost::shared_ptr<Casted>(
+            reinterpret_cast<Casted*>(original.get()), 
+            ReinterpretDeleter(original)
+        );
+    }
+};
+
+template <typename ArrayT>
+struct ComplexExtractor {
+    typedef typename detail::ArrayTraits<ArrayT>::Element Element;
+    typedef typename boost::remove_const<Element>::type NonConst;
+    typedef typename boost::is_const<Element>::type IsConst;
+    BOOST_STATIC_ASSERT( boost::is_complex<NonConst>::value );
+    typedef typename NonConst::value_type NonConstValue;
+    typedef typename boost::add_const<NonConstValue>::type ConstValue;
+    typedef typename boost::mpl::if_<IsConst, ConstValue, NonConstValue>::type Value;
+    typedef typename detail::ArrayTraits<ArrayT>::ND ND;
+    typedef Array<Value,ND::value,0> View;
+    typedef Vector<int,ND::value> Index;
+    typedef ReinterpretDeleter<Element,Value> Deleter;
+
+    static inline View apply(ArrayT const & array, int offset) {
+        return View(
+            external(
+                reinterpret_cast<Value*>(array.getData()) + offset,
+                array.getShape(),
+                array.getStrides() * 2,
+                Deleter::makeOwner(array.getOwner())
+            )
+        );
+    }
+};
+
+} // namespace detail
 
 /// \addtogroup MainGroup
 /// @{
@@ -36,7 +83,7 @@ const_array_cast(ArrayT const & array) {
  */
 template <int C, typename ArrayT>
 typename detail::ArrayTraits<ArrayT>::template RebindC<C>::Other
-static_array_cast(ArrayT const & array) {
+static_dimension_cast(ArrayT const & array) {
     typedef typename detail::ArrayTraits<ArrayT>::template RebindC<C>::Other Output;
     return detail::ArrayAccess<Output>::construct(
         const_cast<typename Output::Element*>(array.getData()),
@@ -53,7 +100,7 @@ static_array_cast(ArrayT const & array) {
  */
 template <int C, typename ArrayT>
 typename detail::ArrayTraits<ArrayT>::template RebindC<C>::Other
-dynamic_array_cast(ArrayT const & array) {
+dynamic_dimension_cast(ArrayT const & array) {
     typedef typename detail::ArrayTraits<ArrayT>::template RebindC<C>::Other Output;
     const static int N = Output::ND::value;
     Vector<int,N> shape = array.getShape();
@@ -63,7 +110,19 @@ dynamic_array_cast(ArrayT const & array) {
         if (strides[N-i] != n) return Output();
         n *= shape[N-i];
     }
-    return static_array_cast<C>(array);
+    return static_dimension_cast<C>(array);
+}
+
+template <typename ArrayT>
+typename detail::ComplexExtractor<ArrayT>::View
+getReal(ArrayT const & array) {
+    return detail::ComplexExtractor<ArrayT>::apply(array, 0);
+}
+
+template <typename ArrayT>
+typename detail::ComplexExtractor<ArrayT>::View
+getImag(ArrayT const & array) {
+    return detail::ComplexExtractor<ArrayT>::apply(array, 1);
 }
 
 /// @}

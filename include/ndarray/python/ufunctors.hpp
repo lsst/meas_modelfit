@@ -47,7 +47,7 @@ struct PyUnaryUFunctor {
         }
         Py_DECREF(input_array);
         Py_DECREF(iter);
-        return output_array;
+        return PyArray_Return(reinterpret_cast<PyArrayObject*>(output_array));
     }
     
 };
@@ -109,7 +109,7 @@ struct PyBinaryUFunctor {
         Py_DECREF(input1_array);
         Py_DECREF(input2_array);
         Py_DECREF(iter);
-        return output_array;
+        return PyArray_Return(reinterpret_cast<PyArrayObject*>(output_array));
     }
     
 };
