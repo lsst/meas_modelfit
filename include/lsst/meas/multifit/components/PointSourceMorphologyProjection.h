@@ -25,6 +25,8 @@ public:
     typedef boost::shared_ptr<PointSourceMorphologyProjection const> ConstPtr;
     typedef MorphologyProjection::ParameterJacobianMatrix ParameterJacobianMatrix;
     typedef MorphologyProjection::TransformJacobianMatrix TransformJacobianMatrix;
+    typedef MorphologyProjection::ParameterJacobianMatrixPtr ParameterJacobianMatrixPtr;
+    typedef MorphologyProjection::TransformJacobianMatrixPtr TransformJacobianMatrixPtr;
     
     PointSourceMorphologyProjection(
         boost::shared_ptr<PointSourceMorphology const> const & morphology,
@@ -40,8 +42,8 @@ public:
     }
 
     // MorphologyProjection --------------------------------------------------
-    virtual ParameterJacobianMatrix const & computeProjectedParameterJacobian() const;
-    virtual TransformJacobianMatrix const & computeTransformParameterJacobian() const;
+    virtual ParameterJacobianMatrixPtr computeProjectedParameterJacobian() const;
+    virtual TransformJacobianMatrixPtr computeTransformParameterJacobian() const;
 
     // FourierMorphologyProjection --------------------------------------------
     virtual lsst::afw::geom::Extent2I getDimensions() const {

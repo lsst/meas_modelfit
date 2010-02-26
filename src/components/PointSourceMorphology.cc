@@ -12,7 +12,9 @@ components::Morphology::Ptr components::PointSourceMorphology::create(
     boost::shared_ptr<ParameterVector const> const & linearParameters,
     ParameterConstIterator morphologyParameterIter
 ) const {
-    return Morphology::Ptr(new PointSourceMorphology(linearParameters,morphologyParameterIter));
+    return Morphology::Ptr(
+        new PointSourceMorphology(linearParameters,morphologyParameterIter)
+    );
 }
 
 components::MorphologyProjection::Ptr components::PointSourceMorphology::makeProjection(

@@ -12,6 +12,7 @@
 #include "lsst/meas/multifit/core.h"
 #include "lsst/afw/geom/Extent.h"
 #include "lsst/meas/multifit/components/MorphologyProjection.h"
+#include "lsst/meas/multifit/components/Morphology.h"
 
 namespace lsst {
 namespace meas {
@@ -59,7 +60,7 @@ protected:
      */
     FourierMorphologyProjection(
         Morphology::ConstPtr const & morphology,
-        lsst::afw::geom::Extent2I const kernelDimensions, 
+        lsst::afw::geom::Extent2I const & kernelDimensions, 
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) : MorphologyProjection(morphology,kernelDimensions,transform) {}
 

@@ -56,6 +56,8 @@ public:
         }
         return _linearParameterVector->size();
     }
+    /// Return the number of nonlinear morphology parameters.
+    virtual int const getNonlinearParameterSize() const = 0;
 
     /// Return a vector of the linear parameters.
     ParameterVector const & getLinearParameterVector() const {
@@ -153,9 +155,6 @@ protected:
 
     /// Return the maximum number of linear parameters.
     virtual int const getMaxLinearParameterSize() const = 0;
-
-    /// Return the number of (nonlinear) morphology parameters.
-    virtual int const getNonlinearParameterSize() const = 0;
     //@}
 
     /**

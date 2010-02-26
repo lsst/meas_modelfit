@@ -7,17 +7,19 @@
 #include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 
 namespace multifit = lsst::meas::multifit;
-namespace components =lsst::meas::multifit::components;
+namespace components = multifit::components;
 
-components::PointSourceMorphologyProjection::ParameterJacobianMatrix const & 
+components::PointSourceMorphologyProjection::ParameterJacobianMatrixPtr 
 components::PointSourceMorphologyProjection::computeProjectedParameterJacobian() const {
-    static const ParameterJacobianMatrix m; // matrix has zero size
+    static const ParameterJacobianMatrixPtr m(new ParameterJacobianMatrix()); 
+    // matrix has zero size
     return m;
 }
 
-components::PointSourceMorphologyProjection::TransformJacobianMatrix const & 
+components::PointSourceMorphologyProjection::TransformJacobianMatrixPtr
 components::PointSourceMorphologyProjection::computeTransformParameterJacobian() const {
-    static const TransformJacobianMatrix m; // matrix has zero size
+    static const TransformJacobianMatrixPtr m(new TransformJacobianMatrix());
+    // matrix has zero size
     return m;
 }
 

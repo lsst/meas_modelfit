@@ -86,7 +86,7 @@ ndarray::Array<multifit::Pixel const,2,1> multifit::ModelProjection::computeLine
     return _linearParameterDerivative;
 }
 /**
- * Compute the derivative of the model with repect to the linear parameters
+ * Compute the derivative of the model with repect to the nonlinear parameters
  *
  * @throw lsst::pex::exceptions::LogicErrorException if unable to compute a
  * derivative

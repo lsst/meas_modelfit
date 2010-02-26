@@ -10,7 +10,7 @@
 
 #include "lsst/afw/geom/AffineTransform.h"
 #include "lsst/afw/geom/Box.h"
-#include "lsst/afw/math/ConvolutionVisitor.h"
+#include "lsst/afw/math/LocalKernel.h"
 #include "lsst/afw/image/Utils.h"
 
 #include "lsst/meas/multifit/Model.h"
@@ -49,7 +49,7 @@ protected:
 
     virtual void _convolve(PsfConstPtr const & psf);
     /// Determine if a valid PSF been provided 
-    virtual bool isConvolved() const { return _kernelVisitor; }
+    virtual bool isConvolved() const { return _localKernel; }
 
     virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
     virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
@@ -57,7 +57,7 @@ protected:
     virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
 
     virtual bool hasPsfParameterDerivative() const {
-        return _kernelVisitor->hasDerivatives() && _kernelVisitor->getNParameters() > 0;
+        return _localKernel->hasDerivatives() && _localKernel->getNParameters() > 0;
     }
 
     virtual void _handleLinearParameterChange();
@@ -95,7 +95,7 @@ private:
     ) const;
 
     // PSF/Kernel information.
-    lsst::afw::math::FourierConvolutionVisitor::Ptr _kernelVisitor; 
+    lsst::afw::math::FourierLocalKernel::Ptr _localKernel; 
     // maps footprint to handler output arrays
     WindowedFootprint::Ptr _wf;     
     // bounding box of padded arrays relative to exposure

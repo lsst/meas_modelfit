@@ -37,7 +37,9 @@ private:
 }; 
 
 class Cache {
-public:    
+public:   
+    typedef boost::shared_ptr<Cache> Ptr;
+    typedef boost::shared_ptr<Cache const> ConstPtr;
     typedef lsst::afw::math::Function2<double> FillFunction;
 
     Cache(

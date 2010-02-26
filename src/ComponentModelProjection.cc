@@ -56,7 +56,7 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
             getModel()->getAstrometry()->differentiate()
         );
         astrometryView = translationView * 
-            _transform->getEigenTransform().linear() * astrometryDerivative;
+            _transform->getLinear().getMatrix() * astrometryDerivative;
     }
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();
@@ -86,7 +86,8 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
             _projectedParameterDerivative.getSize<0>()
         );
         // END TODO
-        morphologyView = projectedView * _morphologyProjection->computeProjectedParameterJacobian();
+        morphologyView = projectedView * 
+            (*_morphologyProjection->computeProjectedParameterJacobian());
     }
 }
 
@@ -137,8 +138,8 @@ void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
             _projectedParameterDerivative.getSize<0>()
         );
         // END TODO
-	morphologyView += projectedView *
-            _morphologyProjection->computeTransformParameterJacobian();
+	    morphologyView += projectedView *
+            (*_morphologyProjection->computeTransformParameterJacobian());
     }
 }
 

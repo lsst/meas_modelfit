@@ -28,7 +28,9 @@ public:
     typedef boost::shared_ptr<MorphologyProjection const> ConstPtr;
     
     typedef Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> ParameterJacobianMatrix;
-    typedef Eigen::Matrix<Pixel,Eigen::Dynamic,6> TransformJacobianMatrix;
+    typedef Eigen::Matrix<Pixel,Eigen::Dynamic, 4> TransformJacobianMatrix;
+    typedef boost::shared_ptr<ParameterJacobianMatrix const> ParameterJacobianMatrixPtr;
+    typedef boost::shared_ptr<TransformJacobianMatrix const> TransformJacobianMatrixPtr;
 
     virtual ~MorphologyProjection() {}
 
@@ -55,15 +57,17 @@ public:
      *  ComponentModelProjection::computeProjectedParameterDerivative to the 
      *  morphology block of the nonlinear parameter derivative.
      */
-    virtual ParameterJacobianMatrix const & computeProjectedParameterJacobian() const = 0;
+    virtual ParameterJacobianMatrixPtr computeProjectedParameterJacobian() const = 0;
 
     /**
      *  Return the matrix that deprojects the output of 
      *  ComponentModelProjection::computeProjectedParameterDerivative to the 
      *  morphology terms of the WCS parameter derivative.
      */
-    virtual TransformJacobianMatrix const & computeTransformParameterJacobian() const = 0;
+    virtual TransformJacobianMatrixPtr computeTransformParameterJacobian() const = 0;
 
+    int const getLinearParameterSize() const; 
+    int const getNonlinearParameterSize() const; 
 protected:
 
     /**

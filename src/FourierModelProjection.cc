@@ -223,13 +223,13 @@ public:
             return _final;
         
         lsst::afw::math::FourierCutout::Ptr fourierCutout = 
-            _parent->_kernelVisitor->getFourierDerivativeImageList()[0];
+            _parent->_localKernel->getFourierDerivatives()[0];
 
         ndarray::Array<std::complex<Pixel>,3,3> externalImg(
             ndarray::external(
                 fourierCutout->begin(),
                 ndarray::makeVector(
-                    _parent->_kernelVisitor->getNParameters(), 
+                    _parent->_localKernel->getNParameters(), 
                     fourierCutout->getFourierHeight(),
                     fourierCutout->getFourierWidth()
                 ),
@@ -283,9 +283,9 @@ private:
 
 
 int const multifit::FourierModelProjection::getPsfParameterSize() const {
-    if(!_kernelVisitor)
+    if(!_localKernel)
         return 0;
-    return _kernelVisitor->getNParameters();
+    return _localKernel->getNParameters();
 }
 
 /**
@@ -299,9 +299,8 @@ void multifit::FourierModelProjection::_convolve(
     if(!psf || !psf->getKernel()) 
         return;
 
-    lsst::afw::geom::PointD point = _getPsfPosition(); 
-    _kernelVisitor = psf->getKernel()->computeFourierConvolutionVisitor(
-        lsst::afw::image::PointD(point.getX(), point.getY())
+    _localKernel = psf->getKernel()->computeFourierLocalKernel(
+        _getPsfPosition()
     );
     
     if(_psfMatrixHandler){
@@ -395,7 +394,7 @@ multifit::FourierModelProjection::FourierModelProjection(
     WcsConstPtr const & wcs,
     FootprintConstPtr const & footprint
 ) : ComponentModelProjection(model,psf,wcs,footprint),
-    _kernelVisitor(), _wf(), 
+    _localKernel(), _wf(), 
     _outerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I()),
     _innerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I())
 {
@@ -438,7 +437,7 @@ void multifit::FourierModelProjection::_setDimensions() {
     // Shift _innerBBox to be defined relative to _outerBBox.
     _innerBBox.shift(lsst::afw::geom::Point2I(0) - _outerBBox.getMin());
 
-    _kernelVisitor->fft(_outerBBox.getWidth(), _outerBBox.getHeight());    
+    _localKernel->setDimensions(_outerBBox.getWidth(), _outerBBox.getHeight());    
     _linearMatrixHandler.reset(new LinearMatrixHandler(this));
     if (_nonlinearMatrixHandler)
         _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
@@ -473,7 +472,7 @@ void multifit::FourierModelProjection::_applyKernel(
 ) const {
 
     lsst::afw::math::FourierCutout::Ptr fourierCutout = 
-        _kernelVisitor->getFourierImage();
+        _localKernel->getFourierImage();
    
     //Create an Array over the fourierCutout allocated image
     ndarray::Array<std::complex<Pixel>, 2, 2> externalImg(

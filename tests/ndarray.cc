@@ -100,14 +100,14 @@ BOOST_AUTO_TEST_CASE(casts) {
     ndarray::Vector<int,3> shape = ndarray::makeVector(3,4,2);
     ndarray::Vector<int,3> strides = ndarray::makeVector(8,2,1);
     ndarray::Array<double const,3,1> a = ndarray::external(data,shape,strides);
-    ndarray::Array<double const,3,2> b = ndarray::static_array_cast<2>(a);
+    ndarray::Array<double const,3,2> b = ndarray::static_dimension_cast<2>(a);
     BOOST_CHECK(ndarray::shallow(a) == ndarray::shallow(b));
     ndarray::Array<double,3,1> c = ndarray::const_array_cast<double>(a);
     BOOST_CHECK(ndarray::shallow(a) == ndarray::shallow(c));
-    ndarray::Array<double const,3,3> d = ndarray::dynamic_array_cast<3>(a);
+    ndarray::Array<double const,3,3> d = ndarray::dynamic_dimension_cast<3>(a);
     BOOST_CHECK(ndarray::shallow(a) == ndarray::shallow(d));
     ndarray::Array<double const,3,1> e = d[ndarray::view()(0,4,2)()];
-    ndarray::Array<double const,3,3> f = ndarray::dynamic_array_cast<3>(e);
+    ndarray::Array<double const,3,3> f = ndarray::dynamic_dimension_cast<3>(e);
     BOOST_CHECK(f.empty());
 }
 
