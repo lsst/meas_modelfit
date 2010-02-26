@@ -13,6 +13,7 @@
 #include "ndarray/casts.hpp"
 #include "ndarray/formatting.hpp"
 #include "ndarray/arange.hpp"
+#include "ndarray/flatten.hpp"
 
 /** 
  * \mainpage Overview
