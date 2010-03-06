@@ -17,7 +17,8 @@ namespace multifit {
 class EllipseGridTransform {
 public:
     typedef boost::shared_ptr<EllipseGridTransform> Ptr;
-    typedef boost::shared_ptr<EllipseGridTransform const> ConstPtr; 
+    typedef boost::shared_ptr<EllipseGridTransform const> ConstPtr;
+
     typedef Eigen::Matrix<double,4,3> DerivativeMatrix;
     
     explicit EllipseGridTransform(

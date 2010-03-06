@@ -97,7 +97,7 @@ public:
      * The defaults are provided in the dictionary file
      */
     static PolicySourcePtr getDefaultPolicySource() {
-        static PolicySourcePtr source(
+        static const PolicySourcePtr source(
             new lsst::pex::policy::DefaultPolicyFile(
                 "meas_multifit", 
                 "SingleLinearParameterFitterDict.paf", 

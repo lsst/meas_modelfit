@@ -2,7 +2,7 @@
 #define LSST_MEAS_MULTIFIT_SERSIC_MORPHOLOGY_H
 
 #include "lsst/meas/multifit/components/Morphology.h"
-#include "lsst/meas/multifit/Cache.h"
+#include "lsst/meas/multifit/SersicCache.h"
 
 namespace lsst {
 namespace meas {
@@ -31,15 +31,12 @@ public:
         return SersicMorphology::Ptr(new SersicMorphology());
     }
 
-    Cache::ConstPtr const & getCache() const {return _cache;}
-    InterpolationFunction::ConstPtr const & getSersicIndexFunctor() const {
-        return _indexFunctor;
-    }
-
     double const & getSersicIndex() const {
         return *(_getNonlinearParameterIter() + 3);
     }
-
+    Cache::Functor::ConstPtr const & getSersicIndexFunctor() const {
+        return _indexFunctor;
+    }
 protected:
     // Morphology *************************************************************
     virtual Morphology::Ptr create(
@@ -71,9 +68,9 @@ protected:
         ParameterConstIterator nonlinearParameterIter
     ) : Morphology(linearParameters, nonlinearParameterIter) {}
 
-    Cache::ConstPtr _cache;
-    InterpolationFunction::ConstPtr _indexFunctor;
+    Cache::Functor::ConstPtr _indexFunctor;
 };
+
 
 }}}} //namespace lsst::meas::multifit
 #endif

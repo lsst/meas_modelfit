@@ -1,4 +1,6 @@
 #include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
+#include "lsst/meas/multifit/SersicCache.h"
+
 #include <ndarray/eigen.hpp>
 
 namespace multifit = lsst::meas::multifit;
@@ -28,7 +30,7 @@ components::SersicMorphologyProjection::computeLinearParameterDerivative() {
     //grab the 0th element of the _linearParameterDerivative
     PartialDerivative output(_linearParameterDerivative[0]);
 
-    InterpolationFunction::ConstPtr indexFunctor(
+    Cache::Functor::ConstPtr indexFunctor(
         getMorphology()->getSersicIndexFunctor()
     );
     lsst::afw::geom::LinearTransform egt = *computeEllipseGridTransform();    
@@ -62,7 +64,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
     );
 
     SersicMorphology::ConstPtr morphology(getMorphology());
-    InterpolationFunction::ConstPtr indexFunctor(
+    Cache::Functor::ConstPtr indexFunctor(
         morphology->getSersicIndexFunctor()
     );
     EllipseGridTransform::ConstPtr ellipseGridPtr(computeEllipseGridTransform());
@@ -93,8 +95,8 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
             //the last nonlinear parameter is the sersic index
             //Use the col-functor over the sersic cache to compute this last
             //partial derivative w.r.t sersic index
-            InterpolationFunction::ConstPtr radiusFunctor(
-                morphology->getCache()->getColFunctor(radius)
+            Cache::Functor::ConstPtr radiusFunctor(
+                SersicCache::getInstance()->getColFunctor(radius)
             );
             ndarray::viewAsEigen(*j).end<1>() << static_cast<std::complex<Pixel> >(
                 radiusFunctor->dParams(morphology->getSersicIndex())

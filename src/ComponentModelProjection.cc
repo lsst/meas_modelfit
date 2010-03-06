@@ -37,18 +37,19 @@ multifit::ComponentModelProjection::ComponentModelProjection(
 void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
     ndarray::Array<Pixel,2,1> const & matrix
 ) {
+    MatrixMap matrixMap(
+        matrix.getData(),
+        matrix.getStride<0>(),
+        matrix.getSize<0>()
+    );
+    int nAstrometry = getModel()->getAstrometry()->getParameterSize();
     if (hasTranslationDerivative()) {
         _ensureTranslationDerivative();
         // TODO: Move this into an inline function when possible.
-        MatrixMap astrometryMap(
-            matrix.getData(),
-            matrix.getStride<0>(),
-            getModel()->getAstrometry()->getParameterSize()
-        );                      
         MatrixMapBlock astrometryView(
-            astrometryMap, 
+            matrixMap, 
             0, 0, 
-            matrix.getSize<1>(), matrix.getSize<0>()
+            matrix.getSize<1>(), nAstrometry
         );
         // END TODO
         TranslationMatrixMap translationView(getTranslationMatrixView());
@@ -61,16 +62,11 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();
         // TODO: Move this into an inline function when possible.
-        int offset = getModel()->getAstrometry()->getParameterSize();
-        MatrixMap morphologyMap(
-            matrix.getData(),
-            matrix.getStride<0>(), 
-            getModel()->getMorphology()->getNonlinearParameterSize()
-        );
         MatrixMapBlock morphologyView(
-            morphologyMap, 
-            0, offset, 
-            matrix.getSize<1>(), morphologyMap.cols()
+            matrixMap, 
+            0, nAstrometry, 
+            matrix.getSize<1>(), 
+            getMorphologyProjection()->getNonlinearParameterSize()
         );
         // END TODO
         // TODO: Move this into an inline function when possible.
@@ -94,17 +90,18 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
 void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
     ndarray::Array<Pixel,2,1> const & matrix
 ) {
+    MatrixMap matrixMap(
+        matrix.getData(),
+        matrix.getStride<0>(),
+        matrix.getSize<0>()
+    );
+    int nAstrometry = getModel()->getAstrometry()->getParameterSize();
     if (hasTranslationDerivative()) {
         _ensureTranslationDerivative();
-        MatrixMap astrometryMap(
-            matrix.getData(),
-            matrix.getStride<0>(),
-            getModel()->getAstrometry()->getParameterSize()
-        );                      
         MatrixMapBlock astrometryView(
-            astrometryMap, 
+            matrixMap, 
             0, 0, 
-            matrix.getSize<1>(), matrix.getSize<0>()
+            matrix.getSize<1>(), nAstrometry
         );
         astrometryView = getTranslationMatrixView() * _transform->dTransform(
             getModel()->getAstrometry()->computePosition()
@@ -113,16 +110,11 @@ void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();
         // TODO: Move this into an inline function when possible.
-        int offset = getModel()->getAstrometry()->getParameterSize();
-        MatrixMap morphologyMap(
-            matrix.getData(),
-            matrix.getStride<0>(), 
-            getModel()->getMorphology()->getNonlinearParameterSize()
-        );
         MatrixMapBlock morphologyView(
-            morphologyMap, 
-            0, offset, 
-            matrix.getSize<1>(), morphologyMap.cols()
+            matrixMap, 
+            0, nAstrometry, 
+            matrix.getSize<1>(), 
+            getMorphologyProjection()->getNonlinearParameterSize()
         );
         // END TODO
         // TODO: Move this into an inline function when possible.
@@ -170,7 +162,10 @@ void multifit::ComponentModelProjection::_ensureTranslationDerivative() {
 void multifit::ComponentModelProjection::_ensureProjectedParameterDerivative() {
     if (_projectedParameterDerivative.empty()) {
         ndarray::shallow(_projectedParameterDerivative) =  ndarray::allocate<Allocator>(
-                ndarray::makeVector(2, getFootprint()->getNpix())
+            ndarray::makeVector(
+                getMorphologyProjection()->getNonlinearParameterSize(),
+                getFootprint()->getNpix()
+            )
         );
         _validProducts &= (~PROJECTED_PARAMETER_DERIVATIVE);
     }

@@ -32,5 +32,5 @@ components::MorphologyProjection::Ptr components::SersicMorphology::makeProjecti
 }
 
 void components::SersicMorphology::_handleNonlinearParameterChange() {
-    _indexFunctor = _cache->getRowFunctor(getSersicIndex());
+    _indexFunctor = SersicCache::getInstance()->getRowFunctor(getSersicIndex());
 }
