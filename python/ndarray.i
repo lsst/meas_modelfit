@@ -12,10 +12,11 @@
     $result = ndarray::PyConverter< ndarray::Array<T,N,C> >::toPython($1);
 }
 ============================================================================= */
-%typemap(typecheck) ndarray::Array<T,N,C>, ndarray::Array<T,N,C> const * {
-    ndarray::PyPyr tmp($input,true);
+%typemap(typecheck) ndarray::Array<T,N,C>, ndarray::Array<T,N,C> const *, ndarray::Array<T,N,C> const & {
+    ndarray::PyPtr tmp($input,true);
     $1 = ndarray::PyConverter< ndarray::Array<T,N,C> >::fromPythonStage1(tmp);
-    if (!$1) PyErr_Clear();
+    //if (!$1) PyErr_Clear();
+    return NULL;
 }
 %typemap(in) ndarray::Array<T,N,C> const & (ndarray::Array<T,N,C> val) {
     ndarray::PyPtr tmp($input,true);

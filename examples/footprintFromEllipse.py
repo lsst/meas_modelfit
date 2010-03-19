@@ -6,31 +6,24 @@ import lsst.afw.detection as afwDet
 import lsst.meas.multifit as measMult
 
 def footprintFromEllipse(x, y, a, b, theta, filename="footprint.fits"):
-    axes = geomEllipse.Axes(a, b, theta)
-    ellipse = geomEllipse.AxesEllipse(axes, afwGeom.makePointD(x, y))
+    axes = geomEllipse.Axes(float(a), float(b), float(theta))
+    point = afwGeom.makePointD(float(x), float(y))
+    ellipse = geomEllipse.AxesEllipse(axes, point)
     fp = measMult.makeFootprint(ellipse)
     bbox = fp.getBBox()
     mask = afwImg.MaskU(bbox.getWidth(), bbox.getHeight())
-    mask.setXY0(bbox.getX0(), bbox.getY0())
+    mask.setXY0(bbox.getLLC())
     
     afwDet.setMaskFromFootprint(mask, fp, 1)
     mask.writeFits(filename)
+
     return fp
 
 if __name__=='__main__':
     argc = len(sys.argv)
 
-    if(argc == 6):
-        footprintFromEllipse(
-            sys.argv[1], sys.argv[2], 
-            sys.argv[3], sys.argv[4], sys.argv[5]
-        )
-    elif (len(sys.argv) == 7):
-        footprintFromEllipse(
-            sys.argv[1], sys.argv[2], 
-            sys.argv[3], sys.argv[4], sys.argv[5],
-            sys.argv[6]
-        )
+    if(argc == 6 or argc == 7):
+        footprintFromEllipse(*sys.argv[1:])
     else:
         print "wrong number of args. x, y, a, b, theta [, filename]"
 

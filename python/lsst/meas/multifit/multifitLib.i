@@ -23,6 +23,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/footprintUtils.h"
+#include "lsst/meas/multifit/WindowedFootprint.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
@@ -39,7 +40,10 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/PointSourceModelFactory.h"
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
+
 #define NDARRAY_PYTHON_MAIN
+#include "ndarray/python.hpp"
+#include "ndarray/python/eigen.hpp"
 %}
 
 %inline %{
@@ -112,6 +116,10 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
    }
 %enddef 
 
+%declareArray(double, 2, 0);
+%declareArray(double, 1, 1);
+%declareArray(double const, 1, 1);
+
 %declareArray(lsst::meas::multifit::Pixel const, 1, 1);
 %declareArray(lsst::meas::multifit::Pixel const, 2, 1);
 %declareArray(lsst::meas::multifit::Pixel, 1, 1);
@@ -127,6 +135,15 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
     lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
 %template(expandImageD) lsst::meas::multifit::expandImage<double, 
     lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
+
+SWIG_SHARED_PTR(WindowedFootprintPtr, lsst::meas::multifit::WindowedFootprint)
+%include "lsst/meas/multifit/WindowedFootprint.h"
+%extend lsst::meas::multifit::WindowedFootprint {
+    %template(compress) compress<double, double, 0>; 
+
+    %template(expand) expand<double, double, 0>; 
+};
+
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
 %include "lsst/meas/multifit/Model.h"
@@ -225,7 +242,19 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
 SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult)
 %include "lsst/meas/multifit/SingleLinearParameterFitter.h"
 
-%template(CharacterizedExposureF) lsst::meas::multifit::CharacterizedExposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
-%template(CharacterizedExposureD) lsst::meas::multifit::CharacterizedExposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
-%template(CharacterizedExposureListF) std::list<lsst::meas::multifit::CharacterizedExposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>::Ptr>;
-%template(CharacterizedExposureListD) std::list<lsst::meas::multifit::CharacterizedExposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>::Ptr>;
+%template(CharacterizedExposureF) lsst::meas::multifit::CharacterizedExposure<
+    float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
+>;
+%template(CharacterizedExposureD) lsst::meas::multifit::CharacterizedExposure<
+    double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
+>;
+%template(CharacterizedExposureListF) std::list<
+    lsst::meas::multifit::CharacterizedExposure<
+        float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
+    >::Ptr
+>;
+%template(CharacterizedExposureListD) std::list<
+    lsst::meas::multifit::CharacterizedExposure<
+        double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
+    >::Ptr
+>;

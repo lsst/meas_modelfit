@@ -13,11 +13,14 @@
 #include "ndarray.hpp"
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/image/Utils.h"
+#include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/algorithms/PSF.h"
+#include "lsst/afw/geom/deprecated.h"
 
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
 
+#include "lsst/meas/multifit/footprintUtils.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/components/SersicMorphology.h"
@@ -31,13 +34,13 @@ namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     multifit::SersicModelFactory sgFactory;
-    lsst::afw::geom::PointD centroid = geom::PointD::make(35,65);
+    lsst::afw::geom::PointD centroid = geom::PointD::make(0,0);
     lsst::afw::geom::ellipses::Axes::Ptr axes(
-        new lsst::afw::geom::ellipses::Axes(3, 1, 0)
+        new lsst::afw::geom::ellipses::Axes(3, 1, 1.3)
     );
     lsst::afw::geom::ellipses::LogShear logShear(*axes);
     double flux = 5.45;
-    double sersicIndex = 1.0;
+    double sersicIndex = 2.0;
 
     multifit::Model::Ptr sgModel = sgFactory.makeModel(
         flux, 
@@ -49,10 +52,12 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     BOOST_CHECK_EQUAL(sgModel->getLinearParameterSize(), 1);
     BOOST_CHECK_EQUAL(sgModel->getNonlinearParameterSize(), 6);
     multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
-        image::PointD(1,1), image::PointD(1,1), Eigen::Matrix2d::Identity()
+        lsst::afw::geom::convertToImage(centroid), 
+        image::PointD(0,0), 
+        Eigen::Matrix2d::Identity()
     );
 
-    multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.5);
+    multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.0);
     multifit::FootprintConstPtr fp = sgModel->computeProjectionFootprint(psf, wcs);
     
     BOOST_CHECK(fp->getNpix() > 0);
@@ -73,11 +78,21 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     BOOST_CHECK_EQUAL(nonlinear[4], logShear[2]);
     BOOST_CHECK_EQUAL(nonlinear[5], sersicIndex);
 
-    multifit::FourierModelProjection::Ptr asFourierProjection =
-        boost::static_pointer_cast<multifit::FourierModelProjection>(projection);
-
-    BOOST_CHECK(asFourierProjection);
     BOOST_CHECK_NO_THROW(projection->computeModelImage());
     BOOST_CHECK_NO_THROW(projection->computeLinearParameterDerivative());
     BOOST_CHECK_NO_THROW(projection->computeNonlinearParameterDerivative());
+
+    lsst::afw::image::BBox fpBbox = fp->getBBox();
+    lsst::afw::image::Exposure<double> modelImage(
+        fpBbox.getWidth(), fpBbox.getHeight(), *wcs
+    );
+    modelImage.getMaskedImage().setXY0(fpBbox.getLLC());
+    multifit::expandImage(
+        *fp, modelImage.getMaskedImage(), projection->computeModelImage(),
+        projection->computeLinearParameterDerivative()[0]
+    );
+    lsst::afw::detection::setMaskFromFootprint<lsst::afw::image::MaskPixel>(
+        modelImage.getMaskedImage().getMask().get(), *fp, 1
+    );
+    modelImage.writeFits("sersicModelTest");
 }

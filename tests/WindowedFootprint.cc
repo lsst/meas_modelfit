@@ -36,6 +36,7 @@ BOOST_AUTO_TEST_CASE(WindowedFootprintBasic) {
     multifit::WindowedFootprint windowedFp(fp, geomBBox);
     BOOST_CHECK(fp.getNpix() != 0);
     BOOST_CHECK_EQUAL(fp.getNpix(), windowedFp.getNpix());
+    BOOST_CHECK_EQUAL(fp.getNpix(), windowedFp.getNwindowedPix());
     BOOST_CHECK_EQUAL(windowedFp.getWindow().getWidth(), fp.getBBox().getWidth());
     BOOST_CHECK_EQUAL(windowedFp.getWindow().getHeight(), fp.getBBox().getHeight());
     //shrink the window in a predicatble way
@@ -45,7 +46,7 @@ BOOST_AUTO_TEST_CASE(WindowedFootprintBasic) {
     windowedFp = multifit::WindowedFootprint(fp, geomBBox);
     BOOST_CHECK_EQUAL(windowedFp.getWindow().getWidth(), fp.getBBox().getWidth());
     BOOST_CHECK_EQUAL(windowedFp.getWindow().getHeight(), fp.getBBox().getHeight()/2);
-    BOOST_CHECK_EQUAL(windowedFp.getNpix(), fp.getNpix()/2);
+    BOOST_CHECK_EQUAL(windowedFp.getNwindowedPix(), fp.getNpix()/2);
 }
 
 BOOST_AUTO_TEST_CASE(WindowFootprintCompress) {

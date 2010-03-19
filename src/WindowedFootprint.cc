@@ -24,7 +24,8 @@ multifit::WindowedFootprint::WindowedFootprint (
     lsst::afw::detection::Footprint const & fp,
     lsst::afw::geom::BoxI const & window
 ) : 
-    _nPix(0), 
+    _nWindowedPix(0),
+    _nPix(fp.getNpix()), 
     _window(lsst::afw::geom::PointI(0), window.getDimensions()),
     _spanList(new SpanList())
 {
@@ -56,19 +57,25 @@ multifit::WindowedFootprint::WindowedFootprint (
             //push x0 to start of window
             x0 = 0;
         }
-
         if (x1 > max.getX()) {
             //span extends to the right of the window
-            //insert the portion of the span that is within the window
+            
+            //insert portion within the window            
             _spanList->push_back(WindowedSpan(y, x0, max.getX(), true));
-            _nPix += max.getX() - x0 + 1;     
+            _nWindowedPix += max.getX() - x0 +1;
+    
+            //shift start to just to the right of the window
+            x0 = max.getX() + 1;
 
-            //insert the portion of the span extending to the right
-            _spanList->push_back(WindowedSpan(y, max.getX() + 1, x1, false));
-        } else {
+            //insert the portion of the span that is outside the window
+            _spanList->push_back(WindowedSpan(y, x0, x1, false));
+            
+            x1 = max.getX();
+        }
+        else if(x0 <= x1) {
             //insert portion within the window            
             _spanList->push_back(WindowedSpan(y, x0, x1, true));
-            _nPix += x1 - x0 +1;
+            _nWindowedPix += x1 - x0 +1;
         }
     }
 }

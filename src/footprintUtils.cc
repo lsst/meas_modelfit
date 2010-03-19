@@ -13,6 +13,35 @@ namespace afwDet = lsst::afw::detection;
 afwDet::Footprint::Ptr multifit::makeFootprint(
     lsst::afw::geom::ellipses::Ellipse const & ellipse
 ) {
+    lsst::afw::detection::Footprint::Ptr fp(new lsst::afw::detection::Footprint());
+    lsst::afw::geom::ellipses::Core::RadialFraction rf(ellipse.getCore());
+
+    lsst::afw::geom::BoxD envelope = ellipse.computeEnvelope();
+    int const yEnd = static_cast<int>(envelope.getMaxY()) + 1;
+    int const xEnd = static_cast<int>(envelope.getMaxX()) + 1;
+    lsst::afw::geom::ExtentD dp(lsst::afw::geom::PointD(0) -ellipse.getCenter());
+    for (int y = static_cast<int>(envelope.getMinY()); y<yEnd; ++y) {
+        int x = static_cast<int>(envelope.getMinX());
+        while (rf(lsst::afw::geom::PointD::make(x,y) + dp) > 1.0) {
+            if (x >= xEnd) {
+                if (++y >= yEnd) 
+                    return fp;
+                x = static_cast<int>(envelope.getMinX());
+            } else {
+                ++x;
+            }
+        }
+        int start = x;
+        while (rf(lsst::afw::geom::PointD::make(x,y) + dp) <= 1.0 && x < xEnd) 
+            ++x;
+
+        fp->addSpan(y, start, x-1);
+    }
+    fp->normalize();
+    return fp;
+
+#if 0
+
     afwDet::Footprint::Ptr fp(new afwDet::Footprint());
 
     lsst::afw::geom::ellipses::Axes axes(ellipse.getCore());
@@ -62,6 +91,7 @@ afwDet::Footprint::Ptr multifit::makeFootprint(
         ++offsetY;
     }
     return fp;
+#endif
 }
 
 /**

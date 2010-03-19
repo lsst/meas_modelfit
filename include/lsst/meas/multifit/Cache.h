@@ -60,6 +60,8 @@ public:
     lsst::afw::geom::BoxD const & getParameterBounds() const {
         return _parameterBounds;
     }
+
+    Eigen::MatrixXd const & getDataPoints() const {return _dataPoints;}
 private:
     Eigen::MatrixXd _dataPoints;
     boost::shared_ptr<Eigen::VectorXd> _x, _y;

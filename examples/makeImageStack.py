@@ -8,10 +8,10 @@ import numpy
 import numpy.random
 
 def makeImageStack(model, depth, ra, dec):
-    psf = measAlg.createPSF("DoubleGaussian", 19, 19, 2)
+    psf = measAlg.createPSF("DoubleGaussian", 7, 7, 1.0)
     crVal = afwImage.PointD(ra,dec)
     crPix = afwImage.PointD(0,0)    
-    wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0, 0, 0.0001)
+    wcs = afwImage.createWcs(crVal, crPix, 1., 0., 0., 1.)
 
     fp = model.computeProjectionFootprint(psf, wcs)
     projection = model.makeProjection(psf, wcs, fp)
@@ -19,19 +19,19 @@ def makeImageStack(model, depth, ra, dec):
     bbox = fp.getBBox()
     nPix = fp.getNpix();
 
-    print "fp bbox: %s"%bbox
+    #print >> sys.stderr, "fp bbox: %s"%bbox
     imageVector = projection.computeModelImage()
 
     numpy.set_printoptions(threshold=100000)
-    print "imageVector: %s"%imageVector
-    print "dLinear: %s"%projection.computeLinearParameterDerivative()
-    print "dNonlinear: %s"%projection.computeNonlinearParameterDerivative()
+    #pirint >> sys.stderr, "imageVector: %s"%imageVector
+    #print >> sys.stderr, "dLinear: %s"%projection.computeLinearParameterDerivative()
+    #print >> sys.stderr, "dNonlinear: %s"%projection.computeNonlinearParameterDerivative()
     sigma = 0.5
 
-    expList = measMult.CharacterizedExposureListD()
+    expList = measMult.CharacterizedExposureListF()
     for i in xrange(depth):
         #create an exposure whose size matches footprint size
-        exp = measMult.CharacterizedExposureD( 
+        exp = measMult.CharacterizedExposureF( 
             bbox.getWidth(), bbox.getHeight(), wcs, psf
         )
         mi = exp.getMaskedImage()
@@ -42,8 +42,9 @@ def makeImageStack(model, depth, ra, dec):
         varianceVector = numpy.zeros(nPix, dtype=numpy.float32)
         varianceVector[:] = sigma**2
         randomNormal = numpy.random.normal(scale=sigma, size=nPix)
-        noisyImage = imageVector + randomNormal
-        measMult.expandImageD(fp, mi, noisyImage, varianceVector)
+        noisyImage = imageVector
+        #noisyImage = imageVector + randomNormal
+        measMult.expandImageF(fp, mi, noisyImage, varianceVector)
 
         #set the mask to be the inverse of the footprint
         mask = mi.getMask()

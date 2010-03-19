@@ -23,15 +23,15 @@ private:
 
     class FillFunction : public Cache::FillFunction {
     public:        
-        FillFunction (double const & epsabs, double const & epsrel ) 
+        FillFunction (double const & epsabs, double const & epsrel, int const & limit) 
           : Cache::FillFunction(0),
             _lastY(std::numeric_limits<double>::quiet_NaN()),
-            _epsabs(epsabs), _epsrel(epsrel)
+            _epsabs(epsabs), _epsrel(epsrel), _limit(limit)
         {}
 
         virtual double operator()(double x, double y) const;
         virtual Cache::FillFunction::Ptr clone() const {
-            return boost::make_shared<FillFunction>(_epsabs, _epsrel);
+            return boost::make_shared<FillFunction>(_epsabs, _epsrel, _limit);
         }
 
     private:
@@ -52,6 +52,7 @@ private:
             
         double _lastY;
         double _epsabs, _epsrel;
+        int _limit;
         mutable IntegralParameters _params;
     };
 
@@ -72,10 +73,6 @@ private:
         return source;
     }
 
-    static lsst::afw::geom::Extent2I DIMENSIONS;
-    static lsst::afw::geom::BoxD PARAMETER_BOUNDS;
-    static double EPSABS, EPSREL;
-    static Cache::FillFunction::Ptr FILL_FUNCTION;
     static Ptr _singleton;
 };
 

@@ -41,8 +41,14 @@ BOOST_AUTO_TEST_CASE(SersicCache) {
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMinY()));
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-0.1));
     
-    BOOST_CHECK_NO_THROW(functor = cache->getRowFunctor(bounds.getMaxX() - 0.1));
+    BOOST_CHECK_NO_THROW(functor = cache->getColFunctor(bounds.getMaxX() - 0.1));
     BOOST_CHECK(functor);
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMinY()));
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-0.1));
+
+    double const * data = cache->getDataPoints().data();
+    for(int i = 0; i < cache->getDataPoints().size(); ++i, ++data) {
+        //check that there are no NaNs in the cache
+        BOOST_CHECK_EQUAL(*data, *data);
+    }
 }

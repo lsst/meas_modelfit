@@ -1,6 +1,6 @@
 #include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
 #include "lsst/meas/multifit/SersicCache.h"
-
+#include "lsst/afw/geom/Extent.h"
 #include <ndarray/eigen.hpp>
 
 namespace multifit = lsst::meas::multifit;
@@ -8,7 +8,15 @@ namespace components = multifit::components;
 
 lsst::afw::geom::Extent2I 
 components::SersicMorphologyProjection::getDimensions() const {
-    return getKernelDimensions() * 4;
+    lsst::afw::geom::ellipses::BaseCore::Ptr transformedEllipse(
+        getMorphology()->computeBoundingEllipseCore()->transform(*getTransform()).copy()
+    );
+    lsst::afw::geom::Extent2D ellipseBounds = transformedEllipse->computeDimensions();
+    lsst::afw::geom::Extent2I dimensions = lsst::afw::geom::makeExtentI(
+        static_cast<int>(std::ceil(ellipseBounds.getX())),
+        static_cast<int>(std::ceil(ellipseBounds.getY()))
+    );
+    return dimensions*3 + (getPadding()*2);
 }
 
 multifit::EllipseGridTransform::ConstPtr 
@@ -33,19 +41,21 @@ components::SersicMorphologyProjection::computeLinearParameterDerivative() {
     Cache::Functor::ConstPtr indexFunctor(
         getMorphology()->getSersicIndexFunctor()
     );
-    lsst::afw::geom::LinearTransform egt = *computeEllipseGridTransform();    
-
-    lsst::afw::geom::Point2D point(0);
+    lsst::afw::geom::LinearTransform egt = *computeEllipseGridTransform();
+    lsst::afw::geom::Extent2I dimensions = getDimensions();
+    int midY = dimensions.getY()/2;
+    lsst::afw::geom::Point2D point;
+    int y=0, x;
     //outer loop over rows
-    for (RowIter i(output.begin()), end(output.end()); i != end; ++i) {
-        point.setX(0.0);
+    for (RowIter i(output.begin()), end(output.end()); i != end; ++i, ++y) {
+        point.setY((y > midY) ? (y - dimensions.getY()) : y);
+        x = 0;
         //inner loop over pixels in each row
-        for (PixIter j(i->begin()), rowEnd(i->end()); j != rowEnd; ++j) {
-            double radius = egt(point).asVector().norm();
-            *j = (*indexFunctor)(radius);
-            point.setX(point.getX() + 1.0);
+        for (PixIter j(i->begin()), rowEnd(i->end()); j != rowEnd; ++j, ++x) {            
+            point.setX(x);
+            double k = egt(point).asVector().norm();    
+            *j = (*indexFunctor)(k);
         }
-        point.setY(point.getY() + 1.0);
     }
 
     return _linearParameterDerivative;
@@ -70,25 +80,29 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
     EllipseGridTransform::ConstPtr ellipseGridPtr(computeEllipseGridTransform());
     EllipseGridTransform::DerivativeMatrix dEllipse(ellipseGridPtr->dEllipse());
     lsst::afw::geom::LinearTransform egt = *ellipseGridPtr;
-
+    lsst::afw::geom::Extent2I dimensions = getDimensions();
+    int midY = dimensions.getY()/2;
     lsst::afw::geom::Point2D point(0);
 
+    int y=0,x;
     //outer loop over rows
-    for (RowIter i(output.begin()), end(output.end()); i != end; ++i) {
-        point.setX(0.0);
+    for (RowIter i(output.begin()), end(output.end()); i != end; ++i, ++y) {
+        point.setY((y>midY) ? (y-dimensions.getY()) : y); 
+        x= 0;
         //inner loop over pixels in each row
-        for (PixIter j(i->begin()), rowEnd(i->end()); j != rowEnd; ++j) {
+        for (PixIter j(i->begin()), rowEnd(i->end()); j != rowEnd; ++j, ++x) {
+            point.setX(x);
             //transform the point onto ellipse grid.
             lsst::afw::geom::Point2D ellipsePoint(egt(point));
-            double radius = egt(ellipsePoint).asVector().norm();            
+            double k = egt(ellipsePoint).asVector().norm();            
             //Use the row-functor over the sersic cache to compute the
             //partial derivative of the model in fourier space w.r.t to the
             //radius, then multiply by the partial derivative of the radius
             //w.r.t to the ellipse parameters (first 3 nonlinear model 
             //paramters)
             ndarray::viewAsEigen(*j).start<3>() = ( 
-                indexFunctor->dParams(radius) * 
-                (ellipsePoint.asVector()/radius).transpose() * 
+                indexFunctor->dParams(k) * 
+                (ellipsePoint.asVector()/k).transpose() * 
                 egt.dTransform(point) * dEllipse
             ).cast< std::complex<Pixel> >();
             
@@ -96,12 +110,12 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
             //Use the col-functor over the sersic cache to compute this last
             //partial derivative w.r.t sersic index
             Cache::Functor::ConstPtr radiusFunctor(
-                SersicCache::getInstance()->getColFunctor(radius)
+                SersicCache::getInstance()->getColFunctor(k)
             );
             ndarray::viewAsEigen(*j).end<1>() << static_cast<std::complex<Pixel> >(
                 radiusFunctor->dParams(morphology->getSersicIndex())
             );    
-        }
+        }        
     } 
     return _projectedParameterDerivative;
 }

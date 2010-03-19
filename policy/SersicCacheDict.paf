@@ -1,0 +1,59 @@
+#<? cfg paf dictionary ?>
+target: lsst.meas.multifit.SersicCache
+
+definitions: {
+	epsrel: {
+		type:"double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 0.0
+	}
+	epsabs: {
+		type:"double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 0.00001
+	}
+	subintervalLimit: {
+		type: "int"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 1000
+	}
+	sersicIndexResolution: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 0.0975
+	} 
+	kResolution: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 1.0
+	} 
+	sersicIndexMin: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 0.25
+	}
+	kMin: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 0.0
+	}
+	sersicIndexMax: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 10.0
+	}
+	kMax: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 100.0
+	}	
+}

@@ -12,12 +12,12 @@ from makeImageStack import makeImageStack
 def main():
 
     factory = mf.PointSourceModelFactory()
-    position = lsst.afw.geom.makePointD(45, 45)
+    position = lsst.afw.geom.makePointD(0, 0)
     model = factory.makeModel(1.0,position)
-    exposureList = makeImageStack(model, 1, 45, 45)
+    exposureList = makeImageStack(model, 1, position.getX(), position.getY())
 
     exposure = exposureList.front()
-    exposure.writeFits("modelProjection")
+    exposure.writeFits("PointSourceProjection")
     
 if __name__== "__main__":
     main()

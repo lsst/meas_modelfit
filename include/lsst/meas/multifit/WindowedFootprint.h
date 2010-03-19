@@ -50,11 +50,17 @@ public:
     );
 
     /**
-     * Number of pixels inside the bounds of the window
+     * Number of pixels in the entire footprint
      *
      * The naming convention is analogous to lsst::afw::detection::Footprint
      */
-    int const getNpix() const {return _nPix;}
+    int const &getNpix() const {return _nPix;}
+
+    /**
+     * Number of pixels inside the bounds of the window     
+     */
+    int const & getNwindowedPix() const {return _nWindowedPix;} 
+
     /**
      * The specified bounding box
      */
@@ -91,17 +97,21 @@ public:
             );
         }
 
-        U * destIter = dest.getData();
+        typename ndarray::Array<U, 1, 1>::Iterator destIter = dest.begin();
+        typename ndarray::Array<T, 2, C>::Iterator srcIter = src.begin();
+        int lastY = 0; 
         for (SpanIterator i(_spanList->begin()), end(_spanList->end()); i != end; ++i) {
             WindowedSpan const & span(*i);
             int spanWidth = span.getWidth();
             if (span.inWindow()) {
-                T * row = src[span.getY()].getData();
-                std::copy(
-                    row + span.getX0(), 
-                    row + span.getX0() + spanWidth,
-                    destIter
-                );            
+                srcIter += span.getY() - lastY;
+                lastY = span.getY();
+
+                typename ndarray::Array<T, 2, C>::Reference::Iterator data(
+                    srcIter->begin() + span.getX0()
+                );
+                std::copy(data, data + spanWidth, destIter);            
+
             }
             destIter += spanWidth;
         }
@@ -175,15 +185,20 @@ public:
             );
         }   
 
-        T * srcIter(src.getData());
+        typename ndarray::Array<T, 1, 1>::Iterator srcIter(src.begin());    
+        typename ndarray::Array<U, 2, C>::Iterator destRow(dest.begin());
+        int lastY = 0;
         for (SpanIterator i(_spanList->begin()), end(_spanList->end()); i != end; ++i) {
             WindowedSpan const & span(*i);
             int spanWidth = span.getWidth();
             if (span.inWindow()) {
+                destRow += span.getY() - lastY;
+                lastY = span.getY();
+
                 std::copy(
                     srcIter, 
                     srcIter + spanWidth,
-                    dest[span.getY()].getData() + span.getX0()                
+                    destRow->begin() + span.getX0()                
                 );            
             }
             srcIter += spanWidth;
@@ -267,7 +282,7 @@ private:
     typedef boost::shared_ptr<SpanList> SpanListPtr;
     typedef SpanList::const_iterator SpanIterator;
 
-    int _nPix;
+    int _nWindowedPix, _nPix;
     lsst::afw::geom::BoxI _window;    
     SpanListPtr _spanList;
 };

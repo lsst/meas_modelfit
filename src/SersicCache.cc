@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <gsl/gsl_integration.h>
+#include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_errno.h>
 #include <boost/math/special_functions/bessel.hpp>
 #include <boost/math/special_functions/gamma.hpp>
@@ -17,24 +18,25 @@ multifit::SersicCache::ConstPtr multifit::SersicCache::getInstance() {
         );
         lsst::afw::geom::Extent2D resolution(
             lsst::afw::geom::makeExtentD(
-                policy->getDouble("radiusResolution"), 
+                policy->getDouble("kResolution"), 
                 policy->getDouble("sersicIndexResolution")
             )
         );
         lsst::afw::geom::BoxD bounds(
             lsst::afw::geom::makePointD(
-                policy->getDouble("radius0"), 
-                policy->getDouble("sersicIndex0")
+                policy->getDouble("kMin"), 
+                policy->getDouble("sersicIndexMin")
             ),
             lsst::afw::geom::makePointD(
-                policy->getDouble("radius1"),
-                policy->getDouble("sersicIndex1")
+                policy->getDouble("kMax"),
+                policy->getDouble("sersicIndexMax")
             )
         );
         FillFunction::Ptr fillFunction(
             new FillFunction(
                 policy->getDouble("epsabs"), 
-                policy->getDouble("epsrel")
+                policy->getDouble("epsrel"),
+                policy->getInt("subintervalLimit")
             )
         );
         _singleton.reset(new SersicCache(bounds, resolution, fillFunction));
@@ -57,10 +59,14 @@ double multifit::SersicCache::FillFunction::sersicFunction(
     IntegralParameters const & temp = *static_cast<IntegralParameters*>(
         parameters
     );
-    
-    double j0 = boost::math::cyl_bessel_j (0, temp.getK()*radius);
+   
+    gsl_sf_result j0;
+    int err = gsl_sf_bessel_J0_e(temp.getK()*radius, &j0);
+    if(err || j0.val != j0.val)
+        j0.val = 0;
+
     double exponent = -temp.getKappa() * std::pow(radius, 1.0/temp.getN());
-    return (radius*j0*std::exp(exponent) / temp.getNorm());
+    return (radius*j0.val*std::exp(exponent) / temp.getNorm());
 }
 
 double multifit::SersicCache::FillFunction::operator() (double x, double y) const {       
@@ -75,16 +81,15 @@ double multifit::SersicCache::FillFunction::operator() (double x, double y) cons
     _params.setK(x);
 
     double result, abserr;
-    size_t neval;
     gsl_error_handler_t * oldErrorHandler = gsl_set_error_handler_off();
     
-    gsl_integration_qng(
-        &func,      
-        0, GSL_POSINF, 
-        _epsabs, _epsrel, 
-        &result, &abserr, &neval
+    gsl_integration_workspace * ws = gsl_integration_workspace_alloc(_limit);
+    gsl_integration_qagiu(
+        &func, 0, _epsabs, _epsrel, _limit, ws,
+        &result, &abserr
     );
 
+    gsl_integration_workspace_free(ws);
     gsl_set_error_handler(oldErrorHandler);
 
     return result;
