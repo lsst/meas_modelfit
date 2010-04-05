@@ -34,11 +34,72 @@ public:
 
     virtual ~Astrometry() {}
 
-    /// Default-construct an Astrometry object for use as a template.
-    Astrometry() : _astrometryParameterIter(NULL) {}
+    /** 
+     * Copy construct an Astrometry object
+     *
+     * This is by a shallow copy by default. If deep ==true, a deep copy will be
+     * performed
+     */
+    explicit Astrometry(
+        Astrometry const & other, 
+        bool const & deep=false
+    ) :  _parameters(other._parameters),
+        _astrometryParameterIter(other._astrometryParameterIter)
+    {
+        if(!_parameters) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::NullPointerException,
+                "Uninitialized parameter vector"
+            );
+        }
+        if(deep) {
+            Astrometry * tmp = new Astrometry(computePosition());
+            swap(this, tmp);
+            delete tmp;
+        }
+    }
 
+    /// Construct an Astrometry object for use a fixed position
+    explicit Astrometry(lsst::afw::geom::Point2D const & position) : 
+        _parameters(new ParameterVector(position.asVector())),
+        _astrometryParameterIter(_parameters->begin())
+    {}
+    
+    /** 
+     * Construct an Astrometry object to use to interpret a range of a 
+     * ParameterVector
+     *
+     * @param parameters must have length at least start+getParameterSize()
+     * @param start vector index of the first astrometry relevant parameter
+     *
+     * @throws lsst::pex::exceptions::InvalidParameterException if parameters is
+     * not at least of length start+getParameterSize()
+     */
+    explicit Astrometry(
+        boost::shared_ptr<ParameterVector> const & parameters, 
+        size_t const & start=0,
+        bool deep = false
+    ) : _parameters(parameters), 
+        _astrometryParameterIter(_parameters->begin() + start)
+    {
+        if(!_parameters) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::NullPointerException,
+                "Uninitialized input parameter vector"
+            );
+        }
+
+        if(start + SIZE >  parameters->size()) {
+            throw LSST_EXCEPT(
+                lsst::pex::exception::InvalidParameteException, 
+                "Input parameter vector must be at least of length start + getParameterSize()"
+            );
+        }
+        if(deep)
+    }
+    
     /// Return the number of astrometric parameters.
-    virtual int const getParameterSize() const { return 2; }
+    virtual int const getParameterSize() const { return SIZE; }
 
     /**
      * Return the reference point (ra,dec).
@@ -46,9 +107,10 @@ public:
      * For static sources, the computed position is equivalent to the reference
      * point
      *
+     * @throw lsst::pex::exceptions::NullPointerException if not initialized
      * @sa computePosition
      */
-    lsst::afw::geom::Point2D getReferencePoint() const { 
+    virtual lsst::afw::geom::Point2D getReferencePoint() const { 
         return lsst::afw::geom::Point2D::make(
             _astrometryParameterIter[0], _astrometryParameterIter[1]
         );
@@ -66,54 +128,44 @@ public:
         return getReferencePoint(); 
     }
 
+ 
     /**
      *  Compute the derivative with respect to the astrometric parameters.
      */
     virtual DerivativeMatrix const & differentiate() const {
-        static DerivativeMatrix i = DerivativeMatrix::Identity(2,2);
+        static DerivativeMatrix i = DerivativeMatrix::Identity(SIZE,SIZE);
         return i;
-    }
-
-protected:
-
-    friend class multifit::ComponentModel;
-
-    /**
-     *  Construct a new Astrometry object using this as a template.
-     *
-     *  Only used by ComponentModel. The passed iterator must
-     *  remain valid for the full lifetime of the Astrometry object.
-     *
-     *  @param astrometryParameterIter pointer to the first Astrometry-specific
-     *   parameter in the owning ComponentModel's nonlinear parameter vector 
-     *   
-     */
-    virtual Astrometry::Ptr create(
-        ParameterConstIterator astrometryParameterIter 
-    ) const {
-        return Astrometry::Ptr(new Astrometry(astrometryParameterIter));
     }
 
     /**
      * Handle a change in the parameters.
      */
-    virtual void _handleParameterChange() {}
-
-private:
+    virtual void handleParameterChange() {}
 
     /**
-     *  Construct an Astrometry object for use inside a ComponentModel.
-     *
-     *  @sa Astrometry::create()
+     *  Construct a new Astrometry object using this as a template.
+     * 
+     * @sa Astrometry(boost::shared_ptr<ParameterVector const> const&, size_t const &, bool const &)
      */
-    explicit Astrometry(
-        ParameterConstIterator astrometryParameterIter
-    ) : _astrometryParameterIter(astrometryParameterIter) {}
+    virtual Ptr create(
+        boost::shared_ptr<ParameterVector const> const & parameters, 
+        size_t const & start = 0
+    ) {
+        return boost::make_shared<Astrometry>(parameters, start, false);
+    }
+    
+    virtual Ptr constrain() const;
+protected:
+    void deepCopy(Astrometry const & other) {
+        _parameters.reset(new ParameterVector(other.computePosition().asVector()));
+        _astrometryParameterIter=_parameters.begin();
+    }
 
-    //disable asignment
-    void operator=(Astrometry const & other) { assert(false); }
+    static const int SIZE = 2;
+    Astrometry() : _parameters(NULL), _astrometryParameterIter(NULL) {}
 
-    ParameterConstIterator _astrometryParameterIter; 
+    boost::shared_ptr<ParameterVector const> _parameters;
+    ParameterConstIterator _astrometryParameterIter;
 };
 
 }}}} // namespace lsst::meas::multifit::components

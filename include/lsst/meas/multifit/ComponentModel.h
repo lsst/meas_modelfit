@@ -15,6 +15,7 @@
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
+#include "lsst/meas/multifit/components/FixedAstrometry.h"
 #include "lsst/meas/multifit/components/Morphology.h"
 
 namespace lsst {
@@ -57,7 +58,7 @@ public:
 
     /**
      *  Immutable access to the Astrometry component.
-     */
+     */    
     components::Astrometry::ConstPtr getAstrometry() const {
         return _astrometry; 
     }
@@ -68,7 +69,11 @@ public:
     components::Morphology::ConstPtr getMorphology() const { 
         return _morphology; 
     }
-
+    
+    ComponentModel(
+        Astrometry::ConstPtr const & astrometry, 
+        Morphology::ConstPtr const & morphology,
+    );
 protected:
 
     virtual boost::shared_ptr<ModelProjection> makeProjection(

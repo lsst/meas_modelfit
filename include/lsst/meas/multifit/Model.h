@@ -168,6 +168,12 @@ protected:
         _projectionList()
     {}
 
+    explicit Model() :
+       _linearParameters(NULL), 
+       _nonlinearParameters(NULL), 
+       _projectionList() 
+    {}
+
     void _broadcastLinearParameterChange() const;
 
     void _broadcastNonlinearParameterChange() const;
@@ -203,7 +209,8 @@ protected:
 private:
     friend class ModelFactory;
 
-    // disable assignment
+    // disable default constructor and assignment
+
     void operator=(Model const & other) { assert(false); } 
 
     mutable ProjectionList _projectionList;
