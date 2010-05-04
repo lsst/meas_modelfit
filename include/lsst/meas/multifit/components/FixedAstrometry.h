@@ -7,14 +7,11 @@
 
 #include "lsst/afw/image/Utils.h"
 #include "lsst/meas/multifit/core.h"
-#include "lsst/meas/multifit/Astrometry.h"
+#include "lsst/meas/multifit/components/Astrometry.h"
 
 namespace lsst {
 namespace meas {
 namespace multifit {
-
-class ComponentModel;
-
 namespace components {
 
 class FixedAstrometry : public Astrometry {
@@ -22,37 +19,24 @@ public:
     typedef boost::shared_ptr<FixedAstrometry> Ptr;
     typedef boost::shared_ptr<FixedAstrometry const> ConstPtr;
     
-    explicit FixedAstrometry(Astrometry const &astrometry) :
-        Astrometry(astrometry.computePosition()) {}
-
-    explicit FixedAstrometry(lsst::afw::geom::Point2D const & point) :         
-        Astrometry(point) {}
-
-    explicit FixedAstrometry(
-        boost::shared_ptr<ParameterVector const> const & parameters,
-        size_t const & start = 0
-    ) : Astrometry(parameters, start, true) { }
-
-    virtual Astrometry::Ptr create const(
-        boost::shared_ptr<ParameterVector const> const & parameters,
-        size_t const & start
-    ) const {
-        return boost::make_shared<FixedAstrometry>(parameters, start);
-    }
+    explicit FixedAstrometry(lsst::afw::geom::Point2D const & position) 
+      : Astrometry(position) {}
 
     virtual ~FixedAstrometry() {}
-
-    virtual int const getParameterSize() const { return 0; }
 
     virtual DerivativeMatrix const & differentiate() const {
         static DerivativeMatrix i;
         return i;
     }
-      
-    void operator=(FixedAstrometry const & other) { 
-        assert(false); }
-private:
+protected:
+    virtual int const getParameterSize() const { return 0; }
 
+    virtual Astrometry::Ptr create(
+        boost::shared_ptr<ParameterVector const> const &,
+        size_t const &
+    ) const {
+        return boost::make_shared<FixedAstrometry>(computePosition());
+    }
 };
 
 }}}} // namespace lsst::meas::multifit::components

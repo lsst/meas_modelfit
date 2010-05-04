@@ -43,32 +43,6 @@ public:
 
     virtual ~Morphology() {}
     
-
-
-    /// Return the number of linear parameters.
-    int const getLinearParameterSize() const {
-        if (!_linearParameterVector){
-            throw LSST_EXCEPT(
-                lsst::pex::exceptions::LogicErrorException,
-                "Linear parameter size is indeterminate for template "
-                "morphologies."
-            );
-        }
-        return _linearParameterVector->size();
-    }
-    /// Return the number of nonlinear morphology parameters.
-    virtual int const getNonlinearParameterSize() const = 0;
-
-    /// Return a vector of the linear parameters.
-    ParameterVector const & getLinearParameterVector() const {
-        if (!_linearParameterVector){
-            throw LSST_EXCEPT(
-                lsst::pex::exceptions::LogicErrorException,
-                "Linear parameters are not set template morphologies."
-            );
-        }
-        return *_linearParameterVector;
-    }
     /**
      * @name In-model Mode Functionality
      *
@@ -95,68 +69,44 @@ public:
     ) const = 0;
     //@}
 protected:
-
     friend class multifit::ComponentModel;
-    friend class multifit::ComponentModelFactory;
     friend class multifit::ComponentModelProjection;
-
-    /**
-     *  Construct a new Morphology using this as a template.
-     *
-     *  Typically used only by ComponentModel. The parameters of this Morphology
-     *  will not be shared with the new Morphology.
-     *
-     *  @param linearParameterVector The owning ComponentModel's linear 
-     *      parameter vector
-     *  @param nonlinearParameterIter Iterator to the first Morphology-specific
-     *      parameter in the owning ComponentModel's nonlinear parameter vector.
-     */
-    virtual Morphology::Ptr create(
-        boost::shared_ptr<ParameterVector const> const & linearParameterVector,
-        ParameterConstIterator nonlinearParameterIter
-    ) const = 0;
-
-    /**
-     *  Default-construct a Morphology object to be used as a template.
-     *
-     *  A public constructor that delegates to this one should be available for
-     *  leaf subclasses.
-     */
-    Morphology() : _linearParameterVector(), _nonlinearParameterIter(NULL) {}
-
+    friend class MorphologyProjection;
     /**
      *  Construct a Morphology object for use inside a ComponentModel.
      *
      *  @sa Morphology::create()
      */
     Morphology(
-        boost::shared_ptr<ParameterVector const> const & linearParameterVector,
-        ParameterConstIterator nonlinearParameterIter
-    ) : _linearParameterVector(linearParameterVector),
-        _nonlinearParameterIter(nonlinearParameterIter)
+        boost::shared_ptr<ParameterVector const> const & linearParameters,
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+        size_t const & start=0
+    ) : _linearParameters(linearParameters),
+        _nonlinearParameters(nonlinearParameters),
+        _start(start)
     {}
+  
+    Morphology(Morphology const & other, bool const & deep) 
+      : _linearParameters(other._linearParameters),
+        _nonlinearParameters(other._nonlinearParameters),
+        _start(other._start)
+    {}
+        
+    /// Return the number of linear parameters.
+    virtual int const getLinearParameterSize() const {
+        return _linearParameters->size();
+    }
+    /// Return the number of nonlinear morphology parameters.
+    virtual int const getNonlinearParameterSize() const = 0;
 
-    /**
-     * @name Template Mode Functionality
-     *
-     * These methods are only useful when a morphology is being used as a
-     * template to construct other Morphology instances. Generally, this occurs
-     * within a ComponentModelFactory.
-     * 
-     * Morphologies may be able to interpret a range of linear paramter sizes.
-     * By allowing the morpholgy, rather than the model, to dictate this value,
-     * the components of a ComponentModel encapsulate all the bhevaiour of the
-     * model. This allows us to derive new model types simply by deriving new
-     * morphologies, rather than whole new models.
-     */
-    //@{
-    /// Return the minimum number of linear parameters.
-    virtual int const getMinLinearParameterSize() const = 0;
-
-    /// Return the maximum number of linear parameters.
-    virtual int const getMaxLinearParameterSize() const = 0;
-    //@}
-
+     
+    /// Return a vector of the linear parameters.
+    boost::shared_ptr<ParameterVector const> const _getLinearParameters() const {
+        return _linearParameters;
+    }
+    boost::shared_ptr<ParameterVector const> const _getNonlinearParameters() const{
+        return _nonlinearParameters;
+    }
     /**
      *  Handle a change in the linear parameters, as propogated by the owning 
      *  ComponentModel.
@@ -170,14 +120,35 @@ protected:
     virtual void _handleNonlinearParameterChange() {}
 
     /// Return an iterator to the Model's (nonlinear) morphology parameters.
-    ParameterConstIterator _getNonlinearParameterIter() const { 
-        return _nonlinearParameterIter; 
+    ParameterConstIterator beginNonlinear() const { 
+        return _nonlinearParameters->data() + _start; 
     }
 
-private:
-    boost::shared_ptr<ParameterVector const> _linearParameterVector;
-    ParameterConstIterator _nonlinearParameterIter;
+    ParameterConstIterator endNonlinear() const {
+        return beginNonlinear()+getNonlinearParameterSize();
+    }
+    
+    /**
+     *  Construct a new Morphology using this as a template.
+     *
+     *  Typically used only by ComponentModel. The parameters of this Morphology
+     *  will not be shared with the new Morphology.
+     *
+     *  @param linearParameterVector The owning ComponentModel's linear 
+     *      parameter vector
+     *  @param nonlinearParameterIter Iterator to the first Morphology-specific
+     *      parameter in the owning ComponentModel's nonlinear parameter vector.
+     */
+    virtual Morphology::Ptr create(
+        boost::shared_ptr<ParameterVector const> const & linearParameterVector,
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameterVector,
+        size_t const & start=0 
+    ) const = 0;
 
+private:
+    boost::shared_ptr<ParameterVector const> _linearParameters;
+    boost::shared_ptr<ParameterVector const> _nonlinearParameters;
+    size_t _start;
 };
 
 }}}} // namespace lsst::meas::multifit::components

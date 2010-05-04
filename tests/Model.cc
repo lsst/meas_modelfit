@@ -126,8 +126,8 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     nonlinear[0] = 6;
     BOOST_CHECK_NO_THROW(model->setLinearParameters(linear.data()));
     BOOST_CHECK_NO_THROW(model->setNonlinearParameters(nonlinear.data()));
-    BOOST_CHECK_EQUAL(linear, model->getLinearParameters());
-    BOOST_CHECK_EQUAL(nonlinear, model->getNonlinearParameters());
+    BOOST_CHECK_EQUAL(linear, *model->getLinearParameters());
+    BOOST_CHECK_EQUAL(nonlinear, *model->getNonlinearParameters());
     
     multifit::WcsConstPtr wcs;
     multifit::PsfConstPtr psf;

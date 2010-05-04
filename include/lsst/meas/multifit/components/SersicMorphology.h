@@ -9,11 +9,25 @@ namespace meas {
 namespace multifit {
 namespace components {
 
+class SersicMorphologyProjection;
+
 /**
  * Derived Morphology component for fitting small galaxies
  */
 class SersicMorphology : public Morphology {
 public:
+    enum LinearParameters {
+        FLUX=0,
+        LINEAR_SIZE
+    };
+    enum NonlinearParameters {
+        GAMMA1=0,
+        GAMMA2,
+        KAPPA,
+        SERSIC_INDEX,
+        NONLINEAR_SIZE
+    };
+
     typedef boost::shared_ptr<SersicMorphology> Ptr;
     typedef boost::shared_ptr<SersicMorphology const> ConstPtr;
 
@@ -27,35 +41,46 @@ public:
     /**
      * Named SersicMorphology constructor
      */
-    static SersicMorphology::Ptr createTemplate() {
-        return SersicMorphology::Ptr(new SersicMorphology());
+    static SersicMorphology::Ptr create(
+        Parameter const & flux,
+        lsst::afw::geom::ellipses::BaseCore const & ellipse, 
+        Parameter const & sersicIndex
+    ) { 
+        lsst::afw::geom::ellipses::LogShear logShear(ellipse);
+        ParameterVector linear(LINEAR_SIZE), nonlinear(NONLINEAR_SIZE);
+        linear << flux;
+        nonlinear << logShear.getVector(), sersicIndex;
+        return SersicMorphology::Ptr(            
+            new SersicMorphology(
+                boost::make_shared<ParameterVector const>(linear),
+                boost::make_shared<ParameterVector const>(nonlinear)
+            )
+        );
     }
 
-    double const & getSersicIndex() const {
-        return *(_getNonlinearParameterIter() + 3);
+    Parameter const & getFlux() const {
+        return *(_getLinearParameters()->data() + FLUX);
     }
-    Cache::Functor::ConstPtr const & getSersicIndexFunctor() const {
-        return _indexFunctor;
+    Parameter const & getSersicIndex() const {
+        return *(beginNonlinear() + SERSIC_INDEX);
     }
+
 protected:
-    // Morphology *************************************************************
+    friend class SersicMorphologyProjection;
+
     virtual Morphology::Ptr create(
         boost::shared_ptr<ParameterVector const> const & linearParameters,
-        ParameterConstIterator nonlinearParameterIter
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+        size_t const & start=0
     ) const;
 
-    virtual int const getMinLinearParameterSize() const {return 1;}
-    virtual int const getMaxLinearParameterSize() const {return 1;}
-    virtual int const getNonlinearParameterSize() const {return 4;}
-
     virtual void _handleNonlinearParameterChange();
+    virtual int const getNonlinearParameterSize() const {return NONLINEAR_SIZE;}
 
-    /**
-     * Default-constructor
-     *
-     * Used to create a template SersicMorphology
-     */
-    SersicMorphology() : Morphology() {}
+
+    multifit::Cache::Functor::ConstPtr const & getSersicIndexFunctor() const {
+        return _indexFunctor;
+    }
 
     /**
      * Construct a SersicMorphology
@@ -65,8 +90,11 @@ protected:
      */
     SersicMorphology(
         boost::shared_ptr<ParameterVector const> const & linearParameters,
-        ParameterConstIterator nonlinearParameterIter
-    ) : Morphology(linearParameters, nonlinearParameterIter) {}
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+        size_t const & start =0
+    ) : Morphology(linearParameters, nonlinearParameters, start) {
+        _handleNonlinearParameterChange();
+    }
 
     Cache::Functor::ConstPtr _indexFunctor;
 };

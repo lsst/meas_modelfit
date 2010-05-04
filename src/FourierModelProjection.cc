@@ -89,7 +89,7 @@ public:
         if (!_imageValid) {
             getCompressedVectorView(_unconvolvedImage.getBase()) = 
                 getCompressedMatrixView(_unconvolvedMatrix.getBase()) * 
-                _parent->getModel()->getLinearParameters();
+                (*_parent->getModel()->getLinearParameters());
             _imageValid = true;
         }
         return _unconvolvedImage;

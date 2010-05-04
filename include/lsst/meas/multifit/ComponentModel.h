@@ -15,7 +15,6 @@
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
-#include "lsst/meas/multifit/components/FixedAstrometry.h"
 #include "lsst/meas/multifit/components/Morphology.h"
 
 namespace lsst {
@@ -36,7 +35,6 @@ class ComponentModelProjection;
  */
 class ComponentModel : public Model {
 public:
-
     typedef boost::shared_ptr<ComponentModel> Ptr;
     typedef boost::shared_ptr<ComponentModel const> ConstPtr;
 
@@ -70,12 +68,15 @@ public:
         return _morphology; 
     }
     
-    ComponentModel(
-        Astrometry::ConstPtr const & astrometry, 
-        Morphology::ConstPtr const & morphology,
-    );
+    static ComponentModel::Ptr create(
+        components::Astrometry const & astrometry, 
+        components::Morphology const & morphology
+    ) {
+        return ComponentModel::Ptr(
+            new ComponentModel(astrometry, morphology, true)
+        );
+    }
 protected:
-
     virtual boost::shared_ptr<ModelProjection> makeProjection(
         PsfConstPtr const & psf,
         WcsConstPtr const & wcs,
@@ -83,32 +84,32 @@ protected:
     ) const;
 
 private:
-    friend class ComponentModelFactory;
-
-    explicit ComponentModel(
-        int linearParameterSize,
-        components::Astrometry::ConstPtr const & astrometryTemplate,
-        components::Morphology::ConstPtr const & morphologyTemplate
+    explicit ComponentModel(    
+        components::Astrometry const & astrometry,
+        components::Morphology const & morphology,
+        bool initializeParameters
     );
-    ComponentModel(ComponentModel const & model);
-    void _initializeComponents(
-        components::Astrometry::ConstPtr const & astrometryTemplate,
-        components::Morphology::ConstPtr const & morphologyTemplate
-    );
+    explicit ComponentModel(ComponentModel const & model);
 
+    void _initializeFromComponents(
+        components::Astrometry const & astrometryTemplate,
+        components::Morphology const & morphologyTemplate,
+        bool initializeParameters=false
+
+    );
 
     /**
      * Iterator at the start of the nonlinear parameters relevant to the
      * astrometry component
      */
-    ParameterConstIterator _getAstrometryParameterIter() const {
+    ParameterConstIterator _beginAstrometry() const {
         return getNonlinearParameterIter();
     }
     /**
      * Iterator at the start of the nonlinear parameters relevant to the
      * morphology component
      */
-    ParameterConstIterator _getMorphologyParameterIter() const {
+    ParameterConstIterator _beginMorphology() const {
         return getNonlinearParameterIter() + _astrometry->getParameterSize();
     }
 

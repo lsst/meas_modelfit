@@ -73,8 +73,8 @@ public:
     /**
      * Immutable access to this Model's linear parameters 
      */
-    ParameterVector const & getLinearParameters() const { 
-        return *_linearParameters; 
+    boost::shared_ptr<ParameterVector const> const getLinearParameters() const { 
+        return _linearParameters; 
     }
 
     /**
@@ -100,8 +100,8 @@ public:
     /**
      * Immutable access to this Model's nonlinear parameters 
      */
-    ParameterVector const & getNonlinearParameters() const { 
-        return *_nonlinearParameters; 
+    boost::shared_ptr<ParameterVector const> const getNonlinearParameters() const { 
+        return _nonlinearParameters; 
     }
 
     /**
@@ -131,7 +131,7 @@ public:
      *  the new Model will not have any associated ModelProjections.
      */
     virtual Model::Ptr clone() const = 0;
-
+   
     virtual ~Model() {}
 
     /** 
@@ -163,14 +163,14 @@ protected:
      * associated with the new Model
      */ 
     explicit Model(Model const & model) 
-      : _linearParameters(boost::make_shared<ParameterVector>(model.getLinearParameters())),
-        _nonlinearParameters(boost::make_shared<ParameterVector>(model.getNonlinearParameters())),
+      : _linearParameters(boost::make_shared<ParameterVector>(*model.getLinearParameters())),
+        _nonlinearParameters(boost::make_shared<ParameterVector>(*model.getNonlinearParameters())),
         _projectionList()
     {}
 
     explicit Model() :
-       _linearParameters(NULL), 
-       _nonlinearParameters(NULL), 
+       _linearParameters(), 
+       _nonlinearParameters(), 
        _projectionList() 
     {}
 

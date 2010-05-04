@@ -40,8 +40,8 @@ lsst::afw::geom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
 }
 
 lsst::afw::geom::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
-    return lsst::afw::geom::ellipses::Ellipse::Ptr(
-        _morphology->computeBoundingEllipseCore()->makeEllipse(_astrometry->computePosition())
+    return _morphology->computeBoundingEllipseCore()->makeEllipse(
+        _astrometry->computePosition()
     );
 }
 
@@ -70,7 +70,7 @@ multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
 }
 
 /**
- * Initialize the ComponentModel (does not set parameters).
+ * Initialize the ComponentModel, initialize (does not set parameters).
  *
  * The number of nonlinear parameters in a ComponentModel
  * is determined by its components. The ComponentModel also clones the
@@ -83,15 +83,15 @@ multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
  *        parameters
  */
 multifit::ComponentModel::ComponentModel(
-    int linearParameterSize,
-    components::Astrometry::ConstPtr const & astrometryTemplate,
-    components::Morphology::ConstPtr const & morphologyTemplate
+    components::Astrometry const & astrometry,
+    components::Morphology const & morphology,
+    bool initializeParameters=false
 ) : Model(
-        linearParameterSize, 
-        astrometryTemplate->getParameterSize() + morphologyTemplate->getNonlinearParameterSize()
-    ) 
+        morphology.getLinearParameterSize(), 
+        astrometry.getParameterSize() + morphology.getNonlinearParameterSize()
+    )     
 {
-    _initializeComponents(astrometryTemplate, morphologyTemplate);
+    _initializeFromComponents(astrometry, morphology, initializeParameters);
 }
 
 /**
@@ -102,10 +102,14 @@ multifit::ComponentModel::ComponentModel(
  *
  * @sa clone
  */
-multifit::ComponentModel::ComponentModel(ComponentModel const & model) : Model(model) {
-    _initializeComponents(model._astrometry, model._morphology);
-    setLinearParameters(model.getLinearParameterIter());
-    setNonlinearParameters(model.getNonlinearParameterIter());
+multifit::ComponentModel::ComponentModel(
+    ComponentModel const & model
+) : Model(model) {
+    _initializeFromComponents(
+        *model._astrometry, 
+        *model._morphology, 
+        false
+    );
 }
 
 /**
@@ -114,13 +118,25 @@ multifit::ComponentModel::ComponentModel(ComponentModel const & model) : Model(m
  * Handles the cloning of the components, feeding them the appropriate iterators
  * into the _nonlinearParameterVector
  */
-void multifit::ComponentModel::_initializeComponents(
-    components::Astrometry::ConstPtr const & astrometryTemplate,
-    components::Morphology::ConstPtr const & morphologyTemplate
+void multifit::ComponentModel::_initializeFromComponents(
+    components::Astrometry const & astrometry,
+    components::Morphology const & morphology,
+    bool copyParameters
 ) {
-    _astrometry = astrometryTemplate->create(_getAstrometryParameterIter());
-    _morphology = morphologyTemplate->create(
-        _linearParameters,
-        _getMorphologyParameterIter()
+    if(copyParameters) {
+        std::copy(astrometry.begin(), astrometry.end(), _nonlinearParameters->data());
+        std::copy(
+            morphology.beginNonlinear(), 
+            morphology.endNonlinear(), 
+            _nonlinearParameters->data() + astrometry.getParameterSize()
+        );
+        *_linearParameters << *morphology._getLinearParameters();
+    }
+    
+    _astrometry = astrometry.create(_nonlinearParameters);
+    _morphology = morphology.create(
+        _linearParameters, 
+        _nonlinearParameters, 
+        _astrometry->getParameterSize()
     );
 }

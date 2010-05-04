@@ -15,7 +15,7 @@ definitions: {
                           with the item dChisqThreshold"
         }
         allowed: {
-            value: "iterations"
+            value: "iteration"
             descrption: "terminate after N iterations. N must be specified
                          with the item iterationMax"
         }
