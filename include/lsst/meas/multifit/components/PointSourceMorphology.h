@@ -21,9 +21,11 @@ namespace components {
  */
 class PointSourceMorphology : public Morphology {
 public:
+    enum LinearParameters {FLUX=0, LINEAR_SIZE};
+    enum NonlinearParamaters {NONLINEAR_SIZE=0};
+
     typedef boost::shared_ptr<PointSourceMorphology> Ptr;
     typedef boost::shared_ptr<PointSourceMorphology const> ConstPtr;
-
 
     virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
         return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();
@@ -37,37 +39,48 @@ public:
     /**
      * Named PointSourceMorphology constructor    
      */
-    static PointSourceMorphology::Ptr createTemplate() {
-        return PointSourceMorphology::Ptr(new PointSourceMorphology());
+    static Ptr create(Parameter const & flux) { 
+        boost::shared_ptr<ParameterVector const> linear(
+            new ParameterVector((ParameterVector(1) << flux).finished())
+        );
+        boost::shared_ptr<ParameterVector const> nonlinear(
+            new ParameterVector()
+        );
+        return PointSourceMorphology::Ptr(
+            new PointSourceMorphology(linear, nonlinear, 0)
+        );
     }       
 
+    Parameter const & getFlux() const {return *(_getLinearParameters()->data());}
 protected:
-
-    /**
-     *  Default-construct a Morphology object to be used as a template.
-     */
-    PointSourceMorphology() : Morphology() {}
 
     /**
      *  Construct a Morphology object for use inside a ComponentModel.
      *
-     *  @sa Morphology::create()
+     *  @sa Morphology::create
+     *  @sa FixedMorphology::create
      */
     PointSourceMorphology(
-        boost::shared_ptr<ParameterVector const> const & linearParameterVector,
-        ParameterConstIterator nonlinearParameterIter
-    ) : Morphology(linearParameterVector,nonlinearParameterIter) {}
+        boost::shared_ptr<ParameterVector const> const & linearParameters,
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+        size_t const & start =0
+    ) : Morphology(linearParameters, nonlinearParameters, start) {}
 
     virtual Morphology::Ptr create(
-        boost::shared_ptr<ParameterVector const> const & linearParameterVector,
-        ParameterConstIterator nonlinearParameterIter 
-    ) const;
+        boost::shared_ptr<ParameterVector const> const & linearParameters,
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+        size_t const & start=0 
+    ) const {
+        return PointSourceMorphology::Ptr(
+            new PointSourceMorphology(
+                linearParameters, 
+                nonlinearParameters, 
+                start
+            )
+        );
+    }
 
-    //derived Morphology template mode functions
-    virtual int const getMinLinearParameterSize() const { return 1; }
-    virtual int const getMaxLinearParameterSize() const { return 1; }
-    virtual int const getNonlinearParameterSize() const { return 0; }
-
+    virtual const int getNonlinearParameterSize() const {return NONLINEAR_SIZE;}
 };
 
 }}}} // namespace lsst::meas::multifit::components

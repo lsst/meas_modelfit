@@ -27,20 +27,20 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
-#include "lsst/meas/multifit/ModelFactory.h"
+#include "lsst/meas/multifit/Cache.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/MorphologyProjection.h"
 #include "lsst/meas/multifit/components/Morphology.h"
 #include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 #include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
+#include "lsst/meas/multifit/components/SersicMorphology.h"
+#include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/ComponentModelProjection.h"
-#include "lsst/meas/multifit/ComponentModelFactory.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
-#include "lsst/meas/multifit/PointSourceModelFactory.h"
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
-
+#include "lsst/meas/multifit/ModelFactory.h"
 #define NDARRAY_PYTHON_MAIN
 #include "ndarray/python.hpp"
 #include "ndarray/python/eigen.hpp"
@@ -110,7 +110,9 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 
 %define %downcast(BaseType, DerivedType...)
    %extend DerivedType {
-       static boost::shared_ptr<DerivedType > swigConvert(boost::shared_ptr<BaseType> const & ptr) {
+       static boost::shared_ptr<DerivedType > swigConvert(
+           boost::shared_ptr<BaseType> const & ptr
+       ) {
            return boost::dynamic_pointer_cast<DerivedType >(ptr);
        }
    }
@@ -144,24 +146,8 @@ SWIG_SHARED_PTR(WindowedFootprintPtr, lsst::meas::multifit::WindowedFootprint)
     %template(expand) expand<double, double, 0>; 
 };
 
-
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
 %include "lsst/meas/multifit/Model.h"
-
-SWIG_SHARED_PTR(ModelFactoryPtr, lsst::meas::multifit::ModelFactory)
-SWIG_SHARED_PTR_DERIVED(ComponentModelFactoryPtr, lsst::meas::multifit::ModelFactory,
-    lsst::meas::multifit::ComponentModelFactory)
-SWIG_SHARED_PTR_DERIVED(PointSourceModelFactoryPtr, lsst::meas::multifit::ComponentModelFactory,
-    lsst::meas::multifit::PointSourceModelFactory)
-
-%include "lsst/meas/multifit/ModelFactory.h"
-%include "lsst/meas/multifit/ComponentModelFactory.h"
-%include "lsst/meas/multifit/PointSourceModelFactory.h"
-
-%downcast(lsst::meas::multifit::ModelFactory, lsst::meas::multifit::ComponentModelFactory);
-%downcast(lsst::meas::multifit::ModelFactory, lsst::meas::multifit::PointSourceModelFactory);
-%downcast(lsst::meas::multifit::ComponentModelFactory, lsst::meas::multifit::PointSourceModelFactory);
-
 
 SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
 %include "lsst/meas/multifit/ModelProjection.h"
@@ -178,6 +164,8 @@ SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry)
 SWIG_SHARED_PTR(MorphologyPtr, lsst::meas::multifit::components::Morphology)
 SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyPtr, lsst::meas::multifit::components::Morphology,
     lsst::meas::multifit::components::PointSourceMorphology)    
+SWIG_SHARED_PTR_DERIVED(SersicMorphologyPtr, lsst::meas::multifit::components::Morphology,
+    lsst::meas::multifit::components::SersicMorphology)
 SWIG_SHARED_PTR(MorphologyProjectionPtr, lsst::meas::multifit::components::MorphologyProjection)
 SWIG_SHARED_PTR_DERIVED(FourierMorphologyProjectionPtr,
     lsst::meas::multifit::components::MorphologyProjection,
@@ -185,12 +173,65 @@ SWIG_SHARED_PTR_DERIVED(FourierMorphologyProjectionPtr,
 SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyProjectionPtr,
     lsst::meas::multifit::components::FourierMorphologyProjection,
     lsst::meas::multifit::components::PointSourceMorphologyProjection)
+SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
+    lsst::meas::multifit::components::FourierMorphologyProjection,
+    lsst::meas::multifit::components::SersicMorphologyProjection)
+    
+%ignore lsst::meas::multifit::components::PointSourceMorphology::create;
+%ignore lsst::meas::multifit::components::SersicMorphology::create;
+
 %include "lsst/meas/multifit/components/Astrometry.h"
 %include "lsst/meas/multifit/components/MorphologyProjection.h"
 %include "lsst/meas/multifit/components/Morphology.h"
 %include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
 %include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 %include "lsst/meas/multifit/components/PointSourceMorphology.h"
+%include "lsst/meas/multifit/components/SersicMorphology.h"
+%include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
+
+%extend lsst::meas::multifit::components::SersicMorphology {
+    boost::shared_ptr<lsst::meas::multifit::components::SersicMorphology> create(
+        lsst::meas::multifit::Parameter flux, 
+        lsst::afw::geom::ellipses::Core const & ellipse,
+        lsst::meas::multifit::Parameter sersicIndex
+    ) {
+        return lsst::meas::multifit::components::SersicMorphology::create(
+            flux, ellipse, sersicIndex
+        );
+    }
+};
+
+%extend lsst::meas::multifit::components::PointSourceMorphology {
+    boost::shared_ptr<lsst::meas::multifit::components::PointSourceMorphology> create(
+        lsst::meas::multifit::Parameter flux 
+    ) {
+        return lsst::meas::multifit::components::PointSourceMorphology::create(
+            flux
+        );
+    }
+};
+
+%inline %{
+    boost::shared_ptr<lsst::meas::multifit::Model> createSersicModel(
+        lsst::meas::multifit::Parameter flux, 
+        lsst::afw::geom::Point2D const & centroid,
+        lsst::afw::geom::ellipses::Core const & ellipse,
+        lsst::meas::multifit::Parameter sersicIndex
+    ) {
+        return lsst::meas::multifit::ModelFactory::createSersicModel(
+            flux, centroid, ellipse, sersicIndex
+        );
+    }
+
+    boost::shared_ptr<lsst::meas::multifit::Model> createPointSourceModel(
+        lsst::meas::multifit::Parameter flux, 
+        lsst::afw::geom::Point2D const & centroid
+    ) {
+        return lsst::meas::multifit::ModelFactory::createPointSourceModel(
+            flux, centroid
+        );
+    }
+%}
 
 SWIG_SHARED_PTR_DERIVED(ComponentModelPtr, lsst::meas::multifit::Model,     
     lsst::meas::multifit::ComponentModel) 
@@ -208,6 +249,7 @@ SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::Compone
 %downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::FourierModelProjection);
 %downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::ComponentModelProjection);
 %downcast(lsst::meas::multifit::ComponentModelProjection, lsst::meas::multifit::FourierModelProjection);
+
 
 SWIG_SHARED_PTR_DERIVED(
     CharacterizedExposureFPtr, 

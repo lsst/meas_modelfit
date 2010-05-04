@@ -6,17 +6,18 @@ namespace components = lsst::meas::multifit::components;
 
 lsst::afw::geom::ellipses::Core::Ptr 
 components::SersicMorphology::computeBoundingEllipseCore() const {  
-    ParameterConstIterator params(_getNonlinearParameterIter());
+    ParameterConstIterator params(beginNonlinear());
     return boost::make_shared<lsst::afw::geom::ellipses::LogShear> (
-        params[0], params[1], params[2]
+        params[GAMMA1], params[GAMMA2], params[KAPPA]
     );
 }
 components::Morphology::Ptr components::SersicMorphology::create(
     boost::shared_ptr<ParameterVector const> const & linearParameters,
-    ParameterConstIterator nonlinearParameterIter
+    boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+    size_t const & start
 ) const {
     return Morphology::Ptr(
-        new SersicMorphology(linearParameters, nonlinearParameterIter)
+        new SersicMorphology(linearParameters, nonlinearParameters, start)
     );
 }
 

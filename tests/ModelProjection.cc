@@ -20,10 +20,10 @@
 #include "lsst/meas/multifit/Model.h"
 
 #include "lsst/meas/multifit/footprintUtils.h"
+#include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
-#include "lsst/meas/multifit/PointSourceModelFactory.h"
-
+#include "lsst/meas/multifit/ModelFactory.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 
@@ -34,15 +34,16 @@ namespace geom = lsst::afw::geom;
 namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(FourierModelProjection) {
-    multifit::PointSourceModelFactory psFactory;
+
     geom::PointD centroid = geom::PointD::make(35,65);
     double flux = 34.45;
-    multifit::Model::Ptr psModel = psFactory.makeModel(flux, centroid);
+    multifit::Model::Ptr psModel = 
+        multifit::ModelFactory::createPointSourceModel(flux, centroid);
     
     BOOST_CHECK_EQUAL(psModel->getLinearParameterSize(), 1);
     BOOST_CHECK_EQUAL(psModel->getNonlinearParameterSize(), 2);
     multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
-        geom::convertToImage(centroid), image::PointD(1,1), Eigen::Matrix2d::Identity()
+        centroid, geom::makePointD(0,0), Eigen::Matrix2d::Identity()
     );
 
     multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.5);
@@ -52,11 +53,8 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
     multifit::ModelProjection::Ptr projection = psModel->makeProjection(psf, wcs, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), psModel);
    
-    multifit::ParameterVector linear(psModel->getLinearParameterSize());
-    multifit::ParameterVector nonlinear(psModel->getNonlinearParameterSize());
-
-    linear = psModel->getLinearParameters();
-    nonlinear = psModel->getNonlinearParameters();
+    multifit::ParameterVector linear(*psModel->getLinearParameters());
+    multifit::ParameterVector nonlinear(*psModel->getNonlinearParameters());
 
     BOOST_CHECK_EQUAL(linear[0], flux);
     BOOST_CHECK_EQUAL(nonlinear[0], centroid[0]);

@@ -176,13 +176,13 @@ public:
      * Immutable access to the model's linear parameters
      */
     ParameterVector const & getLinearParameters() const {
-        return _model->getLinearParameters();
+        return *_model->getLinearParameters();
     }
     /**
      * Immutable access to the model's nonlinear parameters
      */
     ParameterVector const & getNonlinearParameters() const {
-        return _model->getNonlinearParameters();
+        return *_model->getNonlinearParameters();
     }
 
     /**

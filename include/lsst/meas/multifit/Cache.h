@@ -11,7 +11,7 @@ namespace meas{
 namespace multifit {
 
 
-class Cache :public lsst::daf::base::Persistable {
+class Cache  {
 public:   
     typedef boost::shared_ptr<Cache> Ptr;
     typedef boost::shared_ptr<Cache const> ConstPtr;
@@ -49,10 +49,10 @@ public:
         FillFunction::Ptr const & fillFunction
     );
 
-    Functor::ConstPtr getRowFunctor(double const & y) const;
-    Functor::ConstPtr getRowDerivativeFunctor(double const & y) const;
-    Functor::ConstPtr getColFunctor(double const & x) const;
-    Functor::ConstPtr getColDerivativeFunctor(double const & x) const;
+    Cache::Functor::ConstPtr getRowFunctor(double const & y) const;
+    Cache::Functor::ConstPtr getRowDerivativeFunctor(double const & y) const;
+    Cache::Functor::ConstPtr getColFunctor(double const & x) const;
+    Cache::Functor::ConstPtr getColDerivativeFunctor(double const & x) const;
 
     Eigen::VectorXd const & getColHeaders() const {return *_x;}
     Eigen::VectorXd const & getRowHeaders() const {return *_y;}

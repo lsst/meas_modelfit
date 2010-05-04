@@ -22,38 +22,35 @@
 
 #include "lsst/meas/multifit/footprintUtils.h"
 #include "lsst/meas/multifit/ModelProjection.h"
+#include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/components/SersicMorphology.h"
-#include "lsst/meas/multifit/SersicModelFactory.h"
+#include "lsst/meas/multifit/components/Astrometry.h"
+#include "lsst/meas/multifit/ModelFactory.h"
 
 using namespace std;
 namespace measAlg = lsst::meas::algorithms;
 namespace multifit = lsst::meas::multifit;
+namespace components = lsst::meas::multifit::components;
 namespace geom = lsst::afw::geom;
 namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(SersicModelProjection) {
-    multifit::SersicModelFactory sgFactory;
     lsst::afw::geom::PointD centroid = geom::PointD::make(0,0);
-    lsst::afw::geom::ellipses::Axes::Ptr axes(
-        new lsst::afw::geom::ellipses::Axes(3, 1, 1.3)
-    );
-    lsst::afw::geom::ellipses::LogShear logShear(*axes);
+    lsst::afw::geom::ellipses::Axes axes(3, 1, 1.3);
+    lsst::afw::geom::ellipses::LogShear logShear(axes);
     double flux = 5.45;
     double sersicIndex = 2.0;
 
-    multifit::Model::Ptr sgModel = sgFactory.makeModel(
-        flux, 
-        centroid, 
-        axes, 
-        sersicIndex
+    multifit::Model::Ptr sgModel = multifit::ModelFactory::createSersicModel(
+        flux, centroid, axes, sersicIndex
     );
-    
+
     BOOST_CHECK_EQUAL(sgModel->getLinearParameterSize(), 1);
     BOOST_CHECK_EQUAL(sgModel->getNonlinearParameterSize(), 6);
     multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
-        lsst::afw::geom::convertToImage(centroid), 
-        image::PointD(0,0), 
+        centroid, 
+        geom::makePointD(0,0), 
         Eigen::Matrix2d::Identity()
     );
 
@@ -64,11 +61,8 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     multifit::ModelProjection::Ptr projection = sgModel->makeProjection(psf, wcs, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), sgModel);
    
-    multifit::ParameterVector linear(sgModel->getLinearParameterSize());
-    multifit::ParameterVector nonlinear(sgModel->getNonlinearParameterSize());
-
-    linear << sgModel->getLinearParameters();
-    nonlinear << sgModel->getNonlinearParameters();
+    multifit::ParameterVector linear(*sgModel->getLinearParameters());
+    multifit::ParameterVector nonlinear(*sgModel->getNonlinearParameters());
 
     BOOST_CHECK_EQUAL(linear[0], flux);
     BOOST_CHECK_EQUAL(nonlinear[0], centroid[0]);

@@ -16,10 +16,14 @@
 #include <Eigen/Array>
 #include "lsst/afw/geom/Box.h"
 #include "lsst/afw/geom/ellipses.h"
+#include "lsst/afw/geom/deprecated.h"
 #include "lsst/meas/multifit/core.h"
-#include "lsst/meas/multifit/PointSourceModelFactory.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
+#include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
+#include "lsst/meas/multifit/components/Astrometry.h"
+#include "lsst/meas/multifit/components/PointSourceMorphology.h"
+#include "lsst/meas/multifit/ModelFactory.h"
 
 namespace math = lsst::afw::math;
 namespace image = lsst::afw::image;
@@ -28,10 +32,16 @@ namespace geom = lsst::afw::geom;
 namespace measAlg = lsst::meas::algorithms;
 
 BOOST_AUTO_TEST_CASE(FitterBasic) {
-    multifit::PointSourceModelFactory psFactory;
-    multifit::Model::Ptr psModel = psFactory.makeModel(1, geom::makePointD(45, 45));
+    geom::PointD centroid = geom::PointD::make(35,65);
+    double flux = 34.45;
+    multifit::components::PointSourceMorphology::Ptr morphology =
+        multifit::components::PointSourceMorphology::create(flux);
+    multifit::components::Astrometry astrometry(centroid);
+    multifit::Model::Ptr psModel = 
+        multifit::ModelFactory::createPointSourceModel(flux, centroid);
 
-    image::PointD crPix(0, 0), crVal(45,45);
+
+    geom::PointD crPix(0), crVal(centroid);
     Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
     image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
 
