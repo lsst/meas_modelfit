@@ -69,8 +69,8 @@ public:
     }
     
     static ComponentModel::Ptr create(
-        components::Astrometry const & astrometry, 
-        components::Morphology const & morphology
+        components::Astrometry::ConstPtr const & astrometry, 
+        components::Morphology::ConstPtr const & morphology
     ) {
         return ComponentModel::Ptr(
             new ComponentModel(astrometry, morphology, true)
@@ -85,15 +85,15 @@ protected:
 
 private:
     explicit ComponentModel(    
-        components::Astrometry const & astrometry,
-        components::Morphology const & morphology,
+        components::Astrometry::ConstPtr const & astrometry,
+        components::Morphology::ConstPtr const & morphology,
         bool initializeParameters
     );
     explicit ComponentModel(ComponentModel const & model);
 
     void _initializeFromComponents(
-        components::Astrometry const & astrometryTemplate,
-        components::Morphology const & morphologyTemplate,
+        components::Astrometry::ConstPtr const & astrometryTemplate,
+        components::Morphology::ConstPtr const & morphologyTemplate,
         bool initializeParameters=false
 
     );

@@ -1,3 +1,4 @@
+
 // -*- LSST-C++ -*-
 #include <iostream>
 #include <cmath>
@@ -38,3 +39,4 @@ BOOST_AUTO_TEST_CASE(EllipseGridTransform) {
 
     img.writeFits("ellipseGridTest.fits");
 }
+

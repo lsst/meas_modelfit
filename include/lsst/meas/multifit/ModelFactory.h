@@ -19,8 +19,10 @@ public:
     ) {
         components::Morphology::Ptr morphology = 
             components::PointSourceMorphology::create(flux);
-        components::Astrometry astrometry(centroid);
-        return ComponentModel::create(astrometry, *morphology);
+        components::Astrometry::Ptr astrometry(
+            new components::Astrometry(centroid)
+        );
+        return ComponentModel::create(astrometry, morphology);
     }
 
     static Model::Ptr createSersicModel(
@@ -31,8 +33,10 @@ public:
     ) {
         components::Morphology::Ptr morphology = 
             components::SersicMorphology::create(flux, ellipse, sersicIndex);
-        components::Astrometry astrometry(centroid);
-        return ComponentModel::create(astrometry, *morphology); 
+        components::Astrometry::Ptr astrometry(
+            new components::Astrometry(centroid)
+        );
+        return ComponentModel::create(astrometry, morphology); 
     }
 };
 

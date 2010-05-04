@@ -23,7 +23,7 @@ public:
       : Astrometry(position) {}
 
     virtual ~FixedAstrometry() {}
-
+    
     virtual DerivativeMatrix const & differentiate() const {
         static DerivativeMatrix i;
         return i;

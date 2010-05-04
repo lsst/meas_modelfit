@@ -151,10 +151,18 @@ protected:
      * Initialize the Model and allocate space for the parameter vectors.
      */
     Model(int linearParameterSize, int nonlinearParameterSize)       
-      : _linearParameters(boost::make_shared<ParameterVector>(linearParameterSize)),
-        _nonlinearParameters(boost::make_shared<ParameterVector>(nonlinearParameterSize)),
-        _projectionList()
-    {}
+      : _linearParameters(), _nonlinearParameters(), _projectionList()
+    {
+        //Eigen does not handle zero-size matrix creation gracefully.
+        if(linearParameterSize > 0)
+            _linearParameters.reset(new ParameterVector(linearParameterSize));
+        else _linearParameters.reset(new ParameterVector());
+
+        if(nonlinearParameterSize > 0)
+            _nonlinearParameters.reset(new ParameterVector(nonlinearParameterSize));
+        else _nonlinearParameters.reset(new ParameterVector());
+
+    }
 
     /**
      * Deep-copy the Model.

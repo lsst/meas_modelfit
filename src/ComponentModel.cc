@@ -83,12 +83,12 @@ multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
  *        parameters
  */
 multifit::ComponentModel::ComponentModel(
-    components::Astrometry const & astrometry,
-    components::Morphology const & morphology,
+    components::Astrometry::ConstPtr const & astrometry,
+    components::Morphology::ConstPtr const & morphology,
     bool initializeParameters=false
 ) : Model(
-        morphology.getLinearParameterSize(), 
-        astrometry.getParameterSize() + morphology.getNonlinearParameterSize()
+        morphology->getLinearParameterSize(), 
+        astrometry->getParameterSize() + morphology->getNonlinearParameterSize()
     )     
 {
     _initializeFromComponents(astrometry, morphology, initializeParameters);
@@ -106,8 +106,8 @@ multifit::ComponentModel::ComponentModel(
     ComponentModel const & model
 ) : Model(model) {
     _initializeFromComponents(
-        *model._astrometry, 
-        *model._morphology, 
+        model._astrometry, 
+        model._morphology, 
         false
     );
 }
@@ -119,22 +119,22 @@ multifit::ComponentModel::ComponentModel(
  * into the _nonlinearParameterVector
  */
 void multifit::ComponentModel::_initializeFromComponents(
-    components::Astrometry const & astrometry,
-    components::Morphology const & morphology,
+    components::Astrometry::ConstPtr const & astrometry,
+    components::Morphology::ConstPtr const & morphology,
     bool copyParameters
 ) {
     if(copyParameters) {
-        std::copy(astrometry.begin(), astrometry.end(), _nonlinearParameters->data());
+        std::copy(astrometry->begin(), astrometry->end(), _nonlinearParameters->data());
         std::copy(
-            morphology.beginNonlinear(), 
-            morphology.endNonlinear(), 
-            _nonlinearParameters->data() + astrometry.getParameterSize()
+            morphology->beginNonlinear(), 
+            morphology->endNonlinear(), 
+            _nonlinearParameters->data() + astrometry->getParameterSize()
         );
-        *_linearParameters << *morphology._getLinearParameters();
+        *_linearParameters << *(morphology->_getLinearParameters());
     }
     
-    _astrometry = astrometry.create(_nonlinearParameters);
-    _morphology = morphology.create(
+    _astrometry = astrometry->create(_nonlinearParameters);
+    _morphology = morphology->create(
         _linearParameters, 
         _nonlinearParameters, 
         _astrometry->getParameterSize()

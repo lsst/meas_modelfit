@@ -116,7 +116,7 @@ protected:
      * @sa Astrometry(boost::shared_ptr<ParameterVector> const&, size_t const &, bool const &)
      */
     virtual Ptr create (
-        boost::shared_ptr<ParameterVector> const & parameters, 
+        boost::shared_ptr<ParameterVector const> const & parameters, 
         size_t const & start = 0
     ) const {
         return Ptr(new Astrometry(parameters, start));    
@@ -150,7 +150,7 @@ private:
             );
         }
 
-        if(static_cast<int>(start + SIZE) >  parameters->size()) {
+        if(static_cast<int>(start + getParameterSize()) >  parameters->size()) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::InvalidParameterException, 
                 "Input parameter vector must be at least of length start + getParameterSize()"
