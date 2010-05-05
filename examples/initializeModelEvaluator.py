@@ -8,17 +8,18 @@ import numpy.random
 from makeImageStack import makeImageStack
 
 def initializeModelEvaluator():
-    psFactory = measMult.PointSourceModelFactory()
-    psModel = psFactory.makeModel(1.0, afwGeom.makePointD(45,45))
+    flux = 1.0
+    centroid = afwGeom.makePointD(45, 45)
+    psModel = measMult.createPointSourceModel(flux, centroid)
 
-    exposureList = makeImageStack(psModel, 15, 45, 45)
+    exposureList = makeImageStack(psModel, 15, centroid[0], centroid[1])
     modelEvaluator = measMult.ModelEvaluator(psModel, exposureList)
 
     numpy.set_printoptions(threshold=100000)
     print "ModelEvaluator nProjections: %d"%modelEvaluator.getNProjections()
     print "ModelEvaluator nPixels: %d"%modelEvaluator.getNPixels()
 
-    print "ModelEvaluator image vector: %s"%modelEvaluator.getImageVector()
+    print "ModelEvaluator image vector: %s"%modelEvaluator.getDataVector()
     print "ModelEvaluator variance vector: %s"%modelEvaluator.getVarianceVector()  
     print "ModelEvaluator ModelImage: %s"%modelEvaluator.computeModelImage()
     print "ModelEvaluator LinearParameterDerivative: %s"%modelEvaluator.computeLinearParameterDerivative()

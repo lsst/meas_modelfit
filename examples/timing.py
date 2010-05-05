@@ -6,9 +6,10 @@ import time
 from makeImageStack import makeImageStack
 
 def psTiming(maxIteration, depth):
-    psFactory = measMult.PointSourceModelFactory()
-    psModel = psFactory.makeModel(1, afwGeom.makePointD(0,0))
-    exposureList = makeImageStack(psModel, depth)
+    flux = 1.0
+    centroid = afwGeom.makePointD(0,0)
+    psModel = measMult.createPointSourceModel(flux, centroid)
+    exposureList = makeImageStack(psModel, depth, centroid[0], centroid[1])
     t0 = time.time()
     modelEvaluator = measMult.ModelEvaluator(psModel, exposureList)
     t1 = time.time()

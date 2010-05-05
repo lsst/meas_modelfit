@@ -7,14 +7,12 @@ import numpy
 from makeImageStack import makeImageStack
 
 def main():
-    linear = numpy.array([5.0])
+    flux = 5.0
     centroid = lsst.afw.geom.makePointD(0., 0.)
     axes = lsst.afw.geom.ellipses.Axes(3,1,0)
     logShear = lsst.afw.geom.ellipses.LogShear(axes)
-    nonlinear = numpy.array(
-        [centroid[0], centroid[1], logShear[0], logShear[1], logShear[2], 1]
-    )
-    model = mf.makeModel("Sersic", linear, nonlinear)
+    sersicIndex = 1.0
+    model = mf.createSersicModel(flux, centroid, axes, sersicIndex)
     exposureList = makeImageStack(model, 1, centroid[0], centroid[1])
 
     exposure= exposureList.front()

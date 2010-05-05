@@ -9,8 +9,8 @@ import numpy.random
 
 def makeImageStack(model, depth, ra, dec):
     psf = measAlg.createPSF("DoubleGaussian", 7, 7, 1.0)
-    crVal = afwImage.PointD(ra,dec)
-    crPix = afwImage.PointD(0,0)    
+    crVal = afwGeom.makePointD(ra,dec)
+    crPix = afwGeom.makePointD(0,0)    
     wcs = afwImage.createWcs(crVal, crPix, 1., 0., 0., 1.)
 
     fp = model.computeProjectionFootprint(psf, wcs)
@@ -56,10 +56,11 @@ def makeImageStack(model, depth, ra, dec):
     return expList
 
 def writeImageStack(depth, baseName):
-    psFactory = measMult.PointSourceModelFactory()
-    psModel = psFactory.makeModel(1.0, afwGeom.makePointD(45,45))
+    flux = 1.0
+    position = afwGeom.makePointD(45,45)
+    psFactory = measMult.createPointSourceModel(flux, position)
     
-    expList = makeImageStack(psModel, depth, 45, 45)
+    expList = makeImageStack(psModel, depth, position.getX(), position.getY())
     for i, exp in enumerate(expList):
         filename = baseName +"_%d"%i
         exp.writeFits(filename)

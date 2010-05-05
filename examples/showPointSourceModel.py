@@ -10,10 +10,9 @@ import numpy
 from makeImageStack import makeImageStack
 
 def main():
-
-    factory = mf.PointSourceModelFactory()
+    flux = 1.0
     position = lsst.afw.geom.makePointD(0, 0)
-    model = factory.makeModel(1.0,position)
+    model = mf.createPointSourceModel(flux,position)
     exposureList = makeImageStack(model, 1, position.getX(), position.getY())
 
     exposure = exposureList.front()

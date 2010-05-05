@@ -9,8 +9,10 @@ import numpy.random
 from makeImageStack import makeImageStack
 
 def applyFitter():
-    psFactory = measMult.PointSourceModelFactory()
-    psModel = psFactory.makeModel(1.0, afwGeom.makePointD(45,45))
+    centroid = afwGeom.makePointD(45,45)
+    flux = 1.0
+    psModel = measMult.createPointSourceModel(flux, centroid)
+
     exposureList = makeImageStack(psModel, 15, 45, 45)
     modelEvaluator = measMult.ModelEvaluator(psModel, exposureList)
     
