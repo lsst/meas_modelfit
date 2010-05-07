@@ -130,7 +130,7 @@ void multifit::ComponentModel::_initializeFromComponents(
             morphology->endNonlinear(), 
             _nonlinearParameters->data() + astrometry->getParameterSize()
         );
-        *_linearParameters << *(morphology->_getLinearParameters());
+        *_linearParameters << *(morphology->getLinearParameters());
     }
     
     _astrometry = astrometry->create(_nonlinearParameters);

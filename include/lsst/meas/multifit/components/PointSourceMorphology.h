@@ -26,16 +26,7 @@ public:
 
     typedef boost::shared_ptr<PointSourceMorphology> Ptr;
     typedef boost::shared_ptr<PointSourceMorphology const> ConstPtr;
-
-    virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
-        return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();
-    }
-
-    virtual MorphologyProjection::Ptr makeProjection(
-        lsst::afw::geom::Extent2I const & kernelDimensions,
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
-    ) const;
-
+    
     /**
      * Named PointSourceMorphology constructor    
      */
@@ -51,20 +42,18 @@ public:
         );
     }       
 
-    Parameter const & getFlux() const {return *(_getLinearParameters()->data());}
-protected:
+    Parameter const & getFlux() const {return *(getLinearParameters()->data());}
 
-    /**
-     *  Construct a Morphology object for use inside a ComponentModel.
-     *
-     *  @sa Morphology::create
-     *  @sa FixedMorphology::create
-     */
-    PointSourceMorphology(
-        boost::shared_ptr<ParameterVector const> const & linearParameters,
-        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
-        size_t const & start =0
-    ) : Morphology(linearParameters, nonlinearParameters, start) {}
+    virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
+        return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();
+    }
+
+    virtual MorphologyProjection::Ptr makeProjection(
+        lsst::afw::geom::Extent2I const & kernelDimensions,
+        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+    ) const;
+
+    virtual const int getNonlinearParameterSize() const {return NONLINEAR_SIZE;}
 
     virtual Morphology::Ptr create(
         boost::shared_ptr<ParameterVector const> const & linearParameters,
@@ -79,8 +68,19 @@ protected:
             )
         );
     }
+protected:
 
-    virtual const int getNonlinearParameterSize() const {return NONLINEAR_SIZE;}
+    /**
+     *  Construct a Morphology object for use inside a ComponentModel.
+     *
+     *  @sa Morphology::create
+     *  @sa FixedMorphology::create
+     */
+    PointSourceMorphology(
+        boost::shared_ptr<ParameterVector const> const & linearParameters,
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+        size_t const & start =0
+    ) : Morphology(linearParameters, nonlinearParameters, start) {}
 };
 
 }}}} // namespace lsst::meas::multifit::components

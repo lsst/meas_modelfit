@@ -18,11 +18,11 @@ namespace meas {
 namespace multifit {
 
 class ComponentModel;
-class ComponentModelFactory;
 class ComponentModelProjection;
 
 namespace components {
 
+class FixedNonlinearMorphology;
 /**
  *  An abstract class that describes the morphology (i.e. everything but the 
  *  position) of a ComponentModel.
@@ -68,30 +68,8 @@ public:
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
     ) const = 0;
     //@}
-protected:
-    friend class multifit::ComponentModel;
-    friend class multifit::ComponentModelProjection;
-    friend class MorphologyProjection;
-    /**
-     *  Construct a Morphology object for use inside a ComponentModel.
-     *
-     *  @sa Morphology::create()
-     */
-    Morphology(
-        boost::shared_ptr<ParameterVector const> const & linearParameters,
-        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
-        size_t const & start=0
-    ) : _linearParameters(linearParameters),
-        _nonlinearParameters(nonlinearParameters),
-        _start(start)
-    {}
-  
-    Morphology(Morphology const & other, bool const & deep) 
-      : _linearParameters(other._linearParameters),
-        _nonlinearParameters(other._nonlinearParameters),
-        _start(other._start)
-    {}
-        
+
+         
     /// Return the number of linear parameters.
     virtual int const getLinearParameterSize() const {
         return _linearParameters->size();
@@ -101,23 +79,13 @@ protected:
 
      
     /// Return a vector of the linear parameters.
-    boost::shared_ptr<ParameterVector const> const _getLinearParameters() const {
+    boost::shared_ptr<ParameterVector const> const getLinearParameters() const {
         return _linearParameters;
     }
-    boost::shared_ptr<ParameterVector const> const _getNonlinearParameters() const{
+    boost::shared_ptr<ParameterVector const> const getNonlinearParameters() const{
         return _nonlinearParameters;
     }
-    /**
-     *  Handle a change in the linear parameters, as propogated by the owning 
-     *  ComponentModel.
-     */
-    virtual void _handleLinearParameterChange() {}
 
-    /**
-     *  Handle a change in the nonlinear (morphology) parameters, as propogated
-     *  by the owning ComponentModel.
-     */
-    virtual void _handleNonlinearParameterChange() {}
 
     /// Return an iterator to the Model's (nonlinear) morphology parameters.
     ParameterConstIterator beginNonlinear() const { 
@@ -144,6 +112,36 @@ protected:
         boost::shared_ptr<ParameterVector const> const & nonlinearParameterVector,
         size_t const & start=0 
     ) const = 0;
+protected:
+    friend class multifit::ComponentModel;
+    friend class multifit::ComponentModelProjection;
+    friend class MorphologyProjection;
+    friend class FixedNonlinearMorphology;
+    /**
+     *  Construct a Morphology object for use inside a ComponentModel.
+     *
+     *  @sa Morphology::create()
+     */
+    Morphology(
+        boost::shared_ptr<ParameterVector const> const & linearParameters,
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
+        size_t const & start=0
+    ) : _linearParameters(linearParameters),
+        _nonlinearParameters(nonlinearParameters),
+        _start(start)
+    {}
+
+    /**
+     *  Handle a change in the linear parameters, as propogated by the owning 
+     *  ComponentModel.
+     */
+    virtual void _handleLinearParameterChange() {}
+
+    /**
+     *  Handle a change in the nonlinear (morphology) parameters, as propogated
+     *  by the owning ComponentModel.
+     */
+    virtual void _handleNonlinearParameterChange() {}
 
 private:
     boost::shared_ptr<ParameterVector const> _linearParameters;

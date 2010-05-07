@@ -31,12 +31,6 @@ public:
     typedef boost::shared_ptr<SersicMorphology> Ptr;
     typedef boost::shared_ptr<SersicMorphology const> ConstPtr;
 
-    virtual lsst::afw::geom::ellipses::BaseCore::Ptr computeBoundingEllipseCore() const;
-
-    virtual MorphologyProjection::Ptr makeProjection(
-        lsst::afw::geom::Extent2I const & kernelSize,
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
-    ) const;
   
     /**
      * Named SersicMorphology constructor
@@ -59,14 +53,20 @@ public:
     }
 
     Parameter const & getFlux() const {
-        return *(_getLinearParameters()->data() + FLUX);
+        return *(getLinearParameters()->data() + FLUX);
     }
     Parameter const & getSersicIndex() const {
         return *(beginNonlinear() + SERSIC_INDEX);
     }
 
-protected:
-    friend class SersicMorphologyProjection;
+    virtual lsst::afw::geom::ellipses::BaseCore::Ptr computeBoundingEllipseCore() const;
+
+    virtual MorphologyProjection::Ptr makeProjection(
+        lsst::afw::geom::Extent2I const & kernelSize,
+        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+    ) const;
+
+    virtual int const getNonlinearParameterSize() const {return NONLINEAR_SIZE;}
 
     virtual Morphology::Ptr create(
         boost::shared_ptr<ParameterVector const> const & linearParameters,
@@ -74,9 +74,10 @@ protected:
         size_t const & start=0
     ) const;
 
-    virtual void _handleNonlinearParameterChange();
-    virtual int const getNonlinearParameterSize() const {return NONLINEAR_SIZE;}
+protected:
+    friend class SersicMorphologyProjection;
 
+    virtual void _handleNonlinearParameterChange();
 
     multifit::Cache::Functor::ConstPtr const & getSersicIndexFunctor() const {
         return _indexFunctor;
@@ -96,6 +97,7 @@ protected:
         _handleNonlinearParameterChange();
     }
 
+private:
     Cache::Functor::ConstPtr _indexFunctor;
 };
 
