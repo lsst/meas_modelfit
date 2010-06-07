@@ -146,7 +146,7 @@ SWIG_SHARED_PTR(WindowedFootprintPtr, lsst::meas::multifit::WindowedFootprint)
     %template(expand) expand<double, double, 0>; 
 };
 
-SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)   
+SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)
 %include "lsst/meas/multifit/Model.h"
 
 SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)

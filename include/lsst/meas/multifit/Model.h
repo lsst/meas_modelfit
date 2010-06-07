@@ -68,13 +68,13 @@ public:
     /**
      *  Create an ra/dec bounding ellipse for this Model.
      */
-    virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const = 0;
+    virtual boost::shared_ptr<lsst::afw::geom::ellipses::Ellipse> computeBoundingEllipse() const = 0;
 
     /**
      * Immutable access to this Model's linear parameters 
      */
-    boost::shared_ptr<ParameterVector const> const getLinearParameters() const { 
-        return _linearParameters; 
+    ParameterVector const & getLinearParameters() const { 
+        return *_linearParameters; 
     }
 
     /**
@@ -100,8 +100,8 @@ public:
     /**
      * Immutable access to this Model's nonlinear parameters 
      */
-    boost::shared_ptr<ParameterVector const> const getNonlinearParameters() const { 
-        return _nonlinearParameters; 
+    ParameterVector const & getNonlinearParameters() const { 
+        return *_nonlinearParameters; 
     }
 
     /**
@@ -171,8 +171,8 @@ protected:
      * associated with the new Model
      */ 
     explicit Model(Model const & model) 
-      : _linearParameters(boost::make_shared<ParameterVector>(*model.getLinearParameters())),
-        _nonlinearParameters(boost::make_shared<ParameterVector>(*model.getNonlinearParameters())),
+      : _linearParameters(new ParameterVector(model.getLinearParameters())),
+        _nonlinearParameters(new ParameterVector(model.getNonlinearParameters())),
         _projectionList()
     {}
 

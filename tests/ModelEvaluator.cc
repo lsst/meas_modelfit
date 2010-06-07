@@ -13,7 +13,7 @@
 
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/image/MaskedImage.h"
-
+#include "lsst/afw/coord/Coord.h"
 #include "lsst/afw/geom/Box.h"
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/afw/geom/deprecated.h"
@@ -21,67 +21,82 @@
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
+#include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/ModelFactory.h"
 
+namespace det = lsst::afw::detection;
 namespace math = lsst::afw::math;
 namespace image = lsst::afw::image;
 namespace multifit = lsst::meas::multifit;
 namespace geom = lsst::afw::geom;
 namespace measAlg = lsst::meas::algorithms;
 
-BOOST_AUTO_TEST_CASE(ModelBasic) {
-    double flux = 1;
-    geom::Point2D centroid = geom::makePointD(45,45);
-    multifit::Model::Ptr psModel = 
-        multifit::ModelFactory::createPointSourceModel(flux, centroid);
+image::Wcs::Ptr makeWcs(geom::PointD const & crVal) {
+    geom::PointD crPix= geom::makePointD(5312.4, 9609);
+    Eigen::Matrix2d cdMatrix;
+    cdMatrix << 0.00005194, 0.0, 0.0, -0.00005194;
+    return boost::make_shared<image::Wcs>(crVal, crPix, cdMatrix);
+}
 
-    geom::PointD crPix(0), crVal(centroid);
-    Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
-    multifit::Wcs::Ptr wcs = boost::make_shared<multifit::Wcs> (crVal, crPix, cdMatrix);
+multifit::CharacterizedExposure<float>::Ptr makeCharExp(
+    multifit::Model::Ptr model, geom::PointD const & crVal
+) {
+    multifit::Wcs::Ptr wcs = makeWcs(crVal);
 
-    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 19, 19, 2);
-    multifit::FootprintConstPtr fp(psModel->computeProjectionFootprint(psf, wcs));
+    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 23, 23, 2);
+    det::Footprint::Ptr fp(model->computeProjectionFootprint(psf, wcs));
     image::BBox bbox = fp->getBBox();
 
-    image::MaskedImage<double> mi(
+    image::MaskedImage<float> mi(
         bbox.getWidth(), 
         bbox.getHeight() 
     );
     mi.setXY0(bbox.getX0(), bbox.getY0());
-    *(mi.getMask()) = 0;
-
-    multifit::ModelProjection::Ptr projection(psModel->makeProjection(psf, wcs, fp));
+    multifit::ModelProjection::Ptr projection(model->makeProjection(psf, wcs, fp));
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
     ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
-    variance = 0.5*0.5;
+    variance = 0.25;
 
     multifit::expandImage(*fp, mi, modelImage, variance);
+    multifit::CharacterizedExposure<float>::Ptr exp(
+        new multifit::CharacterizedExposure<float>(mi, *wcs, psf)
+    );
 
-    std::list<multifit::CharacterizedExposure<multifit::Pixel>::Ptr> exposureList;
+    return exp;
+}
 
-    multifit::CharacterizedExposure<double>::Ptr toAdd;
-    //one exposure with full coverage
-    toAdd.reset(new multifit::CharacterizedExposure<multifit::Pixel>(mi, *wcs, psf));
-    exposureList.push_back(toAdd);
+BOOST_AUTO_TEST_CASE(PsModel) {
+    double flux = 1;
+    geom::Point2D pixel = geom::makePointD(45,45);
+
+    geom::PointD crVal=geom::makePointD(150.11883, 2.20639);
+    multifit::Wcs::Ptr wcs0 = makeWcs(crVal);   
+
+    lsst::afw::coord::Coord::Ptr coord = wcs0->pixelToSky(pixel);
+
+    multifit::Model::Ptr model = 
+        multifit::ModelFactory::createPointSourceModel(
+            flux, 
+            coord->getPosition(lsst::afw::coord::DEGREES)
+        );
+
+    std::list<multifit::CharacterizedExposure<float>::Ptr> exposureList;
+    exposureList.push_back(makeCharExp(model, crVal));
     
-    //one exposure with partial coverage
-    image::BBox partial(image::PointI(0,0), bbox.getWidth() / 2, bbox.getHeight() /2);
-    image::MaskedImage<double> sub(mi, partial);
-    toAdd.reset(new multifit::CharacterizedExposure<multifit::Pixel> (sub, *wcs, psf));
-    exposureList.push_back(toAdd);
+    crVal = geom::makePointD(150.11863, 2.20583);
+    exposureList.push_back(makeCharExp(model, crVal));
 
-    //one exposure with no coverage, by shifting image origin
-    bbox.shift(-bbox.getX0(), -bbox.getY0());
-    image::MaskedImage<double> offset(mi, bbox, true);
-    offset.setXY0(-1000, -1000);
-    toAdd.reset(new multifit::CharacterizedExposure<multifit::Pixel> (offset, *wcs, psf));
-    exposureList.push_back(toAdd);
+    crVal= geom::makePointD(150.11917, 2.20639);
+    exposureList.push_back(makeCharExp(model, crVal));
 
-    multifit::ModelEvaluator evaluator(psModel, exposureList);
 
-    BOOST_CHECK_EQUAL(evaluator.getNProjections(), 2);    
-    BOOST_CHECK(evaluator.getNPixels() < fp->getNpix()*2);
+
+    multifit::ModelEvaluator evaluator(model, exposureList);
+
+    BOOST_CHECK_EQUAL(evaluator.getNProjections(), 3);    
+    BOOST_CHECK(evaluator.getNPixels() > 0);
+
     ndarray::Array<multifit::Pixel const, 1, 1> img;
     ndarray::Array<multifit::Pixel const, 1, 1> var;
     ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
@@ -93,6 +108,7 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     ndarray::shallow(lpd) = evaluator.computeLinearParameterDerivative();
     ndarray::shallow(npd) = evaluator.computeNonlinearParameterDerivative();
     
+    //test for nan's in matrices
     for (int i = 0; i < evaluator.getNPixels(); ++i){
         BOOST_CHECK_EQUAL(img[i], img[i]);
         BOOST_CHECK_EQUAL(var[i], var[i]);
@@ -104,4 +120,67 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
         for (int j = 0; j < evaluator.getNonlinearParameterSize(); ++j)
             BOOST_CHECK_EQUAL(npd[j][i], npd[j][i]);
     }
+}
+BOOST_AUTO_TEST_CASE(SersicModel) {
+    //define the ellipse parameters in pixel coordinates
+    double flux = 1;
+    geom::Point2D pixel = geom::makePointD(45,45);
+    geom::ellipses::Axes axes(3,5,0);
+
+    geom::PointD crVal=geom::makePointD(150.11883, 2.20639);
+    multifit::Wcs::Ptr wcs0 = makeWcs(crVal);   
+
+    lsst::afw::coord::Coord::Ptr coord = wcs0->pixelToSky(pixel);
+
+    //transform the ellipse parameters to be in sky coordinates
+    geom::AffineTransform transform = wcs0->linearizeAt(
+        coord->getPosition(lsst::afw::coord::DEGREES)
+    );
+    axes.transform(transform).inPlace();
+
+    multifit::Model::Ptr model = multifit::ModelFactory::createSersicModel(
+        flux, 
+        coord->getPosition(lsst::afw::coord::DEGREES),
+        axes, 
+        1.0
+    );
+
+    std::list<multifit::CharacterizedExposure<float>::Ptr> exposureList;
+    exposureList.push_back(makeCharExp(model, crVal));
+    
+    crVal = geom::makePointD(150.11863, 2.20583);
+    exposureList.push_back(makeCharExp(model, crVal));
+
+    crVal= geom::makePointD(150.11917, 2.20639);
+    exposureList.push_back(makeCharExp(model, crVal));
+
+    multifit::ModelEvaluator evaluator(model, exposureList);
+
+    BOOST_CHECK_EQUAL(evaluator.getNProjections(), 3);    
+    BOOST_CHECK(evaluator.getNPixels() > 0);
+    ndarray::Array<multifit::Pixel const, 1, 1> img;
+    ndarray::Array<multifit::Pixel const, 1, 1> var;
+    ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
+    ndarray::Array<multifit::Pixel const, 2, 2> lpd, npd;
+
+    ndarray::shallow(img) = evaluator.getDataVector();
+    ndarray::shallow(var) = evaluator.getVarianceVector();
+    ndarray::shallow(modelImg) = evaluator.computeModelImage();
+    ndarray::shallow(lpd) = evaluator.computeLinearParameterDerivative();
+    ndarray::shallow(npd) = evaluator.computeNonlinearParameterDerivative();
+    
+    //test for nan's in matrices
+    for (int i = 0; i < evaluator.getNPixels(); ++i){
+        BOOST_CHECK_EQUAL(img[i], img[i]);
+        BOOST_CHECK_EQUAL(var[i], var[i]);
+        BOOST_CHECK_EQUAL(modelImg[i], modelImg[i]);
+
+        for (int j = 0; j < evaluator.getLinearParameterSize(); ++j)
+            BOOST_CHECK_EQUAL(lpd[j][i], lpd[j][i]);
+
+        for (int j = 0; j < evaluator.getNonlinearParameterSize(); ++j)
+            BOOST_CHECK_EQUAL(npd[j][i], npd[j][i]);
+    }
+
+    
 }

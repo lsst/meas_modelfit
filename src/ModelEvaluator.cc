@@ -40,7 +40,7 @@ void multifit::ModelEvaluator::setExposureList(
     typedef CharacterizedExposure<ImagePixel, MaskPixel, VariancePixel> CharacterizedExposure;
     typedef std::list< boost::shared_ptr<CharacterizedExposure> > ExposureList;
     typedef typename ExposureList::const_iterator ExposureIterator;
-    
+    typedef typename lsst::afw::image::Mask<MaskPixel> Mask;
     _projectionList.clear();
     _validProducts = 0;
     
@@ -48,7 +48,7 @@ void multifit::ModelEvaluator::setExposureList(
     int nNonlinear = getNonlinearParameterSize();
 
     int pixSum = 0;
-
+    
     typename CharacterizedExposure::Ptr exposure;
     ModelProjection::Ptr projection;
     FootprintConstPtr footprint;
@@ -58,6 +58,9 @@ void multifit::ModelEvaluator::setExposureList(
     //exposures which contain fewer than _nMinPix pixels will be rejected
     //construct a list containing only those exposure which were not rejected
     ExposureList goodExposureList;
+    MaskPixel bitmask = Mask::getPlaneBitMask("BAD") | 
+        Mask::getPlaneBitMask("INTRP") | Mask::getPlaneBitMask("SAT") | 
+        Mask::getPlaneBitMask("CR") | Mask::getPlaneBitMask("EDGE");
 
     // loop to create projections
     for(ExposureIterator i(exposureList.begin()), end(exposureList.end());
@@ -69,7 +72,8 @@ void multifit::ModelEvaluator::setExposureList(
         footprint = _model->computeProjectionFootprint(psf, wcs);
 
         footprint = clipAndMaskFootprint<MaskPixel>(
-            *footprint, exposure->getMaskedImage().getMask()
+            *footprint, exposure->getMaskedImage().getMask(),
+            bitmask
         );
         //ignore exposures with too few contributing pixels        
         if (footprint->getNpix() > _nMinPix) {

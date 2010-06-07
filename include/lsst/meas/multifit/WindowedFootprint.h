@@ -10,6 +10,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
 #include <ndarray_fwd.hpp>
+#include <algorithm>
 
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/geom/Box.h"
@@ -103,16 +104,19 @@ public:
         for (SpanIterator i(_spanList->begin()), end(_spanList->end()); i != end; ++i) {
             WindowedSpan const & span(*i);
             int spanWidth = span.getWidth();
-            if (span.inWindow()) {
-                srcIter += span.getY() - lastY;
-                lastY = span.getY();
 
+            srcIter += span.getY() - lastY;
+            lastY = span.getY();
+
+            if (span.inWindow()) {
                 typename ndarray::Array<T, 2, C>::Reference::Iterator data(
                     srcIter->begin() + span.getX0()
                 );
                 std::copy(data, data + spanWidth, destIter);            
-
+            } else {
+                std::fill_n(destIter, spanWidth, 0);
             }
+            
             destIter += spanWidth;
         }
     }
@@ -191,15 +195,22 @@ public:
         for (SpanIterator i(_spanList->begin()), end(_spanList->end()); i != end; ++i) {
             WindowedSpan const & span(*i);
             int spanWidth = span.getWidth();
-            if (span.inWindow()) {
-                destRow += span.getY() - lastY;
-                lastY = span.getY();
 
+            destRow += span.getY() - lastY;
+            lastY = span.getY();
+
+            typename ndarray::Array<T, 2, C>::Reference::Iterator data(
+                destRow->begin() + span.getX0()
+            );
+
+            if (span.inWindow()) {
                 std::copy(
                     srcIter, 
                     srcIter + spanWidth,
-                    destRow->begin() + span.getX0()                
+                    data
                 );            
+            } else {
+                std::fill_n(data, spanWidth, 0);
             }
             srcIter += spanWidth;
         }

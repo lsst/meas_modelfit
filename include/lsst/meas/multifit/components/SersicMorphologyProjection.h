@@ -32,31 +32,33 @@ protected:
     friend class SersicMorphology;
     typedef ndarray::FourierTransform<Pixel, 2> FFT;
 
+    virtual void _handleLinearParameterChange();
+    virtual void _handleNonlinearParameterChange();
+
     SersicMorphologyProjection(
         SersicMorphology::ConstPtr const & morphology,
         lsst::afw::geom::Extent2I const & kernelDimensions,
         lsst::afw::geom::AffineTransform::ConstPtr const & transform
-    ) : FourierMorphologyProjection(morphology, kernelDimensions, transform) {
-
-        ndarray::shallow(_projectedParameterDerivative) = FFT::initializeK(
-            ndarray::makeVector(
-                getNonlinearParameterSize(), 
-                getDimensions().getY(), 
-                getDimensions().getX()
-            )
-        );
-        ndarray::shallow(_linearParameterDerivative) = FFT::initializeK(
-            ndarray::makeVector(
-                getLinearParameterSize(), 
-                getDimensions().getY(), 
-                getDimensions().getX()
-            )
-        );    
+    ) : FourierMorphologyProjection(morphology, kernelDimensions, transform), 
+        _dimensions(),
+        _validProducts(0)
+    {
+        _recomputeDimensions();
     }
 
     EllipseGridTransform::ConstPtr computeEllipseGridTransform() const;
     ndarray::FourierArray<Pixel, 3, 3> _projectedParameterDerivative;
     ndarray::FourierArray<Pixel, 3, 3> _linearParameterDerivative;
+
+private:
+    void _recomputeDimensions();
+    lsst::afw::geom::Extent2I _dimensions;
+
+    int _validProducts;
+    enum Products {
+        LINEAR_PARAMETER_DERIVATIVE=1,
+        PROJECTED_PARAMETER_DERIVATIVE=2,
+    };
 };
 
 }}}}

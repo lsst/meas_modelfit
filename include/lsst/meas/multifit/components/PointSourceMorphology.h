@@ -42,7 +42,7 @@ public:
         );
     }       
 
-    Parameter const & getFlux() const {return *(getLinearParameters()->data());}
+    Parameter const & getFlux() const {return *(getLinearParameters().data());}
 
     virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
         return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();

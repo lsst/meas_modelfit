@@ -140,22 +140,49 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
     Eigen::VectorXd newLinearDNonlinear;
     Eigen::MatrixXd jacobian;
 
+    ndarray::Array<Pixel const, 2, 2> dLinearArray, dNonlinearArray;    
+    Eigen::VectorXd linearParam = evaluator.getLinearParameters();
+    Eigen::VectorXd nonlinearParam = evaluator.getNonlinearParameters();
 
-    int nIterations = 0;
     double chisq=DBL_MAX, dChisq=DBL_MAX; 
     Eigen::VectorXd step;
+    bool endOnIteration = ((_terminationType & ITERATION) != 0);
     bool done = false;
-    while( !done) {  
-        ndarray::Array<Pixel const, 2, 1> dLinearArray(evaluator.computeLinearParameterDerivative());
+    int nIterations = 0;
+    for(; ((nIterations < _iterationMax) && endOnIteration) || !done; ++nIterations) {
+        try { 
+            ndarray::shallow(dLinearArray) = 
+                evaluator.computeLinearParameterDerivative();
+        } catch(multifit::ParameterRangeException & e) {
+            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+            multifit::ParameterMap::const_iterator i(paramMap.begin());
+            linearParam[0] = (linearParam[0] + i->second)/2.0;
+            evaluator.setLinearParameters(linearParam);
+            ndarray::shallow(dLinearArray) = 
+                evaluator.computeLinearParameterDerivative();
+        }       
 
         VectorMap dLinear = VectorMap(
-            evaluator.computeLinearParameterDerivative().getData(),
+            dLinearArray.getData(),
             evaluator.getNPixels()
         );
         dLinear.cwise() /= sigma;
 
+
+        try {    
+            ndarray::shallow(dNonlinearArray) =
+                evaluator.computeNonlinearParameterDerivative();
+        } catch(multifit::ParameterRangeException & e) {
+            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+            for(ParameterMap::const_iterator i(paramMap.begin()); i != paramMap.end(); ++i) {
+                nonlinearParam[i->first] = (nonlinearParam[i->first] + i->second)/2.0;
+            }
+            evaluator.setNonlinearParameters(nonlinearParam);
+            ndarray::shallow(dNonlinearArray) =
+                evaluator.computeNonlinearParameterDerivative();
+        }
         MatrixMap dNonlinear = MatrixMap(
-            evaluator.computeNonlinearParameterDerivative().getData(),
+            dNonlinearArray.getData(),
             evaluator.getNPixels(),
             evaluator.getNonlinearParameterSize()
         );
@@ -173,10 +200,18 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         //compute the chisq
         if (nIterations > 0) {
             dChisq = chisq;
+
+
         }
         chisq = (residual.dot(residual))/2;
         dChisq -= chisq;
-        
+        if( (_terminationType & DCHISQ) && (nIterations > 0) && 
+            (std::abs(dChisq) < _dChisqThreshold) 
+        ) {
+                done = true; 
+                result->convergenceFlags |= Result::DCHISQ_THRESHOLD_REACHED;
+                result->convergenceFlags |= Result::CONVERGED;
+        } 
 
         //compute derivative of new linear parameter w.r.t nonlinear parameters
         //this is a matrix with dimensions (nNonlinear, 1)
@@ -191,30 +226,42 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         //compute the step to take on nonlinear parameters:
         //this is a matrix with dimensions (nNonlinear, 1)
         step = jacobian.transpose()*residual;
-
-        (jacobian.transpose()*jacobian).llt().solveInPlace(step);
-
-        Eigen::VectorXd newNonlinear = evaluator.getNonlinearParameters() + step;
-        evaluator.setLinearParameters(&newLinear);
-        evaluator.setNonlinearParameters(newNonlinear.data());
-        ++nIterations;
-        
-        if (_terminationType & ITERATION && nIterations >= _iterationMax) {
-            done = true;
-            result->convergenceFlags |= Result::MAX_ITERATION_REACHED;
-        }
-        if( (_terminationType & DCHISQ) && (nIterations > 1) && (std::abs(dChisq) < _dChisqThreshold) ) {
-            done = true; 
-            result->convergenceFlags |= Result::DCHISQ_THRESHOLD_REACHED;
-            result->convergenceFlags |= Result::CONVERGED;
-        }
-        if( (_terminationType & STEP) && (nIterations > 1) && (step.norm() < _stepThreshold) ) {
+        if( (_terminationType & STEP) && (step.norm() < _stepThreshold) ) {
             done = true;
             result->convergenceFlags |= Result::STEP_THRESHOLD_REACHED;
             result->convergenceFlags |= Result::CONVERGED; 
         }
-    };
 
+        (jacobian.transpose()*jacobian).llt().solveInPlace(step);
+
+
+        linearParam = evaluator.getLinearParameters();
+        try {
+            evaluator.setLinearParameters(&newLinear);
+        } catch(multifit::ParameterRangeException & e) {
+            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+            multifit::ParameterMap::const_iterator i(paramMap.begin());
+            newLinear = (linearParam[0] + i->second)/2.0;
+            evaluator.setLinearParameters(&newLinear);
+        }
+
+        nonlinearParam = evaluator.getNonlinearParameters();
+        Eigen::VectorXd newNonlinear = nonlinearParam + step;
+        try {
+            evaluator.setNonlinearParameters(newNonlinear);
+        } catch(multifit::ParameterRangeException & e) {
+            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+            for(ParameterMap::const_iterator i(paramMap.begin()); i != paramMap.end(); ++i) {
+                newNonlinear[i->first] = (nonlinearParam[i->first] + i->second)/2.0;
+            }
+            evaluator.setNonlinearParameters(newNonlinear);
+        }
+    };
+    
+    if (nIterations >= _iterationMax) {
+        result->convergenceFlags |= Result::MAX_ITERATION_REACHED;
+    }
+    
     result->chisq = chisq;
     result->dChisq = dChisq;
     result->sdqaMetrics->set("nIterations", nIterations);

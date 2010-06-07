@@ -14,21 +14,24 @@ public:
     typedef boost::shared_ptr<FixedNonlinearMorphology const> ConstPtr;
 
     static Ptr create(Morphology const & base) {
-        boost::shared_ptr<ParameterVector> nonlinearParameters;
+        boost::shared_ptr<ParameterVector> linear(
+            new ParameterVector(base.getLinearParameters())
+        ); 
+        boost::shared_ptr<ParameterVector> nonlinear;
         if (base.getNonlinearParameterSize() != 0) {
-            nonlinearParameters.reset(
+            nonlinear.reset(
                 new ParameterVector(base.getNonlinearParameterSize())
             );
             std::copy(
                 base.beginNonlinear(), 
                 base.endNonlinear(), 
-                nonlinearParameters->data()
+                nonlinear->data()
             );            
         } else {
-            nonlinearParameters.reset(new ParameterVector());
+            nonlinear.reset(new ParameterVector());
         }
         
-        Ptr fixed(new FixedNonlinearMorphology(base, nonlinearParameters));
+        Ptr fixed(new FixedNonlinearMorphology(base, linear, nonlinear));
         return fixed;
     }
     virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
@@ -49,7 +52,7 @@ public:
         boost::shared_ptr<ParameterVector const> const &,
         size_t const &
     ) const {
-        Ptr fixed(new FixedNonlinearMorphology(*_base, getNonlinearParameters()));
+        Ptr fixed(new FixedNonlinearMorphology(*_base, _linearParameters, _nonlinearParameters));
         return fixed;
     }
 protected:    
@@ -60,9 +63,11 @@ protected:
 
     FixedNonlinearMorphology(
         Morphology const & base,
+        boost::shared_ptr<ParameterVector const> const & linearParameters,
         boost::shared_ptr<ParameterVector const> const & nonlinearParameters
-    ) : Morphology(base.getLinearParameters(), nonlinearParameters),
-        _base(base.create(base.getLinearParameters(), nonlinearParameters)) {}
+    ) : Morphology(linearParameters, nonlinearParameters),
+        _base(base.create(_linearParameters, _nonlinearParameters)) 
+    {}
 };
 
 }}}}

@@ -6,7 +6,7 @@ import lsst.afw.image
 import lsst.afw.detection
 import lsst.afw.geom
 import numpy
-
+import lsst.afw.display.ds9 as ds9
 from makeImageStack import makeImageStack
 
 def main():
@@ -15,8 +15,14 @@ def main():
     model = mf.createPointSourceModel(flux,position)
     exposureList = makeImageStack(model, 1, position.getX(), position.getY())
 
-    exposure = exposureList.front()
-    exposure.writeFits("PointSourceProjection")
+    exposure = exposureList.front()    
+    mi = exposure.getMaskedImage()
+    ds9.mtv(mi, frame=0, wcs=exposure.getWcs())
+    del mi
+    del exposure
+    del exposureList
+    del model
+    del position
     
 if __name__== "__main__":
     main()

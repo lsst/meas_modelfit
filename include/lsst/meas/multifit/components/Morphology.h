@@ -79,13 +79,16 @@ public:
 
      
     /// Return a vector of the linear parameters.
-    boost::shared_ptr<ParameterVector const> const getLinearParameters() const {
-        return _linearParameters;
+    ParameterVector const getLinearParameters() const {
+        return *_linearParameters;
     }
-    boost::shared_ptr<ParameterVector const> const getNonlinearParameters() const{
-        return _nonlinearParameters;
+    ParameterVector const getNonlinearParameters() const{
+        if(getNonlinearParameterSize() == 0)
+            return ParameterVector();        
+        return _nonlinearParameters->segment(_start, getNonlinearParameterSize());
     }
 
+    size_t const & getNonlinearParameterOffset() const {return _start;}
 
     /// Return an iterator to the Model's (nonlinear) morphology parameters.
     ParameterConstIterator beginNonlinear() const { 
@@ -143,7 +146,6 @@ protected:
      */
     virtual void _handleNonlinearParameterChange() {}
 
-private:
     boost::shared_ptr<ParameterVector const> _linearParameters;
     boost::shared_ptr<ParameterVector const> _nonlinearParameters;
     size_t _start;

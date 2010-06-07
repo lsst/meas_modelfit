@@ -33,5 +33,33 @@ components::MorphologyProjection::Ptr components::SersicMorphology::makeProjecti
 }
 
 void components::SersicMorphology::_handleNonlinearParameterChange() {
-    _indexFunctor = SersicCache::getInstance()->getRowFunctor(getSersicIndex());
+    ParameterMap errors;
+    int offset = getNonlinearParameterOffset();
+
+    lsst::afw::geom::ellipses::Distortion dist(*computeBoundingEllipseCore());
+    if(dist.getE() > 0.95) {
+        dist.setE(0.95);
+        lsst::afw::geom::ellipses::LogShear ls(dist);
+        Parameter gamma1 = ls[lsst::afw::geom::ellipses::LogShear::GAMMA1];
+        Parameter gamma2 = ls[lsst::afw::geom::ellipses::LogShear::GAMMA2];
+        errors[offset + GAMMA1] = gamma1;
+        errors[offset + GAMMA2] = gamma2;
+    }
+
+    Parameter sersic = getSersicIndex();
+    lsst::afw::geom::BoxD bounds = SersicCache::getInstance()->getParameterBounds();
+    try {
+        _indexFunctor = SersicCache::getInstance()->getRowFunctor(sersic);
+    } 
+    catch(lsst::pex::exceptions::InvalidParameterException &e) {
+        sersic = std::min(std::max(sersic, bounds.getMinY()), bounds.getMaxY()); 
+        errors[offset + SERSIC_INDEX] = sersic;
+    }
+
+    if(errors.size() > 0) {
+        throw LSST_EXCEPT(
+            lsst::meas::multifit::ParameterRangeException,
+            "SersicMorphology nonlinear parameters out of range", errors
+        );
+    }
 }

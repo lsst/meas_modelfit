@@ -104,8 +104,12 @@ afwDet::Footprint::Ptr multifit::makeFootprint(
 template <typename MaskPixel> 
 afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
     lsst::afw::detection::Footprint const & footprint,
-    typename lsst::afw::image::Mask<MaskPixel>::Ptr const & mask
+    typename lsst::afw::image::Mask<MaskPixel>::Ptr const & mask,
+    MaskPixel bitmask
 ) {
+    if(bitmask == 0)
+        bitmask = ~bitmask;
+
     lsst::afw::image::BBox const maskBBox(
         mask->getXY0(), mask->getWidth(), mask->getHeight()
     );
@@ -150,7 +154,7 @@ afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
 
         //loop over all span locations, slicing the span at maskedPixels
         for(int x = x0; x <= x1; ++x) {            
-            if(*maskIter != 0) {
+            if((*maskIter & bitmask) != 0) {
                 //masked pixel found within span
                 if (x > x0) {                    
                     //add beginning of spanto the fixedFootprint
@@ -281,8 +285,8 @@ public:
         int x,
         int y
     ) {
-       loc.image() += static_cast<ImagePixel>(*_imageIter);
-       loc.variance() += static_cast<VariancePixel>(*_varianceIter);
+       loc.image() = static_cast<ImagePixel>(*_imageIter);
+       loc.variance() = static_cast<VariancePixel>(*_varianceIter);
        ++_imageIter;
        ++_varianceIter;
     }
@@ -333,7 +337,8 @@ void multifit::expandImage(
 //explicit template instantiations
 template afwDet::Footprint::Ptr multifit::clipAndMaskFootprint<lsst::afw::image::MaskPixel>(
     afwDet::Footprint const &,
-    lsst::afw::image::Mask<lsst::afw::image::MaskPixel>::Ptr const &
+    lsst::afw::image::Mask<lsst::afw::image::MaskPixel>::Ptr const &,
+    lsst::afw::image::MaskPixel 
 );
 
 template void multifit::compressImage<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>(

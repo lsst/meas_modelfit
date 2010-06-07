@@ -41,19 +41,16 @@ public:
         Parameter const & sersicIndex
     ) { 
         lsst::afw::geom::ellipses::LogShear logShear(ellipse);
-        ParameterVector linear(LINEAR_SIZE), nonlinear(NONLINEAR_SIZE);
-        linear << flux;
-        nonlinear << logShear.getVector(), sersicIndex;
-        return SersicMorphology::Ptr(            
-            new SersicMorphology(
-                boost::make_shared<ParameterVector const>(linear),
-                boost::make_shared<ParameterVector const>(nonlinear)
-            )
-        );
+        boost::shared_ptr<ParameterVector> linear(new ParameterVector(LINEAR_SIZE));
+        boost::shared_ptr<ParameterVector> nonlinear(new ParameterVector(NONLINEAR_SIZE));
+        *linear << flux;
+        *nonlinear << logShear.getVector(), sersicIndex;
+        return SersicMorphology::Ptr(new SersicMorphology(linear,nonlinear));
+        
     }
 
     Parameter const & getFlux() const {
-        return *(getLinearParameters()->data() + FLUX);
+        return *(_linearParameters->data() + FLUX);
     }
     Parameter const & getSersicIndex() const {
         return *(beginNonlinear() + SERSIC_INDEX);

@@ -46,15 +46,15 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
         centroid, geom::makePointD(0,0), Eigen::Matrix2d::Identity()
     );
 
-    multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.5);
+    multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 23, 23, 2.0);
     multifit::FootprintConstPtr fp = psModel->computeProjectionFootprint(psf, wcs);
     
     BOOST_CHECK(fp->getNpix() > 0);
     multifit::ModelProjection::Ptr projection = psModel->makeProjection(psf, wcs, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), psModel);
    
-    multifit::ParameterVector linear(*psModel->getLinearParameters());
-    multifit::ParameterVector nonlinear(*psModel->getNonlinearParameters());
+    multifit::ParameterVector linear(psModel->getLinearParameters());
+    multifit::ParameterVector nonlinear(psModel->getNonlinearParameters());
 
     BOOST_CHECK_EQUAL(linear[0], flux);
     BOOST_CHECK_EQUAL(nonlinear[0], centroid[0]);
@@ -75,9 +75,10 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
         *wcs
     );
     exp.getMaskedImage().setXY0(bbox.getLLC());
-    multifit::expandImage<multifit::Pixel>(*fp, exp.getMaskedImage(), image, image);
+    lsst::afw::image::MaskedImage<multifit::Pixel> mi = exp.getMaskedImage();  
+    multifit::expandImage<multifit::Pixel>(*fp, mi, image, image);
     detection::setMaskFromFootprint<lsst::afw::image::MaskPixel>(
-        exp.getMaskedImage().getMask().get(), *fp, 1
+        mi.getMask().get(), *fp, 1
     );
 
     exp.getMaskedImage().getImage()->writeFits("psProjection_img.fits");

@@ -37,7 +37,19 @@ namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     lsst::afw::geom::PointD centroid = geom::PointD::make(0,0);
+
+    //define ellipse in pixel coordinates
     lsst::afw::geom::ellipses::Axes axes(3, 1, 1.3);
+
+    multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
+        centroid, 
+        geom::makePointD(0,0), 
+        Eigen::Matrix2d::Identity()
+    );
+    //transform ellipse to sky coordinates
+    geom::AffineTransform transform(wcs->linearizeAt(centroid));
+    axes.transform(transform).inPlace();
+
     lsst::afw::geom::ellipses::LogShear logShear(axes);
     double flux = 5.45;
     double sersicIndex = 2.0;
@@ -48,11 +60,7 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
 
     BOOST_CHECK_EQUAL(sgModel->getLinearParameterSize(), 1);
     BOOST_CHECK_EQUAL(sgModel->getNonlinearParameterSize(), 6);
-    multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
-        centroid, 
-        geom::makePointD(0,0), 
-        Eigen::Matrix2d::Identity()
-    );
+
 
     multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.0);
     multifit::FootprintConstPtr fp = sgModel->computeProjectionFootprint(psf, wcs);
@@ -61,8 +69,8 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     multifit::ModelProjection::Ptr projection = sgModel->makeProjection(psf, wcs, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), sgModel);
    
-    multifit::ParameterVector linear(*sgModel->getLinearParameters());
-    multifit::ParameterVector nonlinear(*sgModel->getNonlinearParameters());
+    multifit::ParameterVector linear(sgModel->getLinearParameters());
+    multifit::ParameterVector nonlinear(sgModel->getNonlinearParameters());
 
     BOOST_CHECK_EQUAL(linear[0], flux);
     BOOST_CHECK_EQUAL(nonlinear[0], centroid[0]);
@@ -72,17 +80,40 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     BOOST_CHECK_EQUAL(nonlinear[4], logShear[2]);
     BOOST_CHECK_EQUAL(nonlinear[5], sersicIndex);
 
+    ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
+    ndarray::Array<multifit::Pixel const, 2, 1> lpd, npd;
+
+    ndarray::shallow(modelImg) = projection->computeModelImage();
+    ndarray::shallow(lpd) = projection->computeLinearParameterDerivative();
+    ndarray::shallow(npd) = projection->computeNonlinearParameterDerivative();
+
     BOOST_CHECK_NO_THROW(projection->computeModelImage());
     BOOST_CHECK_NO_THROW(projection->computeLinearParameterDerivative());
     BOOST_CHECK_NO_THROW(projection->computeNonlinearParameterDerivative());
+    
+    //test for nan's in matrices
+    for (int i = 0; i < modelImg.getSize<0>(); ++i){
+        BOOST_CHECK_EQUAL(modelImg[i], modelImg[i]);
+
+        for (int j = 0; j < sgModel->getLinearParameterSize(); ++j)
+            BOOST_CHECK_EQUAL(lpd[j][i], lpd[j][i]);
+
+        for (int j = 0; j < sgModel->getNonlinearParameterSize(); ++j)
+            BOOST_CHECK_EQUAL(npd[j][i], npd[j][i]);
+    }
+
+    std::cerr << "npd" << npd <<std::endl;
+    std::cerr << "lpd" << lpd <<std::endl;
 
     lsst::afw::image::BBox fpBbox = fp->getBBox();
     lsst::afw::image::Exposure<double> modelImage(
         fpBbox.getWidth(), fpBbox.getHeight(), *wcs
     );
-    modelImage.getMaskedImage().setXY0(fpBbox.getLLC());
+    lsst::afw::image::MaskedImage<double> mi = modelImage.getMaskedImage();
+    mi.setXY0(fpBbox.getLLC());
+
     multifit::expandImage(
-        *fp, modelImage.getMaskedImage(), projection->computeModelImage(),
+        *fp, mi, projection->computeModelImage(),
         projection->computeLinearParameterDerivative()[0]
     );
     lsst::afw::detection::setMaskFromFootprint<lsst::afw::image::MaskPixel>(

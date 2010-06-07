@@ -68,31 +68,32 @@ BOOST_AUTO_TEST_CASE(compressImageTest) {
     *testImg.getMask() = 0;
 
     ndarray::Array<multifit::Pixel, 1, 1> img, var;
-    ndarray::shallow(img) = ndarray::allocate<multifit::Allocator>(ndarray::makeVector(25));
-    ndarray::shallow(var) = ndarray::allocate<multifit::Allocator>(ndarray::makeVector(25));
+
 
     lsst::afw::detection::Footprint fp(
         lsst::afw::image::BBox(lsst::afw::image::PointI(0,0), 5, 5)
     );
 
+    ndarray::shallow(img) = ndarray::allocate<multifit::Allocator>(ndarray::makeVector(fp.getNpix()));
+    ndarray::shallow(var) = ndarray::allocate<multifit::Allocator>(ndarray::makeVector(fp.getNpix()));
     multifit::compressImage<float, unsigned short, float>(fp, testImg, img, var);
     
     ndarray::Array<multifit::Pixel, 1,1>::iterator iImg(img.begin()), iVar(var.begin());
-    for(int i = 0; i < 25; ++i, ++iImg, ++iVar) {
+    for(int i = 0; i < fp.getNpix(); ++i, ++iImg, ++iVar) {
         BOOST_CHECK_CLOSE(*iImg, 5.0, 0.00001);
         BOOST_CHECK_CLOSE(*iVar, 1.0, 0.00001);
     }
 
     testImg.setXY0(1, 1);
     lsst::afw::detection::Footprint fp2(
-        lsst::afw::image::BBox(lsst::afw::image::PointI(1,1), 5, 5)
+        lsst::afw::image::BBox(lsst::afw::image::PointI(1,1), 2, 2)
     );
 
-    img = 0;
-    var = 0;
+    ndarray::shallow(img) = ndarray::allocate<multifit::Allocator>(ndarray::makeVector(fp2.getNpix()));
+    ndarray::shallow(var) = ndarray::allocate<multifit::Allocator>(ndarray::makeVector(fp2.getNpix()));
     multifit::compressImage(fp2, testImg, img, var);
     iImg = img.begin(), iVar = var.begin();
-    for(int i = 0; i < 25; ++i, ++iImg, ++iVar) {
+    for(int i = 0; i < fp2.getNpix(); ++i, ++iImg, ++iVar) {
         BOOST_CHECK_CLOSE(*iImg, 5.0, 0.00001);
         BOOST_CHECK_CLOSE(*iVar, 1.0, 0.00001);
     }

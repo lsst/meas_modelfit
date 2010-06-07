@@ -176,13 +176,20 @@ public:
      * Immutable access to the model's linear parameters
      */
     ParameterVector const & getLinearParameters() const {
-        return *_model->getLinearParameters();
+        return _model->getLinearParameters();
     }
     /**
      * Immutable access to the model's nonlinear parameters
      */
     ParameterVector const & getNonlinearParameters() const {
-        return *_model->getNonlinearParameters();
+        return _model->getNonlinearParameters();
+    }
+
+    /**
+     * Set the model's linear parameters
+     */
+    void setLinearParameters(ParameterVector const & parameters) {
+        setLinearParameters(parameters.data());
     }
 
     /**
@@ -195,6 +202,14 @@ public:
         _validProducts &= (~MODEL_IMAGE);
         _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
     }
+
+    /**
+     * Set the model's nonlinear parameters
+     */
+    void setNonlinearParameters(ParameterVector const & parameters) {
+        setNonlinearParameters(parameters.data());
+    }
+
     /**
      * Set the model's nonlinear parameters
      */

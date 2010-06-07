@@ -26,7 +26,8 @@ lsst::afw::detection::Footprint::Ptr makeFootprint(
 template <typename MaskPixel>
 lsst::afw::detection::Footprint::Ptr clipAndMaskFootprint(
     lsst::afw::detection::Footprint const & footprint,
-    typename lsst::afw::image::Mask<MaskPixel>::Ptr const & mask
+    typename lsst::afw::image::Mask<MaskPixel>::Ptr const & mask,
+    MaskPixel bitmask = 0
 );
 
 template <typename ImagePixel, typename MaskPixel, typename VariancePixel>

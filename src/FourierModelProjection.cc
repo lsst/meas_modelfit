@@ -33,6 +33,7 @@ public:
                 ndarray::makeVector(translation.getY(), translation.getX()), 
                 _factor
             );
+
             _valid = true;
         }
 
@@ -80,7 +81,9 @@ public:
             _parent->_applyKernel(_kLPD.begin(),_kLPD.end());
             _ifft->execute();
             _matrixValid = true;
+
         }
+
         return _finalLPD;
     }
 
@@ -89,9 +92,10 @@ public:
         if (!_imageValid) {
             getCompressedVectorView(_unconvolvedImage.getBase()) = 
                 getCompressedMatrixView(_unconvolvedMatrix.getBase()) * 
-                (*_parent->getModel()->getLinearParameters());
+                (_parent->getModel()->getLinearParameters());
             _imageValid = true;
         }
+
         return _unconvolvedImage;
     }
 
@@ -435,7 +439,7 @@ void multifit::FourierModelProjection::_setDimensions() {
     _wf = boost::make_shared<WindowedFootprint>(*getFootprint(), _innerBBox);
 
     // Shift _innerBBox to be defined relative to _outerBBox.
-    _innerBBox.shift(lsst::afw::geom::Point2I(0) - _outerBBox.getMin());
+    _innerBBox.shift(lsst::afw::geom::Point2I() - _outerBBox.getMin());
 
     _localKernel->setDimensions(_outerBBox.getWidth(), _outerBBox.getHeight());    
     _linearMatrixHandler.reset(new LinearMatrixHandler(this));
@@ -473,7 +477,8 @@ void multifit::FourierModelProjection::_applyKernel(
 
     lsst::afw::math::FourierCutout::Ptr fourierCutout = 
         _localKernel->getFourierImage();
-   
+  
+    lsst::afw::math::FourierCutout::const_iterator i(fourierCutout->begin());
     //Create an Array over the fourierCutout allocated image
     ndarray::Array<std::complex<Pixel>, 2, 2> externalImg(
         ndarray::external(
@@ -491,6 +496,7 @@ void multifit::FourierModelProjection::_applyKernel(
         fourierCutout->getImageWidth(),
         externalImg
     );
+
 
     //delegate to generic overload of this function
     _applyKernel(iter, end, kernelImage);

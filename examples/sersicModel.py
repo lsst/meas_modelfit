@@ -4,6 +4,7 @@ import lsst.afw.geom
 import lsst.afw.geom.ellipses
 import lsst.meas.algorithms
 import numpy
+import lsst.afw.display.ds9 as ds9
 from makeImageStack import makeImageStack
 
 def main():
@@ -16,7 +17,7 @@ def main():
     exposureList = makeImageStack(model, 1, centroid[0], centroid[1])
 
     exposure= exposureList.front()
-    exposure.writeFits("SersicModelProjection")
+    ds9.mtv(exposure.getMaskedImage(), frame=0, wcs=exposure.getWcs())
 
     centroidMeasurer = lsst.meas.algorithms.createMeasureCentroid("SDSS")
     centroid = centroidMeasurer.apply(

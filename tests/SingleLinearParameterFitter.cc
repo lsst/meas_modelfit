@@ -51,15 +51,16 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
 
     multifit::CharacterizedExposure<double>::Ptr exposure = 
         boost::make_shared<multifit::CharacterizedExposure<double> >(bbox.getWidth(), bbox.getHeight(), *wcs, psf);
-    exposure->getMaskedImage().setXY0(bbox.getX0(), bbox.getY0());
-    *exposure->getMaskedImage().getMask() = 0;
+    lsst::afw::image::MaskedImage<double> mi = exposure->getMaskedImage();
+    mi.setXY0(bbox.getX0(), bbox.getY0());
+    *mi.getMask() = 0;
 
     multifit::ModelProjection::Ptr projection(psModel->makeProjection(psf, wcs, fp));
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
     ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
     variance = 0.5*0.5;
 
-    multifit::expandImage(*fp, exposure->getMaskedImage(), modelImage, variance);
+    multifit::expandImage(*fp, mi, modelImage, variance);
 
     std::list<multifit::CharacterizedExposure<double>::Ptr> exposureList;
     for(int i=0; i < 5; ++i) {
@@ -79,3 +80,5 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
 
     multifit::SingleLinearParameterFitter::Result::Ptr result1 = fitter.apply(evaluator);
 }
+
+

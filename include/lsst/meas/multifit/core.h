@@ -16,6 +16,7 @@
 #include "lsst/afw/math/Kernel.h"
 #include "lsst/meas/algorithms/PSF.h"
 #include "lsst/afw/detection/Footprint.h"
+#include "lsst/pex/exceptions/Runtime.h"
 
 namespace lsst {
 namespace meas {
@@ -26,6 +27,7 @@ typedef double Parameter;
 
 typedef Parameter * ParameterIterator;
 typedef Parameter const * ParameterConstIterator;
+typedef std::map<int, Parameter> ParameterMap;
 
 typedef Eigen::aligned_allocator<char> Allocator;
 typedef Eigen::VectorXd ParameterVector;
@@ -42,6 +44,29 @@ typedef boost::shared_ptr<Psf const> PsfConstPtr;
 typedef boost::shared_ptr<Kernel const> KernelConstPtr;
 typedef boost::shared_ptr<Wcs const> WcsConstPtr;
 typedef boost::shared_ptr<Footprint const> FootprintConstPtr;
+
+class ParameterRangeException: public lsst::pex::exceptions::RangeErrorException {
+public:
+    ParameterRangeException(
+        char const * file, int line, char const * func,
+        std::string const & message,
+        ParameterMap outOfRangeParameterMap
+    ) : lsst::pex::exceptions::RangeErrorException(file, line, func, message),
+        _outOfRangeParameterMap(outOfRangeParameterMap) 
+    {}
+    
+    virtual char const * getType(void) const throw() {
+        return "lsst::meas::multifit::ParameterRangeException *";
+    }
+    virtual lsst::pex::exceptions::Exception* clone(void) const {
+        return new ParameterRangeException(*this);
+    }
+    ParameterMap const & getOutOfRangeParameterMap() const {
+        return _outOfRangeParameterMap;
+    }
+private:
+    ParameterMap _outOfRangeParameterMap;
+};
 
 }}} // namespace lsst::meas::multifit
 
