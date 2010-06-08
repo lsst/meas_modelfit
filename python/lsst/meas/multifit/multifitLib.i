@@ -102,7 +102,7 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %import "lsst/afw/image/imageLib.i"
 %import "lsst/afw/detection/detectionLib.i"
 %import "lsst/afw/math/mathLib.i"
-
+%import "lsst/afw/coord/coordLib.i"
 
 %import "lsst/meas/algorithms/algorithmsLib.i"
 
@@ -250,20 +250,18 @@ SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::Compone
 %downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::ComponentModelProjection);
 %downcast(lsst::meas::multifit::ComponentModelProjection, lsst::meas::multifit::FourierModelProjection);
 
-
 SWIG_SHARED_PTR_DERIVED(
-    CharacterizedExposureFPtr, 
+    CharacterizedExposurePtrF, 
     lsst::afw::image::Exposure<float>,
-    lsst::meas::multifit::CharacterizedExposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+    lsst::meas::multifit::CharacterizedExposure<float>
 );                      
 SWIG_SHARED_PTR_DERIVED(
-    CharacterizedExposureDPtr, 
+    CharacterizedExposurePtrD, 
     lsst::afw::image::Exposure<double>,
-    lsst::meas::multifit::CharacterizedExposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+    lsst::meas::multifit::CharacterizedExposure<double>
 ); 
 
 %include "lsst/meas/multifit/CharacterizedExposure.h"
-
 
 SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
 %nodefaultctor lsst::meas::multifit::ModelEvaluator;
@@ -275,28 +273,35 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
     %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
     %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
     
-    %template(ModelEvaluator) ModelEvaluator<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>; 
-    %template(ModelEvaluator) ModelEvaluator<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>; 
-    %template(setExposureList) setExposureList<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>; 
-    %template(setExposureList) setExposureList<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
+    %template(ModelEvaluator) ModelEvaluator<double>; 
+    %template(ModelEvaluator) ModelEvaluator<float>; 
+    %template(setExposureList) setExposureList<double>; 
+    %template(setExposureList) setExposureList<float>;
 };
 
 SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult)
 %include "lsst/meas/multifit/SingleLinearParameterFitter.h"
 
-%template(CharacterizedExposureF) lsst::meas::multifit::CharacterizedExposure<
-    float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
->;
-%template(CharacterizedExposureD) lsst::meas::multifit::CharacterizedExposure<
-    double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
->;
-%template(CharacterizedExposureListF) std::list<
-    lsst::meas::multifit::CharacterizedExposure<
-        float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
-    >::Ptr
->;
-%template(CharacterizedExposureListD) std::list<
-    lsst::meas::multifit::CharacterizedExposure<
-        double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel
-    >::Ptr
->;
+%template(CharacterizedExposureF) lsst::meas::multifit::CharacterizedExposure<float>;
+%template(CharacterizedExposureListF) 
+    std::list<boost::shared_ptr<lsst::meas::multifit::CharacterizedExposure<float> > >;
+%template(makeCharacterizedExposure) 
+    lsst::meas::multifit::makeCharacterizedExposure<float>;
+%extend lsst::meas::multifit::CharacterizedExposure<float> {
+    %pythoncode {
+        def makeList(self):
+            return CharacterizedExposureListF()
+    }
+};
+%template(CharacterizedExposureD) lsst::meas::multifit::CharacterizedExposure<double>;
+%template(CharacterizedExposureListD) 
+    std::list<boost::shared_ptr<lsst::meas::multifit::CharacterizedExposure<double> > >;
+%template(makeCharacterizedExposure) 
+    lsst::meas::multifit::makeCharacterizedExposure<double>;
+%extend lsst::meas::multifit::CharacterizedExposure<double> {
+    %pythoncode {
+        def makeList(self):
+            return CharacterizedExposureListD()
+    }
+};
+

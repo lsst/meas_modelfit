@@ -2,6 +2,7 @@
 #define LSST_MEAS_MULTIFIT_MODEL_FACTORY_H
 
 #include "lsst/afw/geom/Point.h"
+#include "lsst/afw/coord/Coord.h"
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
@@ -24,6 +25,15 @@ public:
         );
         return ComponentModel::create(astrometry, morphology);
     }
+    static Model::Ptr createPointSourceModel(
+        Parameter const & flux,
+        lsst::afw::coord::Coord const & coord
+    ) {
+        return createPointSourceModel(
+            flux,
+            coord.getPosition(lsst::afw::coord::DEGREES)
+        );
+    }
 
     static Model::Ptr createSersicModel(
         Parameter const & flux,
@@ -37,6 +47,20 @@ public:
             new components::Astrometry(centroid)
         );
         return ComponentModel::create(astrometry, morphology); 
+    }
+    
+    static Model::Ptr createSersicModel(
+        Parameter const & flux,
+        lsst::afw::coord::Coord const & coord,
+        lsst::afw::geom::ellipses::Core const & ellipse,
+        Parameter const & sersicIndex
+    ) {
+        return createSersicModel(
+            flux, 
+            coord.getPosition(lsst::afw::coord::DEGREES),
+            ellipse, 
+            sersicIndex
+        );
     }
 };
 

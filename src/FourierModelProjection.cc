@@ -441,7 +441,8 @@ void multifit::FourierModelProjection::_setDimensions() {
     // Shift _innerBBox to be defined relative to _outerBBox.
     _innerBBox.shift(lsst::afw::geom::Point2I() - _outerBBox.getMin());
 
-    _localKernel->setDimensions(_outerBBox.getWidth(), _outerBBox.getHeight());    
+    _localKernel->setDimensions(_outerBBox.getWidth(), _outerBBox.getHeight());
+    _shifter.reset(new Shifter(this));
     _linearMatrixHandler.reset(new LinearMatrixHandler(this));
     if (_nonlinearMatrixHandler)
         _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
@@ -478,7 +479,6 @@ void multifit::FourierModelProjection::_applyKernel(
     lsst::afw::math::FourierCutout::Ptr fourierCutout = 
         _localKernel->getFourierImage();
   
-    lsst::afw::math::FourierCutout::const_iterator i(fourierCutout->begin());
     //Create an Array over the fourierCutout allocated image
     ndarray::Array<std::complex<Pixel>, 2, 2> externalImg(
         ndarray::external(

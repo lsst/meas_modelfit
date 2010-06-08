@@ -17,12 +17,11 @@ namespace lsst { namespace meas { namespace multifit {
  *
  * All functionality of lsst::afw::image::Exposure is exposed.
  */
-template<typename ImageT, typename MaskT=lsst::afw::image::MaskPixel,
-         typename VarianceT=lsst::afw::image::VariancePixel>
-class CharacterizedExposure : public lsst::afw::image::Exposure<ImageT,MaskT,VarianceT> {
+template<typename ImagePixelT>
+class CharacterizedExposure : public lsst::afw::image::Exposure<ImagePixelT> {
 public:
-    typedef lsst::afw::image::MaskedImage<ImageT, MaskT, VarianceT> MaskedImageT;
-    typedef lsst::afw::image::Exposure<ImageT, MaskT, VarianceT> ExposureT;
+    typedef lsst::afw::image::MaskedImage<ImagePixelT> MaskedImageT;
+    typedef lsst::afw::image::Exposure<ImagePixelT> ExposureT;
     typedef lsst::meas::algorithms::PSF PSF;
 
     typedef boost::shared_ptr<CharacterizedExposure> Ptr;
@@ -78,6 +77,17 @@ public:
 private:
     lsst::meas::algorithms::PSF::Ptr _psf;
 };
+
+template<typename ImagePixelT>
+typename CharacterizedExposure<ImagePixelT>::Ptr makeCharacterizedExposure(
+    typename lsst::afw::image::Exposure<ImagePixelT> & exposure,
+    lsst::meas::algorithms::PSF::Ptr const & psf
+) {
+    typename CharacterizedExposure<ImagePixelT>::Ptr charExp(
+        new CharacterizedExposure<ImagePixelT>(exposure, psf)
+    );
+    return charExp;
+}
 
 }}}
 

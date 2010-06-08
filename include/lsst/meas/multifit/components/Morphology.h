@@ -88,13 +88,23 @@ public:
         return _nonlinearParameters->segment(_start, getNonlinearParameterSize());
     }
 
+    /**
+     * Return the index of the fist Nonlinear Parameters specific to this 
+     * morphology
+     */
     size_t const & getNonlinearParameterOffset() const {return _start;}
 
-    /// Return an iterator to the Model's (nonlinear) morphology parameters.
+    /**
+     * Return an iterator to the start of the morphology's nonlinear 
+     * parameters.
+     */
     ParameterConstIterator beginNonlinear() const { 
         return _nonlinearParameters->data() + _start; 
     }
 
+    /**
+     * Return an iterator to the end of the morphology's nonlinear parameters.
+     */
     ParameterConstIterator endNonlinear() const {
         return beginNonlinear()+getNonlinearParameterSize();
     }
@@ -105,14 +115,16 @@ public:
      *  Typically used only by ComponentModel. The parameters of this Morphology
      *  will not be shared with the new Morphology.
      *
-     *  @param linearParameterVector The owning ComponentModel's linear 
+     *  @param linearParameters The owning ComponentModel's linear 
      *      parameter vector
-     *  @param nonlinearParameterIter Iterator to the first Morphology-specific
-     *      parameter in the owning ComponentModel's nonlinear parameter vector.
+     *  @param nonlinearParameters The owning ComponentModel's nonlinear
+     *      parameter vector
+     *  @param start index of the first nonlinear parameter relevant to this
+     *      morphology
      */
     virtual Morphology::Ptr create(
-        boost::shared_ptr<ParameterVector const> const & linearParameterVector,
-        boost::shared_ptr<ParameterVector const> const & nonlinearParameterVector,
+        boost::shared_ptr<ParameterVector const> const & linearParameters,
+        boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
         size_t const & start=0 
     ) const = 0;
 protected:

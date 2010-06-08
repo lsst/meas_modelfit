@@ -57,12 +57,10 @@ public:
      * @param nMinPix minimum number of pixels an exposure must contribute to 
      *      the model's projected footprint to be used
      */
-    template <typename ImagePixel, typename MaskPixel, typename VariancePixel>
+    template <typename ImagePixel>
     ModelEvaluator(
         Model::ConstPtr const & model, 
-        std::list< boost::shared_ptr< 
-            CharacterizedExposure<ImagePixel, MaskPixel, VariancePixel>
-        > > const & exposureList,
+        std::list<boost::shared_ptr<CharacterizedExposure<ImagePixel> > > const & exposureList,
         int const nMinPix = 0 
     ) : _validProducts(0),
         _model(model->clone()) 
@@ -70,11 +68,9 @@ public:
         setMinPixels(nMinPix);
         setExposureList(exposureList);
     }
-    template<typename ImagePixel, typename MaskPixel, typename VariancePixel>
+    template<typename ImagePixel>
     void setExposureList(
-        std::list< boost::shared_ptr< CharacterizedExposure<
-                ImagePixel, MaskPixel, VariancePixel
-            > > > const & exposureList
+        std::list<boost::shared_ptr<CharacterizedExposure<ImagePixel> > > const & exposureList
     );
 
 #ifndef SWIG

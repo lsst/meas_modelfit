@@ -31,16 +31,16 @@ namespace multifit = lsst::meas::multifit;
  * @sa getNMinPix
  * @sa setNMinPix
  */
-template<typename ImagePixel, typename MaskPixel, typename VariancePixel>
+template<typename ImagePixel>
 void multifit::ModelEvaluator::setExposureList(
-    std::list< boost::shared_ptr< CharacterizedExposure<
-            ImagePixel, MaskPixel, VariancePixel
-        > > > const & exposureList
+    std::list<boost::shared_ptr<CharacterizedExposure<ImagePixel> > > const & exposureList
 ) { 
-    typedef CharacterizedExposure<ImagePixel, MaskPixel, VariancePixel> CharacterizedExposure;
-    typedef std::list< boost::shared_ptr<CharacterizedExposure> > ExposureList;
+    typedef CharacterizedExposure<ImagePixel> CharacterizedExposure;
+    typedef std::list<typename CharacterizedExposure::Ptr> ExposureList;
     typedef typename ExposureList::const_iterator ExposureIterator;
+    typedef lsst::afw::image::MaskPixel MaskPixel;
     typedef typename lsst::afw::image::Mask<MaskPixel> Mask;
+
     _projectionList.clear();
     _validProducts = 0;
     
@@ -101,11 +101,11 @@ void multifit::ModelEvaluator::setExposureList(
     int nPix;
     int pixelStart = 0, pixelEnd;
 
-    ExposureIterator exposureIter(goodExposureList.begin());
+    ExposureIterator goodExposure(goodExposureList.begin());
 
     //loop to assign matrix buffers to each projection Frame
     for(ProjectionIterator i(_projectionList.begin()), end(_projectionList.end()); 
-        i != end; ++i
+        i != end; ++i, ++goodExposure
     ) {
         ModelProjection & projection(**i);
         nPix = projection.getFootprint()->getNpix();
@@ -114,7 +114,7 @@ void multifit::ModelEvaluator::setExposureList(
         // compress the exposure using the footprint
         compressImage(
             *projection.getFootprint(), 
-            (*exposureIter)->getMaskedImage(), 
+            (*goodExposure)->getMaskedImage(), 
             _dataVector[ndarray::view(pixelStart, pixelEnd)], 
             _varianceVector[ndarray::view(pixelStart, pixelEnd)] 
         );
@@ -134,7 +134,6 @@ void multifit::ModelEvaluator::setExposureList(
         );
 
         pixelStart = pixelEnd;
-        ++exposureIter;
     }   
 }
 
@@ -143,7 +142,8 @@ void multifit::ModelEvaluator::setExposureList(
  *
  * @sa ModelProjection::computeModelImage
  */
-ndarray::Array<multifit::Pixel const, 1, 1> multifit::ModelEvaluator::computeModelImage() {
+ndarray::Array<multifit::Pixel const, 1, 1> 
+multifit::ModelEvaluator::computeModelImage() {
     if(!(_validProducts & MODEL_IMAGE)) {
         for( ProjectionIterator i(_projectionList.begin()), end(_projectionList.end());
              i  != end; ++i
@@ -177,7 +177,8 @@ multifit::ModelEvaluator::computeLinearParameterDerivative() {
  *
  * @sa ModelProjection::computeNonlinearParameterDerivative
  */
-ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
+ndarray::Array<multifit::Pixel const, 2, 2> 
+multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
     if(!(_validProducts & NONLINEAR_PARAMETER_DERIVATIVE)) {
         for( ProjectionIterator i(_projectionList.begin()), 
              end(_projectionList.end()); i  != end; ++i
@@ -192,13 +193,11 @@ ndarray::Array<multifit::Pixel const, 2, 2> multifit::ModelEvaluator::computeNon
 
 
 //explicit templating
-template void multifit::ModelEvaluator::setExposureList<float, 
-    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+template void multifit::ModelEvaluator::setExposureList<float>
 (
     std::list<boost::shared_ptr<CharacterizedExposure<float> > > const &
 );
-template void multifit::ModelEvaluator::setExposureList<double, 
-    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+template void multifit::ModelEvaluator::setExposureList<double>
 (
     std::list<boost::shared_ptr<CharacterizedExposure<double> > > const &
 );

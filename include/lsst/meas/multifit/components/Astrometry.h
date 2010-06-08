@@ -4,7 +4,7 @@
 
 #include <Eigen/Core>
 #include <boost/shared_ptr.hpp>
-
+#include "lsst/afw/coord/Coord.h"
 #include "lsst/afw/image/Utils.h"
 #include "lsst/pex/exceptions/Runtime.h"
 #include "lsst/meas/multifit/core.h"
@@ -54,6 +54,10 @@ public:
         _parameterIter(_parameters->data())
     {}
     
+    explicit Astrometry(lsst::afw::coord::Coord const & coord) : 
+        _parameters(new ParameterVector(coord.getPosition(lsst::afw::coord::DEGREES).asVector())),
+        _parameterIter(_parameters->data())
+    {}
 
     explicit Astrometry(Astrometry const & other) :
         _parameters(new ParameterVector(other.computePosition().asVector())),

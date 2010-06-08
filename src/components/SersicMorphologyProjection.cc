@@ -4,7 +4,6 @@
 #include "lsst/pex/exceptions/Runtime.h"
 #include <ndarray/eigen.hpp>
 
-#include <iostream>
 namespace multifit = lsst::meas::multifit;
 namespace components = multifit::components;
 
@@ -105,7 +104,7 @@ components::SersicMorphologyProjection::computeLinearParameterDerivative() {
                 catch (lsst::pex::exceptions::InvalidParameterException & ) {
                     throw LSST_EXCEPT(
                         lsst::pex::exceptions::LogicErrorException,
-                        "k value out of range. Check SersicCachePolicy"
+                        (boost::format("k %1% value out of range. Check SersicCachePolicy")%k).str()
                     );
                 }
             }
@@ -158,7 +157,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 catch (lsst::pex::exceptions::InvalidParameterException &) {
                     throw LSST_EXCEPT(
                         lsst::pex::exceptions::LogicErrorException,
-                        "k value out of range. Check SersicCachePolicy"
+                        (boost::format("k %1% value out of range. Check SersicCachePolicy")%k).str()
                     );
 
                 }
@@ -188,7 +187,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 } catch(lsst::pex::exceptions::InvalidParameterException &) {
                     throw LSST_EXCEPT(
                         lsst::pex::exceptions::LogicErrorException,
-                        "k value out of range. Check SersicCachePolicy"
+                        (boost::format("k %1% value out of range. Check SersicCachePolicy")%k).str()
                     );
                 }
                 ndarray::viewAsEigen(*j).end<1>() << static_cast<std::complex<Pixel> >(
@@ -199,7 +198,6 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
         _validProducts |= PROJECTED_PARAMETER_DERIVATIVE;
     }
 
-    //std::cerr<< "ppd" << _projectedParameterDerivative << std::endl;
     return _projectedParameterDerivative;
 }
     
@@ -231,8 +229,6 @@ components::SersicMorphologyProjection::computeTransformParameterJacobian() cons
 
 void components::SersicMorphologyProjection::_handleNonlinearParameterChange() {
     _recomputeDimensions();
-
-    
 
     _validProducts &= ~LINEAR_PARAMETER_DERIVATIVE;
     _validProducts &= ~PROJECTED_PARAMETER_DERIVATIVE;
