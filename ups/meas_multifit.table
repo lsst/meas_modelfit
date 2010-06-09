@@ -1,11 +1,8 @@
 # For each dependency except python, list it here along with its minimum
 # version number.
-setupRequired(boost >= 1.37.0)
-setupRequired(utils >= 3.4)
-setupRequired(afw >= 3.3.23)
-setupRequired(pex_exceptions >= 3.2)
-setupRequired(meas_algorithms >= 3.0.11)
-setupRequired(daf_base >= 3.2.9)
+
+setupRequired(afw >= 3.5.2)
+setupRequired(meas_algorithms >= 3.2.0)
 
 # The following is boilerplate for all packages.
 setupRequired(base >= 3.1)
