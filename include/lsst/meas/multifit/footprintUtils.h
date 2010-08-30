@@ -33,9 +33,6 @@
 
 #include "boost/shared_ptr.hpp"
 #include "ndarray.hpp"
-#include "lsst/afw/geom/Box.h"
-#include "lsst/afw/image/MaskedImage.h"
-#include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/multifit/core.h"
 
 namespace lsst {
@@ -46,25 +43,25 @@ lsst::afw::detection::Footprint::Ptr makeFootprint(
     lsst::afw::geom::ellipses::Ellipse const & ellipse
 );
 
-template <typename MaskPixel>
+template <typename MaskT>
 lsst::afw::detection::Footprint::Ptr clipAndMaskFootprint(
     lsst::afw::detection::Footprint const & footprint,
-    typename lsst::afw::image::Mask<MaskPixel>::Ptr const & mask,
-    MaskPixel bitmask = 0
+    lsst::afw::image::Mask<MaskT> const & mask,
+    MaskT const & bitmask = ~0x0
 );
 
-template <typename ImagePixel, typename MaskPixel, typename VariancePixel>
+template <typename ImageT, typename MaskT, typename VarianceT>
 void compressImage(
     lsst::afw::detection::Footprint const & footprint,
-    lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> const & maskedImage,
+    lsst::afw::image::MaskedImage<ImageT, MaskT, VarianceT> const & maskedImage,
     ndarray::Array<Pixel, 1, 1> const & imageDest,
     ndarray::Array<Pixel, 1, 1> const & varianceDest
 );
 
-template <typename ImagePixel, typename MaskPixel, typename VariancePixel>
+template <typename ImageT, typename MaskT, typename VarianceT>
 void expandImage(
     lsst::afw::detection::Footprint const & footprint,
-    lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> & maskedImage,
+    lsst::afw::image::MaskedImage<ImageT, MaskT, VarianceT> & maskedImage,
     ndarray::Array<Pixel const, 1, 1> const & imageSrc,
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
 );

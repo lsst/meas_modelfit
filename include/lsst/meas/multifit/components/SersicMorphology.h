@@ -78,7 +78,7 @@ public:
         return *(beginNonlinear() + SERSIC_INDEX);
     }
 
-    virtual lsst::afw::geom::ellipses::BaseCore::Ptr computeBoundingEllipseCore() const;
+    virtual PTR(lsst::afw::geom::ellipses::BaseCore) computeBoundingEllipseCore() const;
 
     virtual MorphologyProjection::Ptr makeProjection(
         lsst::afw::geom::Extent2I const & kernelSize,

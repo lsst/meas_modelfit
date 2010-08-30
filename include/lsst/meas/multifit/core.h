@@ -37,8 +37,8 @@
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/math/Kernel.h"
-#include "lsst/meas/algorithms/PSF.h"
 #include "lsst/afw/detection/Footprint.h"
+#include "lsst/afw/detection/Psf.h"
 #include "lsst/pex/exceptions/Runtime.h"
 
 namespace lsst {
@@ -57,16 +57,6 @@ typedef Eigen::VectorXd ParameterVector;
 typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> > MatrixMap;
 typedef Eigen::Block<MatrixMap> MatrixMapBlock;
 typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, 1> > VectorMap;
-
-typedef lsst::meas::algorithms::PSF Psf;
-typedef lsst::afw::math::Kernel Kernel;
-typedef lsst::afw::image::Wcs Wcs;
-typedef lsst::afw::detection::Footprint Footprint;
-
-typedef boost::shared_ptr<Psf const> PsfConstPtr;
-typedef boost::shared_ptr<Kernel const> KernelConstPtr;
-typedef boost::shared_ptr<Wcs const> WcsConstPtr;
-typedef boost::shared_ptr<Footprint const> FootprintConstPtr;
 
 class ParameterRangeException: public lsst::pex::exceptions::RangeErrorException {
 public:

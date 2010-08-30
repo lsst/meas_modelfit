@@ -86,7 +86,7 @@ public:
         _parameters(new ParameterVector(other.computePosition().asVector())),
         _parameterIter(_parameters->data())
     {}
-    
+
     /**
      * Return the reference point (ra,dec).
      *

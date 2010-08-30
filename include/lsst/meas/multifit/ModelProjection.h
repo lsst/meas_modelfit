@@ -122,7 +122,7 @@ public:
     //@}
 
     /// The WCS associated with the observation this projection represents.
-    WcsConstPtr const & getWcs() const { return _wcs; }
+    lsst::afw::image::Wcs::ConstPtr const & getWcs() const { return _wcs; }
 
     /**
      * Footprint the image representation will be computed on.
@@ -130,13 +130,15 @@ public:
      * This footprint determines the size of all computed products, and the
      * mapping from compressed to uncompressed images
      */
-    FootprintConstPtr const & getFootprint() const { return _footprint; }
+    boost::shared_ptr<lsst::afw::detection::Footprint const> const & getFootprint() const { 
+        return _footprint; 
+    }
 
 protected:
     ModelProjection(
         Model::ConstPtr const & model,
-        WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint
+        lsst::afw::image::Wcs::ConstPtr const & wcs,
+        boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
     );
 
     /**
@@ -220,8 +222,8 @@ private:
     int _validProducts;
 
     Model::ConstPtr _model;
-    FootprintConstPtr _footprint;
-    WcsConstPtr _wcs;
+    boost::shared_ptr<lsst::afw::detection::Footprint const> _footprint;
+    lsst::afw::image::Wcs::ConstPtr _wcs;
 
     ndarray::Array<Pixel, 1, 1> _modelImage;
     ndarray::Array<Pixel, 2, 1> _linearParameterDerivative;

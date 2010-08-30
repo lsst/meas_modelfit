@@ -27,42 +27,47 @@
 #include "lsst/meas/multifit/footprintUtils.h"
 
 namespace multifit = lsst::meas::multifit;
-
+namespace afwDet = lsst::afw::detection;
+namespace afwImg = lsst::afw::image;
+namespace afwGeom = lsst::afw::geom;
+namespace afwMath = lsst::afw::math;
 //-- ComponentModel ------------------------------------------------------------
 
-multifit::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
-    PsfConstPtr const & psf,
-    WcsConstPtr const & wcs
+afwDet::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
+    afwDet::Psf::ConstPtr const & psf,
+    afwImg::Wcs::ConstPtr const & wcs
 ) const {
-    lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    lsst::afw::geom::PointD center(ellipse->getCenter());
-    lsst::afw::geom::AffineTransform wcsTransform(wcs->linearizeAt(center));
+    afwGeom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
+    afwGeom::PointD center(ellipse->getCenter());
+    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(center));
     
     ellipse->transform(wcsTransform.invert()).inPlace();
     if (psf) {
-        int kernelSize = std::max(psf->getWidth(), psf->getHeight());
+        afwMath::Kernel::ConstPtr kernel = psf->getKernel();
+        int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
         ellipse->grow(kernelSize/2+1);
     }
     return makeFootprint(*ellipse);
 }
 
-lsst::afw::geom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
-    PsfConstPtr const & psf,
-    WcsConstPtr const & wcs
+afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
+    afwDet::Psf::ConstPtr const & psf,
+    afwImg::Wcs::ConstPtr const & wcs
 ) const {
-    lsst::afw::geom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    lsst::afw::geom::PointD center(ellipse->getCenter());
-    lsst::afw::geom::AffineTransform wcsTransform(wcs->linearizeAt(center));
+    afwGeom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
+    afwGeom::PointD center(ellipse->getCenter());
+    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(center));
     
     ellipse->transform(wcsTransform.invert()).inPlace();
     if (psf) {
-        int kernelSize = std::max(psf->getWidth(), psf->getHeight());
+        afwMath::Kernel::ConstPtr kernel = psf->getKernel();
+        int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
         ellipse->grow(kernelSize/2+1);
     }
     return ellipse->computeEnvelope();
 }
 
-lsst::afw::geom::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
+afwGeom::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
     return _morphology->computeBoundingEllipseCore()->makeEllipse(
         _astrometry->computePosition()
     );
@@ -78,9 +83,9 @@ void multifit::ComponentModel::_handleNonlinearParameterChange() {
 }
 
 multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
-    PsfConstPtr const & psf,
-    WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint
+    afwDet::Psf::ConstPtr const & psf,
+    afwImg::Wcs::ConstPtr const & wcs,
+    CONST_PTR(afwDet::Footprint) const & footprint
 ) const {
     ModelProjection::Ptr projection(
         new FourierModelProjection(

@@ -26,32 +26,36 @@
 #include "lsst/meas/multifit/matrices.h"
 
 namespace multifit = lsst::meas::multifit;
-
+namespace afwDet = lsst::afw::detection;
+namespace afwImg = lsst::afw::image;
+namespace afwGeom = lsst::afw::geom;
+namespace afwMath = lsst::afw::math;
 /**
  * Construct a ComponentModelProjection
  *
  */
 multifit::ComponentModelProjection::ComponentModelProjection(
     ComponentModel::ConstPtr const & model,
-    PsfConstPtr const & psf,
-    WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint
+    afwDet::Psf::ConstPtr const & psf,
+    afwImg::Wcs::ConstPtr const & wcs,
+    CONST_PTR(afwDet::Footprint) const & footprint
 ) : ModelProjection(model, wcs, footprint),
     _validProducts(0),
     _morphologyProjection(), 
     _translationDerivative(), 
     _projectedParameterDerivative()
 {
-    lsst::afw::geom::PointD center(getAstrometry()->computePosition());
-    lsst::afw::geom::AffineTransform wcsTransform(wcs->linearizeAt(center));
+    afwGeom::PointD center(getAstrometry()->computePosition());
+    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(center));
     
-    _transform = boost::make_shared<lsst::afw::geom::AffineTransform>(
+    _transform = boost::make_shared<afwGeom::AffineTransform>(
         wcsTransform.invert()
     );
+    afwMath::Kernel::ConstPtr kernel = psf->getKernel();
 
     _morphologyProjection = model->getMorphology()->makeProjection(
-        lsst::afw::geom::ExtentI::make(
-            psf->getWidth(), psf->getHeight()
+        afwGeom::ExtentI::make(
+            kernel->getWidth(), kernel->getHeight()
         ), 
         _transform
     );

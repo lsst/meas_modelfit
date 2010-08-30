@@ -65,9 +65,11 @@ public:
         );
     }       
 
-    Parameter const & getFlux() const {return *(getLinearParameters().data());}
+    Parameter const & getFlux() const {
+        return *(_linearParameters->data() + FLUX);
+    }
 
-    virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const {
+    virtual PTR(lsst::afw::geom::ellipses::BaseCore) computeBoundingEllipseCore() const {
         return boost::make_shared<lsst::afw::geom::ellipses::LogShear>();
     }
 

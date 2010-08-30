@@ -61,14 +61,14 @@ public:
     typedef boost::shared_ptr<ComponentModel> Ptr;
     typedef boost::shared_ptr<ComponentModel const> ConstPtr;
 
-    virtual Footprint::Ptr computeProjectionFootprint(
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs
+    virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs
     ) const;
 
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs
     ) const;
 
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const;
@@ -80,20 +80,20 @@ public:
     /**
      *  Immutable access to the Astrometry component.
      */    
-    components::Astrometry::ConstPtr getAstrometry() const {
+    CONST_PTR(lsst::meas::multifit::components::Astrometry) getAstrometry() const {
         return _astrometry; 
     }
 
     /**
      *  Immutable access to the the Morphology component.
      */
-    components::Morphology::ConstPtr getMorphology() const { 
+    CONST_PTR(lsst::meas::multifit::components::Morphology) getMorphology() const { 
         return _morphology; 
     }
     
     static ComponentModel::Ptr create(
-        components::Astrometry::ConstPtr const & astrometry, 
-        components::Morphology::ConstPtr const & morphology
+        CONST_PTR(lsst::meas::multifit::components::Astrometry) const & astrometry, 
+        CONST_PTR(lsst::meas::multifit::components::Morphology) const & morphology
     ) {
         return ComponentModel::Ptr(
             new ComponentModel(astrometry, morphology, true)
@@ -101,22 +101,22 @@ public:
     }
 protected:
     virtual boost::shared_ptr<ModelProjection> makeProjection(
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     ) const;
 
 private:
     explicit ComponentModel(    
-        components::Astrometry::ConstPtr const & astrometry,
-        components::Morphology::ConstPtr const & morphology,
+        lsst::meas::multifit::components::Astrometry::ConstPtr const & astrometry,
+        lsst::meas::multifit::components::Morphology::ConstPtr const & morphology,
         bool initializeParameters
     );
     explicit ComponentModel(ComponentModel const & model);
 
     void _initializeFromComponents(
-        components::Astrometry::ConstPtr const & astrometryTemplate,
-        components::Morphology::ConstPtr const & morphologyTemplate,
+        lsst::meas::multifit::components::Astrometry::ConstPtr const & astrometryTemplate,
+        lsst::meas::multifit::components::Morphology::ConstPtr const & morphologyTemplate,
         bool initializeParameters=false
 
     );
@@ -141,8 +141,8 @@ private:
 
     virtual void _handleNonlinearParameterChange();
 
-    components::Astrometry::Ptr _astrometry;
-    components::Morphology::Ptr _morphology;
+    lsst::meas::multifit::components::Astrometry::Ptr _astrometry;
+    lsst::meas::multifit::components::Morphology::Ptr _morphology;
 };
 
 }}} // namespace lsst::meas::multifit

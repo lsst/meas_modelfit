@@ -38,12 +38,9 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=401                 // nothin known about base class X
 %{
 // these sholdn't be necessary, but SWIG fails if they aren't there.
-#include "lsst/afw/detection.h" 
-#include "lsst/meas/algorithms/Centroid.h"
-#include "lsst/meas/algorithms/Photometry.h"
-#include "lsst/meas/algorithms/Shape.h"
-
+#include "boost/shared_ptr.hpp"
 #include "lsst/afw/detection/Footprint.h"
+#include "lsst/afw/detection/Psf.h"
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/footprintUtils.h"
 #include "lsst/meas/multifit/WindowedFootprint.h"
@@ -54,6 +51,8 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/MorphologyProjection.h"
 #include "lsst/meas/multifit/components/Morphology.h"
+#include "lsst/meas/multifit/components/FixedNonlinearMorphology.h"
+#include "lsst/meas/multifit/components/FixedAstrometry.h"
 #include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 #include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
@@ -92,6 +91,7 @@ namespace boost {
 
 
 %include "lsst/p_lsstSwig.i"
+%include "lsst/base.h"
 %include "std_complex.i"
 
 %lsst_exceptions();
@@ -110,7 +110,7 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
         return version_svn
     else:
         try:
-            version_eups = eups.getSetupVersion("meas")
+            version_eups = eups.getSetupVersion("meas_multifit")
         except AttributeError:
             return version_svn
 
@@ -120,6 +120,8 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
         return "%s (setup: %s)" % (version_svn, version_eups)
 %}
 
+
+
 %import "lsst/daf/base/baseLib.i"
 %import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/image/imageLib.i"
@@ -127,9 +129,11 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %import "lsst/afw/math/mathLib.i"
 %import "lsst/afw/coord/coordLib.i"
 
-%import "lsst/meas/algorithms/algorithmsLib.i"
+%include "lsst/afw/image/lsstImageTypes.i"     // Image/Mask types and typedefs
 
 %include "lsst/meas/multifit/core.h"
+
+
 
 %define %downcast(BaseType, DerivedType...)
    %extend DerivedType {
@@ -140,6 +144,22 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
        }
    }
 %enddef 
+
+
+%template(ExposureListF) std::list<lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>::Ptr>;
+%template(ExposureListD) std::list<lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>::Ptr>;
+%extend lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> {
+    %pythoncode {
+        def makeList(self): 
+            return ExposureListF()
+    }
+}
+%extend lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> {
+    %pythoncode {
+        def makeList(self):
+            return ExposureListD()
+    }
+}
 
 %declareArray(double, 2, 0);
 %declareArray(double, 1, 1);
@@ -169,7 +189,7 @@ SWIG_SHARED_PTR(WindowedFootprintPtr, lsst::meas::multifit::WindowedFootprint)
     %template(expand) expand<double, double, 0>; 
 };
 
-SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model)
+SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model);
 %include "lsst/meas/multifit/Model.h"
 
 SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
@@ -182,39 +202,52 @@ SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
     %returnArray(computePsfParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
 };
 
-
-SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry)
-SWIG_SHARED_PTR(MorphologyPtr, lsst::meas::multifit::components::Morphology)
+SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry);
+SWIG_SHARED_PTR(MorphologyPtr, lsst::meas::multifit::components::Morphology);
+SWIG_SHARED_PTR_DERIVED(FixedAstrometryPtr, lsst::meas::multifit::components::Astrometry,
+    lsst::meas::multifit::components::FixedAstrometry);
+SWIG_SHARED_PTR_DERIVED(FixedNonlinearMorphologyPtr, lsst::meas::multifit::components::Morphology,
+    lsst::meas::multifit::components::FixedNonlinearMorphology);    
 SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyPtr, lsst::meas::multifit::components::Morphology,
-    lsst::meas::multifit::components::PointSourceMorphology)    
+    lsst::meas::multifit::components::PointSourceMorphology);   
 SWIG_SHARED_PTR_DERIVED(SersicMorphologyPtr, lsst::meas::multifit::components::Morphology,
-    lsst::meas::multifit::components::SersicMorphology)
-SWIG_SHARED_PTR(MorphologyProjectionPtr, lsst::meas::multifit::components::MorphologyProjection)
+    lsst::meas::multifit::components::SersicMorphology);    
+SWIG_SHARED_PTR(MorphologyProjectionPtr, lsst::meas::multifit::components::MorphologyProjection);
 SWIG_SHARED_PTR_DERIVED(FourierMorphologyProjectionPtr,
     lsst::meas::multifit::components::MorphologyProjection,
-    lsst::meas::multifit::components::FourierMorphologyProjection)
+    lsst::meas::multifit::components::FourierMorphologyProjection);
 SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyProjectionPtr,
     lsst::meas::multifit::components::FourierMorphologyProjection,
-    lsst::meas::multifit::components::PointSourceMorphologyProjection)
+    lsst::meas::multifit::components::PointSourceMorphologyProjection);
 SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
     lsst::meas::multifit::components::FourierMorphologyProjection,
-    lsst::meas::multifit::components::SersicMorphologyProjection)
-    
+    lsst::meas::multifit::components::SersicMorphologyProjection);
 %ignore lsst::meas::multifit::components::PointSourceMorphology::create;
 %ignore lsst::meas::multifit::components::SersicMorphology::create;
+%ignore lsst::meas::multifit::components::FixedNonlinearMorphology::create;
 
 %include "lsst/meas/multifit/components/Astrometry.h"
 %include "lsst/meas/multifit/components/MorphologyProjection.h"
 %include "lsst/meas/multifit/components/Morphology.h"
-%include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
-%include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 %include "lsst/meas/multifit/components/PointSourceMorphology.h"
 %include "lsst/meas/multifit/components/SersicMorphology.h"
+%include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
+%include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 %include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
 
-%extend lsst::meas::multifit::components::SersicMorphology {
-    boost::shared_ptr<lsst::meas::multifit::components::SersicMorphology> create(
-        lsst::meas::multifit::Parameter flux, 
+%include "lsst/meas/multifit/components/FixedAstrometry.h"
+%include "lsst/meas/multifit/components/FixedNonlinearMorphology.h"
+
+%inline %{
+  
+    boost::shared_ptr<lsst::meas::multifit::components::PointSourceMorphology> createPointSourceMorphology(
+        lsst::meas::multifit::Parameter flux
+    ) {
+        return lsst::meas::multifit::components::PointSourceMorphology::create(flux);
+    }
+    
+    boost::shared_ptr<lsst::meas::multifit::components::SersicMorphology> createSersicMorphology(
+        lsst::meas::multifit::Parameter flux,
         lsst::afw::geom::ellipses::Core const & ellipse,
         lsst::meas::multifit::Parameter sersicIndex
     ) {
@@ -222,19 +255,12 @@ SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
             flux, ellipse, sersicIndex
         );
     }
-};
-
-%extend lsst::meas::multifit::components::PointSourceMorphology {
-    boost::shared_ptr<lsst::meas::multifit::components::PointSourceMorphology> create(
-        lsst::meas::multifit::Parameter flux 
+    boost::shared_ptr<lsst::meas::multifit::components::FixedNonlinearMorphology> createFixedNonlinearMorphology(
+        lsst::meas::multifit::components::Morphology const & base
     ) {
-        return lsst::meas::multifit::components::PointSourceMorphology::create(
-            flux
-        );
+        return lsst::meas::multifit::components::FixedNonlinearMorphology::create(base);
     }
-};
-
-%inline %{
+    
     boost::shared_ptr<lsst::meas::multifit::Model> createSersicModel(
         lsst::meas::multifit::Parameter flux, 
         lsst::afw::geom::Point2D const & centroid,
@@ -257,15 +283,15 @@ SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
 %}
 
 SWIG_SHARED_PTR_DERIVED(ComponentModelPtr, lsst::meas::multifit::Model,     
-    lsst::meas::multifit::ComponentModel) 
+    lsst::meas::multifit::ComponentModel);
 %include "lsst/meas/multifit/ComponentModel.h"
 
 %downcast(lsst::meas::multifit::Model, lsst::meas::multifit::ComponentModel);
 
 SWIG_SHARED_PTR_DERIVED(ComponentModelProjectionPtr, lsst::meas::multifit::ModelProjection,
-    lsst::meas::multifit::ComponentModelProjection)
+    lsst::meas::multifit::ComponentModelProjection);
 SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::ComponentModelProjection,
-    lsst::meas::multifit::FourierModelProjection)
+    lsst::meas::multifit::FourierModelProjection);
 %include "lsst/meas/multifit/ComponentModelProjection.h"    
 %include "lsst/meas/multifit/FourierModelProjection.h"
 
@@ -273,20 +299,7 @@ SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::Compone
 %downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::ComponentModelProjection);
 %downcast(lsst::meas::multifit::ComponentModelProjection, lsst::meas::multifit::FourierModelProjection);
 
-SWIG_SHARED_PTR_DERIVED(
-    CharacterizedExposurePtrF, 
-    lsst::afw::image::Exposure<float>,
-    lsst::meas::multifit::CharacterizedExposure<float>
-);                      
-SWIG_SHARED_PTR_DERIVED(
-    CharacterizedExposurePtrD, 
-    lsst::afw::image::Exposure<double>,
-    lsst::meas::multifit::CharacterizedExposure<double>
-); 
-
-%include "lsst/meas/multifit/CharacterizedExposure.h"
-
-SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
+SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator);
 %nodefaultctor lsst::meas::multifit::ModelEvaluator;
 %include "lsst/meas/multifit/ModelEvaluator.h"
 %extend lsst::meas::multifit::ModelEvaluator {
@@ -296,35 +309,9 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator)
     %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
     %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 2);
     
-    %template(ModelEvaluator) ModelEvaluator<double>; 
-    %template(ModelEvaluator) ModelEvaluator<float>; 
-    %template(setExposureList) setExposureList<double>; 
-    %template(setExposureList) setExposureList<float>;
+    %template(setExposureList) setExposureList<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>; 
+    %template(setExposureList) setExposureList<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
 };
 
-SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult)
+SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult);
 %include "lsst/meas/multifit/SingleLinearParameterFitter.h"
-
-%template(CharacterizedExposureF) lsst::meas::multifit::CharacterizedExposure<float>;
-%template(CharacterizedExposureListF) 
-    std::list<boost::shared_ptr<lsst::meas::multifit::CharacterizedExposure<float> > >;
-%template(makeCharacterizedExposure) 
-    lsst::meas::multifit::makeCharacterizedExposure<float>;
-%extend lsst::meas::multifit::CharacterizedExposure<float> {
-    %pythoncode {
-        def makeList(self):
-            return CharacterizedExposureListF()
-    }
-};
-%template(CharacterizedExposureD) lsst::meas::multifit::CharacterizedExposure<double>;
-%template(CharacterizedExposureListD) 
-    std::list<boost::shared_ptr<lsst::meas::multifit::CharacterizedExposure<double> > >;
-%template(makeCharacterizedExposure) 
-    lsst::meas::multifit::makeCharacterizedExposure<double>;
-%extend lsst::meas::multifit::CharacterizedExposure<double> {
-    %pythoncode {
-        def makeList(self):
-            return CharacterizedExposureListD()
-    }
-};
-

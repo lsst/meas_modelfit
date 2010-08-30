@@ -36,11 +36,11 @@
 
 #include "ndarray.hpp"
 
+#include "lsst/afw/image/Exposure.h"
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/footprintUtils.h"
-#include "lsst/meas/multifit/CharacterizedExposure.h"
 
 namespace lsst {
 namespace meas {
@@ -72,28 +72,9 @@ public:
         setMinPixels(nMinPix);
     }
 
-    /**
-     * Construct a Model, and initialize the projections
-     *
-     * @param model Model to manage
-     * @param exposureList list of exposures to evaluate the model on
-     * @param nMinPix minimum number of pixels an exposure must contribute to 
-     *      the model's projected footprint to be used
-     */
-    template <typename ImagePixel>
-    ModelEvaluator(
-        Model::ConstPtr const & model, 
-        std::list<boost::shared_ptr<CharacterizedExposure<ImagePixel> > > const & exposureList,
-        int const nMinPix = 0 
-    ) : _validProducts(0),
-        _model(model->clone()) 
-    {        
-        setMinPixels(nMinPix);
-        setExposureList(exposureList);
-    }
-    template<typename ImagePixel>
+    template <typename ImageT, typename MaskT, typename VarianceT>
     void setExposureList(
-        std::list<boost::shared_ptr<CharacterizedExposure<ImagePixel> > > const & exposureList
+        std::list<typename lsst::afw::image::Exposure<ImageT, MaskT, VarianceT>::Ptr> const & exposureList
     );
 
 #ifndef SWIG
@@ -146,7 +127,7 @@ public:
     ndarray::Array<Pixel const, 2, 2> computeLinearParameterDerivative();
     ndarray::Array<Pixel const, 2, 2> computeNonlinearParameterDerivative();
     //@}
-#endif
+#endif 
 
     /**
      * Pixel threshold used to discriminate exposures
@@ -269,7 +250,7 @@ public:
 private:   
 
     typedef ProjectionList::iterator ProjectionIterator;
-    typedef Footprint::SpanList SpanList;
+    typedef lsst::afw::detection::Footprint::SpanList SpanList;
 
 
     enum ProductFlag {

@@ -26,26 +26,28 @@
 
 namespace multifit = lsst::meas::multifit;
 namespace afwDet = lsst::afw::detection;
+namespace afwImg = lsst::afw::image;
+namespace afwGeom = lsst::afw::geom;
 
 /**
- * Construct an lsst::afw::detection::Footprint from an
- * lsst::afw::geom::ellipses::Ellipse. 
+ * Construct an afwDet::Footprint from an
+ * afwGeom::ellipses::Ellipse. 
  *
- * @note Move to lsst::afw::detection
+ * @note Move to afwDet
  */
 afwDet::Footprint::Ptr multifit::makeFootprint(
-    lsst::afw::geom::ellipses::Ellipse const & ellipse
+    afwGeom::ellipses::Ellipse const & ellipse
 ) {
-    lsst::afw::detection::Footprint::Ptr fp(new lsst::afw::detection::Footprint());
-    lsst::afw::geom::ellipses::Core::RadialFraction rf(ellipse.getCore());
+    afwDet::Footprint::Ptr fp(new afwDet::Footprint());
+    afwGeom::ellipses::Core::RadialFraction rf(ellipse.getCore());
 
-    lsst::afw::geom::BoxD envelope = ellipse.computeEnvelope();
+    afwGeom::BoxD envelope = ellipse.computeEnvelope();
     int const yEnd = static_cast<int>(envelope.getMaxY()) + 1;
     int const xEnd = static_cast<int>(envelope.getMaxX()) + 1;
-    lsst::afw::geom::ExtentD dp(lsst::afw::geom::PointD(0) -ellipse.getCenter());
+    afwGeom::ExtentD dp(afwGeom::PointD(0) -ellipse.getCenter());
     for (int y = static_cast<int>(envelope.getMinY()); y<yEnd; ++y) {
         int x = static_cast<int>(envelope.getMinX());
-        while (rf(lsst::afw::geom::PointD::make(x,y) + dp) > 1.0) {
+        while (rf(afwGeom::PointD::make(x,y) + dp) > 1.0) {
             if (x >= xEnd) {
                 if (++y >= yEnd) 
                     return fp;
@@ -55,7 +57,7 @@ afwDet::Footprint::Ptr multifit::makeFootprint(
             }
         }
         int start = x;
-        while (rf(lsst::afw::geom::PointD::make(x,y) + dp) <= 1.0 && x < xEnd) 
+        while (rf(afwGeom::PointD::make(x,y) + dp) <= 1.0 && x < xEnd) 
             ++x;
 
         fp->addSpan(y, start, x-1);
@@ -67,20 +69,20 @@ afwDet::Footprint::Ptr multifit::makeFootprint(
 
     afwDet::Footprint::Ptr fp(new afwDet::Footprint());
 
-    lsst::afw::geom::ellipses::Axes axes(ellipse.getCore());
-    lsst::afw::geom::BoxD envelope = ellipse.computeEnvelope();
-    lsst::afw::geom::ExtentD center(ellipse.getCenter());
+    afwGeom::ellipses::Axes axes(ellipse.getCore());
+    afwGeom::BoxD envelope = ellipse.computeEnvelope();
+    afwGeom::ExtentD center(ellipse.getCenter());
     
     int const yMin = static_cast<int>(std::floor(envelope.getMinY()));
     int const yMax = static_cast<int>(std::ceil(envelope.getMaxY()));
     int offsetY = static_cast<int>(envelope.getMinY() - center.getY());  
-    double sinTheta = std::sin(axes[lsst::afw::geom::ellipses::Axes::THETA]);
-    double cosTheta = std::cos(axes[lsst::afw::geom::ellipses::Axes::THETA]);
+    double sinTheta = std::sin(axes[afwGeom::ellipses::Axes::THETA]);
+    double cosTheta = std::cos(axes[afwGeom::ellipses::Axes::THETA]);
     double sinSqTheta = sinTheta*sinTheta;
     double cosSqTheta = cosTheta*cosTheta;    
 
-    double major = axes[lsst::afw::geom::ellipses::Axes::A];
-    double minor = axes[lsst::afw::geom::ellipses::Axes::B];
+    double major = axes[afwGeom::ellipses::Axes::A];
+    double minor = axes[afwGeom::ellipses::Axes::B];
     double majorSq = major*major;
     double minorSq = minor*minor;
 
@@ -121,20 +123,22 @@ afwDet::Footprint::Ptr multifit::makeFootprint(
  * Using an image mask, clip the footprint to fit on the image, and remove
  * from the footprint any masked pixels
  *
- * This invokes a deep copy of the footprint, even if the image is large enough
+ * Produces a deep copy of the footprint, even if the image is large enough
  * to accomodate the entire footprint, and no pixels are masked
+ *
+ * @param footprint original footprint
+ * @param mask used to determine bbox of valid region, and remove masked pixels
+ * @param bitmask specifies which mask planes are relevant. By default all mask
+ *      planes are considered relevant (~0x0). To ignore masking, specify 0
  */
 template <typename MaskPixel> 
 afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
-    lsst::afw::detection::Footprint const & footprint,
-    typename lsst::afw::image::Mask<MaskPixel>::Ptr const & mask,
-    MaskPixel bitmask
+    afwDet::Footprint const & footprint,
+    afwImg::Mask<MaskPixel> const & mask,
+    MaskPixel const & bitmask
 ) {
-    if(bitmask == 0)
-        bitmask = ~bitmask;
-
-    lsst::afw::image::BBox const maskBBox(
-        mask->getXY0(), mask->getWidth(), mask->getHeight()
+    afwImg::BBox maskBBox(
+        mask.getXY0(), mask.getWidth(), mask.getHeight()
     );
     int maskX0 = maskBBox.getX0();
     int maskY0 = maskBBox.getY0();
@@ -170,10 +174,10 @@ afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
         if(x0 < maskX0) x0 = maskX0;
         if(x1 > maskX1) x1 = maskX1;
 
-        //lsst::afw::image iterators are always specified with respect to (0,0)
+        //afwImg iterators are always specified with respect to (0,0)
         //regardless what the image::XY0 is set to.        
-        typename lsst::afw::image::Mask<MaskPixel>::x_iterator maskIter = 
-            mask->x_at(x0 - maskX0, y - maskY0);
+        typename afwImg::Mask<MaskPixel>::const_x_iterator maskIter = 
+            mask.x_at(x0 - maskX0, y - maskY0);
 
         //loop over all span locations, slicing the span at maskedPixels
         for(int x = x0; x <= x1; ++x) {            
@@ -203,14 +207,15 @@ afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
     return fixedFootprint;
 }
 
+namespace {
+
 //FootprintFunctor to compress an afw::Image to two ndarray::Array using a footprint
-template <typename ImagePixel, typename MaskPixel=lsst::afw::image::MaskPixel,
-    typename VariancePixel=lsst::afw::image::VariancePixel>
-class CompressImageFunctor : public lsst::afw::detection::FootprintFunctor<
-        lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> > {
+template <typename ImageT, typename MaskT=afwImg::MaskPixel, typename VarianceT=afwImg::VariancePixel>
+class CompressImageFunctor : 
+    public afwDet::FootprintFunctor<afwImg::MaskedImage<ImageT, MaskT, VarianceT> > {
 public:
-    typedef lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> MaskedImage;
-    typedef lsst::afw::detection::FootprintFunctor<MaskedImage> FootprintFunctor;
+    typedef afwImg::MaskedImage<ImageT, MaskT, VarianceT> MaskedImage;
+    typedef afwDet::FootprintFunctor<MaskedImage> FootprintFunctor;
 
     CompressImageFunctor(
         MaskedImage const & src,
@@ -221,7 +226,7 @@ public:
         _varianceDest(varianceDest)        
     {}
 
-    virtual void reset(lsst::afw::detection::Footprint const & footprint) {
+    virtual void reset(afwDet::Footprint const & footprint) {
         if(_imageDest.getSize<0>() != footprint.getNpix() || 
             _varianceDest.getSize<0>() != footprint.getNpix()) {
             throw LSST_EXCEPT(lsst::pex::exceptions::LengthErrorException,
@@ -250,8 +255,10 @@ private:
 template class CompressImageFunctor<float>;
 template class CompressImageFunctor<double>;
 
+} //end annonymous namespace
+
 /**
- * Compress an lsst::afw::image::MaskedImage into two ndarray::Array
+ * Compress an afwImg::MaskedImage into two ndarray::Array
  *
  * This is a deep copy of all pixels of maskedImage that are in footprint
  * imageDest and varianceDest must be initialized externally, prior to calling
@@ -262,28 +269,29 @@ template class CompressImageFunctor<double>;
  * @param imageDest destination for the image pixel data
  * @param varianceDest destination for the variance pixel data
  */
-template <typename ImagePixel, typename MaskPixel, typename VariancePixel>
+template <typename ImageT, typename MaskT, typename VarianceT>
 void multifit::compressImage(
-    lsst::afw::detection::Footprint const & footprint,
-    lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> const & maskedImage,
+    afwDet::Footprint const & footprint,
+    afwImg::MaskedImage<ImageT, MaskT, VarianceT> const & maskedImage,
     ndarray::Array<Pixel, 1, 1> const & imageDest,
     ndarray::Array<Pixel, 1, 1> const & varianceDest
 ) {
-    CompressImageFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
+    ::CompressImageFunctor<ImageT, MaskT, VarianceT> functor(
         maskedImage, imageDest, varianceDest
     ); 
     functor.apply(footprint);
 }
 
 
+namespace {
+
 //FootprintFunctor to expand two ndarray::Array to an afw::Image using a footprint
-template <typename ImagePixel, typename MaskPixel=lsst::afw::image::MaskPixel, 
-    typename VariancePixel=lsst::afw::image::VariancePixel>
-class  ExpandImageFunctor : public lsst::afw::detection::FootprintFunctor<
-        lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> > {
+template <typename ImageT, typename MaskT=afwImg::MaskPixel, typename VarianceT=afwImg::VariancePixel>
+class  ExpandImageFunctor : 
+    public afwDet::FootprintFunctor<afwImg::MaskedImage<ImageT, MaskT, VarianceT> > {
 public:
-    typedef lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> MaskedImage;
-    typedef lsst::afw::detection::FootprintFunctor<MaskedImage> FootprintFunctor;
+    typedef afwImg::MaskedImage<ImageT, MaskT, VarianceT> MaskedImage;
+    typedef afwDet::FootprintFunctor<MaskedImage> FootprintFunctor;
 
     ExpandImageFunctor(
         MaskedImage & dest,
@@ -294,7 +302,7 @@ public:
         _varianceSrc(varianceSrc)        
     {}
 
-    virtual void reset(lsst::afw::detection::Footprint const & footprint) {
+    virtual void reset(afwDet::Footprint const & footprint) {
         if(_imageSrc.getSize<0>() != footprint.getNpix() || 
             _varianceSrc.getSize<0>() != footprint.getNpix()) {
             throw LSST_EXCEPT(lsst::pex::exceptions::LengthErrorException,
@@ -308,8 +316,8 @@ public:
         int x,
         int y
     ) {
-       loc.image() = static_cast<ImagePixel>(*_imageIter);
-       loc.variance() = static_cast<VariancePixel>(*_varianceIter);
+       loc.image() = static_cast<ImageT>(*_imageIter);
+       loc.variance() = static_cast<VarianceT>(*_varianceIter);
        ++_imageIter;
        ++_varianceIter;
     }
@@ -323,8 +331,10 @@ private:
 template class ExpandImageFunctor<float>;
 template class ExpandImageFunctor<double>;
 
+} //end annonymous namespace
+
 /**
- * Expand two ndarray::Array to a full lsst::afw::image::MaskedImage
+ * Expand two ndarray::Array to a full afwImg::MaskedImage
  *
  * This is a deep copy of all values in both inout arrays, the footprint
  * determines what pixel in the image corresponds to each position in the array
@@ -342,14 +352,14 @@ template class ExpandImageFunctor<double>;
  * @param imageSrc source for the image pixel data
  * @param varianceSrc source for the variance pixel data
  */
-template <typename ImagePixel, typename MaskPixel, typename VariancePixel>
+template <typename ImageT, typename MaskT, typename VarianceT>
 void multifit::expandImage(
-    lsst::afw::detection::Footprint const & footprint,
-    lsst::afw::image::MaskedImage<ImagePixel, MaskPixel, VariancePixel> & maskedImage,
+    afwDet::Footprint const & footprint,
+    afwImg::MaskedImage<ImageT, MaskT, VarianceT> & maskedImage,
     ndarray::Array<Pixel const, 1, 1> const & imageSrc,
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
 ) {
-    ExpandImageFunctor<ImagePixel, MaskPixel, VariancePixel> functor(
+    ::ExpandImageFunctor<ImageT, MaskT, VarianceT> functor(
         maskedImage, imageSrc, varianceSrc
     ); 
     functor.apply(footprint);
@@ -358,35 +368,34 @@ void multifit::expandImage(
 
 
 //explicit template instantiations
-template afwDet::Footprint::Ptr multifit::clipAndMaskFootprint<lsst::afw::image::MaskPixel>(
+template afwDet::Footprint::Ptr multifit::clipAndMaskFootprint<afwImg::MaskPixel>(
     afwDet::Footprint const &,
-    lsst::afw::image::Mask<lsst::afw::image::MaskPixel>::Ptr const &,
-    lsst::afw::image::MaskPixel 
+    afwImg::Mask<afwImg::MaskPixel> const &,
+    afwImg::MaskPixel const & 
 );
 
-template void multifit::compressImage<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>(
-    lsst::afw::detection::Footprint const &,
-    lsst::afw::image::MaskedImage<float> const &,
+template void multifit::compressImage<float>(
+    afwDet::Footprint const &,
+    afwImg::MaskedImage<float> const &,
     ndarray::Array<Pixel, 1, 1> const &,
     ndarray::Array<Pixel, 1, 1> const &
 );
-template void multifit::compressImage<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>(
-    lsst::afw::detection::Footprint const &,
-    lsst::afw::image::MaskedImage<double> const &,
+template void multifit::compressImage<double>(
+    afwDet::Footprint const &,
+    afwImg::MaskedImage<double> const &,
     ndarray::Array<Pixel, 1, 1> const &,
     ndarray::Array<Pixel, 1, 1> const &
 );
 
-
-template void multifit::expandImage<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>(
-    lsst::afw::detection::Footprint const & footprint,
-    lsst::afw::image::MaskedImage<float> &,
+template void multifit::expandImage<float>(
+    afwDet::Footprint const & footprint,
+    afwImg::MaskedImage<float> &,
     ndarray::Array<Pixel const, 1, 1> const & imageSrc,
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
 );
-template void multifit::expandImage<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>(
-    lsst::afw::detection::Footprint const & footprint,
-    lsst::afw::image::MaskedImage<double> &,
+template void multifit::expandImage<double>(
+    afwDet::Footprint const & footprint,
+    afwImg::MaskedImage<double> &,
     ndarray::Array<Pixel const, 1, 1> const & imageSrc,
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
 );

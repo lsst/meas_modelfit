@@ -30,7 +30,7 @@ definitions: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 1.0
+		default: 10.0
 	} 
 	sersicIndexMin: {
 		type: "double"
@@ -54,6 +54,6 @@ definitions: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 100.0
+		default: 1000.0
 	}	
 }

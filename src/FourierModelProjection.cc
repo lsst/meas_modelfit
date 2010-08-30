@@ -31,6 +31,10 @@
 
 
 namespace multifit = lsst::meas::multifit;
+namespace afwGeom = lsst::afw::geom;
+namespace afwImg = lsst::afw::image;
+namespace afwDet = lsst::afw::detection;
+namespace afwMath = lsst::afw::math;
 
 /**
  * Manager of intermdiate products for doing shift operations
@@ -46,8 +50,8 @@ public:
         ndarray::FourierArray<Pixel,3,3>::Iterator const & end
     ) {
         if (!_valid) {
-            lsst::afw::geom::Point2D translation(
-                _parent->_getPsfPosition() - lsst::afw::geom::PointD(_parent->_outerBBox.getMin())
+            afwGeom::Point2D translation(
+                _parent->_getPsfPosition() - afwGeom::PointD(_parent->_outerBBox.getMin())
             );
 
             _factor = 1.0;
@@ -321,7 +325,7 @@ int const multifit::FourierModelProjection::getPsfParameterSize() const {
  * intermediadiary products. 
  */
 void multifit::FourierModelProjection::_convolve(
-    PsfConstPtr const & psf
+    afwDet::Psf::ConstPtr const & psf
 ) { 
     if(!psf || !psf->getKernel()) 
         return;
@@ -417,13 +421,13 @@ void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
 
 multifit::FourierModelProjection::FourierModelProjection(
     ComponentModel::ConstPtr const & model,
-    PsfConstPtr const & psf,
-    WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint
+    afwDet::Psf::ConstPtr const & psf,
+    afwImg::Wcs::ConstPtr const & wcs,
+    CONST_PTR(afwDet::Footprint) const & footprint
 ) : ComponentModelProjection(model,psf,wcs,footprint),
     _localKernel(), _wf(), 
-    _outerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I()),
-    _innerBBox(lsst::afw::geom::Point2I(), lsst::afw::geom::Extent2I())
+    _outerBBox(afwGeom::Point2I(), afwGeom::Extent2I()),
+    _innerBBox(afwGeom::Point2I(), afwGeom::Extent2I())
 {
     _convolve(psf);
     _setDimensions();
@@ -436,22 +440,22 @@ multifit::FourierModelProjection::FourierModelProjection(
  * 
  */
 void multifit::FourierModelProjection::_setDimensions() {
-    lsst::afw::geom::Extent2I dimensions = getMorphologyProjection()->getDimensions();
-    lsst::afw::geom::PointD centerOnExposure = _getPsfPosition();
+    afwGeom::Extent2I dimensions = getMorphologyProjection()->getDimensions();
+    afwGeom::PointD centerOnExposure = _getPsfPosition();
 
-    lsst::afw::geom::Point2I bboxMin = lsst::afw::geom::Point2I::make(
+    afwGeom::Point2I bboxMin = afwGeom::Point2I::make(
         int(std::floor(centerOnExposure.getX() - dimensions.getX()/2)),
         int(std::floor(centerOnExposure.getY() - dimensions.getY()/2))
     );
 
-    _outerBBox = lsst::afw::geom::BoxI(bboxMin, dimensions);
+    _outerBBox = afwGeom::BoxI(bboxMin, dimensions);
     
     // At this point, _innerBBox is defined relative to exposure    
-    lsst::afw::geom::Extent2I padding = getMorphologyProjection()->getPadding();
+    afwGeom::Extent2I padding = getMorphologyProjection()->getPadding();
     _innerBBox = _outerBBox;
     _innerBBox.grow(-padding);
     
-    lsst::afw::geom::BoxI footprintBBox = lsst::afw::geom::convertToGeom(getFootprint()->getBBox());
+    afwGeom::BoxI footprintBBox = afwGeom::convertToGeom(getFootprint()->getBBox());
     _innerBBox.clip(footprintBBox);
     if(_innerBBox.isEmpty()) {
         throw LSST_EXCEPT(
@@ -462,7 +466,7 @@ void multifit::FourierModelProjection::_setDimensions() {
     _wf = boost::make_shared<WindowedFootprint>(*getFootprint(), _innerBBox);
 
     // Shift _innerBBox to be defined relative to _outerBBox.
-    _innerBBox.shift(lsst::afw::geom::Point2I() - _outerBBox.getMin());
+    _innerBBox.shift(afwGeom::Point2I() - _outerBBox.getMin());
 
     _localKernel->setDimensions(_outerBBox.getWidth(), _outerBBox.getHeight());
     _shifter.reset(new Shifter(this));

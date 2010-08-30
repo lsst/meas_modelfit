@@ -172,7 +172,7 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
     bool endOnIteration = ((_terminationType & ITERATION) != 0);
     bool done = false;
     int nIterations = 0;
-    for(; ((nIterations < _iterationMax) && endOnIteration) || !done; ++nIterations) {
+    for(; ((nIterations < _iterationMax) && endOnIteration) && !done; ++nIterations) {
         try { 
             ndarray::shallow(dLinearArray) = 
                 evaluator.computeLinearParameterDerivative();

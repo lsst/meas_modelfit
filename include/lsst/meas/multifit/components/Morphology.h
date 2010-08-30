@@ -79,7 +79,7 @@ public:
      *
      * @sa ComponentModel::computeBoundingEllipse
      */
-    virtual lsst::afw::geom::ellipses::Core::Ptr computeBoundingEllipseCore() const = 0;
+    virtual PTR(lsst::afw::geom::ellipses::BaseCore) computeBoundingEllipseCore() const = 0;
 
     /**
      *  Create a new MorphologyProjection object.

@@ -32,7 +32,7 @@ import numpy.random
 import lsst.afw.display.ds9 as ds9
 
 def makeImageStack(model, depth, ra, dec):
-    psf = measAlg.createPSF("DoubleGaussian", 7, 7, 1.0)
+    psf = afwDet.createPsf("DoubleGaussian", 7, 7, 1.0)
     crVal = afwGeom.makePointD(ra,dec)
     crPix = afwGeom.makePointD(0,0)    
     wcs = afwImage.createWcs(crVal, crPix, 1., 0., 0., 1.)
@@ -59,14 +59,15 @@ def makeImageStack(model, depth, ra, dec):
     sigma = 0.5
     sigmaSq = sigma**2
 
-    expList = measMult.CharacterizedExposureListF()
+    expList = measMult.ExposureListF()
     afwRandom = afwMath.Random()
 
     for i in xrange(depth):
         #create an exposure whose size matches footprint size
-        exp = measMult.CharacterizedExposureF( 
-            bbox.getWidth(), bbox.getHeight(), wcs, psf
+        exp = afwImage.ExposureF( 
+            bbox.getWidth(), bbox.getHeight(), wcs
         )
+        exp.setPsf(psf)
         mi = exp.getMaskedImage()        
         mi.setXY0(bbox.getX0(), bbox.getY0())
 

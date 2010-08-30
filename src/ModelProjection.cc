@@ -39,8 +39,8 @@ namespace multifit = lsst::meas::multifit;
  */
 multifit::ModelProjection::ModelProjection(
     Model::ConstPtr const & model,
-    WcsConstPtr const & wcs,
-    FootprintConstPtr const & footprint
+    lsst::afw::image::Wcs::ConstPtr const & wcs,
+    boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
 ) : _validProducts(0),
     _model(model),
     _footprint(footprint), _wcs(wcs),

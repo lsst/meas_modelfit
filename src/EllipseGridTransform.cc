@@ -58,7 +58,10 @@ multifit::EllipseGridTransform::EllipseGridTransform(
 
 multifit::EllipseGridTransform::DerivativeMatrix 
 multifit::EllipseGridTransform::dEllipse() const {
-    DerivativeMatrix m = DerivativeMatrix::Zero();
+    DerivativeMatrix m = DerivativeMatrix::Zero(
+        DerivativeMatrix::RowsAtCompileTime, 
+        DerivativeMatrix::ColsAtCompileTime
+    );
     Eigen::Matrix2d dTheta(Eigen::Rotation2D<double>(
             -_axes[lsst::afw::geom::ellipses::Axes::THETA] - M_PI_2
         )

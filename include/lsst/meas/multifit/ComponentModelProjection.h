@@ -66,14 +66,14 @@ public:
     /**
      * Immutable reference to the astrometry object this projection is based on.
      */
-    components::Astrometry::ConstPtr getAstrometry() const { 
+    CONST_PTR(lsst::meas::multifit::components::Astrometry) getAstrometry() const { 
         return getModel()->getAstrometry(); 
     }
 
     /**
      * Imutable reference to the MorphologyProjection object this projection is based on.
      */
-    components::MorphologyProjection::ConstPtr getMorphologyProjection() const {
+    lsst::meas::multifit::components::MorphologyProjection::ConstPtr getMorphologyProjection() const {
         return _morphologyProjection;
     }
 
@@ -97,9 +97,9 @@ protected:
 
     ComponentModelProjection(
         ComponentModel::ConstPtr const & model,
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
 
     /**
@@ -163,7 +163,7 @@ protected:
     /**
      * Mutable reference to the MorphologyProjection object this projection is based on.
      */
-    components::MorphologyProjection::Ptr _getMorphologyProjection() { 
+    lsst::meas::multifit::components::MorphologyProjection::Ptr _getMorphologyProjection() { 
         return _morphologyProjection;
     }
 
@@ -215,7 +215,7 @@ private:
     // Transform from global coordinates to this projection
     lsst::afw::geom::AffineTransform::ConstPtr _transform; 
     // MorphologyProjection this ComponentModelProjection is based on
-    components::MorphologyProjection::Ptr _morphologyProjection;
+    lsst::meas::multifit::components::MorphologyProjection::Ptr _morphologyProjection;
 
     ndarray::Array<Pixel,2,2> _translationDerivative;
     ndarray::Array<Pixel,2,2> _projectedParameterDerivative;

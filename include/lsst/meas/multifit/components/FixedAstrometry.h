@@ -41,14 +41,14 @@ class FixedAstrometry : public Astrometry {
 public:
     typedef boost::shared_ptr<FixedAstrometry> Ptr;
     typedef boost::shared_ptr<FixedAstrometry const> ConstPtr;
-    
+       
     explicit FixedAstrometry(lsst::afw::geom::Point2D const & position) 
       : Astrometry(position) {}
 
     explicit FixedAstrometry(lsst::afw::coord::Coord const & coord) 
       : Astrometry(coord) {}
     virtual ~FixedAstrometry() {}
-    
+  
     virtual DerivativeMatrix const & differentiate() const {
         static DerivativeMatrix i;
         return i;

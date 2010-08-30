@@ -33,7 +33,8 @@ def psTiming(maxIteration, depth):
     psModel = measMult.createPointSourceModel(flux, centroid)
     exposureList = makeImageStack(psModel, depth, centroid[0], centroid[1])
     t0 = time.time()
-    modelEvaluator = measMult.ModelEvaluator(psModel, exposureList)
+    modelEvaluator = measMult.ModelEvaluator(psModel)
+    modelEvaluator.setExposureList(exposureList)
     t1 = time.time()
     print "Construction of ModelEvaluator: %0.3f ms"%((t1-t0)*1000.0)
     print "\tUsing %d pixels in %d exposures"% \

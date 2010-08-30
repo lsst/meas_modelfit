@@ -35,7 +35,8 @@ def initializeModelEvaluator():
     psModel = measMult.createPointSourceModel(flux, centroid)
 
     exposureList = makeImageStack(psModel, 15, centroid[0], centroid[1])
-    modelEvaluator = measMult.ModelEvaluator(psModel, exposureList)
+    modelEvaluator = measMult.ModelEvaluator(psModel)
+    modelEvaluator.setExposureList(exposureList)
 
     numpy.set_printoptions(threshold=100000)
     print "ModelEvaluator nProjections: %d"%modelEvaluator.getNProjections()

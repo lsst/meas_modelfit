@@ -70,7 +70,7 @@ public:
 protected:
     friend class lsst::meas::multifit::ComponentModel;
 
-    virtual void _convolve(PsfConstPtr const & psf);
+    virtual void _convolve(lsst::afw::detection::Psf::ConstPtr const & psf);
     /// Determine if a valid PSF been provided 
     virtual bool isConvolved() const { return _localKernel; }
 
@@ -99,9 +99,9 @@ private:
     
     FourierModelProjection(
         ComponentModel::ConstPtr const & model,
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
 
     void _setDimensions();

@@ -74,9 +74,9 @@ public:
     /**
      *  Create a Footprint that would contain a projection of this Model.
      */
-    virtual Footprint::Ptr computeProjectionFootprint(
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs
+    virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs
     ) const = 0;
 
     /**
@@ -84,8 +84,8 @@ public:
      *  of this Model.
      */
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs
     ) const = 0;
 
     /**
@@ -161,9 +161,9 @@ public:
      *  Create a ModelProjection object associated with this.
      */
     virtual boost::shared_ptr<ModelProjection> makeProjection(
-        PsfConstPtr const & psf,
-        WcsConstPtr const & wcs,
-        FootprintConstPtr const & footprint
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs,
+        boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
     ) const = 0;
 
 protected:

@@ -37,23 +37,12 @@ void components::SersicMorphologyProjection::_recomputeDimensions() {
     //grow the ellipse dimensions by a constant factor
     ellipseBounds *= 3;
 
-    //square ellipse dimensions
-    ellipseBounds = lsst::afw::geom::Extent2D(ellipseBounds.asVector().cwise().square());
-
-    //Get Padding returns padding needed on one side, times 2 for total padding
-    //needed. square padding
-    lsst::afw::geom::Extent2D padding = lsst::afw::geom::Extent2D(
-        (getPadding()*2).asVector().cwise().square().cast<double>()
-    );
-
-    lsst::afw::geom::Extent2D bounds = lsst::afw::geom::Extent2D(
-        (ellipseBounds+padding).asVector().cwise().sqrt()
-    );
-    
     lsst::afw::geom::Extent2I dimensions = lsst::afw::geom::makeExtentI(
-        static_cast<int>(std::ceil(bounds.getX())),
-        static_cast<int>(std::ceil(bounds.getY()))
+        static_cast<int>(std::ceil(ellipseBounds.getX())),
+        static_cast<int>(std::ceil(ellipseBounds.getY()))
     );
+
+    dimensions += getKernelDimensions() + getPadding()*2;
 
     if(lsst::afw::geom::any(_dimensions.lt(dimensions))) {
         //if the current _dimensions are smaller than the newly computed
@@ -240,7 +229,7 @@ components::SersicMorphologyProjection::computeProjectedParameterJacobian() cons
 components::MorphologyProjection::TransformJacobianMatrixPtr
 components::SersicMorphologyProjection::computeTransformParameterJacobian() const {
     TransformJacobianMatrix * m = new TransformJacobianMatrix(
-        TransformJacobianMatrix::Zero(getNonlinearParameterSize())
+        TransformJacobianMatrix::Zero(getNonlinearParameterSize(), TransformJacobianMatrix::ColsAtCompileTime)
     );    
     m->block<3,4>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(
         *getTransform()

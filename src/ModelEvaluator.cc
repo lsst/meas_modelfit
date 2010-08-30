@@ -29,11 +29,11 @@
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/matrices.h"
 #include "lsst/meas/multifit/footprintUtils.h"
-#include "lsst/afw/image/MaskedImage.h"
 
 #include <iostream>
 namespace multifit = lsst::meas::multifit;
-
+namespace afwImg = lsst::afw::image;
+namespace afwDet = lsst::afw::detection;
 /**
  * Set the list of exposures used to evaluate the model
  *
@@ -54,15 +54,14 @@ namespace multifit = lsst::meas::multifit;
  * @sa getNMinPix
  * @sa setNMinPix
  */
-template<typename ImagePixel>
-void multifit::ModelEvaluator::setExposureList(
-    std::list<boost::shared_ptr<CharacterizedExposure<ImagePixel> > > const & exposureList
+template<typename ImageT, typename MaskT, typename VarianceT>
+void multifit::ModelEvaluator::setExposureList(    
+    std::list<typename afwImg::Exposure<ImageT, MaskT, VarianceT>::Ptr> const & exposureList
 ) { 
-    typedef CharacterizedExposure<ImagePixel> CharacterizedExposure;
-    typedef std::list<typename CharacterizedExposure::Ptr> ExposureList;
+    typedef afwImg::Exposure<ImageT, MaskT, VarianceT> Exposure;
+    typedef std::list<typename Exposure::Ptr> ExposureList;
     typedef typename ExposureList::const_iterator ExposureIterator;
-    typedef lsst::afw::image::MaskPixel MaskPixel;
-    typedef typename lsst::afw::image::Mask<MaskPixel> Mask;
+    typedef typename afwImg::Mask<MaskT> Mask;
 
     _projectionList.clear();
     _validProducts = 0;
@@ -72,16 +71,10 @@ void multifit::ModelEvaluator::setExposureList(
 
     int pixSum = 0;
     
-    typename CharacterizedExposure::Ptr exposure;
-    ModelProjection::Ptr projection;
-    FootprintConstPtr footprint;
-    PsfConstPtr psf;
-    WcsConstPtr wcs;    
-  
     //exposures which contain fewer than _nMinPix pixels will be rejected
     //construct a list containing only those exposure which were not rejected
     ExposureList goodExposureList;
-    MaskPixel bitmask = Mask::getPlaneBitMask("BAD") | 
+    MaskT bitmask = Mask::getPlaneBitMask("BAD") | 
         Mask::getPlaneBitMask("INTRP") | Mask::getPlaneBitMask("SAT") | 
         Mask::getPlaneBitMask("CR") | Mask::getPlaneBitMask("EDGE");
 
@@ -89,23 +82,24 @@ void multifit::ModelEvaluator::setExposureList(
     for(ExposureIterator i(exposureList.begin()), end(exposureList.end());
         i != end; ++i
     ) {
-        exposure = *i;
-        psf = exposure->getPSF();
-        wcs = exposure->getWcs();        
-        footprint = _model->computeProjectionFootprint(psf, wcs);
+        typename Exposure::Ptr exposure = *i;
+        afwDet::Psf::ConstPtr psf=exposure->getPsf();
+        afwImg::Wcs::ConstPtr wcs=exposure->getWcs();        
 
-        footprint = clipAndMaskFootprint<MaskPixel>(
-            *footprint, exposure->getMaskedImage().getMask(),
+        afwDet::Footprint::Ptr projectionFp = _model->computeProjectionFootprint(psf, wcs);
+        afwDet::Footprint::Ptr fixedFp = clipAndMaskFootprint<MaskT>(
+            *projectionFp, 
+            *exposure->getMaskedImage().getMask(),
             bitmask
         );
         //ignore exposures with too few contributing pixels        
-        if (footprint->getNpix() > _nMinPix) {
+        if (fixedFp->getNpix() > _nMinPix) {
             _projectionList.push_back(
-                _model->makeProjection(psf, wcs, footprint)
+                _model->makeProjection(psf, wcs, fixedFp)
             );
             goodExposureList.push_back(exposure);
 
-            pixSum += footprint->getNpix();
+            pixSum += fixedFp->getNpix();
         }
     }
 
@@ -214,13 +208,13 @@ multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
 }
 
 
-
-//explicit templating
-template void multifit::ModelEvaluator::setExposureList<float>
+template void multifit::ModelEvaluator::setExposureList<float, 
+        afwImg::MaskPixel, afwImg::VariancePixel>
 (
-    std::list<boost::shared_ptr<CharacterizedExposure<float> > > const &
+    std::list<afwImg::Exposure<float>::Ptr> const &
 );
-template void multifit::ModelEvaluator::setExposureList<double>
+template void multifit::ModelEvaluator::setExposureList<double,
+        afwImg::MaskPixel, afwImg::VariancePixel>
 (
-    std::list<boost::shared_ptr<CharacterizedExposure<double> > > const &
+    std::list<afwImg::Exposure<double>::Ptr> const &
 );
