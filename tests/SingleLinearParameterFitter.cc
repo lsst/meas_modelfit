@@ -52,7 +52,7 @@ namespace math = lsst::afw::math;
 namespace image = lsst::afw::image;
 namespace multifit = lsst::meas::multifit;
 namespace geom = lsst::afw::geom;
-namespace measAlg = lsst::meas::algorithms;
+namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(FitterBasic) {
     geom::PointD centroid = geom::PointD::make(35,65);
@@ -68,12 +68,13 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
     Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
     image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
 
-    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 19, 19, 2);
-    multifit::FootprintConstPtr fp(psModel->computeProjectionFootprint(psf, wcs));
+    detection::Psf::Ptr psf = detection::createPsf("DoubleGaussian", 19, 19, 2);
+    CONST_PTR(detection::Footprint) fp(psModel->computeProjectionFootprint(psf, wcs));
     image::BBox bbox = fp->getBBox();
-
-    multifit::CharacterizedExposure<double>::Ptr exposure = 
-        boost::make_shared<multifit::CharacterizedExposure<double> >(bbox.getWidth(), bbox.getHeight(), *wcs, psf);
+    
+    image::Exposure<double>::Ptr exposure = 
+        boost::make_shared<image::Exposure<double> >(bbox.getWidth(), bbox.getHeight(), *wcs);
+    exposure->setPsf(psf);
     lsst::afw::image::MaskedImage<double> mi = exposure->getMaskedImage();
     mi.setXY0(bbox.getX0(), bbox.getY0());
     *mi.getMask() = 0;
@@ -85,11 +86,14 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
 
     multifit::expandImage(*fp, mi, modelImage, variance);
 
-    std::list<multifit::CharacterizedExposure<double>::Ptr> exposureList;
+    std::list<image::Exposure<double>::Ptr> exposureList;
     for(int i=0; i < 5; ++i) {
         exposureList.push_back(exposure);
     }
-    multifit::ModelEvaluator evaluator(psModel, exposureList);
+    multifit::ModelEvaluator evaluator(psModel);
+    evaluator.setExposureList<double, image::MaskPixel, image::VariancePixel>(
+        exposureList
+    );
        
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
     fitterPolicy->add("terminationType", "iteration");    

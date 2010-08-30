@@ -40,6 +40,7 @@
 #include "lsst/afw/geom/Box.h"
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/afw/geom/deprecated.h"
+#include "lsst/afw/detection/Psf.h"
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
@@ -53,7 +54,6 @@ namespace math = lsst::afw::math;
 namespace image = lsst::afw::image;
 namespace multifit = lsst::meas::multifit;
 namespace geom = lsst::afw::geom;
-namespace measAlg = lsst::meas::algorithms;
 
 image::Wcs::Ptr makeWcs(geom::PointD const & crVal) {
     geom::PointD crPix= geom::makePointD(5312.4, 9609);
@@ -62,12 +62,12 @@ image::Wcs::Ptr makeWcs(geom::PointD const & crVal) {
     return boost::make_shared<image::Wcs>(crVal, crPix, cdMatrix);
 }
 
-multifit::CharacterizedExposure<float>::Ptr makeCharExp(
+image::Exposure<float>::Ptr makeCharExp(
     multifit::Model::Ptr model, geom::PointD const & crVal
 ) {
-    multifit::Wcs::Ptr wcs = makeWcs(crVal);
+    PTR(image::Wcs) wcs = makeWcs(crVal);
 
-    multifit::Psf::Ptr psf = measAlg::createPSF("DoubleGaussian", 23, 23, 2);
+    PTR(det::Psf) psf = det::createPsf("DoubleGaussian", 23, 23, 2);
     det::Footprint::Ptr fp(model->computeProjectionFootprint(psf, wcs));
     image::BBox bbox = fp->getBBox();
 
@@ -82,9 +82,8 @@ multifit::CharacterizedExposure<float>::Ptr makeCharExp(
     variance = 0.25;
 
     multifit::expandImage(*fp, mi, modelImage, variance);
-    multifit::CharacterizedExposure<float>::Ptr exp(
-        new multifit::CharacterizedExposure<float>(mi, *wcs, psf)
-    );
+    image::Exposure<float>::Ptr exp(new image::Exposure<float>(mi, *wcs));
+    exp->setPsf(psf);
 
     return exp;
 }
@@ -94,7 +93,7 @@ BOOST_AUTO_TEST_CASE(PsModel) {
     geom::Point2D pixel = geom::makePointD(45,45);
 
     geom::PointD crVal=geom::makePointD(150.11883, 2.20639);
-    multifit::Wcs::Ptr wcs0 = makeWcs(crVal);   
+    PTR(image::Wcs) wcs0 = makeWcs(crVal);   
 
     lsst::afw::coord::Coord::Ptr coord = wcs0->pixelToSky(pixel);
 
@@ -104,7 +103,7 @@ BOOST_AUTO_TEST_CASE(PsModel) {
             coord->getPosition(lsst::afw::coord::DEGREES)
         );
 
-    std::list<multifit::CharacterizedExposure<float>::Ptr> exposureList;
+    std::list<image::Exposure<float>::Ptr> exposureList;
     exposureList.push_back(makeCharExp(model, crVal));
     
     crVal = geom::makePointD(150.11863, 2.20583);
@@ -113,9 +112,8 @@ BOOST_AUTO_TEST_CASE(PsModel) {
     crVal= geom::makePointD(150.11917, 2.20639);
     exposureList.push_back(makeCharExp(model, crVal));
 
-
-
-    multifit::ModelEvaluator evaluator(model, exposureList);
+    multifit::ModelEvaluator evaluator(model);
+    evaluator.setExposureList<float, image::MaskPixel, image::VariancePixel>(exposureList);
 
     BOOST_CHECK_EQUAL(evaluator.getNProjections(), 3);    
     BOOST_CHECK(evaluator.getNPixels() > 0);
@@ -151,7 +149,7 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
     geom::ellipses::Axes axes(3,5,0);
 
     geom::PointD crVal=geom::makePointD(150.11883, 2.20639);
-    multifit::Wcs::Ptr wcs0 = makeWcs(crVal);   
+    PTR(image::Wcs) wcs0 = makeWcs(crVal);   
 
     lsst::afw::coord::Coord::Ptr coord = wcs0->pixelToSky(pixel);
 
@@ -168,7 +166,7 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
         1.0
     );
 
-    std::list<multifit::CharacterizedExposure<float>::Ptr> exposureList;
+    std::list<image::Exposure<float>::Ptr> exposureList;
     exposureList.push_back(makeCharExp(model, crVal));
     
     crVal = geom::makePointD(150.11863, 2.20583);
@@ -177,7 +175,8 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
     crVal= geom::makePointD(150.11917, 2.20639);
     exposureList.push_back(makeCharExp(model, crVal));
 
-    multifit::ModelEvaluator evaluator(model, exposureList);
+    multifit::ModelEvaluator evaluator(model);
+    evaluator.setExposureList<float, image::MaskPixel, image::VariancePixel>(exposureList);
 
     BOOST_CHECK_EQUAL(evaluator.getNProjections(), 3);    
     BOOST_CHECK(evaluator.getNPixels() > 0);

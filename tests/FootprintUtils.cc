@@ -62,8 +62,8 @@ BOOST_AUTO_TEST_CASE(clipAndMaskFootprintTest) {
     BOOST_CHECK_EQUAL(bbox.getY0(), 0);
     BOOST_CHECK_EQUAL(bbox.getY1(), 9);
 
-    multifit::FootprintConstPtr fixedFp(
-        multifit::clipAndMaskFootprint<lsst::afw::image::MaskPixel>(fp, testMask)
+    CONST_PTR(detection::Footprint) fixedFp(
+        multifit::clipAndMaskFootprint<lsst::afw::image::MaskPixel>(fp, *testMask)
     );
     
     lsst::afw::geom::BoxI fixedBBox(lsst::afw::geom::convertToGeom(fixedFp->getBBox()));
@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(clipAndMaskFootprintTest) {
 
 
     (*testMask)(4,4) = 1;
-    fixedFp = multifit::clipAndMaskFootprint<lsst::afw::image::MaskPixel>(fp, testMask);
+    fixedFp = multifit::clipAndMaskFootprint<lsst::afw::image::MaskPixel>(fp, *testMask);
     fixedBBox = lsst::afw::geom::convertToGeom(fixedFp->getBBox());
     BOOST_CHECK_EQUAL(fixedFp->getNpix(), 8*8 - 1);
     BOOST_CHECK_EQUAL(fixedBBox.getMinX(), 1);

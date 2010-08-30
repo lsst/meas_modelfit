@@ -37,7 +37,7 @@
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/image/Utils.h"
 #include "lsst/afw/detection/Footprint.h"
-#include "lsst/meas/algorithms/PSF.h"
+#include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/geom/deprecated.h"
 
 #include "lsst/meas/multifit/core.h"
@@ -52,7 +52,6 @@
 #include "lsst/meas/multifit/ModelFactory.h"
 
 using namespace std;
-namespace measAlg = lsst::meas::algorithms;
 namespace multifit = lsst::meas::multifit;
 namespace components = lsst::meas::multifit::components;
 namespace geom = lsst::afw::geom;
@@ -64,7 +63,7 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     //define ellipse in pixel coordinates
     lsst::afw::geom::ellipses::Axes axes(3, 1, 1.3);
 
-    multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
+    CONST_PTR(image::Wcs) wcs = boost::make_shared<image::Wcs>( 
         centroid, 
         geom::makePointD(0,0), 
         Eigen::Matrix2d::Identity()
@@ -85,8 +84,8 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     BOOST_CHECK_EQUAL(sgModel->getNonlinearParameterSize(), 6);
 
 
-    multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 7, 7, 1.0);
-    multifit::FootprintConstPtr fp = sgModel->computeProjectionFootprint(psf, wcs);
+    CONST_PTR(detection::Psf) psf = detection::createPsf("DoubleGaussian", 7, 7, 1.0);
+    CONST_PTR(detection::Footprint) fp = sgModel->computeProjectionFootprint(psf, wcs);
     
     BOOST_CHECK(fp->getNpix() > 0);
     multifit::ModelProjection::Ptr projection = sgModel->makeProjection(psf, wcs, fp);

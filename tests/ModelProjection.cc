@@ -35,9 +35,9 @@
 
 #include "ndarray.hpp"
 #include "lsst/afw/detection/Footprint.h"
+#include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/image/Utils.h"
-#include "lsst/meas/algorithms/PSF.h"
 
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/Model.h"
@@ -51,7 +51,6 @@
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 
 using namespace std;
-namespace measAlg = lsst::meas::algorithms;
 namespace multifit = lsst::meas::multifit;
 namespace geom = lsst::afw::geom;
 namespace detection = lsst::afw::detection;
@@ -65,12 +64,12 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
     
     BOOST_CHECK_EQUAL(psModel->getLinearParameterSize(), 1);
     BOOST_CHECK_EQUAL(psModel->getNonlinearParameterSize(), 2);
-    multifit::WcsConstPtr wcs = boost::make_shared<multifit::Wcs>( 
+    CONST_PTR(image::Wcs) wcs = boost::make_shared<image::Wcs>( 
         centroid, geom::makePointD(0,0), Eigen::Matrix2d::Identity()
     );
 
-    multifit::PsfConstPtr psf = measAlg::createPSF("DoubleGaussian", 23, 23, 2.0);
-    multifit::FootprintConstPtr fp = psModel->computeProjectionFootprint(psf, wcs);
+    CONST_PTR(detection::Psf) psf = detection::createPsf("DoubleGaussian", 23, 23, 2.0);
+    CONST_PTR(detection::Footprint) fp = psModel->computeProjectionFootprint(psf, wcs);
     
     BOOST_CHECK(fp->getNpix() > 0);
     multifit::ModelProjection::Ptr projection = psModel->makeProjection(psf, wcs, fp);

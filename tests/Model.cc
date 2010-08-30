@@ -42,6 +42,9 @@
 
 namespace multifit = lsst::meas::multifit;
 namespace geom = lsst::afw::geom;
+namespace afwImg = lsst::afw::image;
+namespace afwMath = lsst::afw::math;
+namespace afwDet = lsst::afw::detection;
 
 class DoNothingProjection : public multifit::ModelProjection {
 public:
@@ -49,8 +52,8 @@ public:
 
     DoNothingProjection(
         multifit::Model::ConstPtr const & model, 
-        multifit::WcsConstPtr const & wcs, 
-        multifit::FootprintConstPtr const & footprint
+        CONST_PTR(afwImg::Wcs) const & wcs, 
+        CONST_PTR(afwDet::Footprint) const & footprint
     ) : ModelProjection(model, wcs, footprint), _linearChange(0), _nonlinearChange(0) {}
 
     virtual int const getWcsParameterSize() const {return 0;}
@@ -83,11 +86,11 @@ public:
         return DoNothingModel::Ptr(new DoNothingModel());
     }
     
-    virtual multifit::Footprint::Ptr computeProjectionFootprint(
-        multifit::PsfConstPtr const & psf,
-        multifit::WcsConstPtr const & wcs
+    virtual PTR(afwDet::Footprint) computeProjectionFootprint(
+        CONST_PTR(afwDet::Psf) const & psf,
+        CONST_PTR(afwImg::Wcs) const & wcs
     ) const {
-        return boost::make_shared<multifit::Footprint>(
+        return boost::make_shared<afwDet::Footprint>(
             lsst::afw::image::BBox(
                 lsst::afw::image::PointI(0, 0),
                 10, 15
@@ -95,8 +98,8 @@ public:
         );
     }
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
-        multifit::PsfConstPtr const & psf,
-        multifit::WcsConstPtr const & wcs
+        CONST_PTR(afwDet::Psf) const & psf,
+        CONST_PTR(afwImg::Wcs) const & wcs
     ) const {
         return lsst::afw::geom::BoxD(
             lsst::afw::geom::PointD::make(0, 0),
@@ -112,9 +115,9 @@ public:
     }
 
     virtual multifit::ModelProjection::Ptr makeProjection(
-        multifit::PsfConstPtr const & psf,
-        multifit::WcsConstPtr const &wcs,
-        multifit::FootprintConstPtr const & footprint
+        CONST_PTR(afwDet::Psf) const & psf,
+        CONST_PTR(afwImg::Wcs) const &wcs,
+        CONST_PTR(afwDet::Footprint) const & footprint
     ) const {
         multifit::ModelProjection::Ptr projection(
             new DoNothingProjection(shared_from_this(),wcs, footprint)
@@ -152,9 +155,9 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     BOOST_CHECK_EQUAL(linear, model->getLinearParameters());
     BOOST_CHECK_EQUAL(nonlinear, model->getNonlinearParameters());
     
-    multifit::WcsConstPtr wcs;
-    multifit::PsfConstPtr psf;
-    multifit::FootprintConstPtr footprint = model->computeProjectionFootprint(psf, wcs);
+    CONST_PTR(afwImg::Wcs) wcs;
+    CONST_PTR(afwDet::Psf) psf;
+    CONST_PTR(afwDet::Footprint) footprint = model->computeProjectionFootprint(psf, wcs);
     multifit::ModelProjection::Ptr projection = model->makeProjection(psf, wcs, footprint);
     BOOST_CHECK_EQUAL(projection->getModel(), model);
     BOOST_CHECK_EQUAL(projection->getPsfParameterSize(), 0);

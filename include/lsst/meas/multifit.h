@@ -23,6 +23,9 @@
 #ifndef LSST_MULTIFIT
 #define LSST_MULTIFIT
 
+#undef NDEBUG
+#define DEBUG
+
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/ModelFactory.h"
