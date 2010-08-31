@@ -29,6 +29,7 @@
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/PointSourceMorphology.h"
 #include "lsst/meas/multifit/components/SersicMorphology.h"
+#include "lsst/meas/multifit/components/ExponentialMorphology.h"
 
 namespace lsst{
 namespace meas{
@@ -82,6 +83,32 @@ public:
             coord.getPosition(lsst::afw::coord::DEGREES),
             ellipse, 
             sersicIndex
+        );
+    }
+
+
+    static Model::Ptr createExponentialModel(
+        Parameter const & flux,
+        lsst::afw::geom::Point2D const & centroid,
+        lsst::afw::geom::ellipses::Core const & ellipse
+    ) {
+        components::Morphology::Ptr morphology = 
+            components::ExponentialMorphology::create(flux, ellipse);
+        components::Astrometry::Ptr astrometry(
+            new components::Astrometry(centroid)
+        );
+        return ComponentModel::create(astrometry, morphology); 
+    }
+    
+    static Model::Ptr createExponentialModel(
+        Parameter const & flux,
+        lsst::afw::coord::Coord const & coord,
+        lsst::afw::geom::ellipses::Core const & ellipse
+    ) {
+        return createExponentialModel(
+            flux, 
+            coord.getPosition(lsst::afw::coord::DEGREES),
+            ellipse
         );
     }
 };

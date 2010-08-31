@@ -58,6 +58,8 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 #include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
+#include "lsst/meas/multifit/components/ExponentialMorphology.h"
+#include "lsst/meas/multifit/components/ExponentialMorphologyProjection.h"
 #include "lsst/meas/multifit/ComponentModel.h"
 #include "lsst/meas/multifit/ComponentModelProjection.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
@@ -212,6 +214,8 @@ SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyPtr, lsst::meas::multifit::componen
     lsst::meas::multifit::components::PointSourceMorphology);   
 SWIG_SHARED_PTR_DERIVED(SersicMorphologyPtr, lsst::meas::multifit::components::Morphology,
     lsst::meas::multifit::components::SersicMorphology);    
+SWIG_SHARED_PTR_DERIVED(ExponentialMorphologyPtr, lsst::meas::multifit::components::Morphology,
+    lsst::meas::multifit::components::ExponentialMorphology);    
 SWIG_SHARED_PTR(MorphologyProjectionPtr, lsst::meas::multifit::components::MorphologyProjection);
 SWIG_SHARED_PTR_DERIVED(FourierMorphologyProjectionPtr,
     lsst::meas::multifit::components::MorphologyProjection,
@@ -222,8 +226,12 @@ SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyProjectionPtr,
 SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
     lsst::meas::multifit::components::FourierMorphologyProjection,
     lsst::meas::multifit::components::SersicMorphologyProjection);
+SWIG_SHARED_PTR_DERIVED(ExponentialMorphologyProjectionPtr,
+    lsst::meas::multifit::components::FourierMorphologyProjection,
+    lsst::meas::multifit::components::ExponentialMorphologyProjection);
 %ignore lsst::meas::multifit::components::PointSourceMorphology::create;
 %ignore lsst::meas::multifit::components::SersicMorphology::create;
+%ignore lsst::meas::multifit::components::ExponentialMorphology::create;
 %ignore lsst::meas::multifit::components::FixedNonlinearMorphology::create;
 
 %include "lsst/meas/multifit/components/Astrometry.h"
@@ -231,9 +239,11 @@ SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
 %include "lsst/meas/multifit/components/Morphology.h"
 %include "lsst/meas/multifit/components/PointSourceMorphology.h"
 %include "lsst/meas/multifit/components/SersicMorphology.h"
+%include "lsst/meas/multifit/components/ExponentialMorphology.h"
 %include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
 %include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
 %include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
+%include "lsst/meas/multifit/components/ExponentialMorphologyProjection.h"
 
 %include "lsst/meas/multifit/components/FixedAstrometry.h"
 %include "lsst/meas/multifit/components/FixedNonlinearMorphology.h"
@@ -255,6 +265,14 @@ SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
             flux, ellipse, sersicIndex
         );
     }
+    
+    boost::shared_ptr<lsst::meas::multifit::components::ExponentialMorphology> createExponentialMorphology(
+        lsst::meas::multifit::Parameter flux,
+        lsst::afw::geom::ellipses::Core const & ellipse
+    ) {
+        return lsst::meas::multifit::components::ExponentialMorphology::create(flux, ellipse);
+    }
+
     boost::shared_ptr<lsst::meas::multifit::components::FixedNonlinearMorphology> createFixedNonlinearMorphology(
         lsst::meas::multifit::components::Morphology const & base
     ) {
@@ -269,6 +287,16 @@ SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
     ) {
         return lsst::meas::multifit::ModelFactory::createSersicModel(
             flux, centroid, ellipse, sersicIndex
+        );
+    }
+
+    boost::shared_ptr<lsst::meas::multifit::Model> createExponentialModel(
+        lsst::meas::multifit::Parameter flux, 
+        lsst::afw::geom::Point2D const & centroid,
+        lsst::afw::geom::ellipses::Core const & ellipse
+    ) {
+        return lsst::meas::multifit::ModelFactory::createExponentialModel(
+            flux, centroid, ellipse
         );
     }
 
