@@ -33,6 +33,6 @@ definitions: {
         description: "specifies whether to use the model's derivatives to compute the gradient"
         minOccurs: 0
         maxOccurs: 1
-        default: False
+        default: false
     }
 }

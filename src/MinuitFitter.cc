@@ -90,6 +90,7 @@ private:
         return false;
     }
     mutable multifit::ModelEvaluator::Ptr _evaluator;
+    bool _checkGradient;
     multifit::VectorMap _measured;
     Eigen::VectorXd _sigma;
 };
