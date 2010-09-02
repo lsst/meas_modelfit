@@ -57,7 +57,8 @@ namespace multifit{
 class ModelEvaluator : private boost::noncopyable {
 public:
     typedef std::list<ModelProjection::Ptr> ProjectionList;
-   
+    typedef boost::shared_ptr<ModelEvaluator> Ptr;
+    typedef boost::shared_ptr<const ModelEvaluator> ConstPtr;
     /**
      * Construct a ModelEvaluator
      *

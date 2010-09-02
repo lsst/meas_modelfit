@@ -1,0 +1,31 @@
+#<? cfg paf dictionary ?>
+target: lsst.meas.multifit.SingleLinearParameterFitter
+
+definitions: {
+    iterationMax: {
+        type: "int"
+        description: "specifies maximum number of iterations"
+        minOccurs: 0       
+        maxOccurs: 1
+        default: 0
+    }
+    tolerance: {
+        type: "double"
+        description: "minuit will stop iterating when the expected distance (edm)
+                      will be: edm < tolerance* 10**-3."                      
+        minOccurs:0
+        maxOccurs:1
+        default: 0.1
+    }
+    strategy: {
+        type: "int"
+        description: "specifies the minuit strategy to use. 0-2"
+        minOccurs: 0
+        maxOccurs: 1
+        allowed: {
+            min: 0
+            max: 2
+        }
+        default:1
+    }
+}
