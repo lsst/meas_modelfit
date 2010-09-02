@@ -13,8 +13,9 @@ namespace {
 
 class MinuitFunction : public ROOT::Minuit2::FCNGradientBase {
 public:
-    MinuitFunction(multifit::ModelEvaluator::Ptr evaluator) :
+    MinuitFunction(multifit::ModelEvaluator::Ptr evaluator, bool const & checkGradient) :
         _evaluator(evaluator),
+        _checkGradient(checkGradient),
         _sigma(evaluator->computeSigmaVector()),        
         _measured(evaluator->getDataVector().getData(), evaluator->getNPixels(), 1)
     {}
@@ -34,7 +35,7 @@ public:
         Eigen::VectorXd residual = (_measured-modeled).cwise()/_sigma;
         return 0.5*residual.dot(residual);
     }
-    virtual bool CheckGradient() const {return false;}
+    virtual bool CheckGradient() const {return _checkGradient;}
     virtual double Up() const {return 1.0;}
     virtual std::vector<double> Gradient(std::vector<double> const &params) const {
         if(hasChanged(params)) {
@@ -118,7 +119,7 @@ multifit::MinuitFitter::Result multifit::MinuitFitter::apply(
     multifit::ModelEvaluator::Ptr evaluator, 
     std::vector<double> initialErrors
 ) const {
-    ::MinuitFunction function(evaluator);
+    ::MinuitFunction function(evaluator, _policy->getBool("checkGradient"));
 /*
     if(!function.CheckGradient()) {
         throw LSST_EXCEPT(
