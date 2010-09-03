@@ -216,6 +216,7 @@ private:
             _parent->_applyKernel(_kTD.begin(),_kTD.end());
             ndarray::differentiate(1, _kTD[0]);
             ndarray::differentiate(0, _kTD[1]);
+            _kTD *= -1.0;
         }
         if (_parent->hasProjectedParameterDerivative()) {
             _kPPD = _parent->_getMorphologyProjection()->computeProjectedParameterDerivative(); 
