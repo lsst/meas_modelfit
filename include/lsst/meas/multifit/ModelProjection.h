@@ -70,12 +70,6 @@ public:
     /// Number of nonlinear parameters.
     int const getNonlinearParameterSize() const { return _model->getNonlinearParameterSize(); }
 
-    /// Number of parameters that specify the coordinate transformation.
-    virtual int const getWcsParameterSize() const = 0;
-
-    /// Number of parameters that specify the PSF.
-    virtual int const getPsfParameterSize() const = 0;
-
     /**
      *  @name Public Product Computers
      *
@@ -91,20 +85,14 @@ public:
      *  @sa _computeModelImage
      *  @sa _computeLinearParameterDerivative
      *  @sa _computeNonlinearParameterDerivative
-     *  @sa _computeWcsParameterDerivative
-     *  @sa _computePsfParameterDerivative
      */
     //@{
 #ifndef SWIG
     ndarray::Array<Pixel const,1,1> computeModelImage();
     ndarray::Array<Pixel const,2,1> computeLinearParameterDerivative();
     ndarray::Array<Pixel const,2,1> computeNonlinearParameterDerivative();
-    ndarray::Array<Pixel const,2,1> computeWcsParameterDerivative();
-    ndarray::Array<Pixel const,2,1> computePsfParameterDerivative();
 #endif
     //@}
-
-
 
     /**
      *  @name Product Enabled Checkers
@@ -117,13 +105,17 @@ public:
     bool hasModelImage() const { return true; }
     bool hasLinearParameterDerivative() const { return getLinearParameterSize() > 0; }
     bool hasNonlinearParameterDerivative() const { return getNonlinearParameterSize() > 0; }
-    virtual bool hasWcsParameterDerivative() const = 0;
-    virtual bool hasPsfParameterDerivative() const = 0;
     //@}
 
     /// The WCS associated with the observation this projection represents.
     lsst::afw::image::Wcs::ConstPtr const & getWcs() const { return _wcs; }
 
+    /**
+     * The AffineTransfrom associated with the observation this projection 
+     * represents
+     */
+    lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const {return _transform;}
+    
     /**
      * Footprint the image representation will be computed on.
      *
@@ -137,10 +129,15 @@ public:
 protected:
     ModelProjection(
         Model::ConstPtr const & model,
-        lsst::afw::image::Wcs::ConstPtr const & wcs,
-        boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
+        lsst::afw::geom::AffineTransform const & transform,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
 
+    ModelProjection(
+        Model::ConstPtr const & model,
+        CONST_PTR(lsst::afw::image::Wcs) const & wcs,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
+    );
     /**
      *  @name Protected Product Computers
      *
@@ -158,12 +155,7 @@ protected:
     virtual void _computeNonlinearParameterDerivative(
         ndarray::Array<Pixel,2,1> const & matrix
     ) = 0;
-    virtual void _computeWcsParameterDerivative(
-        ndarray::Array<Pixel,2,1> const & matrix
-    ) = 0;
-    virtual void _computePsfParameterDerivative(
-        ndarray::Array<Pixel,2,1> const & matrix
-    ) = 0;
+
     //@}
 
     /**
@@ -203,20 +195,13 @@ private:
     void setNonlinearParameterDerivativeBuffer(
         ndarray::Array<Pixel,2,1> const & buffer
     );
-    void setWcsParameterDerivativeBuffer(
-        ndarray::Array<Pixel,2,1> const & buffer
-    );
-    void setPsfParameterDerivativeBuffer(
-        ndarray::Array<Pixel,2,1> const & buffer
-    );
+
     //@} 
     
     enum ProductFlag {
         MODEL_IMAGE = 1<<0,
         LINEAR_PARAMETER_DERIVATIVE = 1<<1,
         NONLINEAR_PARAMETER_DERIVATIVE = 1<<2,
-        WCS_PARAMETER_DERIVATIVE = 1<<3,
-        PSF_PARAMETER_DERIVATIVE = 1<<4,
     };
 
     int _validProducts;
@@ -224,12 +209,12 @@ private:
     Model::ConstPtr _model;
     boost::shared_ptr<lsst::afw::detection::Footprint const> _footprint;
     lsst::afw::image::Wcs::ConstPtr _wcs;
+    // Transform from global coordinates to this projection
+    lsst::afw::geom::AffineTransform::ConstPtr _transform; 
 
     ndarray::Array<Pixel, 1, 1> _modelImage;
     ndarray::Array<Pixel, 2, 1> _linearParameterDerivative;
     ndarray::Array<Pixel, 2, 1> _nonlinearParameterDerivative;
-    ndarray::Array<Pixel, 2, 1> _wcsParameterDerivative;
-    ndarray::Array<Pixel, 2, 1> _psfParameterDerivative;
 };
 
 }}} // namespace lsst::meas::multifit

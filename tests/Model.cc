@@ -56,11 +56,11 @@ public:
         CONST_PTR(afwDet::Footprint) const & footprint
     ) : ModelProjection(model, wcs, footprint), _linearChange(0), _nonlinearChange(0) {}
 
-    virtual int const getWcsParameterSize() const {return 0;}
-    virtual int const getPsfParameterSize() const {return 0;}
-   
-    virtual bool hasWcsParameterDerivative() const {return false;}
-    virtual bool hasPsfParameterDerivative() const {return false;}
+    DoNothingProjection(
+        multifit::Model::ConstPtr const & model, 
+        afwGeom::AffineTransform const & transform, 
+        CONST_PTR(afwDet::Footprint) const & footprint
+    ) : ModelProjection(model, transform, footprint), _linearChange(0), _nonlinearChange(0) {}
 
     int getLinearChange() const {return _linearChange;}
     int getNonlinearChange() const {return _nonlinearChange;}
@@ -68,8 +68,6 @@ protected:
     virtual void _computeModelImage(ndarray::Array<multifit::Pixel, 1, 1> const & vector) {}
     virtual void _computeLinearParameterDerivative(ndarray::Array<multifit::Pixel, 2, 1> const & matrix) {}
     virtual void _computeNonlinearParameterDerivative(ndarray::Array<multifit::Pixel, 2, 1> const & matrix) {}
-    virtual void _computePsfParameterDerivative(ndarray::Array<multifit::Pixel, 2, 1> const & matrix) {}
-    virtual void _computeWcsParameterDerivative(ndarray::Array<multifit::Pixel, 2, 1> const & matrix) {}
     
     virtual void _handleLinearParameterChange() {++_linearChange;}
     virtual void _handleNonlinearParameterChange() {++_nonlinearChange;}
@@ -97,9 +95,30 @@ public:
             )
         );
     }
+    virtual PTR(afwDet::Footprint) computeProjectionFootprint(
+        CONST_PTR(afwDet::Psf) const & psf,
+        afwGeom::AffineTransform const & transform
+    ) const {
+        return boost::make_shared<afwDet::Footprint>(
+            lsst::afw::image::BBox(
+                lsst::afw::image::PointI(0, 0),
+                10, 15
+            )
+        );
+    }
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         CONST_PTR(afwDet::Psf) const & psf,
         CONST_PTR(afwImg::Wcs) const & wcs
+    ) const {
+        return lsst::afw::geom::BoxD(
+            lsst::afw::geom::PointD::make(0, 0),
+            lsst::afw::geom::ExtentD::make(10, 15)
+        );
+    }
+    
+    virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
+        CONST_PTR(afwDet::Psf) const & psf,
+        afwGeom::AffineTransform const & transform
     ) const {
         return lsst::afw::geom::BoxD(
             lsst::afw::geom::PointD::make(0, 0),
@@ -110,8 +129,11 @@ public:
         lsst::afw::geom::ellipses::Axes core(8, 6, 0);
         return boost::make_shared<lsst::afw::geom::ellipses::AxesEllipse>(
             core,
-            lsst::afw::geom::PointD::make(5, 7.5)
+            computePosition()
         );
+    }
+    virtual lsst::afw::geom::Point2D computePosition() const {
+        return lsst::afw::geom::PointD::make(5, 7.5);
     }
 
     virtual multifit::ModelProjection::Ptr makeProjection(
@@ -125,7 +147,17 @@ public:
         _registerProjection(projection);
         return projection;
     }
-
+    virtual multifit::ModelProjection::Ptr makeProjection(
+        CONST_PTR(afwDet::Psf) const & psf,
+        afwGeom::AffineTransform const &transform,
+        CONST_PTR(afwDet::Footprint) const & footprint
+    ) const {
+        multifit::ModelProjection::Ptr projection(
+            new DoNothingProjection(shared_from_this(),transform, footprint)
+        );
+        _registerProjection(projection);
+        return projection;
+    }
     multifit::Model::Ptr clone() const {
         return makeModel();
     }
@@ -160,8 +192,6 @@ BOOST_AUTO_TEST_CASE(ModelBasic) {
     CONST_PTR(afwDet::Footprint) footprint = model->computeProjectionFootprint(psf, wcs);
     multifit::ModelProjection::Ptr projection = model->makeProjection(psf, wcs, footprint);
     BOOST_CHECK_EQUAL(projection->getModel(), model);
-    BOOST_CHECK_EQUAL(projection->getPsfParameterSize(), 0);
-    BOOST_CHECK_EQUAL(projection->getWcsParameterSize(), 0);
 
     DoNothingProjection::Ptr doNothingProjection = boost::static_pointer_cast<DoNothingProjection>(projection);
     BOOST_CHECK_NO_THROW(model->setLinearParameters(linear.data()));

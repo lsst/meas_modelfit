@@ -35,29 +35,19 @@ import lsst.afw.display.ds9 as ds9
 def applyFitter():
     #exp = afwImage.ExposureF("c00.fits")
     #wcs = exp.getWcs()
-    crVal = afwGeom.makePointD(1,1)
-    crPix = afwGeom.makePointD(0,0)
+    crVal = afwGeom.makePointD(0,0)
+    crPix = afwGeom.makePointD(1,1)
     wcs = afwImage.createWcs(crVal, crPix, 1., 0., 0., 1.)
-    coord = wcs.getSkyOrigin()
-    point = coord.getPosition(afwCoord.DEGREES)
-    print point
-    axes = afwGeom.ellipses.Axes(0,0,0)
-    affine = wcs.linearizeAt(point)
-    print [affine[s] for s in range(6)]
-    linear = affine.getLinear()
-    print [linear[s] for s in range(4)]
-    
-    print "affine transformed",  axes.transform(affine)
-    print "linear transformed", axes.transform(linear)
+
+    axes = afwGeom.ellipses.Axes(25,30,0)
+    affine = wcs.linearizeAt(crVal)
 
     transformedAxes = axes.transform(affine)
-    print transformedAxes
-    #logShear = afwGeom.ellipses.LogShear(transformedAxes)
-    logShear = afwGeom.ellipses.LogShear(0,.001,1e-10) 
+    logShear = afwGeom.ellipses.LogShear(transformedAxes)
     sersicIndex = 1.5
     flux = 1.0
 
-    model = measMult.createSersicModel(flux, point, logShear, sersicIndex)
+    model = measMult.createSersicModel(flux, crVal, logShear, sersicIndex)
 
     psf = afwDet.createPsf("DoubleGaussian", 7, 7, 1.0)
 

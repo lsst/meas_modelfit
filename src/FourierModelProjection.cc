@@ -240,6 +240,8 @@ private:
     ndarray::Array<Pixel,3,1> _finalPPD;
 };
 
+#if 0
+//psf derivatives not part of API yet
 /**
  * Manager of intermdiate products for computing the derivative with respect to
  * psf parameters
@@ -310,15 +312,18 @@ private:
     ndarray::Array<Pixel,3,3> _x;
     ndarray::Array<Pixel,3,1> _final;
 };
+#endif
 
 // ----------------------------- FourierModelProjection ------------------------
 
-
+#if 0
+//psf derivatives not yet part of API
 int const multifit::FourierModelProjection::getPsfParameterSize() const {
     if(!_localKernel)
         return 0;
     return _localKernel->getNParameters();
 }
+#endif
 
 /**
  * Compute a locally evaluated ConvolutionVisitor from the PSF's
@@ -335,9 +340,11 @@ void multifit::FourierModelProjection::_convolve(
         _getPsfPosition()
     );
     
+#if 0
     if(_psfMatrixHandler){
         _psfMatrixHandler.reset(new PsfMatrixHandler(this));
     }
+#endif
     if(_linearMatrixHandler) {
         _linearMatrixHandler->handleNonlinearParameterChange();
     }
@@ -357,7 +364,8 @@ void multifit::FourierModelProjection::_computeLinearParameterDerivative(
         output
     );
 }
-
+#if 0
+//psf derivatives not yet part of API
 void multifit::FourierModelProjection::_computePsfParameterDerivative(
     ndarray::Array<Pixel,2,1> const & output
 ) {
@@ -369,6 +377,7 @@ void multifit::FourierModelProjection::_computePsfParameterDerivative(
         output
     );
 }
+#endif
 
 void multifit::FourierModelProjection::_computeTranslationDerivative(
     ndarray::Array<Pixel,2,1> const & output
@@ -401,7 +410,7 @@ void multifit::FourierModelProjection::_handleLinearParameterChange() {
     } else {
         _linearMatrixHandler->handleLinearParameterChange();
         if (_nonlinearMatrixHandler) _nonlinearMatrixHandler->handleParameterChange();
-        if (_psfMatrixHandler) _psfMatrixHandler->handleParameterChange();
+        //if (_psfMatrixHandler) _psfMatrixHandler->handleParameterChange();
     }
 }
 
@@ -412,12 +421,26 @@ void multifit::FourierModelProjection::_handleNonlinearParameterChange() {
     } else {
         _linearMatrixHandler->handleNonlinearParameterChange();
         if (_nonlinearMatrixHandler) _nonlinearMatrixHandler->handleParameterChange();
-        if (_psfMatrixHandler) _psfMatrixHandler->handleParameterChange();
+        //if (_psfMatrixHandler) _psfMatrixHandler->handleParameterChange();
     }
     if(!_shifter)
         _shifter.reset(new Shifter(this));
 
     _shifter->handleNonlinearParameterChange();
+}
+
+multifit::FourierModelProjection::FourierModelProjection(
+    ComponentModel::ConstPtr const & model,
+    afwDet::Psf::ConstPtr const & psf,
+    afwGeom::AffineTransform const & transform,
+    CONST_PTR(afwDet::Footprint) const & footprint
+) : ComponentModelProjection(model,psf,transform,footprint),
+    _localKernel(), _wf(), 
+    _outerBBox(afwGeom::Point2I(), afwGeom::Extent2I()),
+    _innerBBox(afwGeom::Point2I(), afwGeom::Extent2I())
+{
+    _convolve(psf);
+    _setDimensions();
 }
 
 multifit::FourierModelProjection::FourierModelProjection(
@@ -474,8 +497,10 @@ void multifit::FourierModelProjection::_setDimensions() {
     _linearMatrixHandler.reset(new LinearMatrixHandler(this));
     if (_nonlinearMatrixHandler)
         _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
+#if 0
     if (_psfMatrixHandler)
         _psfMatrixHandler.reset(new PsfMatrixHandler(this));
+#endif
 }
 
 /**

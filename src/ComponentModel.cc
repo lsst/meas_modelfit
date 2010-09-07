@@ -37,11 +37,19 @@ afwDet::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     afwDet::Psf::ConstPtr const & psf,
     afwImg::Wcs::ConstPtr const & wcs
 ) const {
-    afwGeom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    afwGeom::PointD center(ellipse->getCenter());
-    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(center));
+    afwGeom::AffineTransform transform(
+        wcs->linearizeAt(computePosition()).invert()
+    );
     
-    ellipse->transform(wcsTransform.invert()).inPlace();
+    return computeProjectionFootprint(psf, transform);
+}
+
+afwDet::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
+    afwDet::Psf::ConstPtr const & psf,
+    afwGeom::AffineTransform const & wcsTransform
+) const {
+    afwGeom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
+    ellipse->transform(wcsTransform).inPlace();
     if (psf) {
         afwMath::Kernel::ConstPtr kernel = psf->getKernel();
         int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
@@ -49,16 +57,21 @@ afwDet::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     }
     return makeFootprint(*ellipse);
 }
-
 afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     afwDet::Psf::ConstPtr const & psf,
     afwImg::Wcs::ConstPtr const & wcs
 ) const {
+    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(computePosition()).invert());
+   
+    return computeProjectionEnvelope(psf, wcsTransform);
+}
+
+afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
+    afwDet::Psf::ConstPtr const & psf,
+    afwGeom::AffineTransform const & transform
+) const {
     afwGeom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    afwGeom::PointD center(ellipse->getCenter());
-    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(center));
-    
-    ellipse->transform(wcsTransform.invert()).inPlace();
+    ellipse->transform(transform).inPlace();
     if (psf) {
         afwMath::Kernel::ConstPtr kernel = psf->getKernel();
         int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
@@ -66,11 +79,8 @@ afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     }
     return ellipse->computeEnvelope();
 }
-
 afwGeom::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
-    return _morphology->computeBoundingEllipseCore()->makeEllipse(
-        _astrometry->computePosition()
-    );
+    return _morphology->computeBoundingEllipseCore()->makeEllipse(computePosition());
 }
 
 void multifit::ComponentModel::_handleLinearParameterChange() {
@@ -97,6 +107,20 @@ multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
     return projection;
 }
 
+multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
+    afwDet::Psf::ConstPtr const & psf,
+    afwGeom::AffineTransform const & transform,
+    CONST_PTR(afwDet::Footprint) const & footprint
+) const {
+    ModelProjection::Ptr projection(
+        new FourierModelProjection(
+            boost::static_pointer_cast<ComponentModel const>(shared_from_this()),
+            psf, transform, footprint 
+        )
+    );
+    _registerProjection(projection);
+    return projection;
+}
 /**
  * Initialize the ComponentModel, initialize (does not set parameters).
  *

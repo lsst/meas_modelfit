@@ -72,12 +72,20 @@ public:
     typedef boost::shared_ptr<Model const> ConstPtr;
 
     /**
-     *  Create a Footprint that would contain a projection of this Model.
+     *  Create a Footprint that contains a projection of this Model.
      */
     virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
         lsst::afw::detection::Psf::ConstPtr const & psf,
         lsst::afw::image::Wcs::ConstPtr const & wcs
     ) const = 0;
+
+    /**
+     * Create A Footprint that contains the projection of this Model.
+     */
+    virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & wcsTransform
+    ) const =0;
 
     /**
      *  Create an image-coordinate bounding box that would contain a projection
@@ -89,10 +97,19 @@ public:
     ) const = 0;
 
     /**
+     *  Create an image-coordinate bounding box that would contain a projection
+     *  of this Model.
+     */
+    virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & wcsTransform
+    ) const = 0;
+
+    /**
      *  Create an ra/dec bounding ellipse for this Model.
      */
-    virtual boost::shared_ptr<lsst::afw::geom::ellipses::Ellipse> computeBoundingEllipse() const = 0;
-
+    virtual PTR(lsst::afw::geom::ellipses::Ellipse) computeBoundingEllipse() const = 0;
+    virtual lsst::afw::geom::Point2D computePosition() const = 0;
     /**
      * Immutable access to this Model's linear parameters 
      */
@@ -163,9 +180,17 @@ public:
     virtual boost::shared_ptr<ModelProjection> makeProjection(
         lsst::afw::detection::Psf::ConstPtr const & psf,
         lsst::afw::image::Wcs::ConstPtr const & wcs,
-        boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     ) const = 0;
 
+    /** 
+     *  Create a ModelProjection object associated with this.
+     */
+    virtual boost::shared_ptr<ModelProjection> makeProjection(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & wcsTransform,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
+    ) const = 0;
 protected:
     typedef boost::weak_ptr<ModelProjection> ProjectionWeakPtr;
     typedef std::list<ProjectionWeakPtr> ProjectionList;

@@ -37,6 +37,7 @@
 #include "lsst/afw/image/Exposure.h"
 #include <Eigen/Core>
 #include <Eigen/Array>
+#include "lsst/afw/math/Random.h"
 #include "lsst/afw/geom/Box.h"
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/afw/geom/deprecated.h"
@@ -54,22 +55,30 @@ namespace multifit = lsst::meas::multifit;
 namespace geom = lsst::afw::geom;
 namespace detection = lsst::afw::detection;
 
-BOOST_AUTO_TEST_CASE(FitterBasic) {
+BOOST_AUTO_TEST_CASE(BasicFitter) {
     geom::PointD centroid = geom::PointD::make(35,65);
     double flux = 34.45;
     multifit::components::PointSourceMorphology::Ptr morphology =
         multifit::components::PointSourceMorphology::create(flux);
     multifit::components::Astrometry astrometry(centroid);
-    multifit::Model::Ptr psModel = 
-        multifit::ModelFactory::createPointSourceModel(flux, centroid);
 
+    //define ellipse in pixel coordinates
+    geom::ellipses::Axes axes(30, 15, 1.3);
 
     geom::PointD crPix(0), crVal(centroid);
-    Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
+    Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity());
     image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
 
+    //transform ellipse to sky coordinates
+    geom::AffineTransform transform(wcs->linearizeAt(centroid));
+    axes.transform(transform).inPlace();
+    
+    multifit::Model::Ptr model = 
+        multifit::ModelFactory::createExponentialModel(flux, centroid, axes);
+    //    multifit::ModelFactory::createPointSourceModel(flux, centroid);
     detection::Psf::Ptr psf = detection::createPsf("DoubleGaussian", 19, 19, 2);
-    CONST_PTR(detection::Footprint) fp(psModel->computeProjectionFootprint(psf, wcs));
+
+    CONST_PTR(detection::Footprint) fp(model->computeProjectionFootprint(psf, wcs));
     image::BBox bbox = fp->getBBox();
     
     image::Exposure<double>::Ptr exposure = 
@@ -79,32 +88,39 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
     mi.setXY0(bbox.getX0(), bbox.getY0());
     *mi.getMask() = 0;
 
-    multifit::ModelProjection::Ptr projection(psModel->makeProjection(psf, wcs, fp));
+    multifit::ModelProjection::Ptr projection(model->makeProjection(psf, wcs, fp));
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
     ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
     variance = 0.5*0.5;
 
     multifit::expandImage(*fp, mi, modelImage, variance);
+   
+    math::Random random;
+    image::Image<double> randomImg(mi.getWidth(), mi.getHeight());
+    math::randomUniformImage<image::Image<double> >(&randomImg, random);
+    *mi.getImage() += randomImg;
 
     std::list<image::Exposure<double>::Ptr> exposureList;
     for(int i=0; i < 5; ++i) {
         exposureList.push_back(exposure);
     }
-    multifit::ModelEvaluator::Ptr evaluator(new multifit::ModelEvaluator(psModel));
+    multifit::ModelEvaluator::Ptr evaluator(new multifit::ModelEvaluator(model));
     evaluator->setExposureList<double, image::MaskPixel, image::VariancePixel>(
         exposureList
     );
        
     std::vector<double> errors(
         evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize(),
-        0.1
+        0.001
     );
-    lsst::pex::policy::Policy::Ptr fitterPolicy;
-    
-    multifit::MinuitFitter fitter(fitterPolicy);
-   
+    lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
+    std::cerr << "nPix: " << evaluator->getNPixels() << "\n";
+    multifit::MinuitAnalyticFitter analytic(fitterPolicy);
+    multifit::MinuitNumericFitter numeric(fitterPolicy);
 
-    multifit::MinuitFitter::Result result = fitter.apply(evaluator, errors);
+    multifit::MinuitFitterResult numericResult = numeric.apply(evaluator, errors);
+    multifit::MinuitFitterResult analyticResult = analytic.apply(evaluator, errors);
+
 }
 
 

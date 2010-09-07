@@ -66,12 +66,22 @@ public:
         lsst::afw::image::Wcs::ConstPtr const & wcs
     ) const;
 
+    virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & wcsTransform
+    ) const;
+
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         lsst::afw::detection::Psf::ConstPtr const & psf,
         lsst::afw::image::Wcs::ConstPtr const & wcs
     ) const;
+    virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & wcsTransform
+    ) const;
 
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const;
+    virtual lsst::afw::geom::Point2D computePosition() const {return _astrometry->computePosition();}
 
     virtual Model::Ptr clone() const { 
         return Model::Ptr(new ComponentModel(*this)); 
@@ -106,6 +116,11 @@ protected:
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     ) const;
 
+    virtual boost::shared_ptr<ModelProjection> makeProjection(
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & transform,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
+    ) const;
 private:
     explicit ComponentModel(    
         lsst::meas::multifit::components::Astrometry::ConstPtr const & astrometry,

@@ -35,32 +35,49 @@ namespace afwMath = lsst::afw::math;
  *
  */
 multifit::ComponentModelProjection::ComponentModelProjection(
-    ComponentModel::ConstPtr const & model,
-    afwDet::Psf::ConstPtr const & psf,
-    afwImg::Wcs::ConstPtr const & wcs,
-    CONST_PTR(afwDet::Footprint) const & footprint
-) : ModelProjection(model, wcs, footprint),
+        ComponentModel::ConstPtr const & model,
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & transform,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
+): ModelProjection(model, transform, footprint),
     _validProducts(0),
     _morphologyProjection(), 
     _translationDerivative(), 
-    _projectedParameterDerivative()
+    _projectedParameterDerivative() 
 {
-    afwGeom::PointD center(getAstrometry()->computePosition());
-    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(center));
-    
-    _transform = boost::make_shared<afwGeom::AffineTransform>(
-        wcsTransform.invert()
-    );
     afwMath::Kernel::ConstPtr kernel = psf->getKernel();
 
     _morphologyProjection = model->getMorphology()->makeProjection(
         afwGeom::ExtentI::make(
             kernel->getWidth(), kernel->getHeight()
         ), 
-        _transform
+        getTransform()
     );
 }
+/**
+ * Construct a ComponentModelProjection
+ *
+ */
+multifit::ComponentModelProjection::ComponentModelProjection(
+        ComponentModel::ConstPtr const & model,
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::image::Wcs::ConstPtr const & wcs,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
+): ModelProjection(model, wcs, footprint),
+    _validProducts(0),
+    _morphologyProjection(), 
+    _translationDerivative(), 
+    _projectedParameterDerivative() 
+{
+    afwMath::Kernel::ConstPtr kernel = psf->getKernel();
 
+    _morphologyProjection = model->getMorphology()->makeProjection(
+        afwGeom::ExtentI::make(
+            kernel->getWidth(), kernel->getHeight()
+        ), 
+        getTransform()
+    );
+}
 void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
     ndarray::Array<Pixel,2,1> const & matrix
 ) {
@@ -84,7 +101,7 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
             getModel()->getAstrometry()->differentiate()
         );
         astrometryView = translationView * 
-            _transform->getLinear().getMatrix() * astrometryDerivative;
+            getTransform()->getLinear().getMatrix() * astrometryDerivative;
     }
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();
@@ -111,54 +128,6 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
         // END TODO
         morphologyView = projectedView * 
             (*_morphologyProjection->computeProjectedParameterJacobian());
-    }
-}
-
-void multifit::ComponentModelProjection::_computeWcsParameterDerivative(
-    ndarray::Array<Pixel,2,1> const & matrix
-) {
-    MatrixMap matrixMap(
-        matrix.getData(),
-        matrix.getStride<0>(),
-        matrix.getSize<0>()
-    );
-    int nAstrometry = getModel()->getAstrometry()->getParameterSize();
-    if (hasTranslationDerivative()) {
-        _ensureTranslationDerivative();
-        MatrixMapBlock astrometryView(
-            matrixMap, 
-            0, 0, 
-            matrix.getSize<1>(), nAstrometry
-        );
-        astrometryView = getTranslationMatrixView() * _transform->dTransform(
-            getModel()->getAstrometry()->computePosition()
-        );
-    }
-    if (hasProjectedParameterDerivative()) {
-        _ensureProjectedParameterDerivative();
-        // TODO: Move this into an inline function when possible.
-        MatrixMapBlock morphologyView(
-            matrixMap, 
-            0, nAstrometry, 
-            matrix.getSize<1>(), 
-            getMorphologyProjection()->getNonlinearParameterSize()
-        );
-        // END TODO
-        // TODO: Move this into an inline function when possible.
-        MatrixMap projectedMap(
-            _projectedParameterDerivative.getData(),
-            _projectedParameterDerivative.getStride<0>(), 
-            _projectedParameterDerivative.getSize<0>()
-        );
-        MatrixMapBlock projectedView(
-            projectedMap,
-            0, 0,
-            _projectedParameterDerivative.getSize<1>(), 
-            _projectedParameterDerivative.getSize<0>()
-        );
-        // END TODO
-	    morphologyView += projectedView *
-            (*_morphologyProjection->computeTransformParameterJacobian());
     }
 }
 

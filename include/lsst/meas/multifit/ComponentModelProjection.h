@@ -51,7 +51,7 @@ public:
     typedef boost::shared_ptr<ModelProjection> Ptr;
     typedef boost::shared_ptr<ModelProjection const> ConstPtr;
 
-    static const int WCS_PARAMETER_SIZE = 6;
+    //static const int WCS_PARAMETER_SIZE = 6;
 
 
     /**
@@ -77,36 +77,30 @@ public:
         return _morphologyProjection;
     }
 
-    /// AffineTransform that maps global coordinates to image coordinates.
-    lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const {
-        return _transform; 
-    }
-
-    // ModelProjection --------------------------------------------------------
-    virtual int const getWcsParameterSize() const { 
-        return WCS_PARAMETER_SIZE; 
-    }
-    virtual int const getPsfParameterSize() const = 0;
-
 protected:
 
     enum ComponentModelProductFlags {
         TRANSLATION_DERIVATIVE = 1 << 0,
         PROJECTED_PARAMETER_DERIVATIVE = 1 << 1
     };
-
+    
+    ComponentModelProjection(
+        ComponentModel::ConstPtr const & model,
+        lsst::afw::detection::Psf::ConstPtr const & psf,
+        lsst::afw::geom::AffineTransform const & transform,
+        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
+    );
     ComponentModelProjection(
         ComponentModel::ConstPtr const & model,
         lsst::afw::detection::Psf::ConstPtr const & psf,
         lsst::afw::image::Wcs::ConstPtr const & wcs,
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
-
     /**
      * Compute the image-space (xy) coordinates where the PSF should be centered
      */
     virtual lsst::afw::geom::Point2D _getPsfPosition() const { 
-        return (*_transform)(getAstrometry()->computePosition()); 
+        return (*getTransform())(getAstrometry()->computePosition()); 
     }
 
     /**
@@ -120,8 +114,10 @@ protected:
      */
     //@{
     virtual void _computeNonlinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
+#if 0
+    //wcs derivatives not yet part of model fitting API
     virtual void _computeWcsParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
-
+#endif
 
     /**
      *  Compute the derivative of the model image with respect to image-coordinate translations
@@ -144,7 +140,6 @@ protected:
      *  @name Product Enabled Checkers
      */
     //@{
-    virtual bool hasWcsParameterDerivative() const { return false; }
     virtual bool hasTranslationDerivative() const { return true; }
     virtual bool hasProjectedParameterDerivative() const {
         return getMorphologyProjection()->getMorphology()->getNonlinearParameterSize() > 0;
@@ -168,39 +163,10 @@ protected:
     }
 
 private:
-    
     typedef Eigen::Map< Eigen::Matrix<Pixel,Eigen::Dynamic,2> > TranslationMatrixMap;
-
 
     void _ensureTranslationDerivative();
     void _ensureProjectedParameterDerivative();
-
-#if 0 
-    // TODO: Reimplement this when Eigen::Map has a constructor that takes strides.
-    MatrixMapBlock getAstrometryParameterMatrixView(ndarray::Array<Pixel,2,1> const & array) {
-        MatrixMap map(
-            array.getData(), 
-            array.getStride<0>(), 
-            getModel()->getAstrometry()->getAstrometryParameterSize()
-        );
-        return MatrixMapBlock(map, 0, 0, array.getSize<1>(), map.cols());
-
-    }
-
-    MatrixMapBlock getMorphologyParameterMatrixView(ndarray::Array<Pixel,2,1> const & array) {
-        int offset = getModel()->getAstrometry()->getAstrometryParameterSize();
-        MatrixMap map(
-            array.getData(),
-            array.getStride<0>(), 
-            getModel()->getMorphology()->getMorphologyParameterSize()
-        );
-        return MatrixMapBlock(map, 0, offset, array.getSize<1>(), map.cols());
-    }
-
-    MatrixMapBlock getProjectedParameterMatrixView() {
-        return getMatrixView(_projectedParameterDerivative);
-    }
-#endif
 
     TranslationMatrixMap getTranslationMatrixView() {
         return TranslationMatrixMap(
@@ -212,8 +178,7 @@ private:
 
     // enable flags for the products this projection can compute
     int _validProducts;
-    // Transform from global coordinates to this projection
-    lsst::afw::geom::AffineTransform::ConstPtr _transform; 
+
     // MorphologyProjection this ComponentModelProjection is based on
     lsst::meas::multifit::components::MorphologyProjection::Ptr _morphologyProjection;
 

@@ -64,6 +64,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/ComponentModelProjection.h"
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
+#include "lsst/meas/multifit/MinuitFitter.h"
 #include "lsst/meas/multifit/ModelFactory.h"
 #define NDARRAY_PYTHON_MAIN
 #include "ndarray/python.hpp"
@@ -200,8 +201,8 @@ SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
     %returnArray(computeModelImage, lsst::meas::multifit::Pixel const, 1, 1);
     %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
     %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
-    %returnArray(computeWcsParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
-    %returnArray(computePsfParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
+    //%returnArray(computeWcsParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
+    //%returnArray(computePsfParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
 };
 
 SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry);
@@ -343,3 +344,6 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator);
 
 SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult);
 %include "lsst/meas/multifit/SingleLinearParameterFitter.h"
+
+
+%include "lsst/meas/multifit/MinuitFitter.h"
