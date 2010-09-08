@@ -49,28 +49,24 @@ public:
     );
 
     operator lsst::afw::geom::LinearTransform () const {
-        return lsst::afw::geom::LinearTransform(
-            _matrices->scaling * _matrices->tail
-        );
+        return lsst::afw::geom::LinearTransform(_matrices->primary * _matrices->tail);
     }
 
     DerivativeMatrix dEllipse() const;
 
 private:
     struct Matrices {
-        Eigen::Matrix2d factor;
-        Eigen::Matrix2d scaling;
-        Eigen::Matrix2d rotation;
+        Eigen::Matrix2d primary;
+        Eigen::Matrix2d dgamma1;
+        Eigen::Matrix2d dgamma2;
         Eigen::Matrix2d tail;
         Eigen::Matrix3d jacobian;
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW; 
     };
 
-    lsst::afw::geom::ellipses::Axes _axes;
-    boost::shared_ptr<Matrices const> _matrices;
+    lsst::afw::geom::ellipses::LogShear _logShear;
+    boost::shared_ptr<Matrices> _matrices;
 
-    static Eigen::Matrix2d const & _dA();
-    static Eigen::Matrix2d const & _dB();
 };
 
 }}} // namespace lsst::meas::multifit

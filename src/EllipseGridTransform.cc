@@ -21,56 +21,56 @@
  */
  
 #include <Eigen/Geometry>
+#include "boost/make_shared.hpp"
 #include "lsst/meas/multifit/EllipseGridTransform.h"
 
 namespace multifit = lsst::meas::multifit;
-
-Eigen::Matrix2d const & multifit::EllipseGridTransform::_dA() {
-    static Eigen::Matrix2d m = 
-        (Eigen::Matrix2d() << 1.0, 0.0, 0.0, 0.0).finished();
-    return m;
-}
-
-Eigen::Matrix2d const & multifit::EllipseGridTransform::_dB() {
-    static Eigen::Matrix2d m = 
-        (Eigen::Matrix2d() << 0.0, 0.0, 0.0, 1.0).finished();
-    return m;
-}
+namespace geom = lsst::afw::geom;
+namespace ellipses = lsst::afw::geom::ellipses;
 
 multifit::EllipseGridTransform::EllipseGridTransform(
-    lsst::afw::geom::ellipses::BaseCore const & ellipse,
-    lsst::afw::geom::ExtentI const & realDimensions
-) : _axes(), _matrices() {
-    boost::shared_ptr<Matrices> matrices(new Matrices());
-    matrices->jacobian = _axes.dAssign(ellipse);
-    matrices->rotation = Eigen::Rotation2D<double>(
-        -_axes[lsst::afw::geom::ellipses::Axes::THETA]
-    );
-    matrices->factor << 
-        (-2.0*M_PI / realDimensions.getX()), 0.0,
-        0.0, (-2.0*M_PI / realDimensions.getY());
-    matrices->scaling <<
-        _axes[lsst::afw::geom::ellipses::Axes::A], 0.0,
-        0.0, _axes[lsst::afw::geom::ellipses::Axes::B];
-    matrices->tail = matrices->rotation * matrices->factor;
-    _matrices = matrices;
+    ellipses::BaseCore const & ellipse,
+    geom::ExtentI const & realDimensions
+) : _logShear(), _matrices(boost::make_shared<Matrices>()) {
+    _matrices->jacobian = _logShear.dAssign(ellipse);
+    Eigen::Matrix2d mI = Eigen::Matrix2d::Identity();
+    Eigen::Matrix2d mZ; mZ << 1.0, 0.0, 0.0,-1.0; // Z, X denote pauli spin matrices
+    Eigen::Matrix2d mX; mX << 0.0, 1.0, 1.0, 0.0;
+    double expk = std::exp(_logShear[ellipses::LogShear::KAPPA]);
+    double gamma = _logShear.getGamma();
+    double gamma1 = _logShear[ellipses::LogShear::GAMMA1];
+    double gamma2 = _logShear[ellipses::LogShear::GAMMA2];
+    double coshg = std::cosh(gamma);
+    double sinhg = std::sinh(gamma);
+    if (gamma > 1E-16) {
+        double sinhg_g = sinhg / gamma;
+        double f = (coshg - sinhg_g) / (gamma * gamma);
+        _matrices->primary = expk * (mI * coshg + (gamma1 * mZ + gamma2 * mX) * sinhg_g);
+        _matrices->dgamma1 = expk * (mI * gamma1 * sinhg_g + mZ * sinhg_g
+                                     + (gamma1 * mZ + gamma2 * mX) * gamma1 * f);
+        _matrices->dgamma2 = expk * (mI * gamma2 * sinhg_g + mX * sinhg_g
+                                     + (gamma1 * mZ + gamma2 * mX) * gamma2 * f);
+    } else {
+        // TODO(?): carry these out to second order in the Taylor expansion
+        _matrices->primary = expk * (mI * coshg + (gamma1 * mZ + gamma2 * mX));
+        _matrices->dgamma1 = expk * mZ;
+        _matrices->dgamma2 = expk * mX;
+    }
+    _matrices->tail << 
+        (2.0*M_PI / realDimensions.getX()), 0.0,
+        0.0, (2.0*M_PI / realDimensions.getY());
 }
 
 multifit::EllipseGridTransform::DerivativeMatrix 
 multifit::EllipseGridTransform::dEllipse() const {
-    DerivativeMatrix m = DerivativeMatrix::Zero(
-        DerivativeMatrix::RowsAtCompileTime, 
-        DerivativeMatrix::ColsAtCompileTime
-    );
-    Eigen::Matrix2d dTheta(Eigen::Rotation2D<double>(
-            -_axes[lsst::afw::geom::ellipses::Axes::THETA] - M_PI_2
-        )
-    );
-    Eigen::Map<Eigen::Matrix2d> dT_dA(m.col(0).data());
-    Eigen::Map<Eigen::Matrix2d> dT_dB(m.col(1).data());
-    Eigen::Map<Eigen::Matrix2d> dT_dTheta(m.col(2).data());
-    dT_dA = _dA() * _matrices->tail;
-    dT_dB = _dB() * _matrices->tail;
-    dT_dTheta = _matrices->scaling * dTheta * _matrices->factor;
+    DerivativeMatrix m = DerivativeMatrix::Zero();
+    geom::LinearTransform dgamma1(_matrices->dgamma1 * _matrices->tail);
+    geom::LinearTransform dgamma2(_matrices->dgamma1 * _matrices->tail);
+    geom::LinearTransform dkappa(_matrices->primary * _matrices->tail);
+    for (int n = 0; n < m.rows(); ++n) {
+        m(n, 0) = dgamma1[n];
+        m(n, 1) = dgamma2[n];
+        m(n, 2) = dkappa[n];
+    }
     return m * _matrices->jacobian;
 }
