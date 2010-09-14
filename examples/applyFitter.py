@@ -35,19 +35,22 @@ import lsst.afw.display.ds9 as ds9
 def applyFitter():
     #exp = afwImage.ExposureF("c00.fits")
     #wcs = exp.getWcs()
-    crVal = afwGeom.makePointD(0,0)
+    crVal = afwGeom.makePointD(45,45)
     crPix = afwGeom.makePointD(1,1)
-    wcs = afwImage.createWcs(crVal, crPix, 1., 0., 0., 1.)
+    wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0., 0., 0.0001)
+    print wcs.getCDMatrix()
 
     axes = afwGeom.ellipses.Axes(25,30,0)
-    affine = wcs.linearizeAt(crVal)
-
+    affine = wcs.linearizePixelToSky(crVal)
+    print "affine", [affine[i] for i in range(6)]
     transformedAxes = axes.transform(affine)
-    logShear = afwGeom.ellipses.LogShear(transformedAxes)
-    sersicIndex = 1.5
-    flux = 1.0
 
-    model = measMult.createSersicModel(flux, crVal, logShear, sersicIndex)
+    logShear = afwGeom.ellipses.LogShear(transformedAxes)
+    print "logShear", logShear
+    sersicIndex = 1.5
+    flux = 35.0
+
+    model = measMult.createExponentialModel(flux, crVal, logShear)
 
     psf = afwDet.createPsf("DoubleGaussian", 7, 7, 1.0)
 
@@ -72,11 +75,12 @@ def applyFitter():
     
     afwRandom = afwMath.Random()
     randomImg = afwImage.ImageF(modelImage.getDimensions())
-    afwMath.randomUniformImage(randomImg, afwRandom)
+    randomImg*= 20.0
+    afwMath.randomGaussianImage(randomImg, afwRandom)
     
     img = modelImage.getImage()
     img += randomImg
-    modelImage.getVariance().set(0.25)
+    modelImage.getVariance().set(20)
 
     exp = afwImage.ExposureF(modelImage, wcs)
     exp.setPsf(psf)
@@ -85,39 +89,48 @@ def applyFitter():
 
     expList = measMult.ExposureListF()
     expList.append(exp)
-
-    modelEvaluator = measMult.ModelEvaluator(model)
-    modelEvaluator.setExposureList(expList)
     
+    jiggeredLogShear = afwGeom.ellipses.LogShear(logShear[0]*1.1, logShear[1]*1.1, logShear[2]*1.1)
+    flux *= 1.1
+    testModel = measMult.createExponentialModel(flux, crVal, jiggeredLogShear)
+    modelEvaluator = measMult.ModelEvaluator(testModel)
+    modelEvaluator.setExposureList(expList)
+
     fitterPolicy = pexPolicy.Policy()
-    fitterPolicy.add("terminationType", "iteration")
-    fitterPolicy.add("terminationType", "dChisq")
-    fitterPolicy.add("iterationMax", 5)
-    fitterPolicy.add("dChisqThreshold", 0.0001)
+    fitterPolicy.add("checkGradient", True)
 
-    fitter = measMult.SingleLinearParameterFitter(fitterPolicy)
-    result = fitter.apply(modelEvaluator)
+    fitter = measMult.MinuitAnalyticFitter(fitterPolicy)
 
-    print "nIterations: %d"%result.sdqaMetrics.get("nIterations")
-    print "chisq: %d"%result.chisq
-    print "dChisq: %d"%result.dChisq
+    errors = [1.0, 0.1, 0.1, 0.1, 0.1, 0.1]
+    result = fitter.apply(modelEvaluator, errors)
+
+    
+    #print "nIterations: %d"%result.sdqaMetrics.get("nIterations")
+    #print "chisq: %d"%result.chisq
+    #print "dChisq: %d"%result.dChisq
     print modelEvaluator.getLinearParameters()
     print modelEvaluator.getNonlinearParameters()
-   
+  
+    print "nPix", modelEvaluator.getNPixels()
+    print "nIterations", result.nIterations
+    print "chisq", result.chisq
+
     om = modelEvaluator.getModel().clone()
-    #fp = om.computeProjectionFootprint(psf, wcs)
-    #bbox = fp.getBBox()
+    fp = om.computeProjectionFootprint(psf, wcs)
+    bbox = fp.getBBox()
     proj = om.makeProjection(psf, wcs, fp)    
-    outputImage = afwImage.MaskedImageF(grownBbox.getWidth(), grownBbox.getHeight())
-    outputImage.setXY0(grownBbox.getX0(), grownBbox.getY0())
+    outputImage = afwImage.MaskedImageF(bbox.getWidth(), bbox.getHeight())
+    outputImage.setXY0(bbox.getX0(), bbox.getY0())
+    bbox.shift(-bbox.getX0(), -bbox.getY0())
 
     imageVector = proj.computeModelImage()
-    varianceVector = numpy.zeros(nPix, dtype=numpy.float32)
+    varianceVector = numpy.zeros(fp.getNpix(), dtype=numpy.float32)
   
-    subImage = outputImage.Factory(outputImage, bbox)
     measMult.expandImageF(fp, outputImage, imageVector, varianceVector)
     oe = afwImage.ExposureF(outputImage, wcs)
     ds9.mtv(oe, frame=1)
+
+
 
     
 if __name__ == "__main__":

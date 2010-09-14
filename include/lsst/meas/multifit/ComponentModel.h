@@ -81,7 +81,12 @@ public:
     ) const;
 
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const;
-    virtual lsst::afw::geom::Point2D computePosition() const {return _astrometry->computePosition();}
+    virtual lsst::afw::coord::Coord::ConstPtr computePosition() const {
+        lsst::afw::coord::Coord::Ptr coord = boost::make_shared<lsst::afw::coord::Coord>(
+            _astrometry->computePosition()
+        );
+        return coord;
+    }
 
     virtual Model::Ptr clone() const { 
         return Model::Ptr(new ComponentModel(*this)); 

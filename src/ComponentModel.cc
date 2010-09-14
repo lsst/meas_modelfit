@@ -37,9 +37,7 @@ afwDet::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     afwDet::Psf::ConstPtr const & psf,
     afwImg::Wcs::ConstPtr const & wcs
 ) const {
-    afwGeom::AffineTransform transform(
-        wcs->linearizeAt(computePosition()).invert()
-    );
+    afwGeom::AffineTransform transform(wcs->linearizeSkyToPixel(computePosition()));
     
     return computeProjectionFootprint(psf, transform);
 }
@@ -61,7 +59,7 @@ afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     afwDet::Psf::ConstPtr const & psf,
     afwImg::Wcs::ConstPtr const & wcs
 ) const {
-    afwGeom::AffineTransform wcsTransform(wcs->linearizeAt(computePosition()).invert());
+    afwGeom::AffineTransform wcsTransform(wcs->linearizeSkyToPixel(computePosition()));
    
     return computeProjectionEnvelope(psf, wcsTransform);
 }
@@ -80,7 +78,8 @@ afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     return ellipse->computeEnvelope();
 }
 afwGeom::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
-    return _morphology->computeBoundingEllipseCore()->makeEllipse(computePosition());
+    afwGeom::Point2D point = computePosition()->getPosition();
+    return _morphology->computeBoundingEllipseCore()->makeEllipse(point);
 }
 
 void multifit::ComponentModel::_handleLinearParameterChange() {

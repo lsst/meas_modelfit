@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(ExponentialModelProjection) {
         Eigen::Matrix2d::Identity()
     );
     //transform ellipse to sky coordinates
-    geom::AffineTransform transform(wcs->linearizeAt(centroid));
+    geom::AffineTransform transform(wcs->linearizePixelToSky(centroid));
     axes.transform(transform).inPlace();
 
     lsst::afw::geom::ellipses::LogShear logShear(axes);

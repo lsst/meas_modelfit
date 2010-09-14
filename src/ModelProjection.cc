@@ -39,13 +39,13 @@ namespace multifit = lsst::meas::multifit;
  */
 multifit::ModelProjection::ModelProjection(
     Model::ConstPtr const & model,
-    lsst::afw::geom::AffineTransform const & transform,
+    lsst::afw::geom::AffineTransform const & skyToPixelTransform,
     boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
 ) : _validProducts(0),
     _model(model),
     _footprint(footprint), 
     _wcs(),
-    _transform(new lsst::afw::geom::AffineTransform(transform)),
+    _skyToPixelTransform(new lsst::afw::geom::AffineTransform(skyToPixelTransform)),
     _modelImage(), 
     _linearParameterDerivative(), 
     _nonlinearParameterDerivative()
@@ -65,17 +65,14 @@ multifit::ModelProjection::ModelProjection(
     _model(model),
     _footprint(footprint), 
     _wcs(wcs),
-    _transform(),
     _modelImage(), 
     _linearParameterDerivative(), 
     _nonlinearParameterDerivative()
 {
     if(wcs) {
-        lsst::afw::geom::AffineTransform wcsTransform(
-            wcs->linearizeAt(model->computePosition())
-        ); 
-        _transform = boost::make_shared<lsst::afw::geom::AffineTransform>(
-            wcsTransform.invert()            
+        lsst::afw::coord::Coord::ConstPtr pos = model->computePosition();
+        _skyToPixelTransform.reset(
+            new lsst::afw::geom::AffineTransform(wcs->linearizeSkyToPixel(pos))
         );
     }
 

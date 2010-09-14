@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
 
     //transform ellipse to sky coordinates
-    geom::AffineTransform transform(wcs->linearizeAt(centroid));
+    geom::AffineTransform transform(wcs->linearizePixelToSky(centroid));
     axes.transform(transform).inPlace();
     
     multifit::Model::Ptr model = 

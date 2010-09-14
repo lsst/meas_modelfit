@@ -109,7 +109,7 @@ public:
      *  Create an ra/dec bounding ellipse for this Model.
      */
     virtual PTR(lsst::afw::geom::ellipses::Ellipse) computeBoundingEllipse() const = 0;
-    virtual lsst::afw::geom::Point2D computePosition() const = 0;
+    virtual lsst::afw::coord::Coord::ConstPtr computePosition() const = 0;
     /**
      * Immutable access to this Model's linear parameters 
      */

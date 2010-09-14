@@ -129,11 +129,13 @@ public:
         lsst::afw::geom::ellipses::Axes core(8, 6, 0);
         return boost::make_shared<lsst::afw::geom::ellipses::AxesEllipse>(
             core,
-            computePosition()
+            computePosition()->getPosition()
         );
     }
-    virtual lsst::afw::geom::Point2D computePosition() const {
-        return lsst::afw::geom::PointD::make(5, 7.5);
+    virtual lsst::afw::coord::Coord::ConstPtr computePosition() const {
+        return lsst::afw::coord::Coord::Ptr(
+            new lsst::afw::coord::Coord(0.0, 0.0)
+        );
     }
 
     virtual multifit::ModelProjection::Ptr makeProjection(

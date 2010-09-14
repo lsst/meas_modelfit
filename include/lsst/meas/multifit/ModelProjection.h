@@ -110,11 +110,7 @@ public:
     /// The WCS associated with the observation this projection represents.
     lsst::afw::image::Wcs::ConstPtr const & getWcs() const { return _wcs; }
 
-    /**
-     * The AffineTransfrom associated with the observation this projection 
-     * represents
-     */
-    lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const {return _transform;}
+
     
     /**
      * Footprint the image representation will be computed on.
@@ -138,6 +134,13 @@ protected:
         CONST_PTR(lsst::afw::image::Wcs) const & wcs,
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
+
+    /**
+     * The AffineTransfrom associated with the observation this projection 
+     * represents
+     */
+    lsst::afw::geom::AffineTransform::ConstPtr const & getTransform() const {return _skyToPixelTransform;}
+
     /**
      *  @name Protected Product Computers
      *
@@ -210,7 +213,7 @@ private:
     boost::shared_ptr<lsst::afw::detection::Footprint const> _footprint;
     lsst::afw::image::Wcs::ConstPtr _wcs;
     // Transform from global coordinates to this projection
-    lsst::afw::geom::AffineTransform::ConstPtr _transform; 
+    lsst::afw::geom::AffineTransform::ConstPtr _skyToPixelTransform; 
 
     ndarray::Array<Pixel, 1, 1> _modelImage;
     ndarray::Array<Pixel, 2, 1> _linearParameterDerivative;

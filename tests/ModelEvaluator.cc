@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
     lsst::afw::coord::Coord::Ptr coord = wcs0->pixelToSky(pixel);
 
     //transform the ellipse parameters to be in sky coordinates
-    geom::AffineTransform transform = wcs0->linearizeAt(
+    geom::AffineTransform transform = wcs0->linearizePixelToSky(
         coord->getPosition(lsst::afw::coord::DEGREES)
     );
     axes.transform(transform).inPlace();
