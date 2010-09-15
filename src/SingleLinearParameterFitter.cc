@@ -150,6 +150,13 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
             "ModelEvaluator has no associated exposures."
         );
     }
+    int dof = evaluator.getNPixels();
+    dof -= evaluator.getLinearParameterSize();
+    dof -= evaluator.getNonlinearParameterSize();
+
+    typedef Eigen::Matrix<Pixel, Eigen::Dynamic, 1> Vector;
+    typedef Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+
     Result::Ptr result = boost::make_shared<Result>();
     result->model = evaluator.getModel();    
 
@@ -157,76 +164,53 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         evaluator.getDataVector().getData(),
         evaluator.getNPixels()
     );    
-    Eigen::VectorXd sigma(evaluator.computeSigmaVector());
+    Vector observed = (data.cwise() / evaluator.getSigmaVector());
+    Vector dLinear;
+    Matrix dNonlinear;
+    
 
-    Eigen::VectorXd observed = (data.cwise() / sigma);
-    Eigen::VectorXd newLinearDNonlinear;
-    Eigen::MatrixXd jacobian;
-
-    ndarray::Array<Pixel const, 2, 2> dLinearArray, dNonlinearArray;    
-    Eigen::VectorXd linearParam = evaluator.getLinearParameters();
-    Eigen::VectorXd nonlinearParam = evaluator.getNonlinearParameters();
+    ParameterVector linearParam = evaluator.getLinearParameters();
+    ParameterVector nonlinearParam = evaluator.getNonlinearParameters();
+    ParameterVector step;
 
     double chisq=DBL_MAX, dChisq=DBL_MAX; 
-    Eigen::VectorXd step;
     bool endOnIteration = ((_terminationType & ITERATION) != 0);
     bool done = false;
     int nIterations = 0;
     for(; ((nIterations < _iterationMax) && endOnIteration) && !done; ++nIterations) {
         try { 
-            ndarray::shallow(dLinearArray) = 
-                evaluator.computeLinearParameterDerivative();
+            dLinear = evaluator.computeLinearParameterDerivative();
         } catch(multifit::ParameterRangeException & e) {
-            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
-            multifit::ParameterMap::const_iterator i(paramMap.begin());
+            ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+            ParameterMap::const_iterator i(paramMap.begin());
             linearParam[0] = (linearParam[0] + i->second)/2.0;
             evaluator.setLinearParameters(linearParam);
-            ndarray::shallow(dLinearArray) = 
-                evaluator.computeLinearParameterDerivative();
+            dLinear = evaluator.computeLinearParameterDerivative();
         }       
 
-        VectorMap dLinear = VectorMap(
-            dLinearArray.getData(),
-            evaluator.getNPixels()
-        );
-        dLinear.cwise() /= sigma;
-
-
         try {    
-            ndarray::shallow(dNonlinearArray) =
-                evaluator.computeNonlinearParameterDerivative();
-        } catch(multifit::ParameterRangeException & e) {
-            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+            dNonlinear = evaluator.computeNonlinearParameterDerivative();
+        } catch(ParameterRangeException & e) {
+            ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
             for(ParameterMap::const_iterator i(paramMap.begin()); i != paramMap.end(); ++i) {
                 nonlinearParam[i->first] = (nonlinearParam[i->first] + i->second)/2.0;
             }
             evaluator.setNonlinearParameters(nonlinearParam);
-            ndarray::shallow(dNonlinearArray) =
-                evaluator.computeNonlinearParameterDerivative();
+            dNonlinear = evaluator.computeNonlinearParameterDerivative();
         }
-        MatrixMap dNonlinear = MatrixMap(
-            dNonlinearArray.getData(),
-            evaluator.getNPixels(),
-            evaluator.getNonlinearParameterSize()
-        );
-        for(int i = 0; i < dNonlinear.cols(); ++i) {
-            dNonlinear.col(i).cwise() /= sigma;
-        }
-
+        
         double normDLinear = dLinear.squaredNorm();        
         
         //the new linear parameter as a function of the nonlinear parameters
         double newLinear = dLinear.dot(observed) / normDLinear;
         //compute the residual as a function of the nonlinear parameters
-        Eigen::VectorXd residual = observed - dLinear*newLinear;
+        Vector residual = observed - dLinear*newLinear;
 
         //compute the chisq
         if (nIterations > 0) {
             dChisq = chisq;
-
-
         }
-        chisq = (residual.dot(residual))/2;
+        chisq = ((residual.dot(residual))/2)/dof;
         dChisq -= chisq;
         if( (_terminationType & DCHISQ) && (nIterations > 0) && 
             (std::abs(dChisq) < _dChisqThreshold) 
@@ -238,13 +222,13 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
 
         //compute derivative of new linear parameter w.r.t nonlinear parameters
         //this is a matrix with dimensions (nNonlinear, 1)
-        Eigen::VectorXd dNewLinear = dNonlinear.transpose()*(residual - dLinear*newLinear);
+        Vector dNewLinear = dNonlinear.transpose()*(residual - dLinear*newLinear);
         dNewLinear /= (normDLinear*newLinear);
     
         //compute the jacobian of partial derivatives of the model w.r.t
         //nonlinear parameters
         //this is a matrix with dimensions (pixels, nNonlinear)
-        Eigen::MatrixXd jacobian = -dNonlinear - dLinear*dNewLinear.transpose();
+        Matrix jacobian = -dNonlinear - dLinear*dNewLinear.transpose();
 
         //compute the step to take on nonlinear parameters:
         //this is a matrix with dimensions (nNonlinear, 1)
@@ -261,19 +245,19 @@ multifit::SingleLinearParameterFitter::Result::Ptr multifit::SingleLinearParamet
         linearParam = evaluator.getLinearParameters();
         try {
             evaluator.setLinearParameters(&newLinear);
-        } catch(multifit::ParameterRangeException & e) {
-            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
-            multifit::ParameterMap::const_iterator i(paramMap.begin());
+        } catch(ParameterRangeException & e) {
+            ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+            ParameterMap::const_iterator i(paramMap.begin());
             newLinear = (linearParam[0] + i->second)/2.0;
             evaluator.setLinearParameters(&newLinear);
         }
 
         nonlinearParam = evaluator.getNonlinearParameters();
-        Eigen::VectorXd newNonlinear = nonlinearParam + step;
+        Vector newNonlinear = nonlinearParam + step;
         try {
             evaluator.setNonlinearParameters(newNonlinear);
-        } catch(multifit::ParameterRangeException & e) {
-            multifit::ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
+        } catch(ParameterRangeException & e) {
+            ParameterMap const & paramMap(e.getOutOfRangeParameterMap());
             for(ParameterMap::const_iterator i(paramMap.begin()); i != paramMap.end(); ++i) {
                 newNonlinear[i->first] = (nonlinearParam[i->first] + i->second)/2.0;
             }

@@ -106,12 +106,11 @@ void multifit::ModelEvaluator::setExposureList(
     //  allocate matrix buffers
     ndarray::shallow(_dataVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
     ndarray::shallow(_varianceVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
-
-    ndarray::shallow(_modelImage) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
-    ndarray::shallow(_linearParameterDerivative) = ndarray::allocate<Allocator>(
+    ndarray::shallow(_modelImageBuffer) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    ndarray::shallow(_linearDerivativeBuffer) = ndarray::allocate<Allocator>(
         ndarray::makeVector(nLinear, pixSum)
     );
-    ndarray::shallow(_nonlinearParameterDerivative) = ndarray::allocate<Allocator>(
+    ndarray::shallow(_nonlinearDerivativeBuffer) = ndarray::allocate<Allocator>(
         ndarray::makeVector(nNonlinear, pixSum)
     );    
     
@@ -138,20 +137,25 @@ void multifit::ModelEvaluator::setExposureList(
 
         //set modelImage buffer
         projection.setModelImageBuffer(
-            _modelImage[ndarray::view(pixelStart, pixelEnd)]
+            _modelImageBuffer[ndarray::view(pixelStart, pixelEnd)]
         );
         
         //set linear buffer
         projection.setLinearParameterDerivativeBuffer(
-            _linearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
+            _linearDerivativeBuffer[ndarray::view()(pixelStart, pixelEnd)]
         );
         //set nonlinear buffer
         projection.setNonlinearParameterDerivativeBuffer(
-            _nonlinearParameterDerivative[ndarray::view()(pixelStart, pixelEnd)]
+            _nonlinearDerivativeBuffer[ndarray::view()(pixelStart, pixelEnd)]
         );
 
         pixelStart = pixelEnd;
-    }   
+    }
+    
+
+    VectorMap varianceMap (_varianceVector.getData(), getNPixels(), 1);
+    _sigma = varianceMap.cwise().sqrt();
+   
 }
 
 /**
@@ -159,7 +163,7 @@ void multifit::ModelEvaluator::setExposureList(
  *
  * @sa ModelProjection::computeModelImage
  */
-ndarray::Array<multifit::Pixel const, 1, 1> 
+Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, 1> const & 
 multifit::ModelEvaluator::computeModelImage() {
     if(!(_validProducts & MODEL_IMAGE)) {
         for( ProjectionIterator i(_projectionList.begin()), end(_projectionList.end());
@@ -167,6 +171,9 @@ multifit::ModelEvaluator::computeModelImage() {
         ) {
             (*i)->computeModelImage();
         }
+        VectorMap map(_modelImageBuffer.getData(), getNPixels(),1);
+        _modelImage = map.cwise()/_sigma;
+        _validProducts |= MODEL_IMAGE;
     }    
     return _modelImage;
 }
@@ -176,7 +183,7 @@ multifit::ModelEvaluator::computeModelImage() {
  *
  * @sa ModelProjection::computeLinearParameterDerivative
  */
-ndarray::Array<multifit::Pixel const, 2, 2> 
+Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic> const & 
 multifit::ModelEvaluator::computeLinearParameterDerivative() {
     if (!(_validProducts & LINEAR_PARAMETER_DERIVATIVE)) {
         for( ProjectionIterator i(_projectionList.begin()), 
@@ -184,9 +191,14 @@ multifit::ModelEvaluator::computeLinearParameterDerivative() {
         ) {
             (*i)->computeLinearParameterDerivative();
         }
+        MatrixMap map(_linearDerivativeBuffer.getData(), getNPixels(), getLinearParameterSize());
+        _linearDerivative = map;
+        for(int i =0; i < getLinearParameterSize(); ++i) {
+            _linearDerivative.col(i).cwise() /= _sigma;
+        }
         _validProducts |= LINEAR_PARAMETER_DERIVATIVE;
     }    
-    return _linearParameterDerivative;
+    return _linearDerivative;
 }
 
 /**
@@ -194,7 +206,7 @@ multifit::ModelEvaluator::computeLinearParameterDerivative() {
  *
  * @sa ModelProjection::computeNonlinearParameterDerivative
  */
-ndarray::Array<multifit::Pixel const, 2, 2> 
+Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic> const & 
 multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
     if(!(_validProducts & NONLINEAR_PARAMETER_DERIVATIVE)) {
         for( ProjectionIterator i(_projectionList.begin()), 
@@ -202,9 +214,14 @@ multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
         ) {
             (*i)->computeNonlinearParameterDerivative();
         }
+        MatrixMap map(_nonlinearDerivativeBuffer.getData(), getNPixels(), getNonlinearParameterSize());
+        _nonlinearDerivative = map;
+        for(int i =0; i < getLinearParameterSize(); ++i) {
+            _nonlinearDerivative.col(i).cwise() /= _sigma;
+        }
         _validProducts |= NONLINEAR_PARAMETER_DERIVATIVE;
     }    
-    return _nonlinearParameterDerivative;
+    return _nonlinearDerivative;
 }
 
 

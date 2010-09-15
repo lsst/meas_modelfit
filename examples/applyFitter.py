@@ -30,6 +30,7 @@ import lsst.pex.policy as pexPolicy
 import numpy
 import numpy.random
 import lsst.afw.display.ds9 as ds9
+import lsst.pex.logging as pexLog
 
 
 def applyFitter():
@@ -75,12 +76,16 @@ def applyFitter():
     
     afwRandom = afwMath.Random()
     randomImg = afwImage.ImageF(modelImage.getDimensions())
-    randomImg*= 20.0
     afwMath.randomGaussianImage(randomImg, afwRandom)
-    
+    randomImg*= 20
+
+    stats = afwMath.makeStatistics(randomImg, afwMath.VARIANCE)
+    variance = stats.getValue(afwMath.VARIANCE)
+    print variance
+
     img = modelImage.getImage()
     img += randomImg
-    modelImage.getVariance().set(20)
+    modelImage.getVariance().set(variance)
 
     exp = afwImage.ExposureF(modelImage, wcs)
     exp.setPsf(psf)
@@ -91,8 +96,9 @@ def applyFitter():
     expList.append(exp)
     
     jiggeredLogShear = afwGeom.ellipses.LogShear(logShear[0]*1.1, logShear[1]*1.1, logShear[2]*1.1)
-    flux *= 1.1
+    #flux *= 1.1
     testModel = measMult.createExponentialModel(flux, crVal, jiggeredLogShear)
+    #testModel = model
     modelEvaluator = measMult.ModelEvaluator(testModel)
     modelEvaluator.setExposureList(expList)
 
@@ -101,7 +107,7 @@ def applyFitter():
 
     fitter = measMult.MinuitAnalyticFitter(fitterPolicy)
 
-    errors = [1.0, 0.1, 0.1, 0.1, 0.1, 0.1]
+    errors = [0.1, 0.1, 0.05, 0.1, 0.1, 0.1]
     result = fitter.apply(modelEvaluator, errors)
 
     
@@ -121,7 +127,6 @@ def applyFitter():
     proj = om.makeProjection(psf, wcs, fp)    
     outputImage = afwImage.MaskedImageF(bbox.getWidth(), bbox.getHeight())
     outputImage.setXY0(bbox.getX0(), bbox.getY0())
-    bbox.shift(-bbox.getX0(), -bbox.getY0())
 
     imageVector = proj.computeModelImage()
     varianceVector = numpy.zeros(fp.getNpix(), dtype=numpy.float32)

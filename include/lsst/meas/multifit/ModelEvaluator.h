@@ -59,6 +59,7 @@ public:
     typedef std::list<ModelProjection::Ptr> ProjectionList;
     typedef boost::shared_ptr<ModelEvaluator> Ptr;
     typedef boost::shared_ptr<const ModelEvaluator> ConstPtr;
+
     /**
      * Construct a ModelEvaluator
      *
@@ -91,18 +92,7 @@ public:
     ndarray::Array<Pixel const, 1, 1> getDataVector() const {
         return _dataVector;
     }
-    /**
-     * Vector of image variance from all contributing pixels from all the exposures
-     *
-     * The variance vector is composed from the concactenation of each 
-     * exposure's footprint-compressed image data. The resulting variance 
-     * vector is an abstraction of all the pixels this model is evaluated on.
-     *
-     * @sa getDataVector
-     */
-    ndarray::Array<Pixel const, 1, 1> getVarianceVector() const {
-        return _varianceVector;
-    }
+
     /**
      * Compute the sigma for each contributing pixel from all exposure's
      *
@@ -110,23 +100,27 @@ public:
      *
      * @sa getVarianceVector
      */
-    Eigen::VectorXd const computeSigmaVector() const {
-        VectorMap variance (_varianceVector.getData(), getNPixels());
-        return variance.cwise().sqrt();
+    Eigen::Matrix<Pixel, Eigen::Dynamic, 1> const & getSigmaVector() const {
+        return _sigma;
+    }
+
+    Eigen::Matrix<Pixel, Eigen::Dynamic, 1> const getWeightedData() const {
+        VectorMap map(_dataVector.getData(), getNPixels(), 1);
+        return map.cwise()/_sigma;
     }
 
     /**
      * @name Model Product Computers
      *     
      * Each of these functions compute a footprint-compressed product as a
-     * row-major array with the inner dimension corresponding to the
-     * footprint-mapped pixel index, and the outer dimension (if any) 
+     * column-major matrix with number of rows corresponding to the
+     * footprint-mapped pixel index, and the number of columns 
      * corresponding to the parameter index.
      */
     //@{
-    ndarray::Array<Pixel const, 1, 1> computeModelImage();
-    ndarray::Array<Pixel const, 2, 2> computeLinearParameterDerivative();
-    ndarray::Array<Pixel const, 2, 2> computeNonlinearParameterDerivative();
+    Eigen::Matrix<Pixel, Eigen::Dynamic, 1> const & computeModelImage();
+    Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> const & computeLinearParameterDerivative();
+    Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> const & computeNonlinearParameterDerivative();
     //@}
 #endif 
 
@@ -266,10 +260,15 @@ private:
     ProjectionList _projectionList;
     
     ndarray::Array<Pixel, 1, 1> _dataVector;
-    ndarray::Array<Pixel, 1, 1> _varianceVector;
-    ndarray::Array<Pixel, 1, 1> _modelImage;
-    ndarray::Array<Pixel, 2, 2> _linearParameterDerivative;
-    ndarray::Array<Pixel, 2, 2> _nonlinearParameterDerivative;
+    ndarray::Array<Pixel, 1, 1> _varianceVector;    
+    ndarray::Array<Pixel, 1, 1> _modelImageBuffer;
+    ndarray::Array<Pixel, 2, 2> _linearDerivativeBuffer;
+    ndarray::Array<Pixel, 2, 2> _nonlinearDerivativeBuffer;
+
+    Eigen::Matrix<Pixel, Eigen::Dynamic, 1> _modelImage, _sigma;
+    Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> _linearDerivative, _nonlinearDerivative;
+
+
 };
 
 }}} //end namespace lsst::meas::multifit

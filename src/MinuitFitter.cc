@@ -11,7 +11,7 @@
 #include <Eigen/Core>
 #include "lsst/pex/exceptions/Runtime.h"
 #include <sstream>
-#include "lsst/pex/logging/Debug.h"
+#include "lsst/pex/logging/Trace.h"
 
 namespace multifit=lsst::meas::multifit;
 namespace pexLog = lsst::pex::logging;
@@ -21,12 +21,14 @@ namespace {
 
 class ChisqFunction {
 public:
+    typedef Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, 1> Vector;
+    typedef Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+
     ChisqFunction(multifit::ModelEvaluator::Ptr const & evaluator) 
       : _dirty(true), 
         _evaluator(evaluator),
-        _measured(evaluator->getDataVector().getData(), evaluator->getNPixels(), 1),
-        _sigma(evaluator->computeSigmaVector()) 
-    {}
+        _measured(evaluator->getWeightedData())
+    { }
 
     
     double computeValue(std::vector<double> const &params) {
@@ -36,13 +38,8 @@ public:
             _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);
         }
 
-        ndarray::Array<multifit::Pixel const, 1, 1> modelImage(
-            _evaluator->computeModelImage()
-        );
-        multifit::VectorMap modeled(
-            _evaluator->computeModelImage().getData(), _evaluator->getNPixels()
-        );
-        Eigen::VectorXd residual = (_measured-modeled).cwise()/_sigma;
+        Vector modeled = _evaluator->computeModelImage();
+        Vector residual = (_measured-modeled);
         return 0.5*residual.dot(residual); 
     }
 
@@ -53,40 +50,21 @@ public:
             _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);
         }
 
-        multifit::VectorMap modeled(
-            _evaluator->computeModelImage().getData(), _evaluator->getNPixels()
-        );
-        Eigen::VectorXd residual = (_measured-modeled).cwise()/_sigma;
-        //std::cerr << residual << std::endl; 
-        ndarray::Array<multifit::Pixel const, 2, 2> lpd(
-            _evaluator->computeLinearParameterDerivative()
-        );
-        ndarray::Array<multifit::Pixel const, 2, 2> npd(
-            _evaluator->computeNonlinearParameterDerivative()
-        );
+        Vector modeled = _evaluator->computeModelImage();
+        Vector residual = (_measured-modeled);
+        Matrix lpd = _evaluator->computeLinearParameterDerivative();
+        Matrix npd = _evaluator->computeNonlinearParameterDerivative();
 
-        multifit::MatrixMap lpdMap(
-            lpd.getData(),
-            _evaluator->getNPixels(),
-            _evaluator->getLinearParameterSize()
-        );
-        multifit::MatrixMap npdMap(
-            npd.getData(),
-            _evaluator->getNPixels(),
-            _evaluator->getNonlinearParameterSize()
-        );
-        
         std::vector<double> gradient(params.size());
         multifit::VectorMap gradMap(&gradient[0], params.size());
-        gradMap << (-lpdMap).transpose()*residual, (-npdMap).transpose()*residual;
-        gradMap*= 2.0;
+        gradMap << (-lpd).transpose()*residual, (-npd).transpose()*residual;
+        //gradMap*= 2.0;
         return gradient; 
     }
 private:
     bool _dirty;
     multifit::ModelEvaluator::Ptr _evaluator;
-    multifit::VectorMap _measured;
-    Eigen::VectorXd _sigma;
+    Vector _measured;
 
     void checkParams(std::vector<double> const & params) {
         if(_dirty)
@@ -107,6 +85,8 @@ private:
                 _dirty = true;
                 return;
         }
+
+        _dirty = false;
     }
 };
 
@@ -177,9 +157,9 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
     multifit::ModelEvaluator::Ptr evaluator, 
     std::vector<double> initialErrors
 ) const {
-    pexLog::Debug debug = pexLog::Debug("lsst::meas::multifit::MinuitFitter::apply");
+
     bool checkGradient = _policy->getBool("checkGradient");
-    ::GradientFunction function(evaluator);
+    ::GradientFunction function(evaluator, checkGradient);
     
     int nParams = evaluator->getLinearParameterSize();
     nParams += evaluator->getNonlinearParameterSize();
@@ -215,22 +195,22 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
         std::vector<double> analyticGrad = function.Gradient(initialParams);
         std::ostringstream numericStr, analyticStr, diffStr;
 
-        numericStr << "numeric gradient: <" <<numericGrad[0];
+        numericStr << "numeric gradient: <" << numericGrad[0];
         analyticStr << "analytic gradient: <" << analyticGrad[0];
-        diffStr << "difference: <" << numericGrad[0]-analyticGrad[0];
+        diffStr << "difference: <" << numericGrad[0]/analyticGrad[0];
 
         for( int i =1; i < nParams; ++i) {
             numericStr << ", " << numericGrad[i];
             analyticStr << ", " << analyticGrad[i];
-            diffStr << ", " << numericGrad[i] - analyticGrad[i];
+            diffStr << ", " << numericGrad[i]/analyticGrad[i];
         }
         numericStr << ">";
         analyticStr << ">";
         diffStr << ">";
 
-        debug.debug<7>(numericStr.str());
-        debug.debug<7>(analyticStr.str());
-        debug.debug<7>(diffStr.str());
+        std::cerr << numericStr.str() <<std::endl;
+        std::cerr << analyticStr.str() <<std::endl;
+        std::cerr << diffStr.str() <<std::endl;
     }
    
     ROOT::Minuit2::FunctionMinimum min = migrad(

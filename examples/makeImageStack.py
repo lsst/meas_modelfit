@@ -35,7 +35,7 @@ def makeImageStack(model, depth, ra, dec):
     psf = afwDet.createPsf("DoubleGaussian", 7, 7, 1.0)
     crVal = afwGeom.makePointD(ra,dec)
     crPix = afwGeom.makePointD(0,0)    
-    wcs = afwImage.createWcs(crVal, crPix, 1., 0., 0., 1.)
+    wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0., 0., 0.0001)
 
     fp = model.computeProjectionFootprint(psf, wcs)
     projection = model.makeProjection(psf, wcs, fp)

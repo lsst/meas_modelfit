@@ -119,27 +119,24 @@ BOOST_AUTO_TEST_CASE(PsModel) {
     BOOST_CHECK(evaluator.getNPixels() > 0);
 
     ndarray::Array<multifit::Pixel const, 1, 1> img;
-    ndarray::Array<multifit::Pixel const, 1, 1> var;
-    ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
-    ndarray::Array<multifit::Pixel const, 2, 2> lpd, npd;
+    Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, 1> modelImage;
+    Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic> lpd, npd;
 
     ndarray::shallow(img) = evaluator.getDataVector();
-    ndarray::shallow(var) = evaluator.getVarianceVector();
-    ndarray::shallow(modelImg) = evaluator.computeModelImage();
-    ndarray::shallow(lpd) = evaluator.computeLinearParameterDerivative();
-    ndarray::shallow(npd) = evaluator.computeNonlinearParameterDerivative();
+    modelImage = evaluator.computeModelImage();
+    lpd = evaluator.computeLinearParameterDerivative();
+    npd = evaluator.computeNonlinearParameterDerivative();
     
     //test for nan's in matrices
     for (int i = 0; i < evaluator.getNPixels(); ++i){
         BOOST_CHECK_EQUAL(img[i], img[i]);
-        BOOST_CHECK_EQUAL(var[i], var[i]);
-        BOOST_CHECK_EQUAL(modelImg[i], modelImg[i]);
+        BOOST_CHECK_EQUAL(modelImage[i], modelImage[i]);
 
         for (int j = 0; j < evaluator.getLinearParameterSize(); ++j)
-            BOOST_CHECK_EQUAL(lpd[j][i], lpd[j][i]);
+            BOOST_CHECK_EQUAL(lpd(i, j), lpd(i,j));
 
         for (int j = 0; j < evaluator.getNonlinearParameterSize(); ++j)
-            BOOST_CHECK_EQUAL(npd[j][i], npd[j][i]);
+            BOOST_CHECK_EQUAL(npd(i,j), npd(i,j));
     }
 }
 BOOST_AUTO_TEST_CASE(SersicModel) {
@@ -181,27 +178,24 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
     BOOST_CHECK_EQUAL(evaluator.getNProjections(), 3);    
     BOOST_CHECK(evaluator.getNPixels() > 0);
     ndarray::Array<multifit::Pixel const, 1, 1> img;
-    ndarray::Array<multifit::Pixel const, 1, 1> var;
-    ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
-    ndarray::Array<multifit::Pixel const, 2, 2> lpd, npd;
+    Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, 1> modelImage;
+    Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic> lpd, npd;
 
     ndarray::shallow(img) = evaluator.getDataVector();
-    ndarray::shallow(var) = evaluator.getVarianceVector();
-    ndarray::shallow(modelImg) = evaluator.computeModelImage();
-    ndarray::shallow(lpd) = evaluator.computeLinearParameterDerivative();
-    ndarray::shallow(npd) = evaluator.computeNonlinearParameterDerivative();
+    modelImage = evaluator.computeModelImage();
+    lpd = evaluator.computeLinearParameterDerivative();
+    npd = evaluator.computeNonlinearParameterDerivative();
     
     //test for nan's in matrices
     for (int i = 0; i < evaluator.getNPixels(); ++i){
         BOOST_CHECK_EQUAL(img[i], img[i]);
-        BOOST_CHECK_EQUAL(var[i], var[i]);
-        BOOST_CHECK_EQUAL(modelImg[i], modelImg[i]);
+        BOOST_CHECK_EQUAL(modelImage[i], modelImage[i]);
 
         for (int j = 0; j < evaluator.getLinearParameterSize(); ++j)
-            BOOST_CHECK_EQUAL(lpd[j][i], lpd[j][i]);
+            BOOST_CHECK_EQUAL(lpd(i, j), lpd(i,j));
 
         for (int j = 0; j < evaluator.getNonlinearParameterSize(); ++j)
-            BOOST_CHECK_EQUAL(npd[j][i], npd[j][i]);
+            BOOST_CHECK_EQUAL(npd(i,j), npd(i,j));
     }
 
     
