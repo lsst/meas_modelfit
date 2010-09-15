@@ -46,7 +46,15 @@ public:
         lsst::pex::policy::Policy::Ptr const & policy = lsst::pex::policy::Policy::Ptr()
     );
     
-    Result apply(multifit::ModelEvaluator::Ptr evaluator, std::vector<double> initialErrors) const;
+    Result apply(multifit::ModelEvaluator::Ptr evaluator, std::vector<double> const & initialErrors) const;
+
+    Result apply(
+        multifit::ModelEvaluator::Ptr evaluator,
+        std::vector<double> const & initialErrors,
+        std::vector<double> const & priorMean,
+        std::vector<double> const & priorFisherDiag
+    ) const;
+
     /**
      * Retrieve the default policy for configuring a SingleLinearParameterFitter
      *
@@ -63,7 +71,6 @@ public:
         return source;
     }
 private:
-
     lsst::pex::policy::Policy::Ptr _policy;
 };
 
@@ -74,7 +81,15 @@ public:
 
     MinuitNumericFitter(lsst::pex::policy::Policy::Ptr const & policy = lsst::pex::policy::Policy::Ptr());
     
-    Result apply(multifit::ModelEvaluator::Ptr evaluator, std::vector<double> initialErrors) const;
+    Result apply(multifit::ModelEvaluator::Ptr evaluator, std::vector<double> const & initialErrors) const;
+
+    Result apply(
+        multifit::ModelEvaluator::Ptr evaluator,
+        std::vector<double> const & initialErrors,
+        std::vector<double> const & priorMean,
+        std::vector<double> const & priorFisherDiag
+    ) const;
+
     /**
      * Retrieve the default policy for configuring a SingleLinearParameterFitter
      *
@@ -91,7 +106,6 @@ public:
         return source;
     }
 private:
-
     lsst::pex::policy::Policy::Ptr _policy;
 };
 

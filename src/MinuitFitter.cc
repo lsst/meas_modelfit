@@ -24,11 +24,17 @@ public:
     typedef Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, 1> Vector;
     typedef Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 
-    ChisqFunction(multifit::ModelEvaluator::Ptr const & evaluator) 
+    ChisqFunction(
+        multifit::ModelEvaluator::Ptr const & evaluator,
+        Vector const & priorMean,
+        Vector const & priorFisherDiag
+    ) 
       : _dirty(true), 
         _evaluator(evaluator),
-        _measured(evaluator->getWeightedData())
-    { }
+        _measured(evaluator->getWeightedData()),
+        _priorMean(priorMean),
+        _priorFisherDiag(priorFisherDiag)
+    {}
 
     
     double computeValue(std::vector<double> const &params) {
@@ -40,7 +46,11 @@ public:
 
         Vector modeled = _evaluator->computeModelImage();
         Vector residual = (_measured-modeled);
-        return 0.5*residual.dot(residual); 
+        Vector priorDelta(params.size());
+        std::copy(params.begin(), params.end(), priorDelta.data());
+        priorDelta -= _priorMean;
+        double priorTerm = 0.5*priorDelta.dot(_priorFisherDiag.cwise() * priorDelta);
+        return 0.5*residual.dot(residual) + priorTerm; 
     }
 
     std::vector<double> computeGradient(std::vector<double> const &params) {
@@ -55,16 +65,22 @@ public:
         Matrix lpd = _evaluator->computeLinearParameterDerivative();
         Matrix npd = _evaluator->computeNonlinearParameterDerivative();
 
+        Eigen::VectorXd priorDelta(params.size());
+        std::copy(params.begin(), params.end(), priorDelta.data());
+        priorDelta -= _priorMean;
+
         std::vector<double> gradient(params.size());
         multifit::VectorMap gradMap(&gradient[0], params.size());
         gradMap << (-lpd).transpose()*residual, (-npd).transpose()*residual;
-        //gradMap*= 2.0;
+        gradMap += _priorFisherDiag.cwise() * priorDelta;
         return gradient; 
     }
 private:
     bool _dirty;
     multifit::ModelEvaluator::Ptr _evaluator;
     Vector _measured;
+    Vector _priorMean;
+    Vector _priorFisherDiag;
 
     void checkParams(std::vector<double> const & params) {
         if(_dirty)
@@ -93,8 +109,12 @@ private:
 
 class Function : public ROOT::Minuit2::FCNBase {
 public:
-    Function(multifit::ModelEvaluator::Ptr evaluator) :
-        _chisqFunction(evaluator)
+    Function(
+        multifit::ModelEvaluator::Ptr evaluator, 
+        ChisqFunction::Vector const & priorMean,
+        ChisqFunction::Vector const & priorFisherDiag
+    ) :
+        _chisqFunction(evaluator, priorMean, priorFisherDiag)
     {}
 
     virtual ~Function() {}
@@ -109,8 +129,13 @@ private:
 
 class GradientFunction : public ROOT::Minuit2::FCNGradientBase {
 public:
-    GradientFunction(multifit::ModelEvaluator::Ptr evaluator, bool const & checkGradient=false) :
-        _chisqFunction(evaluator),
+    GradientFunction(
+        multifit::ModelEvaluator::Ptr evaluator,
+        ChisqFunction::Vector const & priorMean,
+        ChisqFunction::Vector const & priorFisherDiag,
+        bool checkGradient=false
+    ) :
+        _chisqFunction(evaluator, priorMean, priorFisherDiag),
         _checkGradient(checkGradient)
     {}
 
@@ -154,12 +179,20 @@ multifit::MinuitAnalyticFitter::MinuitAnalyticFitter(
 }
 
 multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
-    multifit::ModelEvaluator::Ptr evaluator, 
-    std::vector<double> initialErrors
+    multifit::ModelEvaluator::Ptr evaluator, std::vector<double> const & initialErrors
 ) const {
+    int nParams = evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize();
+    std::vector<double> priorMean(nParams, 0.0);
+    std::vector<double> priorFisherDiag(nParams, 0.0);
+    return apply(evaluator, initialErrors, priorMean, priorFisherDiag);
+}
 
-    bool checkGradient = _policy->getBool("checkGradient");
-    ::GradientFunction function(evaluator, checkGradient);
+multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
+    multifit::ModelEvaluator::Ptr evaluator, 
+    std::vector<double> const & initialErrors,
+    std::vector<double> const & priorMean,
+    std::vector<double> const & priorFisherDiag
+) const {
     
     int nParams = evaluator->getLinearParameterSize();
     nParams += evaluator->getNonlinearParameterSize();
@@ -170,6 +203,23 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
             "Number of model parameters not equal to length of error vector"
         );
     }
+
+    bool checkGradient = _policy->getBool("checkGradient");
+
+    ChisqFunction::Vector priorMeanEig(priorMean.size());
+    std::copy(priorMean.begin(), priorMean.end(), priorMeanEig.data());
+
+    ChisqFunction::Vector priorFisherDiagEig(priorFisherDiag.size());
+    std::copy(priorFisherDiag.begin(), priorFisherDiag.end(), priorFisherDiagEig.data());
+
+    if(nParams != priorMean.size() || nParams != priorFisherDiag.size()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "Number of model parameters not equal to length of prior mean and/or Fisher diagonal vector"
+        );
+    }
+
+    ::GradientFunction function(evaluator, priorMeanEig, priorFisherDiagEig);
 
     std::vector<double> initialParams(nParams);
     VectorMap paramMap(&initialParams[0], nParams);
@@ -197,7 +247,7 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
 
         numericStr << "numeric gradient: <" << numericGrad[0];
         analyticStr << "analytic gradient: <" << analyticGrad[0];
-        diffStr << "difference: <" << numericGrad[0]/analyticGrad[0];
+        diffStr << "ratio: <" << numericGrad[0]/analyticGrad[0];
 
         for( int i =1; i < nParams; ++i) {
             numericStr << ", " << numericGrad[i];
@@ -243,10 +293,20 @@ multifit::MinuitNumericFitter::MinuitNumericFitter(
 }
 
 multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
-    multifit::ModelEvaluator::Ptr evaluator, 
-    std::vector<double> initialErrors
+    multifit::ModelEvaluator::Ptr evaluator, std::vector<double> const & initialErrors
 ) const {
-    ::Function function(evaluator);
+    int nParams = evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize();
+    std::vector<double> priorMean(nParams, 0.0);
+    std::vector<double> priorFisherDiag(nParams, 0.0);
+    return apply(evaluator, initialErrors, priorMean, priorFisherDiag);
+}
+
+multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
+    multifit::ModelEvaluator::Ptr evaluator, 
+    std::vector<double> const & initialErrors,
+    std::vector<double> const & priorMean,
+    std::vector<double> const & priorFisherDiag
+) const {
     
     int nParams = evaluator->getLinearParameterSize();
     nParams += evaluator->getNonlinearParameterSize();
@@ -258,6 +318,20 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
         );
     }
 
+    Eigen::VectorXd priorMeanEig(priorMean.size());
+    std::copy(priorMean.begin(), priorMean.end(), priorMeanEig.data());
+    Eigen::VectorXd priorFisherDiagEig(priorFisherDiag.size());
+    std::copy(priorFisherDiag.begin(), priorFisherDiag.end(), priorFisherDiagEig.data());
+
+    if(nParams != priorMean.size() || nParams != priorFisherDiag.size()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "Number of model parameters not equal to length of prior mean and/or Fisher diagonal vector"
+        );
+    }
+
+    ::Function function(evaluator, priorMeanEig, priorFisherDiagEig);
+    
     std::vector<double> initialParams(nParams);
     VectorMap paramMap(&initialParams[0], nParams);
     paramMap << evaluator->getLinearParameters(), evaluator->getNonlinearParameters();
