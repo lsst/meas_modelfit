@@ -70,9 +70,14 @@ void multifit::SersicCache::FillFunction::IntegralParameters::setN(
 ) {         
     _n = std::abs(n);
     double twoN = _n * 2;
+#ifdef HALF_LIGHT_RADIUS
     _kappa = boost::math::gamma_p_inv(twoN, 0.5);
     _norm = M_PI * twoN * std::pow(_kappa, -twoN) * 
         boost::math::tgamma(twoN);
+#else
+    _kappa = M_LN2;
+    _norm = 1.0;
+#endif
 };
 
 double multifit::SersicCache::FillFunction::sersicFunction(
@@ -87,8 +92,13 @@ double multifit::SersicCache::FillFunction::sersicFunction(
     if(err || j0.val != j0.val)
         j0.val = 0;
 
-    double exponent = -temp.getKappa() * std::pow(radius, 1.0/temp.getN());
-    return (radius*j0.val*std::exp(exponent) / temp.getNorm());
+    double exponent = temp.getKappa() * (1.0 - std::pow(radius, 1.0/temp.getN()));
+#ifdef NO_TRUNCATE
+    double cutoffExponential = 0.0;
+#else
+    double cutoffExponential = std::exp(temp.getKappa() * (1.0 - std::pow(5.0, 1.0/temp.getN())));
+#endif
+    return (radius*j0.val*((std::exp(exponent) - cutoffExponential)) / temp.getNorm());
 }
 
 double multifit::SersicCache::FillFunction::operator() (double x, double y) const {       
@@ -106,11 +116,17 @@ double multifit::SersicCache::FillFunction::operator() (double x, double y) cons
     gsl_error_handler_t * oldErrorHandler = gsl_set_error_handler_off();
     
     gsl_integration_workspace * ws = gsl_integration_workspace_alloc(_limit);
+#ifdef NO_TRUNCATE
     gsl_integration_qagiu(
         &func, 0, _epsabs, _epsrel, _limit, ws,
         &result, &abserr
     );
-
+#else
+    gsl_integration_qag(
+        &func, 0, 5.0, _epsabs, _epsrel, _limit, GSL_INTEG_GAUSS61, ws,
+        &result, &abserr
+    );
+#endif
     gsl_integration_workspace_free(ws);
     gsl_set_error_handler(oldErrorHandler);
 

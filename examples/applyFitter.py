@@ -41,7 +41,7 @@ def applyFitter():
     wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0., 0., 0.0001)
     print wcs.getCDMatrix()
 
-    axes = afwGeom.ellipses.Axes(25,30,0)
+    axes = afwGeom.ellipses.Axes(200,180,0)
     affine = wcs.linearizePixelToSky(crVal)
     print "affine", [affine[i] for i in range(6)]
     transformedAxes = axes.transform(affine)
@@ -49,11 +49,11 @@ def applyFitter():
     logShear = afwGeom.ellipses.LogShear(transformedAxes)
     print "logShear", logShear
     sersicIndex = 1.5
-    flux = 35.0
+    flux = 10000.0
 
     model = measMult.createExponentialModel(flux, crVal, logShear)
 
-    psf = afwDet.createPsf("DoubleGaussian", 7, 7, 1.0)
+    psf = afwDet.createPsf("DoubleGaussian", 2, 2, 1.0)
 
     fp = model.computeProjectionFootprint(psf, wcs)
     nPix = fp.getNpix()
@@ -97,7 +97,7 @@ def applyFitter():
     
     jiggeredLogShear = afwGeom.ellipses.LogShear(logShear[0]*1.1, logShear[1]*1.1, logShear[2]*1.1)
     #flux *= 1.1
-    testModel = measMult.createExponentialModel(flux, crVal, jiggeredLogShear)
+    testModel = measMult.createSersicModel(flux, crVal, jiggeredLogShear)
     #testModel = model
     modelEvaluator = measMult.ModelEvaluator(testModel)
     modelEvaluator.setExposureList(expList)
