@@ -150,6 +150,16 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
 
     lsst::afw::coord::Coord::Ptr coord = wcs0->pixelToSky(pixel);
 
+    multifit::Cache::ConstPtr cache;
+
+    try {
+        cache = multifit::Cache::load("testCache", "Sersic", false);
+    } catch (...){
+        lsst::pex::policy::Policy pol;
+        cache = multifit::makeSersicCache(pol);
+    }
+    multifit::components::SersicMorphology::setSersicCache(cache);
+
     //transform the ellipse parameters to be in sky coordinates
     geom::AffineTransform transform = wcs0->linearizePixelToSky(
         coord->getPosition(lsst::afw::coord::DEGREES)

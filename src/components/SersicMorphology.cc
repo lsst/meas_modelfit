@@ -23,8 +23,11 @@
 #include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
 #include "lsst/afw/geom/ellipses/LogShear.h"
+#include "lsst/pex/exceptions/Runtime.h"
 
 namespace components = lsst::meas::multifit::components;
+
+lsst::meas::multifit::Cache::ConstPtr components::SersicMorphology::_cache;
 
 lsst::afw::geom::ellipses::Core::Ptr 
 components::SersicMorphology::computeBoundingEllipseCore() const {  
@@ -55,6 +58,13 @@ components::MorphologyProjection::Ptr components::SersicMorphology::makeProjecti
 }
 
 void components::SersicMorphology::_handleNonlinearParameterChange() {
+    if(!_cache) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Must call SersicMorphology::setSersicCache before creating and using SersicMorphology"
+        );
+    }
+
     ParameterMap errors;
     int offset = getNonlinearParameterOffset();
 
@@ -69,9 +79,9 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
     }
 
     Parameter sersic = getSersicIndex();
-    lsst::afw::geom::BoxD bounds = SersicCache::getInstance()->getParameterBounds();
+    lsst::afw::geom::BoxD bounds = _cache->getParameterBounds();
     try {
-        _indexFunctor = SersicCache::getInstance()->getRowFunctor(sersic);
+        _indexFunctor = _cache->getRowFunctor(sersic);
     } 
     catch(lsst::pex::exceptions::InvalidParameterException &e) {
         sersic = std::min(std::max(sersic, bounds.getMinY()), bounds.getMaxY()); 

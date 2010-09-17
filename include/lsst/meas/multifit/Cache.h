@@ -28,10 +28,42 @@
 #include "lsst/afw/math/Function.h"
 #include "lsst/afw/geom.h"
 
+namespace boost { 
+namespace serialization {
+    class access;
+}}
+
 namespace lsst{
 namespace meas{
 namespace multifit {
 
+#ifndef SWIG
+class InterpolationFunction : public lsst::afw::math::Function1<double> {
+public:
+    typedef lsst::afw::math::Function1<double> Base;
+    typedef boost::shared_ptr<InterpolationFunction> Ptr;
+    typedef boost::shared_ptr<InterpolationFunction const> ConstPtr;
+
+    InterpolationFunction(
+        Eigen::VectorXd const & x, 
+        std::vector<double> const & y
+    );
+    InterpolationFunction(
+        Eigen::VectorXd const & x,
+        Eigen::VectorXd const & y 
+    );
+
+    virtual Base::Ptr clone() const;
+    virtual double operator() (double x) const;
+    virtual double dParams(double const & x) const;
+
+private:
+    void initialize();
+
+    Eigen::VectorXd _x;
+    double _step;
+}; 
+#endif
 
 class Cache  {
 public:   
@@ -39,63 +71,60 @@ public:
     typedef boost::shared_ptr<Cache const> ConstPtr;
     typedef lsst::afw::math::Function2<double> FillFunction;
 
-    class Functor : public lsst::afw::math::Function1<double> {
-    public:
-        typedef lsst::afw::math::Function1<double> Base;
-        typedef boost::shared_ptr<Functor> Ptr;
-        typedef boost::shared_ptr<Functor const> ConstPtr;
+    typedef InterpolationFunction Functor;
 
-        Functor(
-            boost::shared_ptr<Eigen::VectorXd> const & x, 
-            std::vector<double> const & y
-        );
-        Functor(
-            boost::shared_ptr<Eigen::VectorXd> const & x,
-            Eigen::VectorXd const & y 
-        );
-
-        virtual Base::Ptr clone() const;
-        virtual double operator() (double x) const;
-        virtual double dParams(double const & x) const;
-
-    private:
-        void initialize();
-
-        boost::shared_ptr<Eigen::VectorXd> _x;
-        double _step;
-    }; 
-
-    Cache(
+    static ConstPtr get(std::string const & name);
+    static ConstPtr make( 
         lsst::afw::geom::BoxD const & parameterBounds,
         lsst::afw::geom::Extent2D const & resolution,
-        FillFunction::Ptr const & fillFunction
+        FillFunction const * fillFunction,
+        std::string const & name="", 
+        bool const & doOverwrite=true
     );
+    static ConstPtr load(
+        std::string const & filepath, 
+        std::string const & name="", 
+        bool const & doOverwrite=true
+    ); 
+    void save(std::string const & filepath) const;
 
+#ifndef SWIG
     Cache::Functor::ConstPtr getRowFunctor(double const & y) const;
     Cache::Functor::ConstPtr getRowDerivativeFunctor(double const & y) const;
     Cache::Functor::ConstPtr getColFunctor(double const & x) const;
     Cache::Functor::ConstPtr getColDerivativeFunctor(double const & x) const;
 
-    Eigen::VectorXd const & getColHeaders() const {return *_x;}
-    Eigen::VectorXd const & getRowHeaders() const {return *_y;}
+    Eigen::VectorXd const & getColHeaders() const {return _x;}
+    Eigen::VectorXd const & getRowHeaders() const {return _y;}
     
     lsst::afw::geom::BoxD const & getParameterBounds() const {
         return _parameterBounds;
     }
-
+#endif
     Eigen::MatrixXd const & getDataPoints() const {return _dataPoints;}
 private:
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, unsigned int const);
+
     Eigen::MatrixXd _dataPoints;
-    boost::shared_ptr<Eigen::VectorXd> _x, _y;
+    Eigen::VectorXd _x, _y;
+    
+    Cache(
+        lsst::afw::geom::BoxD const & parameterBounds,
+        lsst::afw::geom::Extent2D const & resolution,
+        FillFunction const * fillFunction
+    );
+
+    Cache(){};
 
     lsst::afw::geom::BoxD _parameterBounds;
     double _xStep, _yStep;
-    static double const _getStep(
-        int const &i, 
-        boost::shared_ptr<Eigen::VectorXd> r
-    ) {
-        return (*r)[i+1] - (*r)[i];
-    }
+    
+
+
+    static std::map<std::string, Ptr> _registry;
 };
 
 }}} //namespace lsst::meas::multifit

@@ -58,6 +58,18 @@ namespace geom = lsst::afw::geom;
 namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(SersicModelProjection) {
+    multifit::Cache::ConstPtr cache;
+    try {
+        cache = multifit::Cache::load("testCache", "Sersic", false);
+    } catch (...){
+        lsst::pex::policy::Policy pol;
+        cache = multifit::makeSersicCache(pol);
+    }
+    geom::BoxD bounds = cache->getParameterBounds();
+    cerr << bounds.getMinX() << " " << bounds.getMinY()<< endl; 
+    cerr << bounds.getMaxX() << " " << bounds.getMaxY()<< endl; 
+    multifit::components::SersicMorphology::setSersicCache(cache);
+
     lsst::afw::geom::PointD centroid = geom::PointD::make(0,0);
 
     //define ellipse in pixel coordinates

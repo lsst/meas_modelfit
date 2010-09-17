@@ -1,5 +1,5 @@
 #<? cfg paf dictionary ?>
-target: lsst.meas.multifit.SersicCache
+target: lsst.meas.multifit.SersicCacheFillFunction
 
 definitions: {
 	epsrel: {

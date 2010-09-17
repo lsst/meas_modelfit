@@ -20,31 +20,89 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-import lsst.meas.multifit as mf
-import lsst.afw.image
-import lsst.afw.geom
+import lsst.meas.multifit as measMult
+import lsst.afw.image as afwImage
+import lsst.afw.geom as afwGeom
 import lsst.afw.geom.ellipses
-import lsst.meas.algorithms
+import lsst.afw.math as afwMath
+import lsst.afw.detection as afwDet
+
 import numpy
 import lsst.afw.display.ds9 as ds9
-from makeImageStack import makeImageStack
 import eups
 
-lsstSimDir = eups.productDir("obs_lsstSim")
-if not lsstSimDir:
-    raise RuntimeError("Must set up obs_lsstSim to run these examples")
+def makeModelExposure(model, psf, wcs, noiseFactor=0):
+    fp = model.computeProjectionFootprint(psf, wcs)
+
+    box = fp.getBBox()
+    grow = afwImage.BBox(box.getLLC(), int(box.getWidth()*5), int(box.getHeight()*5))
+    grow.shift(-int(box.getWidth()*2), -int(box.getHeight()*2))
+    growFp = afwDet.Footprint(grow)
+    nPix = growFp.getNpix()
+
+    proj = model.makeProjection(psf, wcs, growFp)
+    modelImage = afwImage.MaskedImageF(grow.getWidth(), grow.getHeight())
+    modelImage.setXY0(grow.getX0(), grow.getY0())
+    
+    imageVector = proj.computeModelImage()
+    varianceVector = numpy.zeros(nPix, dtype=numpy.float32)
+
+    measMult.expandImageF(growFp, modelImage, imageVector, varianceVector)
+
+    afwRandom = afwMath.Random()
+    randomImg = afwImage.ImageF(modelImage.getDimensions())
+    afwMath.randomGaussianImage(randomImg, afwRandom)
+    randomImg *= noiseFactor
+    img = modelImage.getImage()
+    img += randomImg
+
+    stats = afwMath.makeStatistics(modelImage, afwMath.VARIANCE)
+    variance = stats.getValue(afwMath.VARIANCE)
+    modelImage.getVariance().set(variance)
+
+    exp = afwImage.ExposureF(modelImage, wcs)
+    exp.setPsf(psf)
+    return exp
 
 def main():
-    flux = 5.0
-    centroid = lsst.afw.geom.makePointD(0., 0.)
-    axes = lsst.afw.geom.ellipses.Axes(3,1,0)
-    logShear = lsst.afw.geom.ellipses.LogShear(axes)
-    sersicIndex = 1.0
-    model = mf.createSersicModel(flux, centroid, axes, sersicIndex)
-    exposureList = makeImageStack(model, 1, centroid[0], centroid[1])
+    i =0
+    crVal = afwGeom.makePointD(45,45)
+    crPix = afwGeom.makePointD(1,1)
+    wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0., 0., 0.0001)
 
-    exposure= exposureList.front()
-    ds9.mtv(exposure.getMaskedImage(), frame=0, wcs=exposure.getWcs())
+    psf = afwDet.createPsf("DoubleGaussian", 9, 9, 1.0)
+    affine = wcs.linearizePixelToSky(crVal)
+
+    flux = 5.0
+    centroid = crVal
+    axes = lsst.afw.geom.ellipses.Axes(30,25,0).transform(affine)
+    print axes
+
+    logShear = lsst.afw.geom.ellipses.LogShear(axes)
+
+    sersicIndex = 1.25
+    model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
+    exp = makeModelExposure(model, psf, wcs)
+
+    ds9.mtv(exp, frame=i)
+    i+=1
+    del model
+    del exp
+
+    sersicIndex = 4.0
+    model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
+    exp = makeModelExposure(model, psf, wcs)
+    ds9.mtv(exp, frame=i)
+    i+=1
+    del model
+    del exp
+
+    axes = lsst.afw.geom.ellipses.Axes(50,10,30).transform(affine)
+    print axes
+    logShear = lsst.afw.geom.ellipses.LogShear(axes)
+    model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
+    exp = makeModelExposure(model, psf, wcs)
+    ds9.mtv(exp, frame=i)
 
 if __name__== "__main__":
     main()

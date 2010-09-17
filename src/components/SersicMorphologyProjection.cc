@@ -194,7 +194,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 //Use the col-functor over the sersic cache to compute this last
                 //partial derivative w.r.t sersic index
                 try {
-                    radiusFunctor = SersicCache::getInstance()->getColFunctor(k);
+                    radiusFunctor = getMorphology()->getSersicCache()->getColFunctor(k);
                 } catch(lsst::pex::exceptions::InvalidParameterException &) {
                     throw LSST_EXCEPT(
                         lsst::pex::exceptions::LogicErrorException,

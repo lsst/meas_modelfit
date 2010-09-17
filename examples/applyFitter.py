@@ -33,15 +33,44 @@ import lsst.afw.display.ds9 as ds9
 import lsst.pex.logging as pexLog
 
 
+def makeModelExposure(model, psf, wcs, noiseFactor=0):
+    fp = model.computeProjectionFootprint(psf, wcs)
+    nPix = fp.getNpix()
+    box = fp.getBBox()
+    proj = model.makeProjection(psf, wcs, fp)
+    modelImage = afwImage.MaskedImageF(box.getWidth(), box.getHeight())
+    modelImage.setXY0(box.getX0(), box.getY0())
+    
+    imageVector = proj.computeModelImage()
+    varianceVector = numpy.zeros(nPix, dtype=numpy.float32)
+
+    measMult.expandImageF(fp, subImage, imageVector, varianceVector)
+
+    afwRandom = afwMath.Random()
+    randomImg = afwImage.ImageF(modelImage.getDimensions())
+    afwMath.randomGaussianImage(randomImg, afwRandom)
+    randomImg *= noiseFactor
+    img = modelImage.getImage()
+    img += randomImg
+
+    stats = afwMath.makeStatistics(modelImage, afwMath.VARIANCE)
+    variance = stats.getValue(afwMath.VARIANCE)
+    modelImage.getVariance().set(variance)
+
+    exp = afwImage.ExposureF(modelImage, wcs)
+    exp.setPsf(psf)
+    return exp
+
 def applyFitter():
     #exp = afwImage.ExposureF("c00.fits")
     #wcs = exp.getWcs()
+    frameId = 0
     crVal = afwGeom.makePointD(45,45)
     crPix = afwGeom.makePointD(1,1)
     wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0., 0., 0.0001)
     print wcs.getCDMatrix()
 
-    axes = afwGeom.ellipses.Axes(200,180,0)
+    axes = afwGeom.ellipses.Axes(25,30,0)
     affine = wcs.linearizePixelToSky(crVal)
     print "affine", [affine[i] for i in range(6)]
     transformedAxes = axes.transform(affine)
@@ -49,65 +78,32 @@ def applyFitter():
     logShear = afwGeom.ellipses.LogShear(transformedAxes)
     print "logShear", logShear
     sersicIndex = 1.5
-    flux = 10000.0
+    flux = 35.0
 
-    model = measMult.createExponentialModel(flux, crVal, logShear)
+    model = measMult.createSersicModel(flux, crVal, logShear, sersicIndex)
 
-    psf = afwDet.createPsf("DoubleGaussian", 2, 2, 1.0)
+    psf = afwDet.createPsf("DoubleGaussian", 7, 7, 1.0)
 
-    fp = model.computeProjectionFootprint(psf, wcs)
-    nPix = fp.getNpix()
-    bbox = fp.getBBox()
-    grownBbox = afwImage.BBox(bbox.getLLC(), bbox.getURC())
-    grownBbox.shift(-30,-30)
-    grownBbox.setWidth(bbox.getWidth() + 60)
-    grownBbox.setHeight(bbox.getHeight() + 60)
-
-    proj = model.makeProjection(psf, wcs, fp)
-    modelImage = afwImage.MaskedImageF(grownBbox.getWidth(), grownBbox.getHeight())
-    modelImage.setXY0(grownBbox.getX0(), grownBbox.getY0())
-
-    imageVector = proj.computeModelImage()
-    varianceVector = numpy.zeros(nPix, dtype=numpy.float32)
-
-    bbox.shift(-bbox.getX0(), -bbox.getY0()) 
-    subImage = modelImage.Factory(modelImage, bbox)
-    measMult.expandImageF(fp, subImage, imageVector, varianceVector)
+    exp = makeModelExposure(model, psf, wcs, 20.0)
     
-    afwRandom = afwMath.Random()
-    randomImg = afwImage.ImageF(modelImage.getDimensions())
-    afwMath.randomGaussianImage(randomImg, afwRandom)
-    randomImg*= 20
-
-    stats = afwMath.makeStatistics(randomImg, afwMath.VARIANCE)
-    variance = stats.getValue(afwMath.VARIANCE)
-    print variance
-
-    img = modelImage.getImage()
-    img += randomImg
-    modelImage.getVariance().set(variance)
-
-    exp = afwImage.ExposureF(modelImage, wcs)
-    exp.setPsf(psf)
-
-    ds9.mtv(exp, frame = 0)
+    ds9.mtv(exp, frame=frameId)
+    frameId +=1
 
     expList = measMult.ExposureListF()
     expList.append(exp)
     
     jiggeredLogShear = afwGeom.ellipses.LogShear(logShear[0]*1.1, logShear[1]*1.1, logShear[2]*1.1)
     #flux *= 1.1
-    testModel = measMult.createSersicModel(flux, crVal, jiggeredLogShear)
+    testModel = measMult.createSersicModel(flux, crVal, jiggeredLogShear, sersicIndex)
     #testModel = model
     modelEvaluator = measMult.ModelEvaluator(testModel)
     modelEvaluator.setExposureList(expList)
 
     fitterPolicy = pexPolicy.Policy()
-    fitterPolicy.add("checkGradient", True)
 
-    fitter = measMult.MinuitAnalyticFitter(fitterPolicy)
+    fitter = measMult.MinuitNumericFitter(fitterPolicy)
 
-    errors = [0.1, 0.1, 0.05, 0.1, 0.1, 0.1]
+    errors = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     result = fitter.apply(modelEvaluator, errors)
 
     
@@ -122,18 +118,9 @@ def applyFitter():
     print "chisq", result.chisq
 
     om = modelEvaluator.getModel().clone()
-    fp = om.computeProjectionFootprint(psf, wcs)
-    bbox = fp.getBBox()
-    proj = om.makeProjection(psf, wcs, fp)    
-    outputImage = afwImage.MaskedImageF(bbox.getWidth(), bbox.getHeight())
-    outputImage.setXY0(bbox.getX0(), bbox.getY0())
+    outExp = makeModelExposure(om, psf, wcs)
 
-    imageVector = proj.computeModelImage()
-    varianceVector = numpy.zeros(fp.getNpix(), dtype=numpy.float32)
-  
-    measMult.expandImageF(fp, outputImage, imageVector, varianceVector)
-    oe = afwImage.ExposureF(outputImage, wcs)
-    ds9.mtv(oe, frame=1)
+    ds9.mtv(oe, frame=frameId)
 
 
 

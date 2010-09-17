@@ -30,42 +30,8 @@
 #include <boost/math/special_functions/gamma.hpp>
 
 namespace multifit = lsst::meas::multifit;
-       
-multifit::SersicCache::Ptr multifit::SersicCache::_singleton;
-
-multifit::SersicCache::ConstPtr multifit::SersicCache::getInstance() {
-    if(!_singleton) {
-        lsst::pex::policy::Policy::Ptr policy(
-            lsst::pex::policy::Policy::createPolicy(*getDefaultPolicySource())
-        );
-        lsst::afw::geom::Extent2D resolution(
-            lsst::afw::geom::makeExtentD(
-                policy->getDouble("kResolution"), 
-                policy->getDouble("sersicIndexResolution")
-            )
-        );
-        lsst::afw::geom::BoxD bounds(
-            lsst::afw::geom::makePointD(
-                policy->getDouble("kMin"), 
-                policy->getDouble("sersicIndexMin")
-            ),
-            lsst::afw::geom::makePointD(
-                policy->getDouble("kMax"),
-                policy->getDouble("sersicIndexMax")
-            )
-        );
-        FillFunction::Ptr fillFunction(
-            new FillFunction(
-                policy->getDouble("epsabs"), 
-                policy->getDouble("epsrel"),
-                policy->getInt("subintervalLimit")
-            )
-        );
-        _singleton.reset(new SersicCache(bounds, resolution, fillFunction));
-    }
-    return _singleton;
-}
-void multifit::SersicCache::FillFunction::IntegralParameters::setN(
+      
+void multifit::SersicCacheFillFunction::IntegralParameters::setN(
     double const & n
 ) {         
     _n = std::abs(n);
@@ -80,7 +46,7 @@ void multifit::SersicCache::FillFunction::IntegralParameters::setN(
 #endif
 };
 
-double multifit::SersicCache::FillFunction::sersicFunction(
+double multifit::SersicCacheFillFunction::sersicFunction(
     double radius, void * parameters
 ) {
     IntegralParameters const & temp = *static_cast<IntegralParameters*>(
@@ -101,7 +67,7 @@ double multifit::SersicCache::FillFunction::sersicFunction(
     return (radius*j0.val*((std::exp(exponent) - cutoffExponential)) / temp.getNorm());
 }
 
-double multifit::SersicCache::FillFunction::operator() (double x, double y) const {       
+double multifit::SersicCacheFillFunction::operator() (double x, double y) const {       
     gsl_function func;
     func.function = sersicFunction;
     func.params = static_cast<void*>(&_params);
@@ -131,4 +97,36 @@ double multifit::SersicCache::FillFunction::operator() (double x, double y) cons
     gsl_set_error_handler(oldErrorHandler);
 
     return result;
+}
+
+multifit::Cache::ConstPtr multifit::makeSersicCache(lsst::pex::policy::Policy policy) {
+    lsst::pex::policy::DefaultPolicyFile defSource(
+        "meas_multifit",
+        "SersicCacheDict.paf",
+        "policy"
+    );
+    lsst::pex::policy::Policy defPol(defSource);
+    policy.mergeDefaults(defPol);
+
+    lsst::afw::geom::Extent2D resolution = lsst::afw::geom::makeExtentD(
+        policy.getDouble("kResolution"), 
+        policy.getDouble("sersicIndexResolution")
+    );
+    lsst::afw::geom::BoxD bounds(
+        lsst::afw::geom::makePointD(
+            policy.getDouble("kMin"), 
+            policy.getDouble("sersicIndexMin")
+        ),
+        lsst::afw::geom::makePointD(
+            policy.getDouble("kMax"),
+            policy.getDouble("sersicIndexMax")
+        )
+    );
+    SersicCacheFillFunction fillFunction(
+        policy.getDouble("epsabs"), 
+        policy.getDouble("epsrel"),
+        policy.getInt("subintervalLimit")
+    );
+
+    return Cache::make(bounds, resolution, &fillFunction, "Sersic", false);
 }

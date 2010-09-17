@@ -34,7 +34,7 @@ void components::ExponentialMorphologyProjection::_recomputeDimensions() {
     );
     lsst::afw::geom::Extent2D ellipseBounds = transformedEllipse->computeDimensions();
     //grow the ellipse dimensions by a constant factor
-    ellipseBounds *= 3;
+    ellipseBounds *= UNCONVOLVED_RADIUS_FACTOR;
 
     lsst::afw::geom::Extent2I dimensions = lsst::afw::geom::makeExtentI(
         static_cast<int>(std::ceil(ellipseBounds.getX())),

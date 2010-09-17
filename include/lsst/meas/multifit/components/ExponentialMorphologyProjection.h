@@ -73,6 +73,8 @@ protected:
     ndarray::FourierArray<Pixel, 3, 3> _linearParameterDerivative;
 
 private:
+    static double const UNCONVOLVED_RADIUS_FACTOR = 6;
+
     void _recomputeDimensions();
     lsst::afw::geom::Extent2I _dimensions;
 

@@ -42,7 +42,13 @@ using namespace std;
 namespace multifit = lsst::meas::multifit;
 
 BOOST_AUTO_TEST_CASE(SersicCache) {
-    multifit::SersicCache::ConstPtr cache = multifit::SersicCache::getInstance();
+    multifit::Cache::ConstPtr cache;
+    try {
+        cache = multifit::Cache::load("testCache");
+    } catch (...) {
+        lsst::pex::policy::Policy pol;
+        cache = multifit::makeSersicCache(pol);
+    }
 
     BOOST_CHECK(cache);
 

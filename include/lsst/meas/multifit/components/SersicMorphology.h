@@ -93,6 +93,9 @@ public:
         size_t const & start=0
     ) const;
 
+    static void setSersicCache(Cache::ConstPtr const & cache) {
+        _cache=cache;
+    }
 protected:
     friend class SersicMorphologyProjection;
 
@@ -100,6 +103,10 @@ protected:
 
     multifit::Cache::Functor::ConstPtr const & getSersicIndexFunctor() const {
         return _indexFunctor;
+    }
+
+    multifit::Cache::ConstPtr const & getSersicCache() const {
+        return _cache;
     }
 
     /**
@@ -112,12 +119,15 @@ protected:
         boost::shared_ptr<ParameterVector const> const & linearParameters,
         boost::shared_ptr<ParameterVector const> const & nonlinearParameters,
         size_t const & start =0
-    ) : Morphology(linearParameters, nonlinearParameters, start) {
+    ) : Morphology(linearParameters, nonlinearParameters, start) {        
         _handleNonlinearParameterChange();
     }
 
+
+
 private:
     Cache::Functor::ConstPtr _indexFunctor;
+    static Cache::ConstPtr _cache;
 };
 
 
