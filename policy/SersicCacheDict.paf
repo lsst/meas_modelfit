@@ -55,5 +55,23 @@ definitions: {
 		minOccurs: 1
 		maxOccurs: 1
 		default: 1000.0
-	}	
+	}
+	radius: {
+		type: "string"
+		minOccurs: 1
+		maxOccurs: 1
+		default: "HALF_INTEGRAL"
+	}
+	truncate: {
+		type: "bool"
+		minOccurs: 1
+		maxOccurs: 1
+		default: false
+	}
+	truncationRadius: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 5.0
+	}
 }

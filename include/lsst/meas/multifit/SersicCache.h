@@ -33,11 +33,29 @@ namespace meas {
 namespace multifit {
 
 class SersicCacheFillFunction : public Cache::FillFunction {
-public:    
-    SersicCacheFillFunction (double const & epsabs, double const & epsrel, int const & limit) 
+public: 
+
+    enum SersicRadiusEnum { RADIUS_HALF_INTEGRAL, RADIUS_HALF_MAX, RADIUS_NATURAL };
+
+    struct Options {
+        SersicRadiusEnum radius;
+        bool truncate;
+        double truncationRadius;
+
+        explicit Options(
+            SersicRadiusEnum radius_=RADIUS_HALF_MAX,
+            bool truncate_=true,
+            double truncationRadius_=5.0
+        ) : radius(radius_), truncate(truncate_), truncationRadius(truncationRadius_) {}
+    };
+
+    SersicCacheFillFunction (
+        double const & epsabs, double const & epsrel, int const & limit, Options const & options=Options()
+    )
       : Cache::FillFunction(0),
         _lastY(std::numeric_limits<double>::quiet_NaN()),
-        _epsabs(epsabs), _epsrel(epsrel), _limit(limit)
+        _epsabs(epsabs), _epsrel(epsrel), _limit(limit),
+        _params(options)
     {}
 
     virtual double operator()(double x, double y) const;
@@ -54,13 +72,18 @@ private:
         double const & getNorm() const {return _norm;}
 
         void setK(double const & k) {_k = std::abs(k);}
-        void setN(double const & n);      
+        void setN(double const & n);
+
+        explicit IntegralParameters(Options const & options) : _options(options) {}
+
+        Options const & getOptions() const { return _options; }
     private:
         double _k, _n, _kappa, _norm;
+        Options _options;
     };
 
     static double sersicFunction(double radius, void * parameters);
-        
+
     double _lastY;
     double _epsabs, _epsrel;
     int _limit;

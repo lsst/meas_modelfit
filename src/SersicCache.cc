@@ -36,14 +36,21 @@ void multifit::SersicCacheFillFunction::IntegralParameters::setN(
 ) {         
     _n = std::abs(n);
     double twoN = _n * 2;
-#ifdef HALF_LIGHT_RADIUS
-    _kappa = boost::math::gamma_p_inv(twoN, 0.5);
-    _norm = M_PI * twoN * std::pow(_kappa, -twoN) * 
-        boost::math::tgamma(twoN);
-#else
-    _kappa = M_LN2;
-    _norm = 1.0;
-#endif
+    switch (_options.radius) {
+    case RADIUS_HALF_INTEGRAL:
+        _kappa = boost::math::gamma_p_inv(twoN, 0.5);
+        _norm = M_PI * twoN * std::pow(_kappa, -twoN) * 
+            boost::math::tgamma(twoN);
+        break;
+    case RADIUS_HALF_MAX:
+        _kappa = M_LN2;
+        _norm = 1.0;
+        break;
+    case RADIUS_NATURAL:
+        _kappa = 1.0;
+        _norm = 1.0;
+        break;
+    }
 };
 
 double multifit::SersicCacheFillFunction::sersicFunction(
@@ -58,13 +65,12 @@ double multifit::SersicCacheFillFunction::sersicFunction(
     if(err || j0.val != j0.val)
         j0.val = 0;
 
-    double exponent = temp.getKappa() * (1.0 - std::pow(radius, 1.0/temp.getN()));
-#ifdef NO_TRUNCATE
-    double cutoffExponential = 0.0;
-#else
-    double cutoffExponential = std::exp(temp.getKappa() * (1.0 - std::pow(5.0, 1.0/temp.getN())));
-#endif
-    return (radius*j0.val*((std::exp(exponent) - cutoffExponential)) / temp.getNorm());
+    double exponent = temp.getKappa() * (-std::pow(radius, 1.0/temp.getN()));
+    double cutoff = 0.0;
+    if (temp.getOptions().truncate) {
+        cutoff = std::exp(temp.getKappa() * (-std::pow(5.0, 1.0/temp.getN())));
+    }
+    return (radius*j0.val*((std::exp(exponent) - cutoff)) / temp.getNorm());
 }
 
 double multifit::SersicCacheFillFunction::operator() (double x, double y) const {       
@@ -82,17 +88,14 @@ double multifit::SersicCacheFillFunction::operator() (double x, double y) const 
     gsl_error_handler_t * oldErrorHandler = gsl_set_error_handler_off();
     
     gsl_integration_workspace * ws = gsl_integration_workspace_alloc(_limit);
-#ifdef NO_TRUNCATE
-    gsl_integration_qagiu(
-        &func, 0, _epsabs, _epsrel, _limit, ws,
-        &result, &abserr
-    );
-#else
-    gsl_integration_qag(
-        &func, 0, 5.0, _epsabs, _epsrel, _limit, GSL_INTEG_GAUSS61, ws,
-        &result, &abserr
-    );
-#endif
+    if (_params.getOptions().truncate) {
+        gsl_integration_qag(
+            &func, 0, _params.getOptions().truncationRadius, _epsabs, _epsrel, _limit,
+            GSL_INTEG_GAUSS61, ws, &result, &abserr
+        );
+    } else {  
+        gsl_integration_qagiu(&func, 0, _epsabs, _epsrel, _limit, ws, &result, &abserr);
+    }
     gsl_integration_workspace_free(ws);
     gsl_set_error_handler(oldErrorHandler);
 
@@ -122,10 +125,27 @@ multifit::Cache::ConstPtr multifit::makeSersicCache(lsst::pex::policy::Policy po
             policy.getDouble("sersicIndexMax")
         )
     );
+    SersicCacheFillFunction::Options options;
+    std::string radiusString = policy.getString("radius");
+    if (radiusString == "HALF_INTEGRAL") {
+        options.radius = SersicCacheFillFunction::RADIUS_HALF_INTEGRAL;
+    } else if (radiusString == "HALF_MAX") {
+        options.radius = SersicCacheFillFunction::RADIUS_HALF_MAX;
+    } else if (radiusString == "NATURAL") {
+        options.radius = SersicCacheFillFunction::RADIUS_NATURAL;
+    } else {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "Sersic radius must be one of 'HALF_INTEGRAL', 'HALF_MAX', 'NATURAL'."
+        );
+    }
+    options.truncate = policy.getBool("truncate");
+    options.truncationRadius = policy.getDouble("truncationRadius");
     SersicCacheFillFunction fillFunction(
         policy.getDouble("epsabs"), 
         policy.getDouble("epsrel"),
-        policy.getInt("subintervalLimit")
+        policy.getInt("subintervalLimit"),
+        options
     );
 
     return Cache::make(bounds, resolution, &fillFunction, "Sersic", false);
