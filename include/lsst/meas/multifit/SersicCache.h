@@ -32,6 +32,7 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
+#ifndef SWIG
 class SersicCacheFillFunction : public Cache::FillFunction {
 public: 
 
@@ -89,6 +90,7 @@ private:
     int _limit;
     mutable IntegralParameters _params;
 };
+#endif
 
 Cache::ConstPtr makeSersicCache(lsst::pex::policy::Policy policy);
 

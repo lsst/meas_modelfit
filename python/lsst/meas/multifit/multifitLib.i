@@ -48,6 +48,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/Cache.h"
+#include "lsst/meas/multifit/SersicCache.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/MorphologyProjection.h"
 #include "lsst/meas/multifit/components/Morphology.h"
@@ -193,7 +194,11 @@ SWIG_SHARED_PTR(WindowedFootprintPtr, lsst::meas::multifit::WindowedFootprint)
 };
 
 SWIG_SHARED_PTR(CahcePtr, lsst::meas::multifit::Cache)
+%nodefaultctor lsst::meas::multifit::Cache;
 %include "lsst/meas/multifit/Cache.h"
+
+%include "lsst/meas/multifit/SersicCache.h"
+
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model);
 %include "lsst/meas/multifit/Model.h"
@@ -204,8 +209,6 @@ SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
     %returnArray(computeModelImage, lsst::meas::multifit::Pixel const, 1, 1);
     %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
     %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
-    //%returnArray(computeWcsParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
-    //%returnArray(computePsfParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
 };
 
 SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry);

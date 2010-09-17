@@ -60,13 +60,13 @@ definitions: {
 		type: "string"
 		minOccurs: 1
 		maxOccurs: 1
-		default: "HALF_INTEGRAL"
+		default: "NATURAL"
 	}
 	truncate: {
 		type: "bool"
 		minOccurs: 1
 		maxOccurs: 1
-		default: false
+		default: true
 	}
 	truncationRadius: {
 		type: "double"
