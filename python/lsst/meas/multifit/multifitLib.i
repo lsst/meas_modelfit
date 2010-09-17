@@ -49,6 +49,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/Cache.h"
 #include "lsst/meas/multifit/SersicCache.h"
+#include "lsst/meas/multifit/RobustSersicCache.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/components/MorphologyProjection.h"
 #include "lsst/meas/multifit/components/Morphology.h"
@@ -198,6 +199,7 @@ SWIG_SHARED_PTR(CahcePtr, lsst::meas::multifit::Cache)
 %include "lsst/meas/multifit/Cache.h"
 
 %include "lsst/meas/multifit/SersicCache.h"
+%include "lsst/meas/multifit/RobustSersicCache.h"
 
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model);

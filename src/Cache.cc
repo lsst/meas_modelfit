@@ -34,7 +34,12 @@
 
 #include "lsst/pex/exceptions/Runtime.h"
 
+#define LSST_MAX_DEBUG 10
+#include "lsst/pex/logging/Debug.h"
+
 namespace multifit = lsst::meas::multifit;
+namespace pexLog = lsst::pex::logging;
+
 namespace {
     //helper function to determine the difference between element i+1 and i
     //of vetor r
@@ -104,6 +109,8 @@ multifit::Cache::Cache(
     _xStep(resolution.getX()),
     _yStep(resolution.getY())    
 {
+    pexLog::Debug debug("lsst.meas.multifit.Cache");
+
     if(_xStep > parameterBounds.getWidth() || 
        _yStep > parameterBounds.getHeight()
     ) {
@@ -144,9 +151,11 @@ multifit::Cache::Cache(
     yIter = _y.data();
     for(int i = 0; i < _dataPoints.rows(); ++i, ++yIter) {
         xIter = _x.data();
+        debug.debug<5>("Filling row %d of %d.", i, _dataPoints.rows());
         //inner loop over columns        
         for (int j = 0; j < _dataPoints.cols(); ++j, ++xIter) {
             //set grid point
+            debug.debug<8>("Filling item %d of %d.", i*_dataPoints.cols() + j, _dataPoints.size());
             _dataPoints(i,j) = (*fillFunction)(*xIter, *yIter);
         }
     }
