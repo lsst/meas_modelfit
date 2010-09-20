@@ -148,5 +148,5 @@ multifit::Cache::ConstPtr multifit::makeSersicCache(lsst::pex::policy::Policy po
         options
     );
 
-    return Cache::make(bounds, resolution, &fillFunction, "Sersic", false);
+    return Cache::make(bounds, resolution, &fillFunction, "", "", "Sersic", false);
 }

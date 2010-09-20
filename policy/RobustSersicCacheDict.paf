@@ -18,19 +18,19 @@ definitions: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 0.0975
+		default: 1.0
 	} 
 	kResolution: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 10.0
+		default: 1.0
 	} 
 	sersicIndexMin: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 0.25
+		default: 9.0
 	}
 	kMin: {
 		type: "double"

@@ -55,14 +55,56 @@ public:
 
     virtual Base::Ptr clone() const;
     virtual double operator() (double x) const;
-    virtual double dParams(double const & x) const;
+    virtual double dParams(double x) const;
 
-private:
+protected:
     void initialize();
 
     Eigen::VectorXd _x;
     double _step;
-}; 
+};
+
+class InterpolationFunctionFactory {
+public:
+
+    static InterpolationFunctionFactory const * get(std::string const & name);
+
+    std::string const & getName() const { return _name; }
+
+    int getExtraParameters() const { return _extraParameters; }
+    
+    virtual InterpolationFunction::ConstPtr operator()(
+        Eigen::VectorXd const & x,
+        Eigen::VectorXd const & y
+    ) const = 0;
+
+    virtual void fillExtraParameters(
+        Eigen::VectorXd const & x, 
+        double y,
+        Eigen::MatrixXd::RowXpr row, 
+        lsst::afw::math::Function2<double> const & fillFunction
+    ) const {}
+
+    virtual void fillExtraParameters(
+        double x,
+        Eigen::VectorXd const & y, 
+        Eigen::MatrixXd::ColXpr col, 
+        lsst::afw::math::Function2<double> const & fillFunction
+    ) const {}
+
+    virtual ~InterpolationFunctionFactory() {}
+
+protected:
+    explicit InterpolationFunctionFactory(std::string const & name, int extraParameters);
+
+    typedef std::map<std::string, InterpolationFunctionFactory*> Registry; 
+
+    static Registry & getRegistry();
+
+    std::string _name;
+    int _extraParameters;
+};
+
 #endif
 
 class Cache  {
@@ -78,6 +120,8 @@ public:
         lsst::afw::geom::BoxD const & parameterBounds,
         lsst::afw::geom::Extent2D const & resolution,
         FillFunction const * fillFunction,
+        std::string const & rowInterpolator="",
+        std::string const & colInterpolator="",
         std::string const & name="", 
         bool const & doOverwrite=true
     );
@@ -107,22 +151,25 @@ private:
 
     template <class Archive>
     void serialize(Archive & ar, unsigned int const);
-
-    Eigen::MatrixXd _dataPoints;
-    Eigen::VectorXd _x, _y;
     
     Cache(
         lsst::afw::geom::BoxD const & parameterBounds,
         lsst::afw::geom::Extent2D const & resolution,
-        FillFunction const * fillFunction
+        FillFunction const * fillFunction,
+        InterpolationFunctionFactory const * rowFactory,
+        InterpolationFunctionFactory const * colFactory
     );
 
     Cache(){};
 
+    Eigen::MatrixXd _dataPoints;
+    Eigen::VectorXd _x, _y;
+
     lsst::afw::geom::BoxD _parameterBounds;
     double _xStep, _yStep;
     
-
+    InterpolationFunctionFactory const * _rowFunctorFactory;
+    InterpolationFunctionFactory const * _colFunctorFactory;
 
     static std::map<std::string, Ptr> _registry;
 };
