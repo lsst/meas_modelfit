@@ -22,117 +22,27 @@
  
 #include "lsst/meas/multifit/RobustSersicCache.h"
 
-#include <cmath>
-#include <numeric>
-
-#include <gsl/gsl_integration.h>
-#include <gsl/gsl_sf_bessel.h>
-#include <gsl/gsl_errno.h>
-#include <boost/math/special_functions/bessel.hpp>
-#include <boost/math/special_functions/gamma.hpp>
-#include <boost/utility.hpp>
-
-#define LSST_MAX_DEBUG 10
-#include "lsst/pex/logging/Debug.h"
-
 namespace multifit = lsst::meas::multifit;
-namespace pexLog = lsst::pex::logging;
 
 multifit::RobustSersicCacheFillFunction::RobustSersicCacheFillFunction(
-    double epsabs, double epsrel, double truncationRadius
+    double inner, double outer, double epsabs, double epsrel, bool noInterpolation
 ) : 
     Cache::FillFunction(0),
-    _lastY(std::numeric_limits<double>::quiet_NaN()),
-    _epsabs(epsabs), _epsrel(epsrel), _params(truncationRadius)
-{
-    gsl_sf_result zero;
-    gsl_sf_bessel_zero_J0_e(2, &zero);
-    _besselZeros.push_back(zero.val);
-}
-
-void multifit::RobustSersicCacheFillFunction::IntegralParameters::setN(
-    double const & n
-) {         
-    _n = std::abs(n);
-    _exponentA = std::exp(-std::pow(_a, 1.0 / _n));
-};
-
-double multifit::RobustSersicCacheFillFunction::integrand(
-    double x, void * parameters
-) {
-    IntegralParameters const & params = *static_cast<IntegralParameters*>(parameters);
-   
-    gsl_sf_result j0;
-    int err = gsl_sf_bessel_J0_e(x, &j0);
-    if(err || j0.val != j0.val) {
-        pexLog::Debug debug("lsst.meas.multifit.RobustSersicCache");
-        debug.debug<3>("Error computing Bessel function at %f: %f", x, j0.val);
-        j0.val = 0;
-    }
-    double exponentX = std::exp(-std::pow(x / params.getK(), 1.0 / params.getN()));
-    return x * (exponentX - params.getExponentA()) * j0.val;
-}
+    _hankelTransform(ModifiedSersicFunction(1.0, inner, outer), epsrel, epsabs, noInterpolation),
+    _epsrel(epsrel), _epsabs(epsabs), _noInterpolation(noInterpolation)
+{}
 
 double multifit::RobustSersicCacheFillFunction::operator() (double x, double y) const {
-    pexLog::Debug debug("lsst.meas.multifit.RobustSersicCache");
-    gsl_function func;
-    func.function = integrand;
-    func.params = static_cast<void*>(&_params);
-
-    // compute parameter dimensions
-    if(y != _lastY) {
-        _params.setN(y);
+    if(y != _hankelTransform.getFunction().getSersicIndex()) {
+        _hankelTransform.setFunction(
+            ModifiedSersicFunction(
+                y, 
+                _hankelTransform.getFunction().getInner(), 
+                _hankelTransform.getFunction().getOuter()
+            )
+        );
     } 
-    _params.setK(x);
-
-    if (std::fabs(x) < std::numeric_limits<double>::epsilon()) return 0.0;
-
-    // ensure we know the zeros of J_0 up to the integral upper limit
-    double max = _params.getK() * _params.getA();
-    while (_besselZeros.back() < max) {
-        gsl_sf_result zero;
-        int err = gsl_sf_bessel_zero_J0_e(2*_besselZeros.size(), &zero);
-        if (err) {
-            debug.debug<3>("Error computing %dth Bessel function zero: %f",
-                           2*_besselZeros.size(), zero.val);
-        }
-        debug.debug<10>("Extending Bessel function zeros (%dth zero is %f).",
-                        2*_besselZeros.size(), zero.val);
-        _besselZeros.push_back(zero.val);
-    }
-
-    // integrate between each pair of endpoints
-    std::vector<double>::iterator lastBesselZero
-        = std::lower_bound(_besselZeros.begin(), _besselZeros.end(), max);
-    std::vector<double> endpoints((lastBesselZero - _besselZeros.begin()) + 2);
-    std::copy(_besselZeros.begin(), lastBesselZero, boost::next(endpoints.begin()));
-    endpoints.front() = 0.0;
-    endpoints.back() = max;
-    std::vector<double> results(endpoints.size() - 1, 0.0);
-
-    double abserr;
-    std::size_t nEval;
-    gsl_error_handler_t * oldErrorHandler = gsl_set_error_handler_off();
-
-    std::vector<double>::const_iterator i1 = endpoints.begin();
-    std::vector<double>::const_iterator i2 = boost::next(i1);
-    std::vector<double>::iterator r = results.begin();
-    while (i2 != endpoints.end()) {
-        if (std::fabs(*i2 - *i1) > std::numeric_limits<double>::epsilon()) {
-            gsl_integration_qng(&func, *i1, *i2, _epsabs, _epsrel, &(*r), &abserr, &nEval);
-            debug.debug<9>("Integrated from %f to %f with %d function evaluations: %e.", 
-                           *i1, *i2, nEval, &(*r));
-        }
-        ++i1;
-        ++i2;
-        ++r;
-    }
-    double total = std::accumulate(results.rbegin(), results.rend(), 0.0);
-
-    debug.debug<9>("Total integral: %e.", total);
-    gsl_set_error_handler(oldErrorHandler);
-
-    return total / (_params.getK() * _params.getK());
+    return _hankelTransform(x);
 }
 
 multifit::Cache::ConstPtr multifit::makeRobustSersicCache(lsst::pex::policy::Policy policy) {
@@ -159,9 +69,11 @@ multifit::Cache::ConstPtr multifit::makeRobustSersicCache(lsst::pex::policy::Pol
         )
     );
     RobustSersicCacheFillFunction fillFunction(
+        policy.getDouble("inner"), 
+        policy.getDouble("outer"), 
         policy.getDouble("epsabs"), 
         policy.getDouble("epsrel"),
-        policy.getDouble("truncationRadius")
+        policy.getBool("noInterpolation")
     );
 
     return Cache::make(bounds, resolution, &fillFunction, "", "", "RobustSersic", false);

@@ -6,19 +6,19 @@ definitions: {
 		type:"double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 0.0
+		default: 1E-8
 	}
 	epsabs: {
 		type:"double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 0.00001
+		default: 1E-16
 	}
 	sersicIndexResolution: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 1.0
+		default: 0.05
 	} 
 	kResolution: {
 		type: "double"
@@ -30,7 +30,7 @@ definitions: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 9.0
+		default: 0.25
 	}
 	kMin: {
 		type: "double"
@@ -50,10 +50,22 @@ definitions: {
 		maxOccurs: 1
 		default: 1000.0
 	}
-	truncationRadius: {
+	inner: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 5.0
+		default: 8.0
+	}
+	outer: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 10.0
+	}
+	noInterpolation: {
+		type: "bool"
+		minOccurs: 1
+		maxOccurs: 1
+		default: false
 	}
 }
