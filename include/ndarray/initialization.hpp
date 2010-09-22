@@ -145,14 +145,17 @@ inline detail::AllocationInitializer<N,std::allocator<void> > allocate(
  *  If no allocator is passed, the default STL allocator will be used.
  */
 template <typename Allocator, typename Derived>
-inline Array<typename Derived::Element,Derived::ND::value,Derived::ND::value>
+inline Array<typename boost::remove_const<typename Derived::Element>::type,
+             Derived::ND::value,Derived::ND::value>
 copy(
     Expression<Derived> const & expr, ///< The Expression to copy.
     Allocator const & alloc=Allocator() ///< An instance of an STL allocator.
 ) {
-    Array<typename Derived::Element,Derived::ND::value,Derived::ND::value> r(
-        allocate(expr.getShape(),alloc)
-    );
+    Array<typename boost::remove_const<typename Derived::Element>::type,
+        Derived::ND::value,Derived::ND::value
+        > r(
+            allocate(expr.getShape(),alloc)
+        );
     r = expr;
     return r;
 }
@@ -163,11 +166,13 @@ copy(
  *  This overload uses the default STL allocator, std::allocator.
  */
 template <typename Derived>
-inline Array<typename Derived::Element,Derived::ND::value,Derived::ND::value>
+inline Array<typename boost::remove_const<typename Derived::Element>::type,
+             Derived::ND::value,Derived::ND::value>
 copy(
     Expression<Derived> const & expr ///< The Expression to copy.
 ) {
-    Array<typename Derived::Element,Derived::ND::value,Derived::ND::value> r(
+    Array<typename boost::remove_const<typename Derived::Element>::type,
+        Derived::ND::value,Derived::ND::value> r(
         allocate(expr.getShape())
     );
     r = expr;
