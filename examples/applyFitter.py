@@ -42,9 +42,9 @@ def makeModelExposure(model, psf, wcs, noiseFactor=0):
     modelImage.setXY0(box.getX0(), box.getY0())
     
     imageVector = proj.computeModelImage()
-    varianceVector = numpy.zeros(nPix, dtype=numpy.float32)
+    varianceVector = numpy.zeros_like(imageVector)
 
-    measMult.expandImageF(fp, subImage, imageVector, varianceVector)
+    measMult.expandImageF(fp, modelImage, imageVector, varianceVector)
 
     afwRandom = afwMath.Random()
     randomImg = afwImage.ImageF(modelImage.getDimensions())
@@ -66,53 +66,34 @@ def applyFitter():
     #wcs = exp.getWcs()
     frameId = 0
     crVal = afwGeom.makePointD(45,45)
-    crPix = afwGeom.makePointD(1,1)
+    crPix = afwGeom.makePointD(0,0)
     wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0., 0., 0.0001)
-    print wcs.getCDMatrix()
-
-    axes = afwGeom.ellipses.Axes(25,30,0)
+    psf = afwDet.createPsf("DoubleGaussian", 9, 9, 1.0)
     affine = wcs.linearizePixelToSky(crVal)
-    print "affine", [affine[i] for i in range(6)]
-    transformedAxes = axes.transform(affine)
-
-    logShear = afwGeom.ellipses.LogShear(transformedAxes)
-    print "logShear", logShear
-    sersicIndex = 1.5
-    flux = 35.0
-
-    model = measMult.createSersicModel(flux, crVal, logShear, sersicIndex)
-
-    psf = afwDet.createPsf("DoubleGaussian", 7, 7, 1.0)
-
-    exp = makeModelExposure(model, psf, wcs, 20.0)
     
+    axes = afwGeom.ellipses.Axes(25,30,0).transform(affine)
+    sersicIndex = 1.5
+    flux = 1.0
+
+    model = measMult.createPointSourceModel(flux, crVal)
+    errors = [0.1, 1e-5, 1e-5]
+
+    exp = makeModelExposure(model, psf, wcs, 1.0)
     ds9.mtv(exp, frame=frameId)
     frameId +=1
 
     expList = measMult.ExposureListF()
     expList.append(exp)
     
-    jiggeredLogShear = afwGeom.ellipses.LogShear(logShear[0]*1.1, logShear[1]*1.1, logShear[2]*1.1)
-    #flux *= 1.1
-    testModel = measMult.createSersicModel(flux, crVal, jiggeredLogShear, sersicIndex)
-    #testModel = model
-    modelEvaluator = measMult.ModelEvaluator(testModel)
-    modelEvaluator.setExposureList(expList)
+    modelEvaluator = measMult.ModelEvaluator(model)
+    modelEvaluator.setData(expList)
 
     fitterPolicy = pexPolicy.Policy()
+    fitterPolicy.set("checkGradient", True)
+    fitter = measMult.MinuitAnalyticFitter(fitterPolicy)
 
-    fitter = measMult.MinuitNumericFitter(fitterPolicy)
-
-    errors = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     result = fitter.apply(modelEvaluator, errors)
 
-    
-    #print "nIterations: %d"%result.sdqaMetrics.get("nIterations")
-    #print "chisq: %d"%result.chisq
-    #print "dChisq: %d"%result.dChisq
-    print modelEvaluator.getLinearParameters()
-    print modelEvaluator.getNonlinearParameters()
-  
     print "nPix", modelEvaluator.getNPixels()
     print "nIterations", result.nIterations
     print "chisq", result.chisq
@@ -120,7 +101,7 @@ def applyFitter():
     om = modelEvaluator.getModel().clone()
     outExp = makeModelExposure(om, psf, wcs)
 
-    ds9.mtv(oe, frame=frameId)
+    ds9.mtv(outExp, frame=frameId)
 
 
 

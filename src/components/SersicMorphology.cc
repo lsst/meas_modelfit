@@ -48,7 +48,7 @@ components::Morphology::Ptr components::SersicMorphology::create(
 
 components::MorphologyProjection::Ptr components::SersicMorphology::makeProjection(
     lsst::afw::geom::Extent2I const & kernelDimensions,
-    lsst::afw::geom::AffineTransform::ConstPtr const & transform
+    lsst::afw::geom::AffineTransform const & transform
 ) const {
     return SersicMorphologyProjection::Ptr(new SersicMorphologyProjection(
         boost::static_pointer_cast<SersicMorphology const>(shared_from_this()),

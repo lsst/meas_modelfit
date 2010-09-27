@@ -4,12 +4,17 @@ import lsst.pex.policy as pexPol
 import lsst.afw.display.ds9 as ds9
 import sys
 
+
 def makeCache():
     pol = pexPol.Policy()
-    pol.set("sersicIndexMax", 3.0)
+    pol.set("sersicIndexMax", 1.0)
     pol.set("kMax", 100.0)
     pol.set("kResolution", 1.0)
-    cache = measMult.makeSersicCache(pol)
+    pol.set("noInterpolation", True)
+    cache = measMult.makeRobustSersicCache(pol)
+
+    if (len(sys.argv) > 1):
+        cache.save(sys.argv[1])
 
     data = cache.getDataPoints()
     image = afwImage.ImageD(data.shape[0], data.shape[1])

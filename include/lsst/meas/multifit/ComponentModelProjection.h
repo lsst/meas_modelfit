@@ -100,7 +100,7 @@ protected:
      * Compute the image-space (xy) coordinates where the PSF should be centered
      */
     virtual lsst::afw::geom::Point2D _getPsfPosition() const { 
-        return (*getTransform())(getAstrometry()->computePosition()); 
+        return (getTransform())(getAstrometry()->computePosition()); 
     }
 
     /**
@@ -123,7 +123,7 @@ protected:
      *  Compute the derivative of the model image with respect to image-coordinate translations
      *  (Footprint-compressed).
      */
-    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
+    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
 
     /**
      *  Compute the derivative of the model image with respect to its projected morphology
@@ -133,7 +133,7 @@ protected:
      *  nonlinear morphology parameters, and must transform according to the
      *  MorphologyProjection's getParameterJacobian() and getTransformDerivative() outputs.
      */
-    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix) = 0;
+    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix) = 0;
     //@}
 
     /**
@@ -149,10 +149,14 @@ protected:
     virtual void _handleLinearParameterChange() {
         ModelProjection::_handleLinearParameterChange();
         _morphologyProjection->_handleLinearParameterChange();
+        _validProducts &= ~PROJECTED_PARAMETER_DERIVATIVE;
+        _validProducts &= ~TRANSLATION_DERIVATIVE;
     }
     virtual void _handleNonlinearParameterChange() {
         ModelProjection::_handleNonlinearParameterChange();
         _morphologyProjection->_handleNonlinearParameterChange();
+        _validProducts &= ~PROJECTED_PARAMETER_DERIVATIVE;
+        _validProducts &= ~TRANSLATION_DERIVATIVE;
     }
 
     /**

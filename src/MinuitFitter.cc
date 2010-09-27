@@ -10,9 +10,9 @@
 #include <Minuit2/MnFcn.h>
 #include <Eigen/Core>
 #include "lsst/pex/exceptions/Runtime.h"
-#include <sstream>
 #include "lsst/pex/logging/Trace.h"
 
+#include <iostream>
 namespace multifit=lsst::meas::multifit;
 namespace pexLog = lsst::pex::logging;
 
@@ -38,28 +38,64 @@ public:
 
     
     double computeValue(std::vector<double> const &params) {
+        std::cerr << "compute at <" << std::setprecision(10) << params[0];
+        for(int i =1; i <int(params.size()); ++i) {
+            std::cerr <<", " << std::setprecision(10) << params[i];
+        }
+        std::cerr << ">\n";
         checkParams(params);
         if(_dirty) {
             _evaluator->setLinearParameters(&params[0]);
             _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);
         }
-
+        /*
+        std::cerr << "evaluator::linearParams= <" << std::setprecision(10) << _evaluator->getLinearParameters()[0];
+        for(int i =1; i < _evaluator->getLinearParameterSize(); ++i) {
+            std::cerr <<", " << std::setprecision(10) << _evaluator->getLinearParameters()[i];
+        }
+        std::cerr << ">\n";
+        std::cerr << "evaluator::nonlinearParams= <" << std::setprecision(10) << _evaluator->getNonlinearParameters()[0];
+        for(int i =1; i < _evaluator->getNonlinearParameterSize(); ++i) {
+            std::cerr <<", " << std::setprecision(10) << _evaluator->getNonlinearParameters()[i];
+        }
+        std::cerr << ">\n";
+        */
         Vector modeled = _evaluator->computeModelImage();
         Vector residual = (_measured-modeled);
         Vector priorDelta(params.size());
         std::copy(params.begin(), params.end(), priorDelta.data());
         priorDelta -= _priorMean;
         double priorTerm = 0.5*priorDelta.dot(_priorFisherDiag.cwise() * priorDelta);
-        return 0.5*residual.dot(residual) + priorTerm; 
+        double value = 0.5*residual.dot(residual) + priorTerm; 
+        std::cerr << "\tvalue=" << std::setprecision(10) << value << std::endl;
+        return value;
     }
 
     std::vector<double> computeGradient(std::vector<double> const &params) {
+        std::cerr << "compute gradient at <" << std::setprecision(10) << params[0];
+        for(int i =1; i < int(params.size()); ++i) {
+            std::cerr <<", " << std::setprecision(10) << params[i];
+        }
+        std::cerr << ">\n";
+
+
         checkParams(params);
         if(_dirty) {
             _evaluator->setLinearParameters(&params[0]);
-            _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);
+            _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);            
         }
-
+        /*
+        std::cerr << "evaluator::linearParams= <" << std::setprecision(10) << _evaluator->getLinearParameters()[0];
+        for(int i =1; i < _evaluator->getLinearParameterSize(); ++i) {
+            std::cerr <<", " << std::setprecision(10) << _evaluator->getLinearParameters()[i];
+        }
+        std::cerr << ">\n";
+        std::cerr << "evaluator::nonlinearParams= <" << std::setprecision(10) << _evaluator->getNonlinearParameters()[0];
+        for(int i =1; i < _evaluator->getNonlinearParameterSize(); ++i) {
+            std::cerr <<", " << std::setprecision(10) << _evaluator->getNonlinearParameters()[i];
+        }
+        std::cerr << ">\n";
+        */
         Vector modeled = _evaluator->computeModelImage();
         Vector residual = (_measured-modeled);
         Matrix lpd = _evaluator->computeLinearParameterDerivative();
@@ -71,7 +107,8 @@ public:
 
         std::vector<double> gradient(params.size());
         multifit::VectorMap gradMap(&gradient[0], params.size());
-        gradMap << (-lpd).transpose()*residual, (-npd).transpose()*residual;
+        gradMap.start(lpd.cols()) = (-lpd).transpose()*residual;
+        gradMap.end(npd.cols()) = (-npd).transpose()*residual;
         gradMap += _priorFisherDiag.cwise() * priorDelta;
         return gradient; 
     }
@@ -197,7 +234,7 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
     int nParams = evaluator->getLinearParameterSize();
     nParams += evaluator->getNonlinearParameterSize();
 
-    if(nParams != initialErrors.size()) {
+    if(nParams != int(initialErrors.size())) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             "Number of model parameters not equal to length of error vector"
@@ -212,57 +249,32 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
     ChisqFunction::Vector priorFisherDiagEig(priorFisherDiag.size());
     std::copy(priorFisherDiag.begin(), priorFisherDiag.end(), priorFisherDiagEig.data());
 
-    if(nParams != priorMean.size() || nParams != priorFisherDiag.size()) {
+    if(nParams != int(priorMean.size()) || nParams != int(priorFisherDiag.size())) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             "Number of model parameters not equal to length of prior mean and/or Fisher diagonal vector"
         );
     }
 
-    ::GradientFunction function(evaluator, priorMeanEig, priorFisherDiagEig);
+    ::GradientFunction function(evaluator, priorMeanEig, priorFisherDiagEig, checkGradient);
 
     std::vector<double> initialParams(nParams);
     VectorMap paramMap(&initialParams[0], nParams);
-    paramMap << evaluator->getLinearParameters(), evaluator->getNonlinearParameters();
+    paramMap.start(evaluator->getLinearParameterSize()) = evaluator->getLinearParameters();
+    paramMap.end(evaluator->getNonlinearParameterSize()) = evaluator->getNonlinearParameters();
 
     ROOT::Minuit2::MnMigrad migrad(function, initialParams, initialErrors, _policy->getInt("strategy"));
 
     if(checkGradient) {
-        ROOT::Minuit2::MnFcn mnFcn(function);
-        ROOT::Minuit2::LAVector paramVec(nParams);
-        for(int i =0; i< nParams; ++i) {
-            paramVec[i] =  initialParams[i];
-        }   
-
-        ROOT::Minuit2::MinimumParameters minParam(paramVec, function(initialParams));
-        ROOT::Minuit2::FunctionGradient fncGrad = ROOT::Minuit2::Numerical2PGradientCalculator(
-                mnFcn, 
-                migrad.State().Trafo(), 
-                migrad.Strategy()
-            )(minParam);
-
-        ROOT::Minuit2::LAVector numericGrad = fncGrad.Grad();        
         std::vector<double> analyticGrad = function.Gradient(initialParams);
-        std::ostringstream numericStr, analyticStr, diffStr;
-
-        numericStr << "numeric gradient: <" << numericGrad[0];
-        analyticStr << "analytic gradient: <" << analyticGrad[0];
-        diffStr << "ratio: <" << numericGrad[0]/analyticGrad[0];
-
+        std::cerr <<
+        std::cerr <<"analytic gradient: <" << analyticGrad[0];
         for( int i =1; i < nParams; ++i) {
-            numericStr << ", " << numericGrad[i];
-            analyticStr << ", " << analyticGrad[i];
-            diffStr << ", " << numericGrad[i]/analyticGrad[i];
+            std::cerr << ", " << analyticGrad[i];
         }
-        numericStr << ">";
-        analyticStr << ">";
-        diffStr << ">";
-
-        std::cerr << numericStr.str() <<std::endl;
-        std::cerr << analyticStr.str() <<std::endl;
-        std::cerr << diffStr.str() <<std::endl;
+        std::cerr << ">\n";
     }
-   
+
     ROOT::Minuit2::FunctionMinimum min = migrad(
         _policy->getInt("iterationMax"), 
         _policy->getDouble("tolerance")
@@ -311,7 +323,7 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
     int nParams = evaluator->getLinearParameterSize();
     nParams += evaluator->getNonlinearParameterSize();
 
-    if(nParams != initialErrors.size()) {
+    if(nParams != int(initialErrors.size())) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             "Number of model parameters not equal to length of error vector"
@@ -323,7 +335,7 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
     Eigen::VectorXd priorFisherDiagEig(priorFisherDiag.size());
     std::copy(priorFisherDiag.begin(), priorFisherDiag.end(), priorFisherDiagEig.data());
 
-    if(nParams != priorMean.size() || nParams != priorFisherDiag.size()) {
+    if(nParams != int(priorMean.size()) || nParams != int(priorFisherDiag.size())) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             "Number of model parameters not equal to length of prior mean and/or Fisher diagonal vector"
@@ -334,7 +346,8 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
     
     std::vector<double> initialParams(nParams);
     VectorMap paramMap(&initialParams[0], nParams);
-    paramMap << evaluator->getLinearParameters(), evaluator->getNonlinearParameters();
+    paramMap.start(evaluator->getLinearParameterSize()) = evaluator->getLinearParameters();
+    paramMap.end(evaluator->getNonlinearParameterSize()) = evaluator->getNonlinearParameters();
 
     ROOT::Minuit2::MnMigrad migrad(function, initialParams, initialErrors, _policy->getInt("strategy"));
 

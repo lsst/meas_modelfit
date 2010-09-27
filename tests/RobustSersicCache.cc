@@ -51,7 +51,9 @@ BOOST_AUTO_TEST_CASE(RobustSersicCache) {
     try {
         cache = multifit::Cache::load("testRobustCache");
     } catch (...) {
+        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "SersicCache.paf", "tests");
         lsst::pex::policy::Policy pol;
+        file.load(pol);
         cache = multifit::makeRobustSersicCache(pol);
     }
 
@@ -63,26 +65,27 @@ BOOST_AUTO_TEST_CASE(RobustSersicCache) {
     BOOST_CHECK_NO_THROW(functor = cache->getRowFunctor(bounds.getMinY()));
     BOOST_CHECK(functor);
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMinX()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxX()-0.1));
+    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxX()-1.0));
 
-    BOOST_CHECK_NO_THROW(functor = cache->getRowFunctor(bounds.getMaxY() - 0.1));
+    BOOST_CHECK_NO_THROW(functor = cache->getRowFunctor(bounds.getMaxY() - 1.0));
     BOOST_CHECK(functor);
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMinX()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxX()-0.1));
+    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxX()-1.0));
 
     BOOST_CHECK_NO_THROW(functor = cache->getColFunctor(bounds.getMinX()));
     BOOST_CHECK(functor);
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMinY()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-0.1));
+    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-1.0));
     
-    BOOST_CHECK_NO_THROW(functor = cache->getColFunctor(bounds.getMaxX() - 0.1));
+    BOOST_CHECK_NO_THROW(functor = cache->getColFunctor(bounds.getMaxX() - 1.0));
     BOOST_CHECK(functor);
     BOOST_CHECK_NO_THROW((*functor)(bounds.getMinY()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-0.1));
+    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-1.0));
 
     double const * data = cache->getDataPoints().data();
     for(int i = 0; i < cache->getDataPoints().size(); ++i, ++data) {
         //check that there are no NaNs in the cache
         BOOST_CHECK_EQUAL(*data, *data);
     }
+    cache->save("testRobustCache");
 }

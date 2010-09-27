@@ -30,7 +30,7 @@ namespace components = multifit::components;
 
 void components::ExponentialMorphologyProjection::_recomputeDimensions() {
     lsst::afw::geom::ellipses::BaseCore::Ptr transformedEllipse(
-        getMorphology()->computeBoundingEllipseCore()->transform(*getTransform()).copy()
+        getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).copy()
     );
     lsst::afw::geom::Extent2D ellipseBounds = transformedEllipse->computeDimensions();
     //grow the ellipse dimensions by a constant factor
@@ -75,7 +75,7 @@ components::ExponentialMorphologyProjection::getDimensions() const {
 multifit::EllipseGridTransform::ConstPtr 
 components::ExponentialMorphologyProjection::computeEllipseGridTransform() const {
     lsst::afw::geom::ellipses::BaseCore::Ptr transformedEllipse(
-        getMorphology()->computeBoundingEllipseCore()->transform(*getTransform()).copy()
+        getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).copy()
     );
     return boost::make_shared<EllipseGridTransform>(
         *transformedEllipse, getDimensions()
@@ -182,7 +182,7 @@ components::ExponentialMorphologyProjection::computeProjectedParameterJacobian()
         )
     );
     
-    m->block<3,3>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(*getTransform()).d();
+    m->block<3,3>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).d();
     return ParameterJacobianMatrixPtr(m);
 }
 
@@ -192,7 +192,7 @@ components::ExponentialMorphologyProjection::computeTransformParameterJacobian()
         TransformJacobianMatrix::Zero(getNonlinearParameterSize(), TransformJacobianMatrix::ColsAtCompileTime)
     );    
     m->block<3,4>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(
-        *getTransform()
+        getTransform()
     ).dTransform();
     return TransformJacobianMatrixPtr(m);
     

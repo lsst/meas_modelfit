@@ -84,7 +84,7 @@ protected:
     FourierMorphologyProjection(
         Morphology::ConstPtr const & morphology,
         lsst::afw::geom::Extent2I const & kernelDimensions, 
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::AffineTransform const & transform
     ) : MorphologyProjection(morphology,kernelDimensions,transform) {}
 
 };

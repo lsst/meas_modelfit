@@ -21,7 +21,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+#include <iostream> 
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/matrices.h"
 #include "lsst/pex/exceptions/Runtime.h"
@@ -45,7 +45,7 @@ multifit::ModelProjection::ModelProjection(
     _model(model),
     _footprint(footprint), 
     _wcs(),
-    _skyToPixelTransform(new lsst::afw::geom::AffineTransform(skyToPixelTransform)),
+    _skyToPixelTransform(skyToPixelTransform),
     _modelImage(), 
     _linearParameterDerivative(), 
     _nonlinearParameterDerivative()
@@ -71,9 +71,7 @@ multifit::ModelProjection::ModelProjection(
 {
     if(wcs) {
         lsst::afw::coord::Coord::ConstPtr pos = model->computePosition();
-        _skyToPixelTransform.reset(
-            new lsst::afw::geom::AffineTransform(wcs->linearizeSkyToPixel(pos))
-        );
+        _skyToPixelTransform = wcs->linearizeSkyToPixel(pos);
     }
 
     if (_footprint->getNpix() <= 0) {

@@ -71,7 +71,7 @@ public:
      * AffineTransform that transforms this projection to the global coordinate 
      * space.
      */
-    lsst::afw::geom::AffineTransform::ConstPtr getTransform() const { 
+    lsst::afw::geom::AffineTransform getTransform() const { 
         return _transform; 
     }
 
@@ -111,7 +111,7 @@ protected:
     MorphologyProjection(
         boost::shared_ptr<Morphology const> const & morphology,
         lsst::afw::geom::Extent2I const & kernelDimensions, 
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::AffineTransform const & transform
     ) : _morphology(morphology), 
         _kernelDimensions(kernelDimensions), 
         _transform(transform) {}
@@ -122,7 +122,7 @@ private:
 
     boost::shared_ptr<Morphology const> _morphology;
     lsst::afw::geom::Extent2I _kernelDimensions;
-    lsst::afw::geom::AffineTransform::ConstPtr _transform;
+    lsst::afw::geom::AffineTransform _transform;
 };
 
 }}}} // namespace lsst::meas::multifit::components

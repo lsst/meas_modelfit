@@ -1,0 +1,6 @@
+#<? cfg paf ?>
+
+sersicIndexResolution: 1.0
+kResolution: 1.0
+kMin: 0.0
+kMax: 100.0

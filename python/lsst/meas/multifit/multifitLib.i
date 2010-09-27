@@ -38,6 +38,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=401                 // nothin known about base class X
 %{
 // these sholdn't be necessary, but SWIG fails if they aren't there.
+#include "Eigen/Core"
 #include "boost/shared_ptr.hpp"
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/detection/Psf.h"
@@ -151,8 +152,13 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %enddef 
 
 
-%template(ExposureListF) std::list<lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>::Ptr>;
-%template(ExposureListD) std::list<lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>::Ptr>;
+%template(ExposureListF) std::list<lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
+%template(ExposureListD) std::list<lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
+%template(MaskedImageListF) std::list<lsst::afw::image::MaskedImage<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
+%template(MaskedImageListD) std::list<lsst::afw::image::MaskedImage<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
+%template(PsfList) std::list<lsst::afw::detection::Psf::ConstPtr>;
+%template(TransformList) std::list<lsst::afw::geom::AffineTransform>;
+
 %extend lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> {
     %pythoncode {
         def makeList(self): 
@@ -175,6 +181,8 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %declareArray(lsst::meas::multifit::Pixel, 1, 1);
 %declareArray(lsst::meas::multifit::Pixel, 2, 1);
 %declareEigenMatrix(lsst::meas::multifit::ParameterVector);
+%declareEigenMatrix(Eigen::Matrix<lsst::meas::multifit::Pixel, Eigen::Dynamic, 1>);
+%declareEigenMatrix(Eigen::Matrix<lsst::meas::multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic>);
 
 %include "lsst/meas/multifit/footprintUtils.h"
 %template(compressImageF) lsst::meas::multifit::compressImage<float, 
@@ -342,8 +350,18 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator);
 %extend lsst::meas::multifit::ModelEvaluator {
     %returnArray(getDataVector, lsst::meas::multifit::Pixel const, 1, 1);
     
-    %template(setExposureList) setExposureList<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>; 
-    %template(setExposureList) setExposureList<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
+    %template(setExposures) setExposures<
+        lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> 
+    >; 
+    %template(setExposures) setExposures<
+        lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> 
+    >;
+    %template(setData) setData<
+        lsst::afw::image::MaskedImage<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+    >; 
+    %template(setData) setData<
+        lsst::afw::image::MaskedImage<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> 
+    >;
 };
 
 SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult);

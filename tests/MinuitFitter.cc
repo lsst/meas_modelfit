@@ -81,10 +81,9 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     CONST_PTR(detection::Footprint) fp(model->computeProjectionFootprint(psf, wcs));
     image::BBox bbox = fp->getBBox();
     
-    image::Exposure<double>::Ptr exposure = 
-        boost::make_shared<image::Exposure<double> >(bbox.getWidth(), bbox.getHeight(), *wcs);
-    exposure->setPsf(psf);
-    lsst::afw::image::MaskedImage<double> mi = exposure->getMaskedImage();
+    image::Exposure<double> exposure(bbox.getWidth(), bbox.getHeight(), *wcs);
+    exposure.setPsf(psf);
+    lsst::afw::image::MaskedImage<double> mi = exposure.getMaskedImage();
     mi.setXY0(bbox.getX0(), bbox.getY0());
     *mi.getMask() = 0;
 
@@ -97,17 +96,15 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
    
     math::Random random;
     image::Image<double> randomImg(mi.getWidth(), mi.getHeight());
-    math::randomUniformImage<image::Image<double> >(&randomImg, random);
+    math::randomGaussianImage<image::Image<double> >(&randomImg, random);
     *mi.getImage() += randomImg;
 
-    std::list<image::Exposure<double>::Ptr> exposureList;
+    std::list<image::Exposure<double> > exposureList;
     for(int i=0; i < 5; ++i) {
         exposureList.push_back(exposure);
     }
     multifit::ModelEvaluator::Ptr evaluator(new multifit::ModelEvaluator(model));
-    evaluator->setExposureList<double, image::MaskPixel, image::VariancePixel>(
-        exposureList
-    );
+    evaluator->setExposures(exposureList);
        
     std::vector<double> errors(
         evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize(),

@@ -31,7 +31,7 @@ namespace components = multifit::components;
 
 void components::SersicMorphologyProjection::_recomputeDimensions() {
     lsst::afw::geom::ellipses::BaseCore::Ptr transformedEllipse(
-        getMorphology()->computeBoundingEllipseCore()->transform(*getTransform()).copy()
+        getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).copy()
     );
     lsst::afw::geom::Extent2D ellipseBounds = transformedEllipse->computeDimensions();
     //grow the ellipse dimensions by a constant factor
@@ -76,7 +76,7 @@ components::SersicMorphologyProjection::getDimensions() const {
 multifit::EllipseGridTransform::ConstPtr 
 components::SersicMorphologyProjection::computeEllipseGridTransform() const {
     lsst::afw::geom::ellipses::BaseCore::Ptr transformedEllipse(
-        getMorphology()->computeBoundingEllipseCore()->transform(*getTransform()).copy()
+        getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).copy()
     );
     return boost::make_shared<EllipseGridTransform>(
         *transformedEllipse, getDimensions()
@@ -221,7 +221,7 @@ components::SersicMorphologyProjection::computeProjectedParameterJacobian() cons
         )
     );
     
-    m->block<3,3>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(*getTransform()).d();
+    m->block<3,3>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).d();
     (*m)(3,3) = 1;
     return ParameterJacobianMatrixPtr(m);
 }
@@ -232,7 +232,7 @@ components::SersicMorphologyProjection::computeTransformParameterJacobian() cons
         TransformJacobianMatrix::Zero(getNonlinearParameterSize(), TransformJacobianMatrix::ColsAtCompileTime)
     );    
     m->block<3,4>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(
-        *getTransform()
+        getTransform()
     ).dTransform();
     return TransformJacobianMatrixPtr(m);
     

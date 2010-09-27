@@ -88,7 +88,7 @@ public:
      */
     virtual MorphologyProjection::Ptr makeProjection(
         lsst::afw::geom::Extent2I const & kernelSize,
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::AffineTransform const & transform
     ) const = 0;
     //@}
 

@@ -72,28 +72,31 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
     CONST_PTR(detection::Footprint) fp(psModel->computeProjectionFootprint(psf, wcs));
     image::BBox bbox = fp->getBBox();
     
-    image::Exposure<double>::Ptr exposure = 
-        boost::make_shared<image::Exposure<double> >(bbox.getWidth(), bbox.getHeight(), *wcs);
-    exposure->setPsf(psf);
-    lsst::afw::image::MaskedImage<double> mi = exposure->getMaskedImage();
+    image::Exposure<double> exposure(bbox.getWidth(), bbox.getHeight(), *wcs);
+    exposure.setPsf(psf);
+    lsst::afw::image::MaskedImage<double> mi = exposure.getMaskedImage();
     mi.setXY0(bbox.getX0(), bbox.getY0());
     *mi.getMask() = 0;
 
-    multifit::ModelProjection::Ptr projection(psModel->makeProjection(psf, wcs, fp));
-    ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
-    ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
+    multifit::ModelProjection::Ptr projection(
+        psModel->makeProjection(psf, wcs, fp)
+    );
+    ndarray::Array<multifit::Pixel const, 1, 1> modelImage(
+        projection->computeModelImage()
+    );
+    ndarray::Array<multifit::Pixel, 1 ,1> variance(
+        ndarray::allocate(ndarray::makeVector(fp->getNpix()))
+    );
     variance = 0.5*0.5;
 
     multifit::expandImage(*fp, mi, modelImage, variance);
 
-    std::list<image::Exposure<double>::Ptr> exposureList;
+    std::list<image::Exposure<double> > exposureList;
     for(int i=0; i < 5; ++i) {
         exposureList.push_back(exposure);
     }
     multifit::ModelEvaluator evaluator(psModel);
-    evaluator.setExposureList<double, image::MaskPixel, image::VariancePixel>(
-        exposureList
-    );
+    evaluator.setExposures(exposureList);
        
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
     fitterPolicy->add("terminationType", "iteration");    

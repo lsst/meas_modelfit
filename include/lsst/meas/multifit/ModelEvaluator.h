@@ -74,9 +74,16 @@ public:
         setMinPixels(nMinPix);
     }
 
-    template <typename ImageT, typename MaskT, typename VarianceT>
-    void setExposureList(
-        std::list<typename lsst::afw::image::Exposure<ImageT, MaskT, VarianceT>::Ptr> const & exposureList
+    template <typename ExposureT>
+    void setExposures(
+        std::list<ExposureT> const & exposureList
+    );
+
+    template <typename MaskedImageT>
+    void setData(
+        std::list<MaskedImageT> const & imageList,
+        std::list<lsst::afw::detection::Psf::ConstPtr> const & psfList,
+        std::list<lsst::afw::geom::AffineTransform> const & skyToPixelTransformList
     );
 
 #ifndef SWIG
@@ -92,7 +99,7 @@ public:
     ndarray::Array<Pixel const, 1, 1> getDataVector() const {
         return _dataVector;
     }
-
+#endif
     /**
      * Compute the sigma for each contributing pixel from all exposure's
      *
@@ -122,7 +129,6 @@ public:
     Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> const & computeLinearParameterDerivative();
     Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> const & computeNonlinearParameterDerivative();
     //@}
-#endif 
 
     /**
      * Pixel threshold used to discriminate exposures

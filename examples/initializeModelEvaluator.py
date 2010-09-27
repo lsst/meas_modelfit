@@ -36,9 +36,9 @@ def initializeModelEvaluator():
 
     exposureList = makeImageStack(psModel, 15, centroid[0], centroid[1])
     modelEvaluator = measMult.ModelEvaluator(psModel)
-    modelEvaluator.setExposureList(exposureList)
+    modelEvaluator.setData(exposureList)
 
-    numpy.set_printoptions(threshold=100000)
+    numpy.set_printoptions(threshold=numpy.nan)
     print "ModelEvaluator nProjections: %d"%modelEvaluator.getNProjections()
     print "ModelEvaluator nPixels: %d"%modelEvaluator.getNPixels()
 

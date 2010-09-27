@@ -60,7 +60,7 @@ protected:
     SersicMorphologyProjection(
         SersicMorphology::ConstPtr const & morphology,
         lsst::afw::geom::Extent2I const & kernelDimensions,
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::AffineTransform const & transform
     ) : FourierMorphologyProjection(morphology, kernelDimensions, transform), 
         _dimensions(),
         _validProducts(0)

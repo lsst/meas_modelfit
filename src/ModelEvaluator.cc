@@ -54,14 +54,43 @@ namespace afwDet = lsst::afw::detection;
  * @sa getNMinPix
  * @sa setNMinPix
  */
-template<typename ImageT, typename MaskT, typename VarianceT>
-void multifit::ModelEvaluator::setExposureList(    
-    std::list<typename afwImg::Exposure<ImageT, MaskT, VarianceT>::Ptr> const & exposureList
+template<typename ExposureT>
+void multifit::ModelEvaluator::setExposures(    
+    std::list<ExposureT> const & exposureList
 ) { 
-    typedef afwImg::Exposure<ImageT, MaskT, VarianceT> Exposure;
-    typedef std::list<typename Exposure::Ptr> ExposureList;
+    typedef std::list<ExposureT> ExposureList;
     typedef typename ExposureList::const_iterator ExposureIterator;
-    typedef typename afwImg::Mask<MaskT> Mask;
+    typedef typename ExposureT::MaskedImageT MaskedImageT;
+
+    std::list<MaskedImageT> imageList;
+    std::list<lsst::afw::geom::AffineTransform> transformList;
+    std::list<CONST_PTR(lsst::afw::detection::Psf)> psfList;
+
+    for(ExposureIterator i(exposureList.begin()), end(exposureList.end()); i != end; ++i) {
+        imageList.push_back(i->getMaskedImage());
+        lsst::afw::image::Wcs::Ptr wcs = i->getWcs();
+        transformList.push_back(wcs->linearizeSkyToPixel(_model->computePosition()));
+        psfList.push_back(i->getPsf());
+    }
+
+    setData<MaskedImageT>(imageList, psfList, transformList);
+}
+
+template <typename MaskedImageT>
+void multifit::ModelEvaluator::setData(
+    std::list<MaskedImageT> const & imageList,
+    std::list<lsst::afw::detection::Psf::ConstPtr> const & psfList,
+    std::list<lsst::afw::geom::AffineTransform> const & skyToPixelTransformList
+) {
+    if(imageList.size() != skyToPixelTransformList.size() || imageList.size() != psfList.size()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LengthErrorException,
+            "Input data lists must contain same number of elements"
+        );
+    }
+
+    typedef typename MaskedImageT::Mask Mask;
+    typedef typename Mask::Pixel MaskPixel;
 
     _projectionList.clear();
     _validProducts = 0;
@@ -73,33 +102,35 @@ void multifit::ModelEvaluator::setExposureList(
     
     //exposures which contain fewer than _nMinPix pixels will be rejected
     //construct a list containing only those exposure which were not rejected
-    ExposureList goodExposureList;
-    MaskT bitmask = Mask::getPlaneBitMask("BAD") | 
+    std::list<MaskedImageT> goodImageList;
+
+    MaskPixel bitmask = Mask::getPlaneBitMask("BAD") | 
         Mask::getPlaneBitMask("INTRP") | Mask::getPlaneBitMask("SAT") | 
         Mask::getPlaneBitMask("CR") | Mask::getPlaneBitMask("EDGE");
 
     // loop to create projections
-    for(ExposureIterator i(exposureList.begin()), end(exposureList.end());
-        i != end; ++i
-    ) {
-        typename Exposure::Ptr exposure = *i;
-        afwDet::Psf::ConstPtr psf=exposure->getPsf();
-        afwImg::Wcs::ConstPtr wcs=exposure->getWcs();        
-
-        afwDet::Footprint::Ptr projectionFp = _model->computeProjectionFootprint(psf, wcs);
-        afwDet::Footprint::Ptr fixedFp = clipAndMaskFootprint<MaskT>(
+    
+    typename std::list<MaskedImageT>::const_iterator iImage(imageList.begin()), endImage(imageList.end());
+    std::list<lsst::afw::geom::AffineTransform>::const_iterator iTransform(
+        skyToPixelTransformList.begin()
+    );
+    std::list<CONST_PTR(lsst::afw::detection::Psf)>::const_iterator iPsf(
+        psfList.begin()
+    );
+    for( ; iImage != endImage; ++iImage, ++iTransform, ++iPsf) {
+        afwDet::Footprint::Ptr projectionFp = _model->computeProjectionFootprint(*iPsf, *iTransform);
+        afwDet::Footprint::Ptr fixedFp = clipAndMaskFootprint<MaskPixel>(
             *projectionFp, 
-            *exposure->getMaskedImage().getMask(),
+            *iImage->getMask(),
             bitmask
         );
         //ignore exposures with too few contributing pixels        
         if (fixedFp->getNpix() > _nMinPix) {
             _projectionList.push_back(
-                _model->makeProjection(psf, wcs, fixedFp)
+                _model->makeProjection(*iPsf, *iTransform, fixedFp)
             );
-            goodExposureList.push_back(exposure);
-
             pixSum += fixedFp->getNpix();
+            goodImageList.push_back(*iImage);
         }
     }
 
@@ -116,12 +147,11 @@ void multifit::ModelEvaluator::setExposureList(
     
     int nPix;
     int pixelStart = 0, pixelEnd;
-
-    ExposureIterator goodExposure(goodExposureList.begin());
-
+    
+    iImage = goodImageList.begin();
     //loop to assign matrix buffers to each projection Frame
     for(ProjectionIterator i(_projectionList.begin()), end(_projectionList.end()); 
-        i != end; ++i, ++goodExposure
+        i != end; ++i, ++iImage
     ) {
         ModelProjection & projection(**i);
         nPix = projection.getFootprint()->getNpix();
@@ -130,7 +160,7 @@ void multifit::ModelEvaluator::setExposureList(
         // compress the exposure using the footprint
         compressImage(
             *projection.getFootprint(), 
-            (*goodExposure)->getMaskedImage(), 
+            *iImage, 
             _dataVector[ndarray::view(pixelStart, pixelEnd)], 
             _varianceVector[ndarray::view(pixelStart, pixelEnd)] 
         );
@@ -154,8 +184,8 @@ void multifit::ModelEvaluator::setExposureList(
     
 
     VectorMap varianceMap (_varianceVector.getData(), getNPixels(), 1);
-    _sigma = varianceMap.cwise().sqrt();
-   
+    _sigma = varianceMap.cwise().sqrt(); 
+
 }
 
 /**
@@ -225,13 +255,28 @@ multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
 }
 
 
-template void multifit::ModelEvaluator::setExposureList<float, 
-        afwImg::MaskPixel, afwImg::VariancePixel>
-(
-    std::list<afwImg::Exposure<float>::Ptr> const &
+template void multifit::ModelEvaluator::setExposures<
+        afwImg::Exposure<float, afwImg::MaskPixel, afwImg::VariancePixel>
+> (
+    std::list<afwImg::Exposure<float> > const &
 );
-template void multifit::ModelEvaluator::setExposureList<double,
-        afwImg::MaskPixel, afwImg::VariancePixel>
-(
-    std::list<afwImg::Exposure<double>::Ptr> const &
+template void multifit::ModelEvaluator::setExposures<
+        afwImg::Exposure<double, afwImg::MaskPixel, afwImg::VariancePixel>
+> (
+    std::list<afwImg::Exposure<double> > const &
+);
+
+template void multifit::ModelEvaluator::setData<
+        afwImg::MaskedImage<double, afwImg::MaskPixel, afwImg::VariancePixel>
+> (
+    std::list<afwImg::MaskedImage<double> > const &,
+    std::list<CONST_PTR(lsst::afw::detection::Psf)> const &,
+    std::list<lsst::afw::geom::AffineTransform> const &
+);
+template void multifit::ModelEvaluator::setData<
+        afwImg::MaskedImage<float, afwImg::MaskPixel, afwImg::VariancePixel>
+> (
+    std::list<afwImg::MaskedImage<float> > const &,
+    std::list<CONST_PTR(lsst::afw::detection::Psf)> const &,
+    std::list<lsst::afw::geom::AffineTransform> const &
 );

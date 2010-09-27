@@ -54,7 +54,7 @@ public:
     PointSourceMorphologyProjection(
         boost::shared_ptr<PointSourceMorphology const> const & morphology,
         lsst::afw::geom::Extent2I const & kernelDimensions, 
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::AffineTransform const & transform
     ); 
 
     /// Imutable access to the PointSourceMorphology this is a projection of.

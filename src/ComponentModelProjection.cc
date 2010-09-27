@@ -101,7 +101,7 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
             getModel()->getAstrometry()->differentiate()
         );
         astrometryView = translationView * 
-            getTransform()->getLinear().getMatrix() * astrometryDerivative;
+            getTransform().getLinear().getMatrix() * astrometryDerivative;
     }
     if (hasProjectedParameterDerivative()) {
         _ensureProjectedParameterDerivative();
@@ -112,21 +112,17 @@ void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
             matrix.getSize<1>(), 
             getMorphologyProjection()->getNonlinearParameterSize()
         );
+
+
         // END TODO
         // TODO: Move this into an inline function when possible.
         MatrixMap projectedMap(
             _projectedParameterDerivative.getData(),
-            _projectedParameterDerivative.getStride<0>(), 
-            _projectedParameterDerivative.getSize<0>()
-        );
-        MatrixMapBlock projectedView(
-            projectedMap,
-            0, 0,
             _projectedParameterDerivative.getSize<1>(), 
             _projectedParameterDerivative.getSize<0>()
         );
         // END TODO
-        morphologyView = projectedView * 
+        morphologyView = projectedMap * 
             (*_morphologyProjection->computeProjectedParameterJacobian());
     }
 }
@@ -146,6 +142,7 @@ void multifit::ComponentModelProjection::_ensureTranslationDerivative() {
     }
     if (!(_validProducts & TRANSLATION_DERIVATIVE)) {
         _computeTranslationDerivative(_translationDerivative);
+        _validProducts |= TRANSLATION_DERIVATIVE;
     }
 }
 
@@ -167,5 +164,6 @@ void multifit::ComponentModelProjection::_ensureProjectedParameterDerivative() {
     }
     if (!(_validProducts & PROJECTED_PARAMETER_DERIVATIVE)) {
         _computeProjectedParameterDerivative(_projectedParameterDerivative);
+        _validProducts |= PROJECTED_PARAMETER_DERIVATIVE;
     }
 }

@@ -49,6 +49,7 @@ components::PointSourceMorphologyProjection::computeTransformParameterJacobian()
 ndarray::FourierArray<multifit::Pixel,3,3>
 components::PointSourceMorphologyProjection::computeLinearParameterDerivative() {
     return _linearParameterDerivative;
+
 }
 
 ndarray::FourierArray<multifit::Pixel,3,3>
@@ -62,7 +63,7 @@ components::PointSourceMorphologyProjection::computeProjectedParameterDerivative
 lsst::meas::multifit::components::PointSourceMorphologyProjection::PointSourceMorphologyProjection(
     PointSourceMorphology::ConstPtr const & morphology,
     lsst::afw::geom::Extent2I const & kernelDimensions, 
-    lsst::afw::geom::AffineTransform::ConstPtr const & transform
+    lsst::afw::geom::AffineTransform const & transform
 ) : FourierMorphologyProjection(morphology,kernelDimensions,transform),
     _linearParameterDerivative()
 {

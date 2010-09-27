@@ -80,8 +80,8 @@ protected:
     //psf derivatives not yet part of API
     virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
 #endif
-    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,1> const & matrix);
-    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
+    virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,2> const & matrix);
+    virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix);
 
 #if 0
     //psf derivatives not yet part of API

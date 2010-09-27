@@ -45,7 +45,7 @@ components::Morphology::Ptr components::ExponentialMorphology::create(
 
 components::MorphologyProjection::Ptr components::ExponentialMorphology::makeProjection(
     lsst::afw::geom::Extent2I const & kernelDimensions,
-    lsst::afw::geom::AffineTransform::ConstPtr const & transform
+    lsst::afw::geom::AffineTransform const & transform
 ) const {
     return ExponentialMorphologyProjection::Ptr(new ExponentialMorphologyProjection(
         boost::static_pointer_cast<ExponentialMorphology const>(shared_from_this()),

@@ -86,4 +86,4 @@ private:
 
 }}} //end namespace lsst::meas::multifit
 
-#endif //LSST_MEAS_MULTIFIT_ROBUST_SERSIC_CACHE_FILL_FUNCTION_H
+#endif //LSST_MEAS_MULTIFIT_MODIFIED_SERSIC_H

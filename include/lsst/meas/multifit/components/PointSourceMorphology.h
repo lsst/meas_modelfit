@@ -75,7 +75,7 @@ public:
 
     virtual MorphologyProjection::Ptr makeProjection(
         lsst::afw::geom::Extent2I const & kernelDimensions,
-        lsst::afw::geom::AffineTransform::ConstPtr const & transform
+        lsst::afw::geom::AffineTransform const & transform
     ) const;
 
     virtual const int getNonlinearParameterSize() const {return NONLINEAR_SIZE;}

@@ -62,7 +62,9 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     try {
         cache = multifit::Cache::load("testCache", "Sersic", false);
     } catch (...){
+        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "SersicCache.paf", "tests");
         lsst::pex::policy::Policy pol;
+        file.load(pol);
         cache = multifit::makeSersicCache(pol);
     }
     geom::BoxD bounds = cache->getParameterBounds();

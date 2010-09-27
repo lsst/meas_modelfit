@@ -25,6 +25,7 @@
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include <ndarray/fft.hpp>
 #include <iostream>
+#include <iomanip>
 
 #include "lsst/afw/image/Utils.h"
 #include "lsst/afw/geom.h"
@@ -50,10 +51,10 @@ public:
         ndarray::FourierArray<Pixel,3,3>::Iterator const & end
     ) {
         if (!_valid) {
+
             afwGeom::Point2D translation(
                 _parent->_getPsfPosition() - afwGeom::PointD(_parent->_outerBBox.getMin())
             );
-
             _factor = 1.0;
 
             ndarray::shift(                
@@ -380,7 +381,7 @@ void multifit::FourierModelProjection::_computePsfParameterDerivative(
 #endif
 
 void multifit::FourierModelProjection::_computeTranslationDerivative(
-    ndarray::Array<Pixel,2,1> const & output
+    ndarray::Array<Pixel,2,2> const & output
 ) {
     if(!_nonlinearMatrixHandler)
         _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
@@ -392,7 +393,7 @@ void multifit::FourierModelProjection::_computeTranslationDerivative(
 }
 
 void multifit::FourierModelProjection::_computeProjectedParameterDerivative(
-    ndarray::Array<Pixel,2,1> const & output
+    ndarray::Array<Pixel,2,2> const & output
 ) {
     if(!_nonlinearMatrixHandler)
         _nonlinearMatrixHandler.reset(new NonlinearMatrixHandler(this));
