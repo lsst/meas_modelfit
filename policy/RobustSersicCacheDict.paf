@@ -48,15 +48,27 @@ definitions: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
+		default: 500.0
+	}
+	extrapolationK1: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
 		default: 1000.0
 	}
-	inner: {
+	extrapolationK2: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 2000.0
+	}
+	sersicInnerRadius: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
 		default: 8.0
 	}
-	outer: {
+	sersicOuterRadius: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1

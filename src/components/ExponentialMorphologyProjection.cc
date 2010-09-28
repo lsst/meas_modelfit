@@ -135,7 +135,7 @@ components::ExponentialMorphologyProjection::computeProjectedParameterDerivative
         lsst::afw::geom::Point2D point(0);
 
         int y=0,x;
-        double dParams;
+        double dk;
         //outer loop over rows
         for (RowIter i(output.begin()), end(output.end()); i != end; ++i, ++y) {
             point.setY((y>midY) ? (y-dimensions.getY()) : y); 
@@ -147,7 +147,7 @@ components::ExponentialMorphologyProjection::computeProjectedParameterDerivative
                 lsst::afw::geom::Point2D ellipsePoint(egt(point));       
                 double k = ellipsePoint.asVector().norm();  
 
-                dParams = -3.0 * k * std::pow(1.0 + k*k, -2.5);
+                dk = -3.0 * k * std::pow(1.0 + k*k, -2.5);
                 //Use the row-functor over the exponential cache to compute the
                 //partial derivative of the model in fourier space w.r.t to the
                 //radius, then multiply by the partial derivative of the radius
@@ -162,7 +162,7 @@ components::ExponentialMorphologyProjection::computeProjectedParameterDerivative
                 }
                 
                 ndarray::viewAsEigen(*j).start<3>() = ( 
-                    dParams * ellipsePoint.asVector().transpose() * 
+                    dk * ellipsePoint.asVector().transpose() * 
                     egt.dTransform(point) * dEllipse
                 ).cast< std::complex<Pixel> >();
             }        

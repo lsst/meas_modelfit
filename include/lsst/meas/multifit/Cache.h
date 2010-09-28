@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -55,28 +56,34 @@ public:
 
     virtual Base::Ptr clone() const;
     virtual double operator() (double x) const;
-    virtual double dParams(double x) const;
+    virtual double d(double x) const;
 
 protected:
-    void initialize();
 
     Eigen::VectorXd _x;
     double _step;
 };
 
-class InterpolationFunctionFactory {
+class InterpolationFunctionFactory : private boost::noncopyable {
 public:
+    
+    typedef boost::shared_ptr<InterpolationFunctionFactory> Ptr;
+    typedef boost::shared_ptr<InterpolationFunctionFactory const> ConstPtr;
 
-    static InterpolationFunctionFactory const * get(std::string const & name);
+    struct Registration {
+        explicit Registration(Ptr const & p);
+    };
+
+    static InterpolationFunctionFactory::ConstPtr get(std::string const & name);
 
     std::string const & getName() const { return _name; }
 
-    int getExtraParameters() const { return _extraParameters; }
+    int getExtraParameterSize() const { return _extraParameterSize; }
     
-    virtual InterpolationFunction::ConstPtr operator()(
+    InterpolationFunction::ConstPtr operator()(
         Eigen::VectorXd const & x,
         Eigen::VectorXd const & y
-    ) const = 0;
+    ) const;
 
     virtual void fillExtraParameters(
         Eigen::VectorXd const & x, 
@@ -95,14 +102,20 @@ public:
     virtual ~InterpolationFunctionFactory() {}
 
 protected:
-    explicit InterpolationFunctionFactory(std::string const & name, int extraParameters);
+    explicit InterpolationFunctionFactory(std::string const & name, int extraParameterSize);
 
-    typedef std::map<std::string, InterpolationFunctionFactory*> Registry; 
+    virtual InterpolationFunction::ConstPtr execute(
+        Eigen::VectorXd const & x,
+        Eigen::VectorXd const & y
+    ) const = 0;
 
-    static Registry & getRegistry();
+    typedef std::map<std::string, InterpolationFunctionFactory::Ptr> Registry; 
 
     std::string _name;
-    int _extraParameters;
+    int _extraParameterSize;
+
+private:
+    static Registry & getRegistry();
 };
 
 #endif
@@ -114,14 +127,15 @@ public:
     typedef lsst::afw::math::Function2<double> FillFunction;
 
     typedef InterpolationFunction Functor;
+    typedef InterpolationFunctionFactory FunctorFactory;
 
     static ConstPtr get(std::string const & name);
     static ConstPtr make( 
         lsst::afw::geom::BoxD const & parameterBounds,
         lsst::afw::geom::Extent2D const & resolution,
         FillFunction const * fillFunction,
-        std::string const & rowInterpolator="",
-        std::string const & colInterpolator="",
+        FunctorFactory::ConstPtr const & rowFunctorFactory,
+        FunctorFactory::ConstPtr const & colFunctorFactory,
         std::string const & name="", 
         bool const & doOverwrite=true
     );
@@ -156,8 +170,8 @@ private:
         lsst::afw::geom::BoxD const & parameterBounds,
         lsst::afw::geom::Extent2D const & resolution,
         FillFunction const * fillFunction,
-        InterpolationFunctionFactory const * rowFactory,
-        InterpolationFunctionFactory const * colFactory
+        FunctorFactory::ConstPtr const & rowFunctorFactory,
+        FunctorFactory::ConstPtr const & colFunctorFactory
     );
 
     Cache(){};
@@ -168,8 +182,8 @@ private:
     lsst::afw::geom::BoxD _parameterBounds;
     double _xStep, _yStep;
     
-    InterpolationFunctionFactory const * _rowFunctorFactory;
-    InterpolationFunctionFactory const * _colFunctorFactory;
+    FunctorFactory::ConstPtr _rowFunctorFactory;
+    FunctorFactory::ConstPtr _colFunctorFactory;
 
     static std::map<std::string, Ptr> _registry;
 };

@@ -150,7 +150,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
         lsst::afw::geom::Point2D point(0);
 
         int y=0,x;
-        double dParams;
+        double dk;
         Cache::Functor::ConstPtr radiusFunctor;
         //outer loop over rows
         for (RowIter i(output.begin()), end(output.end()); i != end; ++i, ++y) {
@@ -163,7 +163,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 lsst::afw::geom::Point2D ellipsePoint(egt(point));       
                 double k = ellipsePoint.asVector().norm();  
                 try {
-                    dParams = indexFunctor->dParams(k);
+                    dk = indexFunctor->d(k);
                 } 
                 catch (lsst::pex::exceptions::InvalidParameterException &) {
                     throw LSST_EXCEPT(
@@ -186,7 +186,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 }
                 
                 ndarray::viewAsEigen(*j).start<3>() = ( 
-                    dParams * ellipsePoint.asVector().transpose() * 
+                    dk * ellipsePoint.asVector().transpose() * 
                     egt.dTransform(point) * dEllipse
                 ).cast< std::complex<Pixel> >();
                 
@@ -202,7 +202,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                     );
                 }
                 ndarray::viewAsEigen(*j).end<1>() << static_cast<std::complex<Pixel> >(
-                    radiusFunctor->dParams(morphology->getSersicIndex())
+                    radiusFunctor->d(morphology->getSersicIndex())
                 );    
             }        
         }

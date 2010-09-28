@@ -34,7 +34,6 @@ namespace meas {
 namespace multifit {
 
 #ifndef SWIG
-
 class RobustSersicCacheFillFunction : public Cache::FillFunction {
 public: 
 

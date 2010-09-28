@@ -21,8 +21,148 @@
  */
  
 #include "lsst/meas/multifit/RobustSersicCache.h"
+#include "lsst/pex/exceptions.h"
+#include "lsst/utils/ieee.h"
+
+#include <Eigen/Core>
+#include <Eigen/LU>
+#include <Eigen/Array>
 
 namespace multifit = lsst::meas::multifit;
+
+namespace {
+
+class RationalExtrapolationInterpolator : public multifit::InterpolationFunction {
+public:
+
+    typedef multifit::InterpolationFunction Base;
+    
+    RationalExtrapolationInterpolator (
+        Eigen::VectorXd const & x,
+        Eigen::VectorXd const & y
+    ) : Base(x, y) {}
+
+    RationalExtrapolationInterpolator (
+        Eigen::VectorXd const & x,
+        std::vector<double> const & y
+    ) : Base(x, y) {}
+
+    virtual Base::Base::Ptr clone() const {
+        return boost::make_shared<RationalExtrapolationInterpolator>(_x, _params);
+    }
+
+    virtual double operator()(double x) const {
+        if (x < _x[_x.size() - 1]) return Base::operator()(x);
+        return _params[_x.size()] + _params[_x.size() + 1] / x + _params[_x.size() + 2] / (x*x);
+    }
+
+    virtual double d(double x) const {
+        if (x < _x[_x.size() - 1]) return Base::d(x);
+        return -_params[_x.size() + 1] / (x*x) - 2.0 * _params[_x.size() + 2] / (x*x*x);
+    }
+
+};
+
+class RationalExtrapolationInterpolatorFactory : public multifit::InterpolationFunctionFactory {
+public:
+
+    static Registration registration;
+
+    virtual void fillExtraParameters(
+        Eigen::VectorXd const & x, 
+        double y,
+        Eigen::MatrixXd::RowXpr row, 
+        lsst::afw::math::Function2<double> const & fillFunction
+    ) const {
+        if (!_complete) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::LogicErrorException,
+                "Cannot fill cache with incomplete FunctorFactory."
+            );
+        }
+        double x0 = x[x.size() - 1];
+        double z0 = row[x.size() - 1];
+        double z1 = fillFunction(_x1, y);
+        double z2 = fillFunction(_x2, y);
+        fitRational(
+            Eigen::Vector3d(x0, _x1, _x2),
+            Eigen::Vector3d(z0, z1, z2),
+            row[row.size() - 3], row[row.size() - 2], row[row.size() - 1]
+        );
+    }
+
+    virtual void fillExtraParameters(
+        double x,
+        Eigen::VectorXd const & y, 
+        Eigen::MatrixXd::ColXpr col, 
+        lsst::afw::math::Function2<double> const & fillFunction
+    ) const {
+        if (!_complete) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::LogicErrorException,
+                "Cannot fill cache with incomplete FunctorFactory."
+            );
+        }
+        double x0 = y[y.size() - 1];
+        double z0 = col[y.size() - 1];
+        double z1 = fillFunction(x, _x1);
+        double z2 = fillFunction(x, _x2);
+        fitRational(
+            Eigen::Vector3d(x0, _x1, _x2),
+            Eigen::Vector3d(z0, z1, z2),
+            col[col.size() - 3], col[col.size() - 2], col[col.size() - 1]
+        );
+    }
+
+    RationalExtrapolationInterpolatorFactory() :
+        multifit::InterpolationFunctionFactory("RationalExtrapolation", 3),
+        _complete(false), _x1(0.0), _x2(0.0)
+    {}
+
+    RationalExtrapolationInterpolatorFactory(double x1, double x2) :
+        multifit::InterpolationFunctionFactory("RationalExtrapolation", 3),
+        _complete(true), _x1(x1), _x2(x2)
+    {}
+
+protected:
+
+    virtual multifit::InterpolationFunction::ConstPtr execute(
+        Eigen::VectorXd const & x,
+        Eigen::VectorXd const & y
+    ) const {
+        return boost::make_shared<RationalExtrapolationInterpolator>(x, y);
+    }
+
+private:
+
+    static void fitRational(
+        Eigen::Vector3d const & x, Eigen::Vector3d const & y,
+        double & a0, double & a1, double & a2
+    ) {
+        Eigen::Matrix3d matrix;
+        matrix.col(0).fill(1.0);
+        matrix.col(1) = x.cwise().inverse();
+        matrix.col(2) = x.cwise().inverse().cwise().square();
+        Eigen::Vector3d model;
+        Eigen::LU<Eigen::Matrix3d> lu(matrix);
+        lu.solve(y, &model);
+        a0 = model[0];
+        a1 = model[1];
+        a2 = model[2];
+        if (lsst::utils::isnan(a0) || lsst::utils::isnan(a1) || lsst::utils::isnan(a2))
+            a0 = a1 = a2 = 0.0;        
+    }
+
+    bool _complete;
+    double _x1, _x2;
+};
+
+RationalExtrapolationInterpolatorFactory::Registration
+RationalExtrapolationInterpolatorFactory::registration(
+    boost::make_shared<RationalExtrapolationInterpolatorFactory>()
+);
+
+} // anonymous
 
 multifit::RobustSersicCacheFillFunction::RobustSersicCacheFillFunction(
     double inner, double outer, double epsabs, double epsrel, bool noInterpolation
@@ -68,13 +208,22 @@ multifit::Cache::ConstPtr multifit::makeRobustSersicCache(lsst::pex::policy::Pol
             policy.getDouble("sersicIndexMax")
         )
     );
+    Cache::FunctorFactory::Ptr rowFunctorFactory
+        = boost::make_shared<RationalExtrapolationInterpolatorFactory>(
+            policy.getDouble("extrapolationK1"),
+            policy.getDouble("extrapolationK2")
+        );
     RobustSersicCacheFillFunction fillFunction(
-        policy.getDouble("inner"), 
-        policy.getDouble("outer"), 
+        policy.getDouble("sersicInnerRadius"), 
+        policy.getDouble("sersicOuterRadius"), 
         policy.getDouble("epsabs"), 
         policy.getDouble("epsrel"),
         policy.getBool("noInterpolation")
     );
 
-    return Cache::make(bounds, resolution, &fillFunction, "", "", "RobustSersic", false);
+    return Cache::make(
+        bounds, resolution, &fillFunction, 
+        rowFunctorFactory, Cache::FunctorFactory::get(""),
+        "RobustSersic", false
+    );
 }

@@ -65,12 +65,6 @@ public:
         _parameterIter(_parameters->data()) 
     {}
 
-    /** 
-     * Copy construct an Astrometry object
-     *
-     * This is by a shallow copy by default. If deep ==true, a deep copy will be
-     * performed
-     */
     /// Construct an Astrometry object for use a fixed position
     explicit Astrometry(lsst::afw::geom::Point2D const & position) : 
         _parameters(new ParameterVector(position.asVector())),
