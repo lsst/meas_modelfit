@@ -2,5 +2,6 @@
 
 sersicIndexResolution: 1.0
 kResolution: 1.0
+noInterpolation: true
 kMin: 0.0
 kMax: 100.0

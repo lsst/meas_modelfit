@@ -7,9 +7,8 @@ import sys
 
 def makeCache():
     pol = pexPol.Policy()
-    pol.set("sersicIndexMax", 1.0)
     pol.set("kMax", 100.0)
-    pol.set("kResolution", 1.0)
+    pol.set("sersicIndexMax", 10.0)
     pol.set("noInterpolation", True)
     cache = measMult.makeRobustSersicCache(pol)
 

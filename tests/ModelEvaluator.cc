@@ -83,6 +83,7 @@ image::MaskedImage<float> makeMaskedImage(
     ndarray::Array<multifit::Pixel, 1 ,1> variance(
         ndarray::allocate(ndarray::makeVector(fp->getNpix()))
     );
+
     variance = 0.25;
     multifit::expandImage(*fp, mi, modelImage, variance);
 

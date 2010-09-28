@@ -223,7 +223,7 @@ multifit::Cache::ConstPtr multifit::makeRobustSersicCache(lsst::pex::policy::Pol
 
     return Cache::make(
         bounds, resolution, &fillFunction, 
-        rowFunctorFactory, Cache::FunctorFactory::get(""),
+         rowFunctorFactory, Cache::FunctorFactory::get(""),
         "RobustSersic", false
     );
 }

@@ -255,7 +255,7 @@ multifit::Cache::Cache(
     xIter = _x.data();
     for (int j = 0; j < _x.size(); ++j, ++xIter) {
         debug.debug<5>("Filling extra parameters for column %d of %d.", j, _x.size());
-        _rowFunctorFactory->fillExtraParameters(*xIter, _y, _dataPoints.col(j), *fillFunction);
+        _colFunctorFactory->fillExtraParameters(*xIter, _y, _dataPoints.col(j), *fillFunction);
     }
 }
 void multifit::Cache::save(std::string const & filepath) const {
