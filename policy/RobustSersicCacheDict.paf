@@ -78,6 +78,6 @@ definitions: {
 		type: "bool"
 		minOccurs: 1
 		maxOccurs: 1
-		default: false
+		default: true
 	}
 }

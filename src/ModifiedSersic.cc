@@ -47,6 +47,11 @@ namespace pexLog = lsst::pex::logging;
 
 namespace {
 
+static void gslHandleError(char const * reason, char const * file, int line, int gsl_errno) {
+    pexLog::Debug debug("lsst.meas.multifit.ModifiedSersic");
+    debug.debug<5>("GSL error encountered: %s in file '%s', line %d.", reason, file, line);
+}
+
 /**
  *  A 1d polynomial or rational function model with fixed degree.
  */
@@ -114,9 +119,6 @@ private:
     /// Function to be passed to GSL integrator.
     static double integrand(double x, void * p);
 
-    /// A GSL error handler that dumps to a debug log and continues.
-    static void handleError(char const * reason, char const * file, int line, int gsl_errno);
-
     /// Return the zeros of the zeroth-order Bessel function of the first kind (J_0).
     static std::vector<double> const & getBesselZeros(double max);
 
@@ -160,7 +162,7 @@ Integrator::Integrator(
     _debug("lsst.meas.multifit.ModifiedSersic"),
     _epsrel(epsrel), _epsabs(epsabs1), _k(k), _kSquared(k*k)
 {
-    gsl_error_handler_t * oldHandler = gsl_set_error_handler(&handleError);
+    gsl_error_handler_t * oldHandler = gsl_set_error_handler(&gslHandleError);
     double max = _k * _function.getOuter();
     _size = setupVectors(max);
     // Explicitly integrate the first few values, increasing epsabs to match best possible final precision.
@@ -215,11 +217,6 @@ Integrator::Integrator(
 double Integrator::integrand(double x, void * p) {
     Integrator const & self = *reinterpret_cast<Integrator*>(p);
     return self._function(x / self._k) * x * gsl_sf_bessel_J0(x);
-}
-
-void Integrator::handleError(char const * reason, char const * file, int line, int gsl_errno) {
-    pexLog::Debug debug("lsst.meas.multifit.ModifiedSersic");
-    debug.debug<5>("GSL error encountered: %s in file '%s', line %d.", reason, file, line);
 }
 
 std::vector<double> const & Integrator::getBesselZeros(double max) {
@@ -339,8 +336,11 @@ double multifit::ModifiedSersicFunction::integrate(double radius, int m) const {
 }
 
 double multifit::ModifiedSersicFunction::integrateInner(double radius, int m) const {
-    return _n * gsl_sf_gamma_inc_P(_n * (m+1), std::pow(radius, 1.0 / _n)) * gsl_sf_gamma(_n * (m+1))
-        - _a[0] * radius;
+    gsl_error_handler_t * oldHandler = gsl_set_error_handler(&gslHandleError);
+    double ln_gamma = gsl_sf_lngamma(_n * (m+1));
+    double ln_inc_gamma = std::log(gsl_sf_gamma_inc_P(_n * (m+1), std::pow(radius, 1.0 / _n)));
+    gsl_set_error_handler(oldHandler);
+    return _n * std::exp(ln_gamma + ln_inc_gamma) - _a[0] * radius;
 }
 
 double multifit::ModifiedSersicFunction::integrateOuter(double radius, int m) const {
