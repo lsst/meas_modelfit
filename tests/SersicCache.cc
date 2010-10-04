@@ -54,28 +54,28 @@ BOOST_AUTO_TEST_CASE(SersicCache) {
 
     BOOST_CHECK(cache);
 
-    lsst::afw::geom::BoxD bounds = cache->getParameterBounds();
-    
-    multifit::Cache::Functor::ConstPtr functor;
-    BOOST_CHECK_NO_THROW(functor = cache->getRowFunctor(bounds.getMinY()));
+    double slowMin = cache->getSlowMin(), slowMax = cache->getSlowMax();
+    double fastMin = cache->getFastMin(), fastMax = cache->getFastMax(); 
+    multifit::Cache::Interpolator::ConstPtr functor;
+    BOOST_CHECK_NO_THROW(functor = cache->getInterpolator(slowMin));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMinX()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxX()-1.0));
+    BOOST_CHECK_NO_THROW((*functor)(fastMin));
+    BOOST_CHECK_NO_THROW((*functor)(fastMax-1.0));
 
-    BOOST_CHECK_NO_THROW(functor = cache->getRowFunctor(bounds.getMaxY() - 1.0));
+    BOOST_CHECK_NO_THROW(functor = cache->getDerivativeInterpolator(slowMin));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMinX()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxX()-1.0));
+    BOOST_CHECK_NO_THROW((*functor)(fastMin));
+    BOOST_CHECK_NO_THROW((*functor)(fastMax-1.0));
 
-    BOOST_CHECK_NO_THROW(functor = cache->getColFunctor(bounds.getMinX()));
+    BOOST_CHECK_NO_THROW(functor = cache->getInterpolator(slowMax -1.0));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMinY()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-1.0));
+    BOOST_CHECK_NO_THROW((*functor)(fastMin));
+    BOOST_CHECK_NO_THROW((*functor)(fastMax - 1.0));
     
-    BOOST_CHECK_NO_THROW(functor = cache->getColFunctor(bounds.getMaxX() - 1.0));
+    BOOST_CHECK_NO_THROW(functor = cache->getDerivativeInterpolator(slowMax- 1.0));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMinY()));
-    BOOST_CHECK_NO_THROW((*functor)(bounds.getMaxY()-1.0));
+    BOOST_CHECK_NO_THROW((*functor)(fastMin));
+    BOOST_CHECK_NO_THROW((*functor)(fastMax - 1.0));
 
     double const * data = cache->getDataPoints().data();
     for(int i = 0; i < cache->getDataPoints().size(); ++i, ++data) {

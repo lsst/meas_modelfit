@@ -87,15 +87,10 @@ protected:
     ComponentModelProjection(
         ComponentModel::ConstPtr const & model,
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::geom::AffineTransform const & transform,
+        lsst::afw::geom::AffineTransform const & pixelToPixel,
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
-    ComponentModelProjection(
-        ComponentModel::ConstPtr const & model,
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs,
-        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
-    );
+
     /**
      * Compute the image-space (xy) coordinates where the PSF should be centered
      */

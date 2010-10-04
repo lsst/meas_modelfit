@@ -48,6 +48,7 @@
 #include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/ModelFactory.h"
+#include "lsst/meas/multifit/RobustSersicCache.h"
 
 namespace det = lsst::afw::detection;
 namespace math = lsst::afw::math;
@@ -56,11 +57,11 @@ namespace multifit = lsst::meas::multifit;
 namespace geom = lsst::afw::geom;
 namespace coord = lsst::afw::coord;
 
-image::Wcs::Ptr makeWcs(geom::PointD const & crVal) {
-    geom::PointD crPix= geom::makePointD(500,100);
+image::Wcs::Ptr makeWcs() {
+    geom::PointD crPix= geom::makePointD(0,0);
     Eigen::Matrix2d cdMatrix;
-    cdMatrix << 0.0001, 0.0, 0.0, 0.0001;
-    return boost::make_shared<image::Wcs>(crVal, crPix, cdMatrix);
+    cdMatrix << 0.0001, 0.0, 0.0, 0.001;
+    return boost::make_shared<image::Wcs>(geom::makePointD(45,45), crPix, cdMatrix);
 }
 
 image::MaskedImage<float> makeMaskedImage(
@@ -72,11 +73,16 @@ image::MaskedImage<float> makeMaskedImage(
     det::Footprint::Ptr fp(model->computeProjectionFootprint(psf, transform));
     image::BBox bbox = fp->getBBox();
 
+
+    std::cerr <<"computed footprint\n";
+
     image::MaskedImage<float> mi(
         bbox.getWidth(), 
         bbox.getHeight() 
     );    
     mi.setXY0(bbox.getX0(), bbox.getY0());
+
+
     multifit::ModelProjection::Ptr projection(model->makeProjection(psf, transform, fp));
 
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
@@ -91,13 +97,21 @@ image::MaskedImage<float> makeMaskedImage(
 }
 
 image::Exposure<float> makeExposure(
-    multifit::Model::Ptr model
+    multifit::Model::Ptr model, lsst::afw::geom::AffineTransform pixelToSky
 ) {
     PTR(det::Psf) psf = det::createPsf("DoubleGaussian", 9, 9, 1.5);
-    PTR(image::Wcs) wcs = makeWcs(model->computePosition()->getPosition());
-    geom::AffineTransform transform = wcs->linearizeSkyToPixel(model->computePosition());
+    PTR(image::Wcs) wcs = makeWcs();
+    geom::AffineTransform transform = wcs->linearizeSkyToPixel(
+        model->getPosition()
+    );
+    geom::AffineTransform pixToPix = pixelToSky*transform;
+    std::cerr << "pix-to-pix: <" <<pixToPix[0] ;
+    for(int i =1; i < 6; ++i) {
+        std::cerr << ", " << pixToPix[i];        
+    }
+    std::cerr << ">\n";
     
-    image::MaskedImage<float> mi = makeMaskedImage(model, psf, transform);
+    image::MaskedImage<float> mi = makeMaskedImage(model, psf, pixToPix);
     image::Exposure<float> exp(mi, *wcs);
     exp.setPsf(psf);
 
@@ -106,49 +120,41 @@ image::Exposure<float> makeExposure(
 
 BOOST_AUTO_TEST_CASE(ConstructWithTransform) {
     double flux = 1;
-    coord::Coord sky(geom::makePointD(45,45));
+    geom::Point2D pixel =geom::makePointD(45,45);
 
+    geom::AffineTransform transform;
     multifit::Model::Ptr model = multifit::ModelFactory::createPointSourceModel(
         flux, 
-        sky
+        pixel
     );
     
-    geom::AffineTransform transform;
+
     PTR(det::Psf) psf = det::createPsf("DoubleGaussian", 9,9, 1.5);
 
-    std::list<geom::AffineTransform> transformList;
-    std::list<image::MaskedImage<float> > imageList;
-    std::list<det::Psf::ConstPtr> psfList;
-
-    transformList.push_back(transform);
-    psfList.push_back(psf);
-    imageList.push_back(makeMaskedImage(model, psf, transform));
-
-    multifit::ModelEvaluator eval(model);
-    eval.setData<image::MaskedImage<float> >(imageList, psfList, transformList);
+    multifit::ModelEvaluator eval(model, geom::AffineTransform());
+    eval.setData<image::MaskedImage<float> >(makeMaskedImage(model, psf, transform), psf, transform);
 }
 
 
 BOOST_AUTO_TEST_CASE(PsModel) {
     double flux = 1;
-    coord::Coord::Ptr sky(new coord::Coord(geom::makePointD(45,45)));
+    geom::Point2D centroid = geom::makePointD(45,45);
 
-    PTR(image::Wcs) wcs0 = makeWcs(sky->getPosition());   
-
+    geom::AffineTransform reference = geom::AffineTransform();
     multifit::Model::Ptr model = 
         multifit::ModelFactory::createPointSourceModel(
             flux, 
-            *sky
+            centroid
         );
 
     std::list<image::Exposure<float> > exposureList;
-    exposureList.push_back(makeExposure(model));
+    exposureList.push_back(makeExposure(model, reference));
     
-    exposureList.push_back(makeExposure(model));
+    exposureList.push_back(makeExposure(model, reference));
 
-    exposureList.push_back(makeExposure(model));
+    exposureList.push_back(makeExposure(model, reference));
 
-    multifit::ModelEvaluator evaluator(model);
+    multifit::ModelEvaluator evaluator(model, reference);
     evaluator.setExposures(exposureList);
 
     BOOST_CHECK_EQUAL(evaluator.getNProjections(), 3);    
@@ -177,47 +183,56 @@ BOOST_AUTO_TEST_CASE(PsModel) {
 
 
 }
+
 BOOST_AUTO_TEST_CASE(SersicModel) {
+    std::cerr << "SersicModel\n";
     //define the ellipse parameters in pixel coordinates
     double flux = 1;
-    coord::Coord::Ptr sky( new coord::Coord(geom::makePointD(45,45)));
-    geom::ellipses::Axes axes(3,5,0);
-
-    PTR(image::Wcs) wcs0 = makeWcs(sky->getPosition());   
+    geom::Point2D pixel = geom::makePointD(45,45);
+    geom::ellipses::Axes axes(25,30,0);
 
     multifit::Cache::ConstPtr cache;
 
     try {
-        cache = multifit::Cache::load("testCache", "Sersic", false);
+        cache = multifit::Cache::load("testRobustCache", "RobustSersic", false);
     } catch (...){
-        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "SersicCache.paf", "tests");
+        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "RobustSersicCache.paf", "tests");
         lsst::pex::policy::Policy pol;
         file.load(pol);
-        cache = multifit::makeSersicCache(pol);
+        cache = multifit::makeRobustSersicCache(pol);
     }
     multifit::components::SersicMorphology::setSersicCache(cache);
 
     //transform the ellipse parameters to be in sky coordinates
-    geom::AffineTransform transform = wcs0->linearizePixelToSky(sky);
-    axes.transform(transform).inPlace();
-
+    geom::AffineTransform transform = geom::AffineTransform();
+    std::cerr << "created cache\n";
     multifit::Model::Ptr model = multifit::ModelFactory::createSersicModel(
         flux, 
-        *sky,
+        pixel,
         axes, 
         1.0
     );
-
-    std::list<image::Exposure<float> > exposureList;
-    exposureList.push_back(makeExposure(model));
+    std::cerr << "created model\n";
     
-    exposureList.push_back(makeExposure(model));
-    exposureList.push_back(makeExposure(model));
+    multifit::ComponentModel::Ptr cm = boost::dynamic_pointer_cast<multifit::ComponentModel>(model);
+    std::cerr << cm->getMorphology()->beginNonlinear() << "\n";
+    std::cerr << model->getNonlinearParameterIter()+2 << "\n";
+    double const * iter = model->getNonlinearParameterIter();
+    for(int i =0; i < model->getNonlinearParameterSize(); ++i, ++iter){
+        std::cerr << ", " << *iter;
+    }
+    std::cerr <<"\n";
 
-    multifit::ModelEvaluator evaluator(model);
-    evaluator.setExposures(exposureList);
+    PTR(det::Psf) psf = det::createPsf("DoubleGaussian", 9,9, 1.5);
+    image::MaskedImage<float> mi = makeMaskedImage(model, psf, transform);
 
-    BOOST_CHECK_EQUAL(evaluator.getNProjections(), 3);    
+    std::cerr << "created exposures\n";
+
+    multifit::ModelEvaluator evaluator(model, transform);
+    evaluator.setData(mi, psf, transform);
+
+
+    BOOST_CHECK_EQUAL(evaluator.getNProjections(), 1);    
     BOOST_CHECK(evaluator.getNPixels() > 0);
     ndarray::Array<multifit::Pixel const, 1, 1> img;
     Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, 1> modelImage;
@@ -242,3 +257,4 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
 
     
 }
+

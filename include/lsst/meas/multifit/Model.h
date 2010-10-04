@@ -42,6 +42,7 @@
 
 #include "lsst/meas/multifit/core.h"
 #include "lsst/afw/geom/Box.h"
+#include "lsst/afw/geom/AffineTransform.h"
 
 namespace lsst{
 namespace meas {
@@ -71,20 +72,15 @@ public:
     typedef boost::shared_ptr<Model> Ptr;
     typedef boost::shared_ptr<Model const> ConstPtr;
 
-    /**
-     *  Create a Footprint that contains a projection of this Model.
-     */
-    virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs
-    ) const = 0;
-
+    lsst::afw::geom::AffineTransform const & getReferenceTransform() const {
+        return _pixelToSky;
+    }
     /**
      * Create A Footprint that contains the projection of this Model.
      */
     virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::geom::AffineTransform const & wcsTransform
+        lsst::afw::geom::AffineTransform const & skyToPixel
     ) const =0;
 
     /**
@@ -93,23 +89,17 @@ public:
      */
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs
+        lsst::afw::geom::AffineTransform const & skyToPixel
     ) const = 0;
 
-    /**
-     *  Create an image-coordinate bounding box that would contain a projection
-     *  of this Model.
-     */
-    virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::geom::AffineTransform const & wcsTransform
-    ) const = 0;
 
     /**
      *  Create an ra/dec bounding ellipse for this Model.
      */
     virtual PTR(lsst::afw::geom::ellipses::Ellipse) computeBoundingEllipse() const = 0;
-    virtual lsst::afw::coord::Coord::ConstPtr computePosition() const = 0;
+
+    virtual lsst::afw::geom::Point2D getPosition() const =0;
+
     /**
      * Immutable access to this Model's linear parameters 
      */
@@ -174,21 +164,13 @@ public:
    
     virtual ~Model() {}
 
-    /** 
-     *  Create a ModelProjection object associated with this.
-     */
-    virtual boost::shared_ptr<ModelProjection> makeProjection(
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs,
-        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
-    ) const = 0;
 
     /** 
      *  Create a ModelProjection object associated with this.
      */
     virtual boost::shared_ptr<ModelProjection> makeProjection(
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::geom::AffineTransform const & wcsTransform,
+        lsst::afw::geom::AffineTransform const & skyToPixel,
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     ) const = 0;
 protected:
@@ -198,8 +180,12 @@ protected:
     /**
      * Initialize the Model and allocate space for the parameter vectors.
      */
-    Model(int linearParameterSize, int nonlinearParameterSize)       
-      : _linearParameters(), _nonlinearParameters(), _projectionList()
+    Model(
+        int linearParameterSize, 
+        int nonlinearParameterSize
+    ) : _linearParameters(), 
+        _nonlinearParameters(), 
+        _projectionList() 
     {
         //Eigen does not handle zero-size matrix creation gracefully.
         if(linearParameterSize > 0)
@@ -227,7 +213,7 @@ protected:
     explicit Model() :
        _linearParameters(), 
        _nonlinearParameters(), 
-       _projectionList() 
+       _projectionList()
     {}
 
     void _broadcastLinearParameterChange() const;
@@ -270,6 +256,7 @@ private:
     void operator=(Model const & other) { assert(false); } 
 
     mutable ProjectionList _projectionList;
+    lsst::afw::geom::AffineTransform _pixelToSky;
 };
 
 }}} // namespace lsst::meas::multifit

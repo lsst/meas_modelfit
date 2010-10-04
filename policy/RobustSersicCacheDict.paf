@@ -14,19 +14,19 @@ definitions: {
 		maxOccurs: 1
 		default: 1E-16
 	}
-	sersicIndexResolution: {
-		type: "double"
+	nBinSersic: {
+		type: "int"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 0.05
+		default: 100
 	} 
-	kResolution: {
-		type: "double"
+	nBinK: {
+		type: "int"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 1.0
+		default: 100
 	} 
-	sersicIndexMin: {
+	sersicMin: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
@@ -38,7 +38,7 @@ definitions: {
 		maxOccurs: 1
 		default: 0.0
 	}
-	sersicIndexMax: {
+	sersicMax: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1

@@ -53,10 +53,6 @@ class FourierModelProjection : public ComponentModelProjection {
 public:
     typedef boost::shared_ptr<FourierModelProjection> Ptr;
     typedef boost::shared_ptr<FourierModelProjection const> ConstPtr;
-#if 0
-    //psf derivatives not yet part of API
-    virtual int const getPsfParameterSize() const;
-#endif
     virtual ~FourierModelProjection();
 
     /**
@@ -76,19 +72,11 @@ protected:
     virtual bool isConvolved() const { return _localKernel; }
 
     virtual void _computeLinearParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
-#if 0
-    //psf derivatives not yet part of API
-    virtual void _computePsfParameterDerivative(ndarray::Array<Pixel,2,1> const & matrix);
-#endif
+
     virtual void _computeTranslationDerivative(ndarray::Array<Pixel,2,2> const & matrix);
     virtual void _computeProjectedParameterDerivative(ndarray::Array<Pixel,2,2> const & matrix);
 
-#if 0
-    //psf derivatives not yet part of API
-    virtual bool hasPsfParameterDerivative() const {
-        return _localKernel->hasDerivatives() && _localKernel->getNParameters() > 0;
-    }
-#endif
+
     virtual void _handleLinearParameterChange();
     virtual void _handleNonlinearParameterChange();
 
@@ -106,16 +94,10 @@ private:
     FourierModelProjection(
         ComponentModel::ConstPtr const & model,
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::geom::AffineTransform const & transform,
+        lsst::afw::geom::AffineTransform const & pixelToPixel,
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
 
-    FourierModelProjection(
-        ComponentModel::ConstPtr const & model,
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs,
-        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
-    );
     void _setDimensions();
 
     void _applyKernel(

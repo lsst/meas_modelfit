@@ -38,27 +38,20 @@ public:
     typedef multifit::InterpolationFunction Base;
     
     RationalExtrapolationInterpolator (
-        Eigen::VectorXd const & x,
-        Eigen::VectorXd const & y
-    ) : Base(x, y) {}
+        double const min, double const max, double const step,
+        Eigen::VectorXd const & values
+    ) : Base(min, max, step, values) {}
 
-    RationalExtrapolationInterpolator (
-        Eigen::VectorXd const & x,
-        std::vector<double> const & y
-    ) : Base(x, y) {}
-
-    virtual Base::Base::Ptr clone() const {
-        return boost::make_shared<RationalExtrapolationInterpolator>(_x, _params);
+    virtual double operator()(double p) const {
+        if (p < _max) return Base::operator()(p);
+        int n = _values.size();
+        return _values[n-3] + _values[n-2] / p + _values[n-1] / (p*p);
     }
 
-    virtual double operator()(double x) const {
-        if (x < _x[_x.size() - 1]) return Base::operator()(x);
-        return _params[_x.size()] + _params[_x.size() + 1] / x + _params[_x.size() + 2] / (x*x);
-    }
-
-    virtual double d(double x) const {
-        if (x < _x[_x.size() - 1]) return Base::d(x);
-        return -_params[_x.size() + 1] / (x*x) - 2.0 * _params[_x.size() + 2] / (x*x*x);
+    virtual double d(double p) const {
+        if (p < _max) return Base::d(p);
+        int n = _values.size();
+        return -_values[n-2] / (p*p) - 2.0 * _values[n-1] / (p*p*p);
     }
 
 };
@@ -69,83 +62,61 @@ public:
     static Registration registration;
 
     virtual void fillExtraParameters(
-        Eigen::VectorXd const & x, 
-        double y,
+        double fastMax, 
+        double slow,
         Eigen::MatrixXd::RowXpr row, 
         lsst::afw::math::Function2<double> const & fillFunction
     ) const {
         if (!_complete) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::LogicErrorException,
-                "Cannot fill cache with incomplete FunctorFactory."
+                "Cannot fill cache with incomplete InterpolatorFactory."
             );
         }
-        double x0 = x[x.size() - 1];
-        double z0 = row[x.size() - 1];
-        double z1 = fillFunction(_x1, y);
-        double z2 = fillFunction(_x2, y);
+        double v0 = row[row.size() - getExtraParameterSize() - 1];
+        double v1 = fillFunction(slow, _fast1);
+        double v2 = fillFunction(slow, _fast2);
         fitRational(
-            Eigen::Vector3d(x0, _x1, _x2),
-            Eigen::Vector3d(z0, z1, z2),
+            Eigen::Vector3d(fastMax, _fast1, _fast2),
+            Eigen::Vector3d(v0, v1, v2),
             row[row.size() - 3], row[row.size() - 2], row[row.size() - 1]
-        );
-    }
-
-    virtual void fillExtraParameters(
-        double x,
-        Eigen::VectorXd const & y, 
-        Eigen::MatrixXd::ColXpr col, 
-        lsst::afw::math::Function2<double> const & fillFunction
-    ) const {
-        if (!_complete) {
-            throw LSST_EXCEPT(
-                lsst::pex::exceptions::LogicErrorException,
-                "Cannot fill cache with incomplete FunctorFactory."
-            );
-        }
-        double x0 = y[y.size() - 1];
-        double z0 = col[y.size() - 1];
-        double z1 = fillFunction(x, _x1);
-        double z2 = fillFunction(x, _x2);
-        fitRational(
-            Eigen::Vector3d(x0, _x1, _x2),
-            Eigen::Vector3d(z0, z1, z2),
-            col[col.size() - 3], col[col.size() - 2], col[col.size() - 1]
         );
     }
 
     RationalExtrapolationInterpolatorFactory() :
         multifit::InterpolationFunctionFactory("RationalExtrapolation", 3),
-        _complete(false), _x1(0.0), _x2(0.0)
+        _complete(false), _fast1(0.0), _fast2(0.0)
     {}
 
-    RationalExtrapolationInterpolatorFactory(double x1, double x2) :
+    RationalExtrapolationInterpolatorFactory(double fast1, double fast2) :
         multifit::InterpolationFunctionFactory("RationalExtrapolation", 3),
-        _complete(true), _x1(x1), _x2(x2)
+        _complete(true), _fast1(fast1), _fast2(fast2)
     {}
 
 protected:
 
     virtual multifit::InterpolationFunction::ConstPtr execute(
-        Eigen::VectorXd const & x,
-        Eigen::VectorXd const & y
+        double const min, double const max, double const step,
+        Eigen::VectorXd const & values
     ) const {
-        return boost::make_shared<RationalExtrapolationInterpolator>(x, y);
+        return boost::make_shared<RationalExtrapolationInterpolator>(
+            min, max, step, values
+        );
     }
 
 private:
 
     static void fitRational(
-        Eigen::Vector3d const & x, Eigen::Vector3d const & y,
+        Eigen::Vector3d const & fast, Eigen::Vector3d const & values,
         double & a0, double & a1, double & a2
     ) {
         Eigen::Matrix3d matrix;
         matrix.col(0).fill(1.0);
-        matrix.col(1) = x.cwise().inverse();
-        matrix.col(2) = x.cwise().inverse().cwise().square();
+        matrix.col(1) = fast.cwise().inverse();
+        matrix.col(2) = fast.cwise().inverse().cwise().square();
         Eigen::Vector3d model;
         Eigen::LU<Eigen::Matrix3d> lu(matrix);
-        lu.solve(y, &model);
+        lu.solve(values, &model);
         a0 = model[0];
         a1 = model[1];
         a2 = model[2];
@@ -154,7 +125,7 @@ private:
     }
 
     bool _complete;
-    double _x1, _x2;
+    double _fast1, _fast2;
 };
 
 RationalExtrapolationInterpolatorFactory::Registration
@@ -172,17 +143,17 @@ multifit::RobustSersicCacheFillFunction::RobustSersicCacheFillFunction(
     _epsrel(epsrel), _epsabs(epsabs), _noInterpolation(noInterpolation)
 {}
 
-double multifit::RobustSersicCacheFillFunction::operator() (double x, double y) const {
-    if(y != _hankelTransform.getFunction().getSersicIndex()) {
+double multifit::RobustSersicCacheFillFunction::operator() (double sersic, double k) const {
+    if(sersic != _hankelTransform.getFunction().getSersicIndex()) {
         _hankelTransform.setFunction(
             ModifiedSersicFunction(
-                y, 
+                sersic, 
                 _hankelTransform.getFunction().getInner(), 
                 _hankelTransform.getFunction().getOuter()
             )
         );
     } 
-    return _hankelTransform(x);
+    return _hankelTransform(k);
 }
 
 multifit::Cache::ConstPtr multifit::makeRobustSersicCache(lsst::pex::policy::Policy policy) {
@@ -194,25 +165,12 @@ multifit::Cache::ConstPtr multifit::makeRobustSersicCache(lsst::pex::policy::Pol
     lsst::pex::policy::Policy defPol(defSource);
     policy.mergeDefaults(defPol);
 
-    lsst::afw::geom::Extent2D resolution = lsst::afw::geom::makeExtentD(
-        policy.getDouble("kResolution"), 
-        policy.getDouble("sersicIndexResolution")
-    );
-    lsst::afw::geom::BoxD bounds(
-        lsst::afw::geom::makePointD(
-            policy.getDouble("kMin"), 
-            policy.getDouble("sersicIndexMin")
-        ),
-        lsst::afw::geom::makePointD(
-            policy.getDouble("kMax"),
-            policy.getDouble("sersicIndexMax")
-        )
-    );
-    Cache::FunctorFactory::Ptr rowFunctorFactory
-        = boost::make_shared<RationalExtrapolationInterpolatorFactory>(
+    Cache::InterpolatorFactory::Ptr interpolatorFactory(
+        new RationalExtrapolationInterpolatorFactory(
             policy.getDouble("extrapolationK1"),
             policy.getDouble("extrapolationK2")
-        );
+        )
+    );
     RobustSersicCacheFillFunction fillFunction(
         policy.getDouble("sersicInnerRadius"), 
         policy.getDouble("sersicOuterRadius"), 
@@ -222,8 +180,12 @@ multifit::Cache::ConstPtr multifit::makeRobustSersicCache(lsst::pex::policy::Pol
     );
 
     return Cache::make(
-        bounds, resolution, &fillFunction, 
-         rowFunctorFactory, Cache::FunctorFactory::get(""),
-        "RobustSersic", false
+        policy.getDouble("sersicMin"), policy.getDouble("sersicMax"),
+        policy.getDouble("kMin"), policy.getDouble("kMax"),
+        policy.getInt("nBinSersic"), policy.getInt("nBinK"),
+        &fillFunction, 
+        interpolatorFactory, 
+        "RobustSersic", 
+        false
     );
 }

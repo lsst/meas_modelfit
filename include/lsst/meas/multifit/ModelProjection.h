@@ -107,11 +107,6 @@ public:
     bool hasNonlinearParameterDerivative() const { return getNonlinearParameterSize() > 0; }
     //@}
 
-    /// The WCS associated with the observation this projection represents.
-    lsst::afw::image::Wcs::ConstPtr const & getWcs() const { return _wcs; }
-
-
-    
     /**
      * Footprint the image representation will be computed on.
      *
@@ -125,22 +120,17 @@ public:
 protected:
     ModelProjection(
         Model::ConstPtr const & model,
-        lsst::afw::geom::AffineTransform const & transform,
-        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
-    );
-
-    ModelProjection(
-        Model::ConstPtr const & model,
-        CONST_PTR(lsst::afw::image::Wcs) const & wcs,
+        lsst::afw::geom::AffineTransform const & pixelToPixel,
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     );
 
     /**
      * The AffineTransfrom associated with the observation this projection 
-     * represents
+     * represents the pixel-to-pixel transform from Model space to projection
+     * space
      */
     lsst::afw::geom::AffineTransform const & getTransform() const {
-        return _skyToPixelTransform;
+        return _transform;
     }
 
     /**
@@ -213,9 +203,8 @@ private:
 
     Model::ConstPtr _model;
     boost::shared_ptr<lsst::afw::detection::Footprint const> _footprint;
-    lsst::afw::image::Wcs::ConstPtr _wcs;
     // Transform from global coordinates to this projection
-    lsst::afw::geom::AffineTransform _skyToPixelTransform; 
+    lsst::afw::geom::AffineTransform _transform; 
 
     ndarray::Array<Pixel, 1, 1> _modelImage;
     ndarray::Array<Pixel, 2, 1> _linearParameterDerivative;

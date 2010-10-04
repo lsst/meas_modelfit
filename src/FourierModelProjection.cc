@@ -444,19 +444,7 @@ multifit::FourierModelProjection::FourierModelProjection(
     _setDimensions();
 }
 
-multifit::FourierModelProjection::FourierModelProjection(
-    ComponentModel::ConstPtr const & model,
-    afwDet::Psf::ConstPtr const & psf,
-    afwImg::Wcs::ConstPtr const & wcs,
-    CONST_PTR(afwDet::Footprint) const & footprint
-) : ComponentModelProjection(model,psf,wcs,footprint),
-    _localKernel(), _wf(), 
-    _outerBBox(afwGeom::Point2I(), afwGeom::Extent2I()),
-    _innerBBox(afwGeom::Point2I(), afwGeom::Extent2I())
-{
-    _convolve(psf);
-    _setDimensions();
-}
+
 
 /**
  * Determine size of all arrays

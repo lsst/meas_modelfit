@@ -93,9 +93,7 @@ components::SersicMorphologyProjection::computeLinearParameterDerivative() {
         //grab the 0th element of the _linearParameterDerivative
         PartialDerivative output(_linearParameterDerivative[0]);
 
-        Cache::Functor::ConstPtr indexFunctor(
-            getMorphology()->getSersicIndexFunctor()
-        );
+        Cache::Interpolator::ConstPtr interpolator(getMorphology()->getInterpolator());
         lsst::afw::geom::LinearTransform egt = *computeEllipseGridTransform();
         lsst::afw::geom::Extent2I dimensions = getDimensions();
         int midY = dimensions.getY()/2;
@@ -110,7 +108,7 @@ components::SersicMorphologyProjection::computeLinearParameterDerivative() {
                 point.setX(x);
                 double k = egt(point).asVector().norm();
                 try {
-                    *j = (*indexFunctor)(k);
+                    *j = (*interpolator)(k);
                 }
                 catch (lsst::pex::exceptions::InvalidParameterException & ) {
                     throw LSST_EXCEPT(
@@ -139,9 +137,9 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
         );
 
         SersicMorphology::ConstPtr morphology(getMorphology());
-        Cache::Functor::ConstPtr indexFunctor(
-            morphology->getSersicIndexFunctor()
-        );
+        Cache::Interpolator::ConstPtr interpolator(morphology->getInterpolator());
+        Cache::Interpolator::ConstPtr derivativeInterpolator(morphology->getDerivativeInterpolator());
+
         EllipseGridTransform::ConstPtr ellipseGridPtr(computeEllipseGridTransform());
         EllipseGridTransform::DerivativeMatrix dEllipse(ellipseGridPtr->dEllipse());
         lsst::afw::geom::LinearTransform egt = *ellipseGridPtr;
@@ -150,8 +148,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
         lsst::afw::geom::Point2D point(0);
 
         int y=0,x;
-        double dk;
-        Cache::Functor::ConstPtr radiusFunctor;
+        double dK, dN;
         //outer loop over rows
         for (RowIter i(output.begin()), end(output.end()); i != end; ++i, ++y) {
             point.setY((y>midY) ? (y-dimensions.getY()) : y); 
@@ -163,7 +160,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 lsst::afw::geom::Point2D ellipsePoint(egt(point));       
                 double k = ellipsePoint.asVector().norm();  
                 try {
-                    dk = indexFunctor->d(k);
+                    dK = interpolator->d(k);
                 } 
                 catch (lsst::pex::exceptions::InvalidParameterException &) {
                     throw LSST_EXCEPT(
@@ -186,7 +183,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 }
                 
                 ndarray::viewAsEigen(*j).start<3>() = ( 
-                    dk * ellipsePoint.asVector().transpose() * 
+                    dK * ellipsePoint.asVector().transpose() * 
                     egt.dTransform(point) * dEllipse
                 ).cast< std::complex<Pixel> >();
                 
@@ -194,16 +191,14 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 //Use the col-functor over the sersic cache to compute this last
                 //partial derivative w.r.t sersic index
                 try {
-                    radiusFunctor = getMorphology()->getSersicCache()->getColFunctor(k);
+                    dN = (*derivativeInterpolator)(k);
                 } catch(lsst::pex::exceptions::InvalidParameterException &) {
                     throw LSST_EXCEPT(
                         lsst::pex::exceptions::LogicErrorException,
                         (boost::format("k %1% value out of range. Check SersicCachePolicy")%k).str()
                     );
                 }
-                ndarray::viewAsEigen(*j).end<1>() << static_cast<std::complex<Pixel> >(
-                    radiusFunctor->d(morphology->getSersicIndex())
-                );    
+                ndarray::viewAsEigen(*j).end<1>() << static_cast<std::complex<Pixel> >(dN);    
             }        
         }
         _validProducts |= PROJECTED_PARAMETER_DERIVATIVE;

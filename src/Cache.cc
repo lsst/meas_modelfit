@@ -42,12 +42,6 @@ namespace pexLog = lsst::pex::logging;
 
 namespace {
 
-//helper function to determine the difference between element i+1 and i
-//of vetor r
-double const getStep(int const &i, Eigen::VectorXd const& r) {
-    return r[i+1] - r[i];
-}
-
 class DefaultInterpolationFunctionFactory : public multifit::InterpolationFunctionFactory {
 public:
 
@@ -58,12 +52,11 @@ public:
 protected:
 
     virtual multifit::InterpolationFunction::ConstPtr execute(
-        Eigen::VectorXd const & x,
-        Eigen::VectorXd const & y
+        double const min, double const max, double const step,
+        Eigen::VectorXd const & values
     ) const {
-        return boost::make_shared<multifit::InterpolationFunction>(x, y);
+        return boost::make_shared<multifit::InterpolationFunction>(min, max, step, values);
     }
-
 };
 
 DefaultInterpolationFunctionFactory::Registration DefaultInterpolationFunctionFactory::registration(
@@ -102,25 +95,20 @@ multifit::InterpolationFunctionFactory::InterpolationFunctionFactory(
 ) : _name(name), _extraParameterSize(extraParameterSize) {}
 
 multifit::InterpolationFunction::ConstPtr multifit::InterpolationFunctionFactory::operator()(
-    Eigen::VectorXd const & x,
-    Eigen::VectorXd const & y
+    double const min, double const max, double const step,
+    Eigen::VectorXd const & values
 ) const {
-    if (x.size() < 2) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Not enough points. At least 2 data points needed"
-        );
-    }
-    if (y.size() != x.size() + getExtraParameterSize()) {
+    int n = int((max-min)/step) + 1;
+    if (values.size() != n + getExtraParameterSize()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             boost::str(
-                boost::format("Length of vector x (%d) plus extra parameter size (%d) must match"
-                              " length of vector y (%d).") % x.size() % getExtraParameterSize() % y.size()
+                boost::format(" Number of bins in fast dimension (%d) plus extra parameter size (%d) must match"
+                              " length of vector values (%d).") % n % getExtraParameterSize() % values.size()
             )
         );
     }
-    return execute(x, y);
+    return execute(min, max, step, values);
 }
 
 std::map<std::string, multifit::Cache::Ptr> multifit::Cache::_registry;
@@ -130,11 +118,11 @@ multifit::Cache::ConstPtr multifit::Cache::get(std::string const & name) {
 }
 
 multifit::Cache::ConstPtr multifit::Cache::make(
-    lsst::afw::geom::BoxD const & parameterBounds,
-    lsst::afw::geom::Extent2D const & resolution,
+    double const slowMin, double const slowMax,
+    double const fastMin, double const fastMax,
+    int const nSlow, int const nFast,
     FillFunction const * fillFunction,
-    FunctorFactory::ConstPtr const & rowFunctorFactory,
-    FunctorFactory::ConstPtr const & colFunctorFactory,
+    InterpolatorFactory::ConstPtr const & interpolatorFactory,
     std::string const & name,
     bool const & doOverwrite
 ) {
@@ -145,8 +133,13 @@ multifit::Cache::ConstPtr multifit::Cache::make(
             return i->second;
         }
     }
-    Ptr cache(new Cache(parameterBounds, resolution, fillFunction, rowFunctorFactory, colFunctorFactory));
-
+    Ptr cache(
+        new Cache(
+            slowMin, slowMax, fastMin, fastMax, 
+            nSlow, nFast, 
+            fillFunction, interpolatorFactory
+        )
+    );
     if(doOverwrite && !name.empty()) {
             _registry[name] = cache;
     }
@@ -180,82 +173,42 @@ multifit::Cache::ConstPtr multifit::Cache::load(
 
 
 multifit::Cache::Cache(
-    lsst::afw::geom::BoxD const & parameterBounds,
-    lsst::afw::geom::Extent2D const & resolution,
+    double const slowMin, double const slowMax,
+    double const fastMin, double const fastMax,
+    int const nSlow, int const nFast,
     FillFunction const * fillFunction,
-    FunctorFactory::ConstPtr const & rowFunctorFactory,
-    FunctorFactory::ConstPtr const & colFunctorFactory
-) : _parameterBounds(parameterBounds),
-    _xStep(resolution.getX()),
-    _yStep(resolution.getY()),
-    _rowFunctorFactory(rowFunctorFactory),
-    _colFunctorFactory(colFunctorFactory)
+    InterpolatorFactory::ConstPtr const & interpolatorFactory
+) : _slowMin(slowMin), _slowMax(slowMax), _fastMin(fastMin), _fastMax(fastMax),
+    _slowStep((slowMax-slowMin)/nSlow), _fastStep((fastMax-fastMin)/nFast),
+    _interpolatorFactory(interpolatorFactory),
+    _dataPoints(nSlow+1, nFast+1+interpolatorFactory->getExtraParameterSize())
 {
     pexLog::Debug debug("lsst.meas.multifit.Cache");
-
-    if(_xStep > parameterBounds.getWidth() || 
-       _yStep > parameterBounds.getHeight()
-    ) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Requested resolution exceed size of parameter Bounds"
-        );
+    if(!interpolatorFactory) {
+        _interpolatorFactory->get("");
     }
-    
-    int nRow = static_cast<int>(_parameterBounds.getHeight()/_yStep);
-    int nCol = static_cast<int>(_parameterBounds.getWidth()/_xStep);
-    
-    //allocate necesary space (note the +1 in order to be inclusive of upper
-    //parameter bounds
-    _x = Eigen::VectorXd(nCol + 1);
-    _y = Eigen::VectorXd(nRow + 1);
-    _dataPoints = Eigen::MatrixXd(
-        _y.size() + _colFunctorFactory->getExtraParameterSize(), 
-        _x.size() + _rowFunctorFactory->getExtraParameterSize()
-    );
-
-    //fill in the headers
-    double x = _parameterBounds.getMinX();
-    double * xIter = _x.data();
-    for(int i = 0; i < nCol; ++i, ++xIter) {
-        *xIter = x;
-        x += resolution.getX();
-    }
-    *xIter = _parameterBounds.getMaxX();
-
-    double y = _parameterBounds.getMinY();
-    double * yIter = _y.data();
-    for(int i = 0; i < nRow; ++i, ++yIter) {
-        *yIter = y;
-        y += resolution.getY();
-    }
-    *yIter = _parameterBounds.getMaxY();
 
     //compute the data points
-    //outer loop over rows
-    yIter = _y.data();
-    for(int i = 0; i < _y.size(); ++i, ++yIter) {
-        xIter = _x.data();
-        debug.debug<5>("Filling row %d of %d.", i, _y.size());
-        //inner loop over columns        
-        for (int j = 0; j < _x.size(); ++j, ++xIter) {
+    //outer loop over slow dimension
+    int nRows = nSlow+1, nCols = nFast+1;
+
+    double slow=slowMin;
+    for(int i = 0; i < nRows; ++i, slow+=_slowStep) {
+        double fast = fastMin;
+        debug.debug<5>("Filling row %d of %d.", i, nRows);
+        //inner loop over fast dimension 
+        for (int j = 0; j < nCols; ++j, fast += _fastStep) {
             //set grid point
             debug.debug<8>("Filling item %d of %d (column %d of %d).",
-                           i*_x.size() + j, (_x.size() * _y.size()), j, _x.size());
-            _dataPoints(i,j) = (*fillFunction)(*xIter, *yIter);
+                           i*nCols + j, nCols * nRows, j, nCols);
+            _dataPoints(i,j) = (*fillFunction)(slow, fast);
         }
     }
 
-    yIter = _y.data();
-    for(int i = 0; i < _y.size(); ++i, ++yIter) {
-        debug.debug<5>("Filling extra parameters for row %d of %d.", i, _y.size());
-        _rowFunctorFactory->fillExtraParameters(_x, *yIter, _dataPoints.row(i), *fillFunction);
-    }
-    
-    xIter = _x.data();
-    for (int j = 0; j < _x.size(); ++j, ++xIter) {
-        debug.debug<5>("Filling extra parameters for column %d of %d.", j, _x.size());
-        _colFunctorFactory->fillExtraParameters(*xIter, _y, _dataPoints.col(j), *fillFunction);
+    slow = slowMin;
+    for(int i = 0; i < nRows; ++i, slow += _slowStep) {
+        debug.debug<5>("Filling extra parameters for row %d of %d.", i, nRows);
+        _interpolatorFactory->fillExtraParameters(fastMax, slow, _dataPoints.row(i), *fillFunction);
     }
 }
 void multifit::Cache::save(std::string const & filepath) const {
@@ -264,132 +217,68 @@ void multifit::Cache::save(std::string const & filepath) const {
     oa << *this;
 }
 
-multifit::Cache::Functor::ConstPtr multifit::Cache::getRowFunctor(
-    double const & y
+multifit::Cache::Interpolator::ConstPtr multifit::Cache::getInterpolator(
+    double const slow
 ) const {
-    if (y < _parameterBounds.getMinY() || y >= _parameterBounds.getMaxY()) {
+    if (slow < _slowMin || slow >= _slowMax) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             (boost::format("Operand value %1% is outside of valid range [%2%, %3%)")%
-                y % _parameterBounds.getMinY() % _parameterBounds.getMaxY()).str()
+                slow % _slowMin % _slowMax).str()
         );
     }
 
-    int i = static_cast<int>((y - _parameterBounds.getMinY()) / _yStep);
-    double s = (y - _y[i])/::getStep(i, _y);
+    int i = static_cast<int>((slow - _slowMin) / _slowStep);
+    double s = (slow - (_slowMin+_slowStep*i))/_slowStep;
 
     Eigen::VectorXd r(_dataPoints.row(i)*(1 - s) + _dataPoints.row(i+1)*s);
-    return (*_rowFunctorFactory)(_x, r);
+    return (*_interpolatorFactory)(_fastMin, _fastMax, _fastStep, r);
 }
 
-multifit::Cache::Functor::ConstPtr multifit::Cache::getRowDerivativeFunctor(
-    double const & y
+multifit::Cache::Interpolator::ConstPtr multifit::Cache::getDerivativeInterpolator(
+    double const slow
 ) const {
-    if (y < _parameterBounds.getMinY() || y >= _parameterBounds.getMaxY()) {
+    if (slow < _slowMin || slow >= _slowMax) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             (boost::format("Operand value %1% is outside of valid range [%2%, %3%)")%
-                y % _parameterBounds.getMinY() % _parameterBounds.getMaxY()).str()
+                slow % _slowMin % _slowMax).str()
         );
     }
 
-    int i = static_cast<int>((y - _parameterBounds.getMinY()) / _yStep);
-    Eigen::VectorXd r((_dataPoints.row(i+1) - _dataPoints.row(i))/::getStep(i, _y));
-    return (*_rowFunctorFactory)(_x, r);
-}
-
-multifit::Cache::Functor::ConstPtr multifit::Cache::getColFunctor(
-    double const & x
-) const {
-    if (x < _parameterBounds.getMinX() || x >= _parameterBounds.getMaxX()) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            (boost::format("Operand value %1% is outside of valid range [%2%, %3%)")%
-                x % _parameterBounds.getMinX() % _parameterBounds.getMaxX()).str()
-        );
-    }
-
-    int i = static_cast<int>((x - _parameterBounds.getMinX()) / _xStep);
-    double s = (x - _x[i])/::getStep(i, _x);
-
-    Eigen::VectorXd r(_dataPoints.col(i)*(1 - s) + _dataPoints.col(i+1)*s);
-    return (*_colFunctorFactory)(_y, r);
-}
-
-multifit::Cache::Functor::ConstPtr multifit::Cache::getColDerivativeFunctor(
-    double const & x
-) const {
-    if (x < _parameterBounds.getMinX() || x >= _parameterBounds.getMaxX()) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            (boost::format("Operand value %1% is outside of valid range [%2%, %3%)")%
-                x % _parameterBounds.getMinX() % _parameterBounds.getMaxX()).str()
-        );
-    }
-
-    int i = static_cast<int>((x - _parameterBounds.getMinX()) / _xStep);
-    Eigen::VectorXd r((_dataPoints.col(i+1) - _dataPoints.col(i))/::getStep(i, _x));
-    return (*_colFunctorFactory)(_y, r);
+    int i = static_cast<int>((slow - _slowMin) / _slowStep);
+    Eigen::VectorXd r((_dataPoints.row(i+1) - _dataPoints.row(i))/ _slowStep);
+    return (*_interpolatorFactory)(_fastMin, _fastMax, _fastStep, r);
 }
 
 template <class Archive>
 void multifit::Cache::serialize(Archive & ar, unsigned int const) {
-    ar & _xStep;
-    ar & _yStep;
+    ar & _slowStep;
+    ar & _fastStep;
+    ar & _slowMin;
+    ar & _slowMax;
+    ar & _fastMin;
+    ar & _fastMax;
 
     if (Archive::is_loading::value) {
-        double x, y, width, height;
-        std::string rowInterpolator, colInterpolator;
-        ar & x;
-        ar & y;
-        ar & width;
-        ar & height;
-        ar & rowInterpolator;
-        ar & colInterpolator;
+        std::string interpolator;
+        ar & interpolator;
 
-        lsst::afw::geom::Point2D min = lsst::afw::geom::Point2D::make(x, y);
-        lsst::afw::geom::Extent2D dim = lsst::afw::geom::Extent2D::make(width, height);
-        _parameterBounds = lsst::afw::geom::BoxD(min, dim);
-        _rowFunctorFactory = InterpolationFunctionFactory::get(rowInterpolator);
-        _colFunctorFactory = InterpolationFunctionFactory::get(colInterpolator);
+        _interpolatorFactory = InterpolationFunctionFactory::get(interpolator);
 
-        int nCol = width / _xStep + 1;
-        int nRow = height / _yStep + 1;
+        int nRow = getNSlow() + 1;
+        int nCol = getNFast() + 1 + _interpolatorFactory->getExtraParameterSize();
 
-        _dataPoints = Eigen::MatrixXd(
-            nRow + _colFunctorFactory->getExtraParameterSize(),
-            nCol + _rowFunctorFactory->getExtraParameterSize()
-        );
-        _x = Eigen::VectorXd(nCol);
-        _y = Eigen::VectorXd(nRow);
+        _dataPoints = Eigen::MatrixXd(nRow, nCol);
     }
     else {
-        double x = _parameterBounds.getMinX();
-        double y = _parameterBounds.getMinY();
-        double width = _parameterBounds.getWidth();
-        double height = _parameterBounds.getHeight();
-        std::string rowInterpolator = _rowFunctorFactory->getName();
-        std::string colInterpolator = _colFunctorFactory->getName();
-
-        ar & x;
-        ar & y;
-        ar & width;
-        ar & height;
-        ar & rowInterpolator;
-        ar & colInterpolator;
+        std::string interpolator = _interpolatorFactory->getName();
+        ar & interpolator;
     }
     
     double * iData = _dataPoints.data();
     for(int i =0; i < _dataPoints.size(); ++i, ++iData) {
         ar & *iData;
-    }
-    double *iX = _x.data();
-    for (int i =0; i < _x.size(); ++i, ++iX) {
-        ar & *iX;
-    }
-    double *iY = _y.data();
-    for (int i =0; i < _y.size(); ++i, ++iY) {
-        ar & *iY;
     }
 }
 
@@ -399,52 +288,38 @@ template void multifit::Cache::serialize<boost::archive::text_oarchive> (
 template void multifit::Cache::serialize<boost::archive::text_iarchive> (
     boost::archive::text_iarchive &, unsigned int const
 );
-double multifit::InterpolationFunction::operator() (double x) const {
-    int i = static_cast<int>((x - _x[0]) / _step);    
-    if (i < 0 || i >= _x.size() - 1) {
+
+double multifit::InterpolationFunction::operator() (double point) const {
+    if (point < _min || point >= _max) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             (boost::format("Operand value (%1%) is outside of valid range [%2%, %3%)")%
-                x % _x[0] % _x[_x.size()-1]).str()
+                point % _min % _max).str()
         );
     }
+    int i = static_cast<int>((point - _min) / _step);    
 
-    double w1 = (x - _x[i])/::getStep(i, _x);
+
+    double w1 = (point - (_min + _step*i))/_step;
     double w0 = 1 - w1;
-    double p0 = _params[i];
-    double p1 = _params[i+1];
+    double v0 = _values[i];
+    double v1 = _values[i+1];
 
-    return w0*p0 + w1*p1;
+    return w0*v0 + w1*v1;
 }
 
-double multifit::InterpolationFunction::d(double x) const {
-    int i = static_cast<int>((x - _x[0]) / _step);    
-    if (i < 0 || i >= _x.size()) {
+double multifit::InterpolationFunction::d(double point) const {
+    if (point < _min || point >= _max) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             (boost::format("Operand value (%1%) is outside of valid range [%2%, %3%)")%
-                x % _x[0] % _x[_x.size()-1]).str()
+                point % _min % _max).str()
         );
     }
-    double p0 = _params[i];
-    double p1 = _params[i+1];
+    int i = static_cast<int>((point - _min) / _step);    
+
+    double v0 = _values[i];
+    double v1 = _values[i+1];
      
-    return (p1 - p0)/ ::getStep(i, _x);
+    return (v1 - v0)/_step;
 }
-
-multifit::InterpolationFunction::InterpolationFunction(
-    Eigen::VectorXd const & x, 
-    std::vector<double> const & y
-) : Base(y), _x(x), _step(_x[1] - _x[0]) {}
-
-multifit::InterpolationFunction::InterpolationFunction(
-    Eigen::VectorXd const & x,
-    Eigen::VectorXd const & y 
-) : Base(y.size()), _x(x), _step(_x[1] - _x[0]) {
-    std::copy(y.data(), y.data() + y.size(), _params.begin());
-}
-
-multifit::InterpolationFunction::Base::Ptr multifit::Cache::Functor::clone() const {
-    return boost::make_shared<InterpolationFunction>(_x, _params);
-}
-

@@ -39,29 +39,22 @@ namespace meas{
 namespace multifit {
 
 #ifndef SWIG
-class InterpolationFunction : public lsst::afw::math::Function1<double> {
+class InterpolationFunction {
 public:
-    typedef lsst::afw::math::Function1<double> Base;
     typedef boost::shared_ptr<InterpolationFunction> Ptr;
     typedef boost::shared_ptr<InterpolationFunction const> ConstPtr;
 
     InterpolationFunction(
-        Eigen::VectorXd const & x, 
-        std::vector<double> const & y
-    );
-    InterpolationFunction(
-        Eigen::VectorXd const & x,
-        Eigen::VectorXd const & y 
-    );
+        double const min, double const max, double const step,
+        Eigen::VectorXd const & values 
+    ) : _min(min), _max(max), _step(step), _values(values) {}
 
-    virtual Base::Ptr clone() const;
     virtual double operator() (double x) const;
     virtual double d(double x) const;
 
 protected:
-
-    Eigen::VectorXd _x;
-    double _step;
+    double _min, _max, _step;
+    Eigen::VectorXd _values;
 };
 
 class InterpolationFunctionFactory : private boost::noncopyable {
@@ -81,21 +74,14 @@ public:
     int getExtraParameterSize() const { return _extraParameterSize; }
     
     InterpolationFunction::ConstPtr operator()(
-        Eigen::VectorXd const & x,
-        Eigen::VectorXd const & y
+        double const min, double const max, double const step,
+        Eigen::VectorXd const & values
     ) const;
 
     virtual void fillExtraParameters(
-        Eigen::VectorXd const & x, 
-        double y,
+        double const fastMax, 
+        double const slow,
         Eigen::MatrixXd::RowXpr row, 
-        lsst::afw::math::Function2<double> const & fillFunction
-    ) const {}
-
-    virtual void fillExtraParameters(
-        double x,
-        Eigen::VectorXd const & y, 
-        Eigen::MatrixXd::ColXpr col, 
         lsst::afw::math::Function2<double> const & fillFunction
     ) const {}
 
@@ -105,8 +91,8 @@ protected:
     explicit InterpolationFunctionFactory(std::string const & name, int extraParameterSize);
 
     virtual InterpolationFunction::ConstPtr execute(
-        Eigen::VectorXd const & x,
-        Eigen::VectorXd const & y
+        double const min, double const mac, double const step,
+        Eigen::VectorXd const & values
     ) const = 0;
 
     typedef std::map<std::string, InterpolationFunctionFactory::Ptr> Registry; 
@@ -126,16 +112,16 @@ public:
     typedef boost::shared_ptr<Cache const> ConstPtr;
     typedef lsst::afw::math::Function2<double> FillFunction;
 
-    typedef InterpolationFunction Functor;
-    typedef InterpolationFunctionFactory FunctorFactory;
+    typedef InterpolationFunction Interpolator;
+    typedef InterpolationFunctionFactory InterpolatorFactory;
 
     static ConstPtr get(std::string const & name);
-    static ConstPtr make( 
-        lsst::afw::geom::BoxD const & parameterBounds,
-        lsst::afw::geom::Extent2D const & resolution,
+    static ConstPtr make(
+        double const slowMin, double const slowMax,
+        double const fastMin, double const fastMax,
+        int const nSlow, int const nFast,
         FillFunction const * fillFunction,
-        FunctorFactory::ConstPtr const & rowFunctorFactory,
-        FunctorFactory::ConstPtr const & colFunctorFactory,
+        InterpolatorFactory::ConstPtr const & interpolatorFactory,
         std::string const & name="", 
         bool const & doOverwrite=true
     );
@@ -147,19 +133,21 @@ public:
     void save(std::string const & filepath) const;
 
 #ifndef SWIG
-    Cache::Functor::ConstPtr getRowFunctor(double const & y) const;
-    Cache::Functor::ConstPtr getRowDerivativeFunctor(double const & y) const;
-    Cache::Functor::ConstPtr getColFunctor(double const & x) const;
-    Cache::Functor::ConstPtr getColDerivativeFunctor(double const & x) const;
-
-    Eigen::VectorXd const & getColHeaders() const {return _x;}
-    Eigen::VectorXd const & getRowHeaders() const {return _y;}
-    
-    lsst::afw::geom::BoxD const & getParameterBounds() const {
-        return _parameterBounds;
-    }
+    Cache::Interpolator::ConstPtr getInterpolator(double const slow) const;
+    Cache::Interpolator::ConstPtr getDerivativeInterpolator(double const slow) const;
 #endif
+
+    double const getSlowMin() const {return _slowMin;}
+    double const getSlowMax() const {return _slowMax;}
+    double const getFastMin() const {return _fastMin;}
+    double const getFastMax() const {return _fastMax;}
+    double const getSlowStep() const {return _slowStep;}
+    double const getFastStep() const {return _fastStep;}
+    int const getNSlow() const {return int((_slowMax - _slowMin)/_slowStep);}
+    int const getNFast() const {return int((_fastMax - _fastMin)/_fastStep);}
+
     Eigen::MatrixXd const & getDataPoints() const {return _dataPoints;}
+
 private:
     friend class boost::serialization::access;
 
@@ -167,23 +155,21 @@ private:
     void serialize(Archive & ar, unsigned int const);
     
     Cache(
-        lsst::afw::geom::BoxD const & parameterBounds,
-        lsst::afw::geom::Extent2D const & resolution,
+        double const slowMin, double const slowMax,
+        double const fastMin, double const fastMax,
+        int const nSlow, int const nFast,
         FillFunction const * fillFunction,
-        FunctorFactory::ConstPtr const & rowFunctorFactory,
-        FunctorFactory::ConstPtr const & colFunctorFactory
+        InterpolatorFactory::ConstPtr const & interpolatorFactory
     );
 
     Cache(){};
 
     Eigen::MatrixXd _dataPoints;
-    Eigen::VectorXd _x, _y;
 
-    lsst::afw::geom::BoxD _parameterBounds;
-    double _xStep, _yStep;
-    
-    FunctorFactory::ConstPtr _rowFunctorFactory;
-    FunctorFactory::ConstPtr _colFunctorFactory;
+    InterpolatorFactory::ConstPtr _interpolatorFactory;
+
+    double _slowMin, _slowMax, _fastMin, _fastMax;
+    double _slowStep, _fastStep;
 
     static std::map<std::string, Ptr> _registry;
 };

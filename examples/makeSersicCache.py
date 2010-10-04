@@ -15,6 +15,7 @@ def makeCache():
     if (len(sys.argv) > 1):
         cache.save(sys.argv[1])
 
+    bounds = cache.getParameterBounds()
     data = cache.getDataPoints()
     image = afwImage.ImageD(data.shape[0], data.shape[1])
     for i in range(image.getWidth()):

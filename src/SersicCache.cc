@@ -73,16 +73,16 @@ double multifit::SersicCacheFillFunction::sersicFunction(
     return (radius*j0.val*((std::exp(exponent) - cutoff)) / temp.getNorm());
 }
 
-double multifit::SersicCacheFillFunction::operator() (double x, double y) const {       
+double multifit::SersicCacheFillFunction::operator() (double sersic, double k) const {       
     gsl_function func;
     func.function = sersicFunction;
     func.params = static_cast<void*>(&_params);
 
     // compute parameter dimensions, and allocate grid
-    if(y != _lastY) {
-        _params.setN(y);
+    if(sersic != _lastSersic) {
+        _params.setN(sersic);
     } 
-    _params.setK(x);
+    _params.setK(k);
 
     double result, abserr;
     gsl_error_handler_t * oldErrorHandler = gsl_set_error_handler_off();
@@ -111,20 +111,6 @@ multifit::Cache::ConstPtr multifit::makeSersicCache(lsst::pex::policy::Policy po
     lsst::pex::policy::Policy defPol(defSource);
     policy.mergeDefaults(defPol);
 
-    lsst::afw::geom::Extent2D resolution = lsst::afw::geom::makeExtentD(
-        policy.getDouble("kResolution"), 
-        policy.getDouble("sersicIndexResolution")
-    );
-    lsst::afw::geom::BoxD bounds(
-        lsst::afw::geom::makePointD(
-            policy.getDouble("kMin"), 
-            policy.getDouble("sersicIndexMin")
-        ),
-        lsst::afw::geom::makePointD(
-            policy.getDouble("kMax"),
-            policy.getDouble("sersicIndexMax")
-        )
-    );
     SersicCacheFillFunction::Options options;
     std::string radiusString = policy.getString("radius");
     if (radiusString == "HALF_INTEGRAL") {
@@ -149,9 +135,11 @@ multifit::Cache::ConstPtr multifit::makeSersicCache(lsst::pex::policy::Policy po
     );
 
     return Cache::make(
-        bounds, resolution, &fillFunction, 
-        Cache::FunctorFactory::get(""), 
-        Cache::FunctorFactory::get(""),
+        policy.getDouble("sersicMin"), policy.getDouble("sersicMax"),
+        policy.getDouble("kMin"), policy.getDouble("kMax"),
+        policy.getInt("nBinSersic"), policy.getInt("nBinK"),
+        &fillFunction, 
+        Cache::InterpolatorFactory::get(""), 
         "Sersic", false
     );
 }

@@ -65,29 +65,21 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     //define ellipse in pixel coordinates
     geom::ellipses::Axes axes(30, 15, 1.3);
 
-    geom::PointD crPix(0), crVal(centroid);
-    Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity());
-    image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
-
     //transform ellipse to sky coordinates
-    geom::AffineTransform transform(wcs->linearizePixelToSky(centroid));
-    axes.transform(transform).inPlace();
+    geom::AffineTransform transform;
     
     multifit::Model::Ptr model = 
         multifit::ModelFactory::createExponentialModel(flux, centroid, axes);
     //    multifit::ModelFactory::createPointSourceModel(flux, centroid);
     detection::Psf::Ptr psf = detection::createPsf("DoubleGaussian", 19, 19, 2);
 
-    CONST_PTR(detection::Footprint) fp(model->computeProjectionFootprint(psf, wcs));
+    CONST_PTR(detection::Footprint) fp(model->computeProjectionFootprint(psf, transform));
     image::BBox bbox = fp->getBBox();
     
-    image::Exposure<double> exposure(bbox.getWidth(), bbox.getHeight(), *wcs);
-    exposure.setPsf(psf);
-    lsst::afw::image::MaskedImage<double> mi = exposure.getMaskedImage();
+    image::MaskedImage<double> mi(bbox.getWidth(), bbox.getHeight());
     mi.setXY0(bbox.getX0(), bbox.getY0());
-    *mi.getMask() = 0;
 
-    multifit::ModelProjection::Ptr projection(model->makeProjection(psf, wcs, fp));
+    multifit::ModelProjection::Ptr projection(model->makeProjection(psf, transform, fp));
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
     ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
     variance = 0.5*0.5;
@@ -99,12 +91,9 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     math::randomGaussianImage<image::Image<double> >(&randomImg, random);
     *mi.getImage() += randomImg;
 
-    std::list<image::Exposure<double> > exposureList;
-    for(int i=0; i < 5; ++i) {
-        exposureList.push_back(exposure);
-    }
-    multifit::ModelEvaluator::Ptr evaluator(new multifit::ModelEvaluator(model));
-    evaluator->setExposures(exposureList);
+    multifit::ModelEvaluator::Ptr evaluator(
+        new multifit::ModelEvaluator(model, transform));
+    evaluator->setData(mi, psf, transform);
        
     std::vector<double> errors(
         evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize(),

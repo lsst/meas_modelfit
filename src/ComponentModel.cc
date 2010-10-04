@@ -35,33 +35,17 @@ namespace afwMath = lsst::afw::math;
 
 afwDet::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
     afwDet::Psf::ConstPtr const & psf,
-    afwImg::Wcs::ConstPtr const & wcs
-) const {
-    afwGeom::AffineTransform transform(wcs->linearizeSkyToPixel(computePosition()));
-    
-    return computeProjectionFootprint(psf, transform);
-}
-
-afwDet::Footprint::Ptr multifit::ComponentModel::computeProjectionFootprint(
-    afwDet::Psf::ConstPtr const & psf,
-    afwGeom::AffineTransform const & wcsTransform
+    afwGeom::AffineTransform const & transform
 ) const {
     afwGeom::ellipses::Ellipse::Ptr ellipse(computeBoundingEllipse());
-    ellipse->transform(wcsTransform).inPlace();
+    ellipse->transform(transform).inPlace();
+
     if (psf) {
         afwMath::Kernel::ConstPtr kernel = psf->getKernel();
         int kernelSize = std::max(kernel->getWidth(), kernel->getHeight());
         ellipse->grow(kernelSize/2+1);
     }
     return makeFootprint(*ellipse);
-}
-afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
-    afwDet::Psf::ConstPtr const & psf,
-    afwImg::Wcs::ConstPtr const & wcs
-) const {
-    afwGeom::AffineTransform wcsTransform(wcs->linearizeSkyToPixel(computePosition()));
-   
-    return computeProjectionEnvelope(psf, wcsTransform);
 }
 
 afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
@@ -78,8 +62,7 @@ afwGeom::BoxD multifit::ComponentModel::computeProjectionEnvelope(
     return ellipse->computeEnvelope();
 }
 afwGeom::ellipses::Ellipse::Ptr multifit::ComponentModel::computeBoundingEllipse() const {
-    afwGeom::Point2D point = computePosition()->getPosition();
-    return _morphology->computeBoundingEllipseCore()->makeEllipse(point);
+    return _morphology->computeBoundingEllipseCore()->makeEllipse(getPosition());
 }
 
 void multifit::ComponentModel::_handleLinearParameterChange() {
@@ -89,21 +72,6 @@ void multifit::ComponentModel::_handleLinearParameterChange() {
 void multifit::ComponentModel::_handleNonlinearParameterChange() {
     _astrometry->_handleParameterChange();
     _morphology->_handleNonlinearParameterChange();
-}
-
-multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
-    afwDet::Psf::ConstPtr const & psf,
-    afwImg::Wcs::ConstPtr const & wcs,
-    CONST_PTR(afwDet::Footprint) const & footprint
-) const {
-    ModelProjection::Ptr projection(
-        new FourierModelProjection(
-            boost::static_pointer_cast<ComponentModel const>(shared_from_this()),
-            psf, wcs, footprint 
-        )
-    );
-    _registerProjection(projection);
-    return projection;
 }
 
 multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
@@ -121,22 +89,19 @@ multifit::ModelProjection::Ptr multifit::ComponentModel::makeProjection(
     return projection;
 }
 /**
- * Initialize the ComponentModel, initialize (does not set parameters).
- *
+ * Initialize the ComponentModel 
  * The number of nonlinear parameters in a ComponentModel
- * is determined by its components. The ComponentModel also clones the
- * astrometryTemplate and morphologyTemplate for future use.
+ * is determined by its components. 
  *
- * @param linearParameterSize used to initialize linear parameter vector
- * @param astrometryTemplate store clone in order to make sense of nonlinear
- *        parameters
- * @param morphologyTemplate store clone in order to make sense of nonlinear
- *        parameters
+ * @param astrometry determines the astrometry component 
+ * @param morphology determines the morphology componente
+ * @param initializeParameters if true, the models parameter vectors will be
+ *      initialized from the values in the input arguments
  */
 multifit::ComponentModel::ComponentModel(
     components::Astrometry::ConstPtr const & astrometry,
     components::Morphology::ConstPtr const & morphology,
-    bool initializeParameters=false
+    bool initializeParameters
 ) : Model(
         morphology->getLinearParameterSize(), 
         astrometry->getParameterSize() + morphology->getNonlinearParameterSize()
@@ -172,14 +137,19 @@ multifit::ComponentModel::ComponentModel(
 void multifit::ComponentModel::_initializeFromComponents(
     components::Astrometry::ConstPtr const & astrometry,
     components::Morphology::ConstPtr const & morphology,
-    bool copyParameters
+    bool initializeParameters
 ) {
-    if(copyParameters) {
-        std::copy(astrometry->begin(), astrometry->end(), _nonlinearParameters->data());
+    if(initializeParameters) {
+        int nAstrometry = astrometry->getParameterSize();
+        std::copy(
+            astrometry->begin(), 
+            astrometry->end(), 
+            _nonlinearParameters->data()
+        );
         std::copy(
             morphology->beginNonlinear(), 
             morphology->endNonlinear(), 
-            _nonlinearParameters->data() + astrometry->getParameterSize()
+            _nonlinearParameters->data()+nAstrometry
         );
         *_linearParameters << (morphology->getLinearParameters());
     }

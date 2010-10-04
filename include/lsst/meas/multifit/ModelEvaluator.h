@@ -41,6 +41,7 @@
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/footprintUtils.h"
+#include "lsst/afw/geom/AffineTransform.h"
 
 namespace lsst {
 namespace meas {
@@ -67,9 +68,13 @@ public:
      * @param nMinPix minimum number of pixels an exposure must contribute to 
      *      the model's projected footprint to be used
      */
-    explicit ModelEvaluator(Model::ConstPtr const & model, int const nMinPix=0) 
+    explicit ModelEvaluator(
+        Model::ConstPtr const & model, 
+        lsst::afw::geom::AffineTransform const &pixelToSky,
+        int const nMinPix=0) 
       : _validProducts(0),
-        _model(model->clone())
+        _model(model->clone()),
+        _pixelToSky(pixelToSky)
     {
         setMinPixels(nMinPix);
     }
@@ -83,9 +88,15 @@ public:
     void setData(
         std::list<MaskedImageT> const & imageList,
         std::list<lsst::afw::detection::Psf::ConstPtr> const & psfList,
-        std::list<lsst::afw::geom::AffineTransform> const & skyToPixelTransformList
+        std::list<lsst::afw::geom::AffineTransform> const & skyToPixelList
     );
 
+    template <typename MaskedImageT>
+    void setData(
+        MaskedImageT const  & image, 
+        CONST_PTR(lsst::afw::detection::Psf) const & psf,
+        lsst::afw::geom::AffineTransform const &skyToPixel
+    );
 #ifndef SWIG
     /**
      * Vector of image data from all contributing pixels from all the exposures
@@ -264,6 +275,7 @@ private:
     int _validProducts;
     Model::Ptr _model;    
     ProjectionList _projectionList;
+    lsst::afw::geom::AffineTransform _pixelToSky;
     
     ndarray::Array<Pixel, 1, 1> _dataVector;
     ndarray::Array<Pixel, 1, 1> _varianceVector;    

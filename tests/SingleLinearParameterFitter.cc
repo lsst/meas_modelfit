@@ -65,21 +65,18 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
 
 
     geom::PointD crPix(0), crVal(centroid);
-    Eigen::Matrix2d cdMatrix(Eigen::Matrix2d::Identity()*0.0001);
-    image::Wcs::Ptr wcs = boost::make_shared<image::Wcs> (crVal, crPix, cdMatrix);
 
+    geom::AffineTransform transform;
     detection::Psf::Ptr psf = detection::createPsf("DoubleGaussian", 19, 19, 2);
-    CONST_PTR(detection::Footprint) fp(psModel->computeProjectionFootprint(psf, wcs));
+    CONST_PTR(detection::Footprint) fp(psModel->computeProjectionFootprint(psf, transform));
     image::BBox bbox = fp->getBBox();
     
-    image::Exposure<double> exposure(bbox.getWidth(), bbox.getHeight(), *wcs);
-    exposure.setPsf(psf);
-    lsst::afw::image::MaskedImage<double> mi = exposure.getMaskedImage();
+    image::MaskedImage<double> mi(bbox.getWidth(), bbox.getHeight());
     mi.setXY0(bbox.getX0(), bbox.getY0());
     *mi.getMask() = 0;
 
     multifit::ModelProjection::Ptr projection(
-        psModel->makeProjection(psf, wcs, fp)
+        psModel->makeProjection(psf, transform, fp)
     );
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(
         projection->computeModelImage()
@@ -91,12 +88,8 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
 
     multifit::expandImage(*fp, mi, modelImage, variance);
 
-    std::list<image::Exposure<double> > exposureList;
-    for(int i=0; i < 5; ++i) {
-        exposureList.push_back(exposure);
-    }
-    multifit::ModelEvaluator evaluator(psModel);
-    evaluator.setExposures(exposureList);
+    multifit::ModelEvaluator evaluator(psModel, transform);
+    evaluator.setData(mi, psf, transform);
        
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
     fitterPolicy->add("terminationType", "iteration");    

@@ -63,29 +63,17 @@ public:
 
     virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs
-    ) const;
-
-    virtual lsst::afw::detection::Footprint::Ptr computeProjectionFootprint(
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::geom::AffineTransform const & wcsTransform
+        lsst::afw::geom::AffineTransform const & transform
     ) const;
 
     virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs
-    ) const;
-    virtual lsst::afw::geom::BoxD computeProjectionEnvelope(
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::geom::AffineTransform const & wcsTransform
+        lsst::afw::geom::AffineTransform const & transform
     ) const;
 
     virtual lsst::afw::geom::ellipses::Ellipse::Ptr computeBoundingEllipse() const;
-    virtual lsst::afw::coord::Coord::ConstPtr computePosition() const {
-        lsst::afw::coord::Coord::Ptr coord = boost::make_shared<lsst::afw::coord::Coord>(
-            _astrometry->computePosition()
-        );
-        return coord;
+    virtual lsst::afw::geom::Point2D getPosition() const {
+        return _astrometry->computePosition();
     }
 
     virtual Model::Ptr clone() const { 
@@ -117,20 +105,14 @@ public:
 protected:
     virtual boost::shared_ptr<ModelProjection> makeProjection(
         lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs,
-        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
-    ) const;
-
-    virtual boost::shared_ptr<ModelProjection> makeProjection(
-        lsst::afw::detection::Psf::ConstPtr const & psf,
         lsst::afw::geom::AffineTransform const & transform,
         CONST_PTR(lsst::afw::detection::Footprint) const & footprint
     ) const;
 private:
-    explicit ComponentModel(    
+    explicit ComponentModel(
         lsst::meas::multifit::components::Astrometry::ConstPtr const & astrometry,
         lsst::meas::multifit::components::Morphology::ConstPtr const & morphology,
-        bool initializeParameters
+        bool initializeParameters=false
     );
     explicit ComponentModel(ComponentModel const & model);
 
@@ -138,7 +120,6 @@ private:
         lsst::meas::multifit::components::Astrometry::ConstPtr const & astrometryTemplate,
         lsst::meas::multifit::components::Morphology::ConstPtr const & morphologyTemplate,
         bool initializeParameters=false
-
     );
 
     /**

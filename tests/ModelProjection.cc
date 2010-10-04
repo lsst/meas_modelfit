@@ -59,20 +59,19 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
 
     geom::PointD centroid = geom::PointD::make(35,65);
     double flux = 34.45;
-    multifit::Model::Ptr psModel = 
-        multifit::ModelFactory::createPointSourceModel(flux, centroid);
+    geom::AffineTransform transform;
+    multifit::Model::Ptr psModel = multifit::ModelFactory::createPointSourceModel(
+        flux, centroid
+    );
     
     BOOST_CHECK_EQUAL(psModel->getLinearParameterSize(), 1);
     BOOST_CHECK_EQUAL(psModel->getNonlinearParameterSize(), 2);
-    CONST_PTR(image::Wcs) wcs = boost::make_shared<image::Wcs>( 
-        centroid, geom::makePointD(0,0), Eigen::Matrix2d::Identity()
-    );
 
     CONST_PTR(detection::Psf) psf = detection::createPsf("DoubleGaussian", 23, 23, 2.0);
-    CONST_PTR(detection::Footprint) fp = psModel->computeProjectionFootprint(psf, wcs);
+    CONST_PTR(detection::Footprint) fp = psModel->computeProjectionFootprint(psf, transform);
     
     BOOST_CHECK(fp->getNpix() > 0);
-    multifit::ModelProjection::Ptr projection = psModel->makeProjection(psf, wcs, fp);
+    multifit::ModelProjection::Ptr projection = psModel->makeProjection(psf, transform, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), psModel);
    
     multifit::ParameterVector linear(psModel->getLinearParameters());
@@ -91,20 +90,19 @@ BOOST_AUTO_TEST_CASE(FourierModelProjection) {
     BOOST_CHECK_NO_THROW(shallow(image) = projection->computeModelImage());
     BOOST_CHECK_EQUAL(image.size(), fp->getNpix());
     lsst::afw::image::BBox bbox = fp->getBBox();
-    lsst::afw::image::Exposure<multifit::Pixel> exp(
+    lsst::afw::image::MaskedImage<multifit::Pixel> mi(
         bbox.getWidth(), 
-        bbox.getHeight(), 
-        *wcs
+        bbox.getHeight() 
     );
-    exp.getMaskedImage().setXY0(bbox.getLLC());
-    lsst::afw::image::MaskedImage<multifit::Pixel> mi = exp.getMaskedImage();  
+    mi.setXY0(bbox.getLLC());
+
     multifit::expandImage<multifit::Pixel>(*fp, mi, image, image);
     detection::setMaskFromFootprint<lsst::afw::image::MaskPixel>(
         mi.getMask().get(), *fp, 1
     );
 
-    exp.getMaskedImage().getImage()->writeFits("psProjection_img.fits");
-    exp.getMaskedImage().getMask()->writeFits("psProjection_msk.fits");
+    mi.getImage()->writeFits("psProjection_img.fits");
+    mi.getMask()->writeFits("psProjection_msk.fits");
 
     BOOST_CHECK_NO_THROW(projection->computeLinearParameterDerivative());
     BOOST_CHECK_NO_THROW(projection->computeNonlinearParameterDerivative());

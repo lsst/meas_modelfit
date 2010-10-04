@@ -39,41 +39,16 @@ namespace multifit = lsst::meas::multifit;
  */
 multifit::ModelProjection::ModelProjection(
     Model::ConstPtr const & model,
-    lsst::afw::geom::AffineTransform const & skyToPixelTransform,
+    lsst::afw::geom::AffineTransform const & transform,
     boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
 ) : _validProducts(0),
     _model(model),
     _footprint(footprint), 
-    _wcs(),
-    _skyToPixelTransform(skyToPixelTransform),
+    _transform(transform),
     _modelImage(), 
     _linearParameterDerivative(), 
     _nonlinearParameterDerivative()
 {
-    if (_footprint->getNpix() <= 0) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Cannot create model projection with empty footprint."
-        );
-    }
-}
-multifit::ModelProjection::ModelProjection(
-    Model::ConstPtr const & model,
-    CONST_PTR(lsst::afw::image::Wcs) const & wcs,
-    boost::shared_ptr<lsst::afw::detection::Footprint const> const & footprint
-) : _validProducts(0),
-    _model(model),
-    _footprint(footprint), 
-    _wcs(wcs),
-    _modelImage(), 
-    _linearParameterDerivative(), 
-    _nonlinearParameterDerivative()
-{
-    if(wcs) {
-        lsst::afw::coord::Coord::ConstPtr pos = model->computePosition();
-        _skyToPixelTransform = wcs->linearizeSkyToPixel(pos);
-    }
-
     if (_footprint->getNpix() <= 0) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,

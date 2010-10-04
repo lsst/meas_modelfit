@@ -34,7 +34,7 @@ def makeModelImage(model, psf, affine, noiseFactor):
     return modelImage
 
 def makeModelExposure(model, psf, wcs, noiseFactor=0):
-    affine = wcs.linearizeSkyToPixel(model.computePosition())
+    affine = wcs.linearizeSkyToPixel(model.getPosition())
     modelImage = makeModelImage(model, psf, affine, noiseFactor)
     
     exp = afwImage.ExposureF(modelImage, wcs)
@@ -65,7 +65,7 @@ def computeGradient(modelEvaluator, checkNumericGradient):
         nonlinear = modelEvaluator.getNonlinearParameters()
         linear = modelEvaluator.getLinearParameters()
     
-        h = [1e-8, 1e-8, 1e-8]
+        h = [1e-4, 1e-4, 1e-4]
         
         columnVectors = []
         i = 0
@@ -125,7 +125,7 @@ def main():
     #model = measMult.createExponentialModel(flux, centroid, axes)
 
     modelImage = makeModelImage(model, psf, affine, 4.0)
-    eval = measMult.ModelEvaluator(model)
+    eval = measMult.ModelEvaluator(model, affine)
     exp = makeModelExposure(model, psf, wcs)
     expList = [exp]
 

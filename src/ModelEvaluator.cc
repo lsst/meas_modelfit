@@ -69,12 +69,68 @@ void multifit::ModelEvaluator::setExposures(
     for(ExposureIterator i(exposureList.begin()), end(exposureList.end()); i != end; ++i) {
         imageList.push_back(i->getMaskedImage());
         lsst::afw::image::Wcs::Ptr wcs = i->getWcs();
-        transformList.push_back(wcs->linearizeSkyToPixel(_model->computePosition()));
+        lsst::afw::geom::AffineTransform pixelToPixel = 
+            _pixelToSky*wcs->linearizeSkyToPixel(_model->getPosition());
+        transformList.push_back(pixelToPixel);
         psfList.push_back(i->getPsf());
     }
 
     setData<MaskedImageT>(imageList, psfList, transformList);
 }
+
+template <typename MaskedImageT>
+void multifit::ModelEvaluator::setData(
+    MaskedImageT const & image,
+    lsst::afw::detection::Psf::ConstPtr const & psf,
+    lsst::afw::geom::AffineTransform const & skyToPixel
+) {
+    typedef typename MaskedImageT::Mask Mask;
+    typedef typename Mask::Pixel MaskPixel;
+
+    MaskPixel bitmask = Mask::getPlaneBitMask("BAD") | 
+        Mask::getPlaneBitMask("INTRP") | Mask::getPlaneBitMask("SAT") | 
+        Mask::getPlaneBitMask("CR") | Mask::getPlaneBitMask("EDGE");
+
+    lsst::afw::geom::AffineTransform pixelToPixel = _pixelToSky*skyToPixel;
+
+    afwDet::Footprint::Ptr projectionFp = _model->computeProjectionFootprint(psf, pixelToPixel);
+    afwDet::Footprint::Ptr fixedFp = clipAndMaskFootprint<MaskPixel>(
+        *projectionFp, 
+        *image.getMask(),
+        bitmask
+    );
+    //ignore if too few contributing pixels        
+    if (fixedFp->getNpix() < _nMinPix) {
+        //should be logged
+        return;
+    }
+    int pixSum = fixedFp->getNpix();
+    //  allocate matrix buffers
+    ndarray::shallow(_dataVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    ndarray::shallow(_varianceVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    ndarray::shallow(_modelImageBuffer) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    ndarray::shallow(_linearDerivativeBuffer) = ndarray::allocate<Allocator>(
+        ndarray::makeVector(getLinearParameterSize(), pixSum)
+    );
+    ndarray::shallow(_nonlinearDerivativeBuffer) = ndarray::allocate<Allocator>(
+        ndarray::makeVector(getNonlinearParameterSize(), pixSum)
+    );  
+
+    // compress the exposure using the footprint
+    compressImage(*fixedFp, image, _dataVector, _varianceVector);
+
+    ModelProjection::Ptr projection = _model->makeProjection(psf, pixelToPixel, fixedFp);
+
+    projection->setModelImageBuffer(_modelImageBuffer);    
+    projection->setLinearParameterDerivativeBuffer(_linearDerivativeBuffer);
+    projection->setNonlinearParameterDerivativeBuffer(_nonlinearDerivativeBuffer);
+    
+    _projectionList.push_back(projection);
+
+    VectorMap varianceMap (_varianceVector.getData(), getNPixels(), 1);
+    _sigma = varianceMap.cwise().sqrt(); 
+}
+
 
 template <typename MaskedImageT>
 void multifit::ModelEvaluator::setData(
@@ -118,7 +174,9 @@ void multifit::ModelEvaluator::setData(
         psfList.begin()
     );
     for( ; iImage != endImage; ++iImage, ++iTransform, ++iPsf) {
-        afwDet::Footprint::Ptr projectionFp = _model->computeProjectionFootprint(*iPsf, *iTransform);
+        lsst::afw::geom::AffineTransform pixelToPixel = _pixelToSky* (*iTransform);
+        afwDet::Footprint::Ptr projectionFp = 
+            _model->computeProjectionFootprint(*iPsf, pixelToPixel);
         afwDet::Footprint::Ptr fixedFp = clipAndMaskFootprint<MaskPixel>(
             *projectionFp, 
             *iImage->getMask(),
@@ -127,7 +185,7 @@ void multifit::ModelEvaluator::setData(
         //ignore exposures with too few contributing pixels        
         if (fixedFp->getNpix() > _nMinPix) {
             _projectionList.push_back(
-                _model->makeProjection(*iPsf, *iTransform, fixedFp)
+                _model->makeProjection(*iPsf, pixelToPixel, fixedFp)
             );
             pixSum += fixedFp->getNpix();
             goodImageList.push_back(*iImage);
@@ -280,3 +338,20 @@ template void multifit::ModelEvaluator::setData<
     std::list<CONST_PTR(lsst::afw::detection::Psf)> const &,
     std::list<lsst::afw::geom::AffineTransform> const &
 );
+
+template void multifit::ModelEvaluator::setData<
+        afwImg::MaskedImage<double, afwImg::MaskPixel, afwImg::VariancePixel>
+> (
+    afwImg::MaskedImage<double>  const &,
+    CONST_PTR(lsst::afw::detection::Psf) const &,
+    lsst::afw::geom::AffineTransform const &
+);
+template void multifit::ModelEvaluator::setData<
+        afwImg::MaskedImage<float, afwImg::MaskPixel, afwImg::VariancePixel>
+> (
+    afwImg::MaskedImage<float> const &,
+    CONST_PTR(lsst::afw::detection::Psf) const &,
+    lsst::afw::geom::AffineTransform const &
+);
+
+

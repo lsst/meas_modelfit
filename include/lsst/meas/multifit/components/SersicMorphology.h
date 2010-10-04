@@ -24,7 +24,7 @@
 #define LSST_MEAS_MULTIFIT_SERSIC_MORPHOLOGY_H
 
 #include "lsst/meas/multifit/components/Morphology.h"
-#include "lsst/meas/multifit/SersicCache.h"
+#include "lsst/meas/multifit/Cache.h"
 
 namespace lsst {
 namespace meas {
@@ -67,6 +67,7 @@ public:
         boost::shared_ptr<ParameterVector> nonlinear(new ParameterVector(NONLINEAR_SIZE));
         *linear << flux;
         *nonlinear << logShear.getVector(), sersicIndex;
+
         return SersicMorphology::Ptr(new SersicMorphology(linear,nonlinear));
         
     }
@@ -101,8 +102,11 @@ protected:
 
     virtual void _handleNonlinearParameterChange();
 
-    multifit::Cache::Functor::ConstPtr const & getSersicIndexFunctor() const {
-        return _indexFunctor;
+    multifit::Cache::Interpolator::ConstPtr const & getInterpolator() const {
+        return _interpolator;
+    }
+    multifit::Cache::Interpolator::ConstPtr const & getDerivativeInterpolator() const {
+        return _derivativeInterpolator;
     }
 
     multifit::Cache::ConstPtr const & getSersicCache() const {
@@ -126,7 +130,8 @@ protected:
 
 
 private:
-    Cache::Functor::ConstPtr _indexFunctor;
+    Cache::Interpolator::ConstPtr _interpolator;
+    Cache::Interpolator::ConstPtr _derivativeInterpolator;
     static Cache::ConstPtr _cache;
 };
 

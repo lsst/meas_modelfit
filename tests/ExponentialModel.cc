@@ -61,15 +61,10 @@ BOOST_AUTO_TEST_CASE(ExponentialModelProjection) {
     lsst::afw::geom::PointD centroid = geom::PointD::make(0,0);
 
     //define ellipse in pixel coordinates
-    lsst::afw::geom::ellipses::Axes axes(3, 1, 1.3);
+    lsst::afw::geom::ellipses::Axes axes(30, 25, 0);
 
-    CONST_PTR(image::Wcs) wcs = boost::make_shared<image::Wcs>( 
-        centroid, 
-        geom::makePointD(0,0), 
-        Eigen::Matrix2d::Identity()
-    );
     //transform ellipse to sky coordinates
-    geom::AffineTransform transform(wcs->linearizePixelToSky(centroid));
+    geom::AffineTransform transform;
     axes.transform(transform).inPlace();
 
     lsst::afw::geom::ellipses::LogShear logShear(axes);
@@ -84,10 +79,10 @@ BOOST_AUTO_TEST_CASE(ExponentialModelProjection) {
 
 
     CONST_PTR(detection::Psf) psf = detection::createPsf("DoubleGaussian", 7, 7, 1.0);
-    CONST_PTR(detection::Footprint) fp = sgModel->computeProjectionFootprint(psf, wcs);
+    CONST_PTR(detection::Footprint) fp = sgModel->computeProjectionFootprint(psf, transform);
     
     BOOST_CHECK(fp->getNpix() > 0);
-    multifit::ModelProjection::Ptr projection = sgModel->makeProjection(psf, wcs, fp);
+    multifit::ModelProjection::Ptr projection = sgModel->makeProjection(psf, transform, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), sgModel);
    
     multifit::ParameterVector linear(sgModel->getLinearParameters());
@@ -126,18 +121,17 @@ BOOST_AUTO_TEST_CASE(ExponentialModelProjection) {
     std::cerr << "lpd" << lpd <<std::endl;
 
     lsst::afw::image::BBox fpBbox = fp->getBBox();
-    lsst::afw::image::Exposure<double> modelImage(
-        fpBbox.getWidth(), fpBbox.getHeight(), *wcs
+    lsst::afw::image::MaskedImage<double> modelImage(
+        fpBbox.getWidth(), fpBbox.getHeight()
     );
-    lsst::afw::image::MaskedImage<double> mi = modelImage.getMaskedImage();
-    mi.setXY0(fpBbox.getLLC());
+    modelImage.setXY0(fpBbox.getLLC());
 
     multifit::expandImage(
-        *fp, mi, projection->computeModelImage(),
+        *fp, modelImage, projection->computeModelImage(),
         projection->computeLinearParameterDerivative()[0]
     );
     lsst::afw::detection::setMaskFromFootprint<lsst::afw::image::MaskPixel>(
-        modelImage.getMaskedImage().getMask().get(), *fp, 1
+        modelImage.getMask().get(), *fp, 1
     );
     modelImage.writeFits("exponentialModelTest");
 }

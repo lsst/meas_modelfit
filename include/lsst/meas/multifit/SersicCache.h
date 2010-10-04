@@ -54,12 +54,12 @@ public:
         double const & epsabs, double const & epsrel, int const & limit, Options const & options=Options()
     )
       : Cache::FillFunction(0),
-        _lastY(std::numeric_limits<double>::quiet_NaN()),
+        _lastSersic(std::numeric_limits<double>::quiet_NaN()),
         _epsabs(epsabs), _epsrel(epsrel), _limit(limit),
         _params(options)
     {}
 
-    virtual double operator()(double x, double y) const;
+    virtual double operator()(double sersic, double k) const;
     virtual Cache::FillFunction::Ptr clone() const {
         return boost::make_shared<SersicCacheFillFunction>(_epsabs, _epsrel, _limit);
     }
@@ -85,7 +85,7 @@ private:
 
     static double sersicFunction(double radius, void * parameters);
 
-    double _lastY;
+    double _lastSersic;
     double _epsabs, _epsrel;
     int _limit;
     mutable IntegralParameters _params;

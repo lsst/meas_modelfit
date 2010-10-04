@@ -63,6 +63,7 @@ BOOST_AUTO_TEST_CASE(FixedAstrometry) {
 
     multifit::ComponentModel::Ptr model;
 
+    lsst::afw::geom::AffineTransform transform;
     model = multifit::ComponentModel::create(astrometry, morphology);
     BOOST_CHECK_EQUAL(model->getNonlinearParameterSize(), 2);
 

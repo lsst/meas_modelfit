@@ -79,12 +79,12 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
     }
 
     Parameter sersic = getSersicIndex();
-    lsst::afw::geom::BoxD bounds = _cache->getParameterBounds();
     try {
-        _indexFunctor = _cache->getRowFunctor(sersic);
+        _interpolator = _cache->getInterpolator(sersic);
+        _derivativeInterpolator = _cache->getDerivativeInterpolator(sersic);
     } 
     catch(lsst::pex::exceptions::InvalidParameterException &e) {
-        sersic = std::min(std::max(sersic, bounds.getMinY()), bounds.getMaxY()); 
+        sersic = std::min(std::max(sersic, _cache->getSlowMin()), _cache->getSlowMax()); 
         errors[offset + SERSIC_INDEX] = sersic;
     }
 

@@ -43,7 +43,7 @@ public:
         bool noInterpolation=false
     );
 
-    virtual double operator()(double x, double y) const;
+    virtual double operator()(double sersic, double k) const;
 
     virtual Cache::FillFunction::Ptr clone() const {
         return boost::make_shared<RobustSersicCacheFillFunction>(

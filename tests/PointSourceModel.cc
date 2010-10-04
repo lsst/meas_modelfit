@@ -55,18 +55,19 @@ BOOST_AUTO_TEST_CASE(DerivativeTest) {
 
     CONST_PTR(afwDet::Psf) psf = afwDet::createPsf("DoubleGaussian", 23, 23, 2.0);
 
-    CONST_PTR(afwImg::Wcs) wcs = boost::make_shared<afwImg::Wcs>( 
-        centroid, 
-        afwGeom::makePointD(0,0), 
-        Eigen::Matrix2d::Identity()
-    );
     double flux = 5.45;
+
+    afwGeom::AffineTransform transform;
 
     multifit::Model::Ptr psModel = 
         multifit::ModelFactory::createPointSourceModel(flux, centroid);
 
-    CONST_PTR(afwDet::Footprint) fp = psModel->computeProjectionFootprint(psf, wcs);
-    PTR(multifit::ModelProjection) proj = psModel->makeProjection(psf, wcs, fp);
+    CONST_PTR(afwDet::Footprint) fp = psModel->computeProjectionFootprint(
+        psf, transform
+    );
+    PTR(multifit::ModelProjection) proj = psModel->makeProjection(
+        psf, transform, fp
+    );
     multifit::ParameterVector params(psModel->getNonlinearParameters());
 
     ndarray::Array<multifit::Pixel, 2, 2> analytic = ndarray::allocate<multifit::Allocator>(

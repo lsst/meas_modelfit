@@ -33,11 +33,11 @@ import lsst.afw.display.ds9 as ds9
 import lsst.pex.logging as pexLog
 
 
-def makeModelExposure(model, psf, wcs, noiseFactor=0):
-    fp = model.computeProjectionFootprint(psf, wcs)
+def makeModelExposure(model, psf, affine, noiseFactor=0):
+    fp = model.computeProjectionFootprint(psf, affine)
     nPix = fp.getNpix()
     box = fp.getBBox()
-    proj = model.makeProjection(psf, wcs, fp)
+    proj = model.makeProjection(psf, affine, fp)
     modelImage = afwImage.MaskedImageF(box.getWidth(), box.getHeight())
     modelImage.setXY0(box.getX0(), box.getY0())
     
@@ -56,37 +56,30 @@ def makeModelExposure(model, psf, wcs, noiseFactor=0):
     stats = afwMath.makeStatistics(modelImage, afwMath.VARIANCE)
     variance = stats.getValue(afwMath.VARIANCE)
     modelImage.getVariance().set(variance)
-
-    exp = afwImage.ExposureF(modelImage, wcs)
-    exp.setPsf(psf)
-    return exp
+    
+    return modelImage
 
 def applyFitter():
     #exp = afwImage.ExposureF("c00.fits")
     #wcs = exp.getWcs()
     frameId = 0
-    crVal = afwGeom.makePointD(45,45)
-    crPix = afwGeom.makePointD(0,0)
-    wcs = afwImage.createWcs(crVal, crPix, 0.0001, 0., 0., 0.0001)
     psf = afwDet.createPsf("DoubleGaussian", 9, 9, 1.0)
-    affine = wcs.linearizePixelToSky(crVal)
-    
-    axes = afwGeom.ellipses.Axes(25,30,0).transform(affine)
+    affine = afwGeom.AffineTransform()
+   
+    pixel = afwGeom.makePointD(45, 45)
+    axes = afwGeom.ellipses.Axes(25,30,0)
     sersicIndex = 1.5
     flux = 1.0
 
-    model = measMult.createPointSourceModel(flux, crVal)
+    model = measMult.createPointSourceModel(flux, pixel)
     errors = [0.1, 1e-5, 1e-5]
 
-    exp = makeModelExposure(model, psf, wcs, 1.0)
+    exp = makeModelExposure(model, psf, affine, 1.0)
     ds9.mtv(exp, frame=frameId)
     frameId +=1
 
-    expList = measMult.ExposureListF()
-    expList.append(exp)
-    
-    modelEvaluator = measMult.ModelEvaluator(model)
-    modelEvaluator.setData(expList)
+    modelEvaluator = measMult.ModelEvaluator(model, affine)
+    modelEvaluator.setData(exp, psf, affine)
 
     fitterPolicy = pexPolicy.Policy()
     fitterPolicy.set("checkGradient", True)
@@ -99,7 +92,7 @@ def applyFitter():
     print "chisq", result.chisq
 
     om = modelEvaluator.getModel().clone()
-    outExp = makeModelExposure(om, psf, wcs)
+    outExp = makeModelExposure(om, psf, affine)
 
     ds9.mtv(outExp, frame=frameId)
 

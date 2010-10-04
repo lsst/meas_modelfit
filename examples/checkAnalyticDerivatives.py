@@ -27,17 +27,18 @@ import lsst.afw.geom.ellipses as geomEllipses
 import lsst.afw.math as afwMath
 import lsst.afw.detection as afwDet
 import sys
+import lsst.pex.policy as pexPol
 
 import numpy
 import lsst.afw.display.ds9 as ds9
 import eups
 import math
 
-def makeModelExposure(model, psf, wcs, noiseFactor=0):
-    fp = model.computeProjectionFootprint(psf, wcs)
+def makeModelExposure(model, psf, affine, noiseFactor=0):
+    fp = model.computeProjectionFootprint(psf, affine)
     nPix = fp.getNpix()
     box = fp.getBBox()
-    proj = model.makeProjection(psf, wcs, fp)
+    proj = model.makeProjection(psf, affine, fp)
     modelImage = afwImage.MaskedImageF(box.getWidth(), box.getHeight())
     modelImage.setXY0(box.getX0(), box.getY0())
     
@@ -55,20 +56,17 @@ def makeModelExposure(model, psf, wcs, noiseFactor=0):
 
     stats = afwMath.makeStatistics(modelImage, afwMath.VARIANCE)
     variance = stats.getValue(afwMath.VARIANCE)
+    print "variance", variance
     variance = 0.25
     modelImage.getVariance().set(variance)
 
-    exp = afwImage.ExposureF(modelImage, wcs)
-    exp.setPsf(psf)
-    return exp
+    return modelImage
 
 def main():
     numpy.set_printoptions(threshold=numpy.nan)
     i =0
     centroid = afwGeom.makePointD(45,45)
     psf = afwDet.createPsf("DoubleGaussian", 9, 9, 1.0)
-    #wcs = afwImage.createWcs(centroid, afwGeom.makePointD(0,0), 0.0001, 0., 0., 0.0001)
-    #affine = wcs.linearizePixelToSky(centroid)
     affine = afwGeom.AffineTransform()
 
     flux = 35.0
@@ -78,8 +76,11 @@ def main():
     logShear = geomEllipses.LogShear(axes)
 
     sersicIndex = 1.25
-    #model = measMult.createExponentialModel(flux, centroid, logShear)
-    model = measMult.createPointSourceModel(flux, centroid)
+    pol = pexPol.Policy()
+    cache = measMult.makeRobustSersicCache(pol)
+    measMult.SersicMorphology.setSersicCache(cache)
+    model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
+    #model = measMult.createPointSourceModel(flux, centroid)
 
     fp = model.computeProjectionFootprint(psf, affine)
     proj = model.makeProjection(psf, affine, fp)
@@ -143,9 +144,9 @@ def main():
     numericDerivative = numpy.concatenate(columnVectors)
     diff = analyticDerivative / numericDerivative
 
-    print >> sys.stderr, "analytic:\n%s"% analyticDerivative
-    print >> sys.stderr, "numeric:\n%s"% numericDerivative
-    print >> sys.stderr, "diff:\n%s"%diff
+    #print >> sys.stderr, "analytic:\n%s"% analyticDerivative
+    #print >> sys.stderr, "numeric:\n%s"% numericDerivative
+    #print >> sys.stderr, "diff:\n%s"%diff
 
     
 if __name__== "__main__":

@@ -2,5 +2,6 @@
 
 nBinSersic: 10
 nBinK: 100
+noInterpolation: true
 kMin: 0.0
 kMax: 100.0

@@ -145,7 +145,7 @@ protected:
 
     ParameterConstIterator begin() const {return _parameterIter;}
     ParameterConstIterator end() const {return _parameterIter + getParameterSize();}
-
+    
 
 private:
     /** 
@@ -178,8 +178,10 @@ private:
             );
         }
     }
-    boost::shared_ptr<ParameterVector const> _parameters;
+    boost::shared_ptr<ParameterVector const> _parameters;    
     ParameterConstIterator _parameterIter;
+
+    lsst::afw::coord::Coord _referencePoint;
 };
 
 }}}} // namespace lsst::meas::multifit::components

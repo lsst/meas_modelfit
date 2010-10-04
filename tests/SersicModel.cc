@@ -50,6 +50,7 @@
 #include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/ModelFactory.h"
+#include "lsst/meas/multifit/RobustSersicCache.h"
 
 using namespace std;
 namespace multifit = lsst::meas::multifit;
@@ -60,32 +61,22 @@ namespace detection = lsst::afw::detection;
 BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     multifit::Cache::ConstPtr cache;
     try {
-        cache = multifit::Cache::load("testCache", "Sersic", false);
+        cache = multifit::Cache::load("robustSersicCache");
     } catch (...){
-        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "SersicCache.paf", "tests");
+        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "RobustSersicCache.paf", "tests");
         lsst::pex::policy::Policy pol;
         file.load(pol);
-        cache = multifit::makeSersicCache(pol);
+        cache = multifit::makeRobustSersicCache(pol);
     }
-    geom::BoxD bounds = cache->getParameterBounds();
-    cerr << bounds.getMinX() << " " << bounds.getMinY()<< endl; 
-    cerr << bounds.getMaxX() << " " << bounds.getMaxY()<< endl; 
     multifit::components::SersicMorphology::setSersicCache(cache);
 
     lsst::afw::geom::PointD centroid = geom::PointD::make(0,0);
+    geom::AffineTransform transform;
 
     //define ellipse in pixel coordinates
     lsst::afw::geom::ellipses::Axes axes(3, 1, 1.3);
 
-    CONST_PTR(image::Wcs) wcs = boost::make_shared<image::Wcs>( 
-        centroid, 
-        geom::makePointD(0,0), 
-        Eigen::Matrix2d::Identity()
-    );
     //transform ellipse to sky coordinates
-    geom::AffineTransform transform(wcs->linearizePixelToSky(centroid));
-    axes.transform(transform).inPlace();
-
     lsst::afw::geom::ellipses::LogShear logShear(axes);
     double flux = 5.45;
     double sersicIndex = 2.0;
@@ -99,10 +90,10 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
 
 
     CONST_PTR(detection::Psf) psf = detection::createPsf("DoubleGaussian", 7, 7, 1.0);
-    CONST_PTR(detection::Footprint) fp = sgModel->computeProjectionFootprint(psf, wcs);
+    CONST_PTR(detection::Footprint) fp = sgModel->computeProjectionFootprint(psf, transform);
     
     BOOST_CHECK(fp->getNpix() > 0);
-    multifit::ModelProjection::Ptr projection = sgModel->makeProjection(psf, wcs, fp);
+    multifit::ModelProjection::Ptr projection = sgModel->makeProjection(psf, transform, fp);
     BOOST_CHECK_EQUAL(projection->getModel(), sgModel);
    
     multifit::ParameterVector linear(sgModel->getLinearParameters());
@@ -142,10 +133,9 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     std::cerr << "lpd" << lpd <<std::endl;
 
     lsst::afw::image::BBox fpBbox = fp->getBBox();
-    lsst::afw::image::Exposure<double> modelImage(
-        fpBbox.getWidth(), fpBbox.getHeight(), *wcs
+    lsst::afw::image::MaskedImage<double> mi(
+        fpBbox.getWidth(), fpBbox.getHeight()
     );
-    lsst::afw::image::MaskedImage<double> mi = modelImage.getMaskedImage();
     mi.setXY0(fpBbox.getLLC());
 
     multifit::expandImage(
@@ -153,7 +143,7 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
         projection->computeLinearParameterDerivative()[0]
     );
     lsst::afw::detection::setMaskFromFootprint<lsst::afw::image::MaskPixel>(
-        modelImage.getMaskedImage().getMask().get(), *fp, 1
+        mi.getMask().get(), *fp, 1
     );
-    modelImage.writeFits("sersicModelTest");
+    mi.writeFits("sersicModelTest");
 }

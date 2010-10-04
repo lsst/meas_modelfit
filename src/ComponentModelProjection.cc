@@ -54,30 +54,7 @@ multifit::ComponentModelProjection::ComponentModelProjection(
         getTransform()
     );
 }
-/**
- * Construct a ComponentModelProjection
- *
- */
-multifit::ComponentModelProjection::ComponentModelProjection(
-        ComponentModel::ConstPtr const & model,
-        lsst::afw::detection::Psf::ConstPtr const & psf,
-        lsst::afw::image::Wcs::ConstPtr const & wcs,
-        CONST_PTR(lsst::afw::detection::Footprint) const & footprint
-): ModelProjection(model, wcs, footprint),
-    _validProducts(0),
-    _morphologyProjection(), 
-    _translationDerivative(), 
-    _projectedParameterDerivative() 
-{
-    afwMath::Kernel::ConstPtr kernel = psf->getKernel();
 
-    _morphologyProjection = model->getMorphology()->makeProjection(
-        afwGeom::ExtentI::make(
-            kernel->getWidth(), kernel->getHeight()
-        ), 
-        getTransform()
-    );
-}
 void multifit::ComponentModelProjection::_computeNonlinearParameterDerivative(
     ndarray::Array<Pixel,2,1> const & matrix
 ) {
