@@ -75,22 +75,28 @@ def main():
 
     logShear = geomEllipses.LogShear(axes)
 
-    sersicIndex = 1.25
+    sersicIndex = 1.0
     pol = pexPol.Policy()
-    cache = measMult.makeRobustSersicCache(pol)
-    measMult.SersicMorphology.setSersicCache(cache)
-    model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
+    #cache = measMult.makeRobustSersicCache(pol)
+    #measMult.SersicMorphology.setSersicCache(cache)
+    #model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
+    model = measMult.createExponentialModel(flux, centroid, logShear)
     #model = measMult.createPointSourceModel(flux, centroid)
 
     fp = model.computeProjectionFootprint(psf, affine)
-    proj = model.makeProjection(psf, affine, fp)
     box = fp.getBBox()
-    modelImage = afwImage.MaskedImageF(box.getWidth(), box.getHeight())
-    modelImage.setXY0(box.getX0(), box.getY0())
+    bigBox = afwImage.BBox(box.getLLC(), box.getWidth()+120, box.getHeight()+120);
+    bigBox.shift(-60, -60);
+    bigFP = afwDet.Footprint(bigBox);
+
+    proj = model.makeProjection(psf, affine, bigFP)
+
+    modelImage = afwImage.MaskedImageF(bigBox.getWidth(), bigBox.getHeight())
+    modelImage.setXY0(bigBox.getX0(), bigBox.getY0())
     
     imageVector = proj.computeModelImage()
     varianceVector = numpy.zeros_like(imageVector)
-    measMult.expandImageF(fp, modelImage, imageVector, varianceVector)
+    measMult.expandImageF(bigFP, modelImage, imageVector, varianceVector)
 
     #exp = makeModelExposure(model, psf, wcs)
     #expList = measMult.ExposureListF()
@@ -132,15 +138,18 @@ def main():
         
         var = numpy.zeros_like(partial.base[0])
         fpBox = fp.getBBox()
-        derivativeImage = afwImage.MaskedImageD(fpBox.getWidth(), fpBox.getHeight());
-        derivativeImage.setXY0(fpBox.getLLC())
-        measMult.expandImageD(fp, derivativeImage, numpy.array(analyticDerivative)[n, : ], var)
+        derivativeImage = afwImage.MaskedImageD(
+                bigBox.getWidth(), bigBox.getHeight()
+        )
+        derivativeImage.setXY0(bigBox.getLLC())
+        measMult.expandImageD(bigFP, derivativeImage, numpy.array(analyticDerivative)[n, : ], var)
         ds9.mtv(derivativeImage, frame=n)
 
         columnVectors.append(partial)
         nonlinearParameters[n] += h
    
-   
+    ds9.mtv(modelImage, frame = model.getNonlinearParameterSize()+1)
+    
     numericDerivative = numpy.concatenate(columnVectors)
     diff = analyticDerivative / numericDerivative
 
