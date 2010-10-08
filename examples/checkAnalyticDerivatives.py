@@ -34,34 +34,6 @@ import lsst.afw.display.ds9 as ds9
 import eups
 import math
 
-def makeModelExposure(model, psf, affine, noiseFactor=0):
-    fp = model.computeProjectionFootprint(psf, affine)
-    nPix = fp.getNpix()
-    box = fp.getBBox()
-    proj = model.makeProjection(psf, affine, fp)
-    modelImage = afwImage.MaskedImageF(box.getWidth(), box.getHeight())
-    modelImage.setXY0(box.getX0(), box.getY0())
-    
-    imageVector = proj.computeModelImage()
-    varianceVector = numpy.zeros_like(imageVector)
-
-    measMult.expandImageF(fp, modelImage, imageVector, varianceVector)
-
-    afwRandom = afwMath.Random()
-    randomImg = afwImage.ImageF(modelImage.getDimensions())
-    afwMath.randomGaussianImage(randomImg, afwRandom)
-    randomImg *= noiseFactor
-    img = modelImage.getImage()
-    img += randomImg
-
-    stats = afwMath.makeStatistics(modelImage, afwMath.VARIANCE)
-    variance = stats.getValue(afwMath.VARIANCE)
-    print "variance", variance
-    variance = 0.25
-    modelImage.getVariance().set(variance)
-
-    return modelImage
-
 def main():
     numpy.set_printoptions(threshold=numpy.nan)
     i =0
@@ -76,11 +48,17 @@ def main():
     logShear = geomEllipses.LogShear(axes)
 
     sersicIndex = 1.0
-    pol = pexPol.Policy()
-    #cache = measMult.makeRobustSersicCache(pol)
-    #measMult.SersicMorphology.setSersicCache(cache)
-    #model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
-    model = measMult.createExponentialModel(flux, centroid, logShear)
+    try:
+        cache = measMult.Cache.load("/home/dubcovsky/multifit/cache_10x4000")
+    except:
+        pol = pexPol.Policy()
+        cache = measMult.makeRobustSersicCache(pol)
+        cache.save("robustCache")
+    
+    measMult.SersicMorphology.setSersicCache(cache)
+
+    model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
+    #model = measMult.createExponentialModel(flux, centroid, logShear)
     #model = measMult.createPointSourceModel(flux, centroid)
 
     fp = model.computeProjectionFootprint(psf, affine)
@@ -98,20 +76,9 @@ def main():
     varianceVector = numpy.zeros_like(imageVector)
     measMult.expandImageF(bigFP, modelImage, imageVector, varianceVector)
 
-    #exp = makeModelExposure(model, psf, wcs)
-    #expList = measMult.ExposureListF()
-    #expList.append(exp)
-
-
-    #eval = measMult.ModelEvaluator(model)
-    #eval.setExposureList(expList)
-    
     analyticDerivative = proj.computeNonlinearParameterDerivative()
     nonlinearParameters = model.getNonlinearParameters()
     
-    #analyticDerivative = eval.computeNonlinearParameterDerivative()
-    #nonlinearParameters = eval.getNonlinearParameters()
-
     eps = 2.2e-16
 
     
@@ -151,11 +118,13 @@ def main():
     ds9.mtv(modelImage, frame = model.getNonlinearParameterSize()+1)
     
     numericDerivative = numpy.concatenate(columnVectors)
-    diff = analyticDerivative / numericDerivative
+    diff = analyticDerivative - numericDerivative
+    factor = analyticDerivative / numericDerivative
 
-    #print >> sys.stderr, "analytic:\n%s"% analyticDerivative
-    #print >> sys.stderr, "numeric:\n%s"% numericDerivative
-    #print >> sys.stderr, "diff:\n%s"%diff
+    print >> sys.stderr, "analytic:\n%s"% analyticDerivative
+    print >> sys.stderr, "numeric:\n%s"% numericDerivative
+    print >> sys.stderr, "diff:\n%s"%diff
+    print >> sys.stderr, "factor:\n%s"%factor
 
     
 if __name__== "__main__":

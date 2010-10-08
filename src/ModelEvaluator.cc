@@ -34,55 +34,14 @@
 namespace multifit = lsst::meas::multifit;
 namespace afwImg = lsst::afw::image;
 namespace afwDet = lsst::afw::detection;
-/**
- * Set the list of exposures used to evaluate the model
- *
- * This is an atomic operation which resets the state of this ModelEvaluator 
- * completely. The ModelEvaluator will not be properly initialized until after
- * this function is called.
- *
- * For each exposure in the list, a projection footprint of the model is 
- * computed. If the projection footprint has more than \c getNMinPix pixels
- * which fall within the bounding box of the exposure, then a projection is
- * generated for that exposure.
- *
- * The pixel threshold can be set on construction or by calling setNMinPix
- *
- * Data and variance vectors are constructed by concactenating all the
- * contributing pixels from each projection.
- *
- * @sa getNMinPix
- * @sa setNMinPix
- */
-template<typename ExposureT>
-void multifit::ModelEvaluator::setExposures(    
-    std::list<ExposureT> const & exposureList
-) { 
-    typedef std::list<ExposureT> ExposureList;
-    typedef typename ExposureList::const_iterator ExposureIterator;
-    typedef typename ExposureT::MaskedImageT MaskedImageT;
 
-    std::list<MaskedImageT> imageList;
-    std::list<lsst::afw::geom::AffineTransform> transformList;
-    std::list<CONST_PTR(lsst::afw::detection::Psf)> psfList;
-
-    for(ExposureIterator i(exposureList.begin()), end(exposureList.end()); i != end; ++i) {
-        imageList.push_back(i->getMaskedImage());
-        lsst::afw::image::Wcs::Ptr wcs = i->getWcs();
-        lsst::afw::geom::AffineTransform pixelToPixel = 
-            _pixelToSky*wcs->linearizeSkyToPixel(_model->getPosition());
-        transformList.push_back(pixelToPixel);
-        psfList.push_back(i->getPsf());
-    }
-
-    setData<MaskedImageT>(imageList, psfList, transformList);
-}
 
 template <typename MaskedImageT>
 void multifit::ModelEvaluator::setData(
     MaskedImageT const & image,
     lsst::afw::detection::Psf::ConstPtr const & psf,
-    lsst::afw::geom::AffineTransform const & skyToPixel
+    lsst::afw::geom::AffineTransform const & pixelToPixel,
+    CONST_PTR(lsst::afw::detection::Footprint) fp
 ) {
     typedef typename MaskedImageT::Mask Mask;
     typedef typename Mask::Pixel MaskPixel;
@@ -91,11 +50,11 @@ void multifit::ModelEvaluator::setData(
         Mask::getPlaneBitMask("INTRP") | Mask::getPlaneBitMask("SAT") | 
         Mask::getPlaneBitMask("CR") | Mask::getPlaneBitMask("EDGE");
 
-    lsst::afw::geom::AffineTransform pixelToPixel = _pixelToSky*skyToPixel;
-
-    afwDet::Footprint::Ptr projectionFp = _model->computeProjectionFootprint(psf, pixelToPixel);
+    if(!fp) {
+        fp = _model->computeProjectionFootprint(psf, pixelToPixel);
+    }
     afwDet::Footprint::Ptr fixedFp = clipAndMaskFootprint<MaskPixel>(
-        *projectionFp, 
+        *fp, 
         *image.getMask(),
         bitmask
     );
@@ -136,9 +95,9 @@ template <typename MaskedImageT>
 void multifit::ModelEvaluator::setData(
     std::list<MaskedImageT> const & imageList,
     std::list<lsst::afw::detection::Psf::ConstPtr> const & psfList,
-    std::list<lsst::afw::geom::AffineTransform> const & skyToPixelTransformList
+    std::list<lsst::afw::geom::AffineTransform> const & pixelToPixelTransformList
 ) {
-    if(imageList.size() != skyToPixelTransformList.size() || imageList.size() != psfList.size()) {
+    if(imageList.size() != pixelToPixelTransformList.size() || imageList.size() != psfList.size()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LengthErrorException,
             "Input data lists must contain same number of elements"
@@ -168,15 +127,14 @@ void multifit::ModelEvaluator::setData(
     
     typename std::list<MaskedImageT>::const_iterator iImage(imageList.begin()), endImage(imageList.end());
     std::list<lsst::afw::geom::AffineTransform>::const_iterator iTransform(
-        skyToPixelTransformList.begin()
+        pixelToPixelTransformList.begin()
     );
     std::list<CONST_PTR(lsst::afw::detection::Psf)>::const_iterator iPsf(
         psfList.begin()
     );
     for( ; iImage != endImage; ++iImage, ++iTransform, ++iPsf) {
-        lsst::afw::geom::AffineTransform pixelToPixel = _pixelToSky* (*iTransform);
         afwDet::Footprint::Ptr projectionFp = 
-            _model->computeProjectionFootprint(*iPsf, pixelToPixel);
+            _model->computeProjectionFootprint(*iPsf, *iTransform);
         afwDet::Footprint::Ptr fixedFp = clipAndMaskFootprint<MaskPixel>(
             *projectionFp, 
             *iImage->getMask(),
@@ -185,7 +143,7 @@ void multifit::ModelEvaluator::setData(
         //ignore exposures with too few contributing pixels        
         if (fixedFp->getNpix() > _nMinPix) {
             _projectionList.push_back(
-                _model->makeProjection(*iPsf, pixelToPixel, fixedFp)
+                _model->makeProjection(*iPsf, *iTransform, fixedFp)
             );
             pixSum += fixedFp->getNpix();
             goodImageList.push_back(*iImage);
@@ -313,17 +271,6 @@ multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
 }
 
 
-template void multifit::ModelEvaluator::setExposures<
-        afwImg::Exposure<float, afwImg::MaskPixel, afwImg::VariancePixel>
-> (
-    std::list<afwImg::Exposure<float> > const &
-);
-template void multifit::ModelEvaluator::setExposures<
-        afwImg::Exposure<double, afwImg::MaskPixel, afwImg::VariancePixel>
-> (
-    std::list<afwImg::Exposure<double> > const &
-);
-
 template void multifit::ModelEvaluator::setData<
         afwImg::MaskedImage<double, afwImg::MaskPixel, afwImg::VariancePixel>
 > (
@@ -344,14 +291,16 @@ template void multifit::ModelEvaluator::setData<
 > (
     afwImg::MaskedImage<double>  const &,
     CONST_PTR(lsst::afw::detection::Psf) const &,
-    lsst::afw::geom::AffineTransform const &
+    lsst::afw::geom::AffineTransform const &,
+    CONST_PTR(lsst::afw::detection::Footprint) fp
 );
 template void multifit::ModelEvaluator::setData<
         afwImg::MaskedImage<float, afwImg::MaskPixel, afwImg::VariancePixel>
 > (
     afwImg::MaskedImage<float> const &,
     CONST_PTR(lsst::afw::detection::Psf) const &,
-    lsst::afw::geom::AffineTransform const &
+    lsst::afw::geom::AffineTransform const &,
+    CONST_PTR(lsst::afw::detection::Footprint) fp
 );
 
 

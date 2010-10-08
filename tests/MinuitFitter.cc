@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     *mi.getImage() += randomImg;
 
     multifit::ModelEvaluator::Ptr evaluator(
-        new multifit::ModelEvaluator(model, transform));
+        new multifit::ModelEvaluator(model));
     evaluator->setData(mi, psf, transform);
        
     std::vector<double> errors(

@@ -18,13 +18,13 @@ definitions: {
 		type: "int"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 100
+		default: 200
 	} 
 	nBinK: {
 		type: "int"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 100
+		default: 1000
 	} 
 	sersicMin: {
 		type: "double"

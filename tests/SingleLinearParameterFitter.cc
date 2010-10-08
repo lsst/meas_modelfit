@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(FitterBasic) {
 
     multifit::expandImage(*fp, mi, modelImage, variance);
 
-    multifit::ModelEvaluator evaluator(psModel, transform);
+    multifit::ModelEvaluator evaluator(psModel);
     evaluator.setData(mi, psf, transform);
        
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());

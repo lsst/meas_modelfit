@@ -7,22 +7,24 @@ import sys
 
 def makeCache():
     pol = pexPol.Policy()
-    pol.set("kMax", 100.0)
-    pol.set("sersicIndexMax", 10.0)
+    pol.set("kMax", 2000.0)
+    pol.set("nBinK", 4000)
     pol.set("noInterpolation", True)
+    pol.set("extrapolationK1", 2000.0)
+    pol.set("extrapolationK2", 3000.0)
     cache = measMult.makeRobustSersicCache(pol)
 
     if (len(sys.argv) > 1):
         cache.save(sys.argv[1])
 
-    bounds = cache.getParameterBounds()
-    data = cache.getDataPoints()
-    image = afwImage.ImageD(data.shape[0], data.shape[1])
-    for i in range(image.getWidth()):
-        for j in range(image.getHeight()):
-            image.set(i, j, data[i,j])
 
-    ds9.mtv(image, frame=0)
+    #data = cache.getDataPoints()
+    #image = afwImage.ImageD(data.shape[0], data.shape[1])
+    #for i in range(image.getWidth()):
+    #    for j in range(image.getHeight()):
+    #        image.set(i, j, data[i,j])
+
+    #ds9.mtv(image, frame=0)
 
 if __name__ == '__main__':
     makeCache()

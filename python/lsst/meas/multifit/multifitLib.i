@@ -350,12 +350,6 @@ SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator);
 %extend lsst::meas::multifit::ModelEvaluator {
     %returnArray(getDataVector, lsst::meas::multifit::Pixel const, 1, 1);
     
-    %template(setExposures) setExposures<
-        lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> 
-    >; 
-    %template(setExposures) setExposures<
-        lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> 
-    >;
     %template(setData) setData<
         lsst::afw::image::MaskedImage<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
     >; 

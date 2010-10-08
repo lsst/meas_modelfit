@@ -70,32 +70,26 @@ public:
      */
     explicit ModelEvaluator(
         Model::ConstPtr const & model, 
-        lsst::afw::geom::AffineTransform const &pixelToSky,
         int const nMinPix=0) 
       : _validProducts(0),
-        _model(model->clone()),
-        _pixelToSky(pixelToSky)
+        _model(model->clone())
     {
         setMinPixels(nMinPix);
     }
-
-    template <typename ExposureT>
-    void setExposures(
-        std::list<ExposureT> const & exposureList
-    );
 
     template <typename MaskedImageT>
     void setData(
         std::list<MaskedImageT> const & imageList,
         std::list<lsst::afw::detection::Psf::ConstPtr> const & psfList,
-        std::list<lsst::afw::geom::AffineTransform> const & skyToPixelList
+        std::list<lsst::afw::geom::AffineTransform> const & pixelToPixelList
     );
 
     template <typename MaskedImageT>
     void setData(
         MaskedImageT const  & image, 
         CONST_PTR(lsst::afw::detection::Psf) const & psf,
-        lsst::afw::geom::AffineTransform const &skyToPixel
+        lsst::afw::geom::AffineTransform const &pixelToPixel,
+        boost::shared_ptr<lsst::afw::detection::Footprint const> fp = boost::shared_ptr<lsst::afw::detection::Footprint>()
     );
 #ifndef SWIG
     /**
@@ -275,7 +269,6 @@ private:
     int _validProducts;
     Model::Ptr _model;    
     ProjectionList _projectionList;
-    lsst::afw::geom::AffineTransform _pixelToSky;
     
     ndarray::Array<Pixel, 1, 1> _dataVector;
     ndarray::Array<Pixel, 1, 1> _varianceVector;    

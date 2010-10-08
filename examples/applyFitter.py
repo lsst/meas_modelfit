@@ -31,37 +31,64 @@ import numpy
 import numpy.random
 import lsst.afw.display.ds9 as ds9
 import lsst.pex.logging as pexLog
+import sys
 
 
 def makeModelExposure(model, psf, affine, noiseFactor=0):
     fp = model.computeProjectionFootprint(psf, affine)
-    nPix = fp.getNpix()
+
     box = fp.getBBox()
-    proj = model.makeProjection(psf, affine, fp)
-    modelImage = afwImage.MaskedImageF(box.getWidth(), box.getHeight())
-    modelImage.setXY0(box.getX0(), box.getY0())
+
+    del fp
+    bigBox = afwImage.BBox(box.getLLC(), box.getWidth()+120, box.getHeight()+120);
+    bigBox.shift(-60, -60);
+    bigFP = afwDet.Footprint(bigBox);
+
+    del box
+    nPix = bigFP.getNpix()
+
     
+    print >> sys.stderr, "\tmaking pojection"
+    proj = model.makeProjection(psf, affine, bigFP)
+    modelImage = afwImage.MaskedImageF(bigBox.getWidth(), bigBox.getHeight())
+    modelImage.setXY0(bigBox.getX0(), bigBox.getY0())
+    
+    print >> sys.stderr, "\tmaking buffers"
     imageVector = proj.computeModelImage()
     varianceVector = numpy.zeros_like(imageVector)
 
-    measMult.expandImageF(fp, modelImage, imageVector, varianceVector)
+    print >> sys.stderr, "\texpanding data"
+    measMult.expandImageF(bigFP, modelImage, imageVector, varianceVector)
 
+
+    print >> sys.stderr, "\tadding noise"
     afwRandom = afwMath.Random()
+    print >> sys.stderr, "\t\tallocating random image"
     randomImg = afwImage.ImageF(modelImage.getDimensions())
+
+    print >> sys.stderr, "\t\tcompute random image"
     afwMath.randomGaussianImage(randomImg, afwRandom)
+
+
+    print >> sys.stderr, "\t\tscale by noise"
     randomImg *= noiseFactor
+
+
+    print >> sys.stderr, "\t\tadd random to modelImage"
     img = modelImage.getImage()
     img += randomImg
+    del randomImg
 
+    print >> sys.stderr, "\tcomputing variance"
     stats = afwMath.makeStatistics(modelImage, afwMath.VARIANCE)
     variance = stats.getValue(afwMath.VARIANCE)
+
+    del stats
     modelImage.getVariance().set(variance)
     
     return modelImage
 
 def applyFitter():
-    #exp = afwImage.ExposureF("c00.fits")
-    #wcs = exp.getWcs()
     frameId = 0
     psf = afwDet.createPsf("DoubleGaussian", 9, 9, 1.0)
     affine = afwGeom.AffineTransform()
@@ -70,14 +97,30 @@ def applyFitter():
     axes = afwGeom.ellipses.Axes(25,30,0)
     sersicIndex = 1.5
     flux = 1.0
+    
+    print >> sys.stderr, "making cache"
+    try:
+        cache = measMult.Cache.load("/home/dubcovsky/multifit/cache_10x4000")
+    except:
+        pol = pexPol.Policy()
+        cache = measMult.makeRobustSersicCache(pol)
+        cache.save("robustCache")
+    measMult.SersicMorphology.setSersicCache(cache)
 
-    model = measMult.createPointSourceModel(flux, pixel)
-    errors = [0.1, 1e-5, 1e-5]
+    print >> sys.stderr, "making model"
+    #model = measMult.createPointSourceModel(flux, pixel)
+    #errors = [0.1, 1e-5, 1e-5]
+    model = measMult.createSersicModel(flux, pixel, axes, 1.0)
+    errors = [0.1, 1e-5, 1e-5, 1e-8, 1e-8, 1e-8, 1e-5]
 
+
+    print >> sys.stderr, "making image"
     exp = makeModelExposure(model, psf, affine, 1.0)
     ds9.mtv(exp, frame=frameId)
     frameId +=1
 
+
+    print >> sys.stderr, "making evaluator"
     modelEvaluator = measMult.ModelEvaluator(model, affine)
     modelEvaluator.setData(exp, psf, affine)
 
