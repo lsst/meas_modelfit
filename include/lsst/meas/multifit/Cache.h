@@ -28,6 +28,7 @@
 
 #include "lsst/afw/math/Function.h"
 #include "lsst/afw/geom.h"
+#include "lsst/daf/base/Persistable.h"
 
 namespace boost { 
 namespace serialization {
@@ -38,7 +39,6 @@ namespace lsst{
 namespace meas{
 namespace multifit {
 
-#ifndef SWIG
 class InterpolationFunction {
 public:
     typedef boost::shared_ptr<InterpolationFunction> Ptr;
@@ -57,6 +57,7 @@ protected:
     Eigen::VectorXd _values;
 };
 
+#ifndef SWIG
 class InterpolationFunctionFactory : private boost::noncopyable {
 public:
     
@@ -103,10 +104,9 @@ protected:
 private:
     static Registry & getRegistry();
 };
-
 #endif
 
-class Cache  {
+class Cache {
 public:   
     typedef boost::shared_ptr<Cache> Ptr;
     typedef boost::shared_ptr<Cache const> ConstPtr;
@@ -132,10 +132,8 @@ public:
     ); 
     void save(std::string const & filepath) const;
 
-#ifndef SWIG
     Cache::Interpolator::ConstPtr getInterpolator(double const slow) const;
     Cache::Interpolator::ConstPtr getDerivativeInterpolator(double const slow) const;
-#endif
 
     double const getSlowMin() const {return _slowMin;}
     double const getSlowMax() const {return _slowMax;}
@@ -173,6 +171,7 @@ private:
 
     static std::map<std::string, Ptr> _registry;
 };
+
 
 }}} //namespace lsst::meas::multifit
 #endif

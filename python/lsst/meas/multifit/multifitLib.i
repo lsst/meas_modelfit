@@ -42,12 +42,15 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "boost/shared_ptr.hpp"
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/detection/Psf.h"
+#include "lsst/afw/detection/Shape.h"
+#include "lsst/afw/detection/Photometry.h"
 #include "lsst/meas/multifit/core.h"
 #include "lsst/meas/multifit/footprintUtils.h"
 #include "lsst/meas/multifit/WindowedFootprint.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
+#include "lsst/meas/multifit/SourceMeasurement.h"
 #include "lsst/meas/multifit/Cache.h"
 #include "lsst/meas/multifit/SersicCache.h"
 #include "lsst/meas/multifit/RobustSersicCache.h"
@@ -202,6 +205,7 @@ SWIG_SHARED_PTR(WindowedFootprintPtr, lsst::meas::multifit::WindowedFootprint)
     %template(expand) expand<double, double, 0>; 
 };
 
+SWIG_SHARED_PTR(InterpolationFunctionPtr, lsst::meas::multifit::InterpolationFunction)
 SWIG_SHARED_PTR(CahcePtr, lsst::meas::multifit::Cache)
 %nodefaultctor lsst::meas::multifit::Cache;
 %include "lsst/meas/multifit/Cache.h"
@@ -209,6 +213,10 @@ SWIG_SHARED_PTR(CahcePtr, lsst::meas::multifit::Cache)
 %include "lsst/meas/multifit/SersicCache.h"
 %include "lsst/meas/multifit/RobustSersicCache.h"
 
+SWIG_SHARED_PTR_DERIVED(PsPhotometryPtr, lsst::afw::detection::Photometry, lsst::meas::multifit::PointSourceModelPhotometry)
+SWIG_SHARED_PTR_DERIVED(SgPhotometryPtr, lsst::afw::detection::Photometry, lsst::meas::multifit::SmallGalaxyModelPhotometry)
+SWIG_SHARED_PTR_DERIVED(SgShapePtr, lsst::afw::detection::Shape, lsst::meas::multifit::SmallGalaxyModelShape)
+%include "lsst/meas/multifit/SourceMeasurement.h"
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model);
 %include "lsst/meas/multifit/Model.h"
