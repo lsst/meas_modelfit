@@ -205,9 +205,7 @@ protected:
      * associated with the new Model
      */ 
     explicit Model(Model const & model) 
-      : _linearParameters(new ParameterVector(model.getLinearParameters())),
-        _nonlinearParameters(new ParameterVector(model.getNonlinearParameters())),
-        _projectionList()
+      : _projectionList()
     {
         if(model.getLinearParameterSize() >0) {
             _linearParameters.reset(
