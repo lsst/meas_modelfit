@@ -64,25 +64,30 @@ int multifit::ModelEvaluator::setData(
         return 0;
     }
     int pixSum = fixedFp->getNpix();
+    ModelProjection::Ptr projection = _model->makeProjection(psf, pixelToPixel, fixedFp);
+
     //  allocate matrix buffers
     ndarray::shallow(_dataVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
     ndarray::shallow(_varianceVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
-    ndarray::shallow(_modelImageBuffer) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
-    ndarray::shallow(_linearDerivativeBuffer) = ndarray::allocate<Allocator>(
-        ndarray::makeVector(getLinearParameterSize(), pixSum)
-    );
-    ndarray::shallow(_nonlinearDerivativeBuffer) = ndarray::allocate<Allocator>(
-        ndarray::makeVector(getNonlinearParameterSize(), pixSum)
-    );  
-
     // compress the exposure using the footprint
     compressImage(*fixedFp, image, _dataVector, _varianceVector);
+    
+    ndarray::shallow(_modelImageBuffer) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    projection->setModelImageBuffer(_modelImageBuffer);
 
-    ModelProjection::Ptr projection = _model->makeProjection(psf, pixelToPixel, fixedFp);
 
-    projection->setModelImageBuffer(_modelImageBuffer);    
-    projection->setLinearParameterDerivativeBuffer(_linearDerivativeBuffer);
-    projection->setNonlinearParameterDerivativeBuffer(_nonlinearDerivativeBuffer);
+    if(getLinearParameterSize() >0) {
+        ndarray::shallow(_linearDerivativeBuffer) = ndarray::allocate<Allocator>(
+            ndarray::makeVector(getLinearParameterSize(), pixSum)
+        );
+        projection->setLinearParameterDerivativeBuffer(_linearDerivativeBuffer);
+    }
+    if(getNonlinearParameterSize() >0) {
+        ndarray::shallow(_nonlinearDerivativeBuffer) = ndarray::allocate<Allocator>(
+            ndarray::makeVector(getNonlinearParameterSize(), pixSum)
+        );  
+        projection->setNonlinearParameterDerivativeBuffer(_nonlinearDerivativeBuffer);
+    }
     
     _projectionList.push_back(projection);
 
@@ -159,14 +164,19 @@ int multifit::ModelEvaluator::setData(
     //  allocate matrix buffers
     ndarray::shallow(_dataVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
     ndarray::shallow(_varianceVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
-    ndarray::shallow(_modelImageBuffer) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
-    ndarray::shallow(_linearDerivativeBuffer) = ndarray::allocate<Allocator>(
-        ndarray::makeVector(nLinear, pixSum)
-    );
-    ndarray::shallow(_nonlinearDerivativeBuffer) = ndarray::allocate<Allocator>(
-        ndarray::makeVector(nNonlinear, pixSum)
-    );    
     
+    ndarray::shallow(_modelImageBuffer) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
+    
+    if(nLinear >0) { 
+        ndarray::shallow(_linearDerivativeBuffer) = ndarray::allocate<Allocator>(
+            ndarray::makeVector(nLinear, pixSum)
+        );
+    }
+    if(nNonlinear >  0){
+        ndarray::shallow(_nonlinearDerivativeBuffer) = ndarray::allocate<Allocator>(
+            ndarray::makeVector(nNonlinear, pixSum)
+        );    
+    }
     int nPix;
     int pixelStart = 0, pixelEnd;
     
@@ -191,15 +201,19 @@ int multifit::ModelEvaluator::setData(
         projection.setModelImageBuffer(
             _modelImageBuffer[ndarray::view(pixelStart, pixelEnd)]
         );
-        
-        //set linear buffer
-        projection.setLinearParameterDerivativeBuffer(
-            _linearDerivativeBuffer[ndarray::view()(pixelStart, pixelEnd)]
-        );
-        //set nonlinear buffer
-        projection.setNonlinearParameterDerivativeBuffer(
-            _nonlinearDerivativeBuffer[ndarray::view()(pixelStart, pixelEnd)]
-        );
+       
+        if(nLinear >0) {
+            //set linear buffer
+            projection.setLinearParameterDerivativeBuffer(
+                _linearDerivativeBuffer[ndarray::view()(pixelStart, pixelEnd)]
+            );
+        }
+        if(nNonlinear >0){
+            //set nonlinear buffer
+            projection.setNonlinearParameterDerivativeBuffer(
+                _nonlinearDerivativeBuffer[ndarray::view()(pixelStart, pixelEnd)]
+            );
+        }
 
         pixelStart = pixelEnd;
     }

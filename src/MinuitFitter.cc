@@ -194,7 +194,9 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
     std::vector<double> const & priorFisherDiag
 ) const {
     
-    int nParams = evaluator->getLinearParameterSize();
+    int nLinear = evaluator->getLinearParameterSize();
+    int nNonlinear = evaluator->getNonlinearParameterSize();
+    int nParams = nLinear + nNonlinear;
     nParams += evaluator->getNonlinearParameterSize();
 
     if(nParams != int(initialErrors.size())) {
@@ -223,8 +225,12 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
 
     std::vector<double> initialParams(nParams);
     VectorMap paramMap(&initialParams[0], nParams);
-    paramMap.start(evaluator->getLinearParameterSize()) = evaluator->getLinearParameters();
-    paramMap.end(evaluator->getNonlinearParameterSize()) = evaluator->getNonlinearParameters();
+    if(nLinear >0){
+        paramMap.start(nLinear) = evaluator->getLinearParameters();
+    }
+    if(nNonlinear >0){
+        paramMap.end(nNonlinear) = evaluator->getNonlinearParameters();
+    }
 
     ROOT::Minuit2::MnMigrad migrad(function, initialParams, initialErrors, _policy->getInt("strategy"));
 
@@ -273,8 +279,9 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
     std::vector<double> const & priorFisherDiag
 ) const {
     
-    int nParams = evaluator->getLinearParameterSize();
-    nParams += evaluator->getNonlinearParameterSize();
+    int nLinear = evaluator->getLinearParameterSize();
+    int nNonlinear = evaluator->getNonlinearParameterSize();
+    int nParams = nLinear + nNonlinear;
 
     if(nParams != int(initialErrors.size())) {
         throw LSST_EXCEPT(
@@ -299,9 +306,13 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
     
     std::vector<double> initialParams(nParams);
     VectorMap paramMap(&initialParams[0], nParams);
-    paramMap.start(evaluator->getLinearParameterSize()) = evaluator->getLinearParameters();
-    paramMap.end(evaluator->getNonlinearParameterSize()) = evaluator->getNonlinearParameters();
 
+    if(nLinear >0){
+        paramMap.start(nLinear) = evaluator->getLinearParameters();
+    }
+    if(nNonlinear >0){
+        paramMap.end(nNonlinear) = evaluator->getNonlinearParameters();
+    }
     ROOT::Minuit2::MnMigrad migrad(function, initialParams, initialErrors, _policy->getInt("strategy"));
 
     ROOT::Minuit2::FunctionMinimum min = migrad(
