@@ -78,14 +78,14 @@ public:
     }
 
     template <typename MaskedImageT>
-    void setData(
+    int setData(
         std::list<MaskedImageT> const & imageList,
         std::list<lsst::afw::detection::Psf::ConstPtr> const & psfList,
         std::list<lsst::afw::geom::AffineTransform> const & pixelToPixelList
     );
 
     template <typename MaskedImageT>
-    void setData(
+    int setData(
         MaskedImageT const  & image, 
         CONST_PTR(lsst::afw::detection::Psf) const & psf,
         lsst::afw::geom::AffineTransform const &pixelToPixel,

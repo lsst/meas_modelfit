@@ -38,28 +38,11 @@ public:
 
     
     double computeValue(std::vector<double> const &params) {
-        std::cerr << "compute at <" << std::setprecision(10) << params[0];
-        for(int i =1; i <int(params.size()); ++i) {
-            std::cerr <<", " << std::setprecision(10) << params[i];
-        }
-        std::cerr << ">\n";
         checkParams(params);
         if(_dirty) {
             _evaluator->setLinearParameters(&params[0]);
             _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);
         }
-        /*
-        std::cerr << "evaluator::linearParams= <" << std::setprecision(10) << _evaluator->getLinearParameters()[0];
-        for(int i =1; i < _evaluator->getLinearParameterSize(); ++i) {
-            std::cerr <<", " << std::setprecision(10) << _evaluator->getLinearParameters()[i];
-        }
-        std::cerr << ">\n";
-        std::cerr << "evaluator::nonlinearParams= <" << std::setprecision(10) << _evaluator->getNonlinearParameters()[0];
-        for(int i =1; i < _evaluator->getNonlinearParameterSize(); ++i) {
-            std::cerr <<", " << std::setprecision(10) << _evaluator->getNonlinearParameters()[i];
-        }
-        std::cerr << ">\n";
-        */
         Vector modeled = _evaluator->computeModelImage();
         Vector residual = (_measured-modeled);
         Vector priorDelta(params.size());
@@ -67,35 +50,15 @@ public:
         priorDelta -= _priorMean;
         double priorTerm = 0.5*priorDelta.dot(_priorFisherDiag.cwise() * priorDelta);
         double value = 0.5*residual.dot(residual) + priorTerm; 
-        std::cerr << "\tvalue=" << std::setprecision(10) << value << std::endl;
         return value;
     }
 
     std::vector<double> computeGradient(std::vector<double> const &params) {
-        std::cerr << "compute gradient at <" << std::setprecision(10) << params[0];
-        for(int i =1; i < int(params.size()); ++i) {
-            std::cerr <<", " << std::setprecision(10) << params[i];
-        }
-        std::cerr << ">\n";
-
-
         checkParams(params);
         if(_dirty) {
             _evaluator->setLinearParameters(&params[0]);
             _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);            
         }
-        /*
-        std::cerr << "evaluator::linearParams= <" << std::setprecision(10) << _evaluator->getLinearParameters()[0];
-        for(int i =1; i < _evaluator->getLinearParameterSize(); ++i) {
-            std::cerr <<", " << std::setprecision(10) << _evaluator->getLinearParameters()[i];
-        }
-        std::cerr << ">\n";
-        std::cerr << "evaluator::nonlinearParams= <" << std::setprecision(10) << _evaluator->getNonlinearParameters()[0];
-        for(int i =1; i < _evaluator->getNonlinearParameterSize(); ++i) {
-            std::cerr <<", " << std::setprecision(10) << _evaluator->getNonlinearParameters()[i];
-        }
-        std::cerr << ">\n";
-        */
         Vector modeled = _evaluator->computeModelImage();
         Vector residual = (_measured-modeled);
         Matrix lpd = _evaluator->computeLinearParameterDerivative();
@@ -264,16 +227,6 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
     paramMap.end(evaluator->getNonlinearParameterSize()) = evaluator->getNonlinearParameters();
 
     ROOT::Minuit2::MnMigrad migrad(function, initialParams, initialErrors, _policy->getInt("strategy"));
-
-    if(checkGradient) {
-        std::vector<double> analyticGrad = function.Gradient(initialParams);
-        std::cerr <<
-        std::cerr <<"analytic gradient: <" << analyticGrad[0];
-        for( int i =1; i < nParams; ++i) {
-            std::cerr << ", " << analyticGrad[i];
-        }
-        std::cerr << ">\n";
-    }
 
     ROOT::Minuit2::FunctionMinimum min = migrad(
         _policy->getInt("iterationMax"), 

@@ -37,7 +37,7 @@ namespace afwDet = lsst::afw::detection;
 
 
 template <typename MaskedImageT>
-void multifit::ModelEvaluator::setData(
+int multifit::ModelEvaluator::setData(
     MaskedImageT const & image,
     lsst::afw::detection::Psf::ConstPtr const & psf,
     lsst::afw::geom::AffineTransform const & pixelToPixel,
@@ -61,7 +61,7 @@ void multifit::ModelEvaluator::setData(
     //ignore if too few contributing pixels        
     if (fixedFp->getNpix() < _nMinPix) {
         //should be logged
-        return;
+        return 0;
     }
     int pixSum = fixedFp->getNpix();
     //  allocate matrix buffers
@@ -88,11 +88,13 @@ void multifit::ModelEvaluator::setData(
 
     VectorMap varianceMap (_varianceVector.getData(), getNPixels(), 1);
     _sigma = varianceMap.cwise().sqrt(); 
+
+    return fixedFp->getNpix();
 }
 
 
 template <typename MaskedImageT>
-void multifit::ModelEvaluator::setData(
+int multifit::ModelEvaluator::setData(
     std::list<MaskedImageT> const & imageList,
     std::list<lsst::afw::detection::Psf::ConstPtr> const & psfList,
     std::list<lsst::afw::geom::AffineTransform> const & pixelToPixelTransformList
@@ -150,6 +152,10 @@ void multifit::ModelEvaluator::setData(
         }
     }
 
+    //check that we have pixels to work with
+    if(pixSum == 0) {
+        return 0;
+    }
     //  allocate matrix buffers
     ndarray::shallow(_dataVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
     ndarray::shallow(_varianceVector) = ndarray::allocate<Allocator>(ndarray::makeVector(pixSum));
@@ -201,7 +207,7 @@ void multifit::ModelEvaluator::setData(
 
     VectorMap varianceMap (_varianceVector.getData(), getNPixels(), 1);
     _sigma = varianceMap.cwise().sqrt(); 
-
+    return pixSum;
 }
 
 /**
@@ -271,14 +277,14 @@ multifit::ModelEvaluator::computeNonlinearParameterDerivative() {
 }
 
 
-template void multifit::ModelEvaluator::setData<
+template int multifit::ModelEvaluator::setData<
         afwImg::MaskedImage<double, afwImg::MaskPixel, afwImg::VariancePixel>
 > (
     std::list<afwImg::MaskedImage<double> > const &,
     std::list<CONST_PTR(lsst::afw::detection::Psf)> const &,
     std::list<lsst::afw::geom::AffineTransform> const &
 );
-template void multifit::ModelEvaluator::setData<
+template int multifit::ModelEvaluator::setData<
         afwImg::MaskedImage<float, afwImg::MaskPixel, afwImg::VariancePixel>
 > (
     std::list<afwImg::MaskedImage<float> > const &,
@@ -286,7 +292,7 @@ template void multifit::ModelEvaluator::setData<
     std::list<lsst::afw::geom::AffineTransform> const &
 );
 
-template void multifit::ModelEvaluator::setData<
+template int multifit::ModelEvaluator::setData<
         afwImg::MaskedImage<double, afwImg::MaskPixel, afwImg::VariancePixel>
 > (
     afwImg::MaskedImage<double>  const &,
@@ -294,7 +300,7 @@ template void multifit::ModelEvaluator::setData<
     lsst::afw::geom::AffineTransform const &,
     CONST_PTR(lsst::afw::detection::Footprint) fp
 );
-template void multifit::ModelEvaluator::setData<
+template int multifit::ModelEvaluator::setData<
         afwImg::MaskedImage<float, afwImg::MaskPixel, afwImg::VariancePixel>
 > (
     afwImg::MaskedImage<float> const &,

@@ -19,7 +19,8 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
+#include <boost/format.hpp>
 #include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
 #include "lsst/afw/geom/ellipses/LogShear.h"
@@ -66,6 +67,7 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
     }
 
     ParameterMap errors;
+    std::string errStr="";
     int offset = getNonlinearParameterOffset();
 
     lsst::afw::geom::ellipses::Distortion dist(*computeBoundingEllipseCore());
@@ -76,22 +78,25 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
         Parameter gamma2 = ls[lsst::afw::geom::ellipses::LogShear::GAMMA2];
         errors[offset + GAMMA1] = gamma1;
         errors[offset + GAMMA2] = gamma2;
+        errStr += (boost::format(" Distortion %.3f is too large.")%dist.getE()).str();
     }
 
-    Parameter sersic = getSersicIndex();
-    try {
-        _interpolator = _cache->getInterpolator(sersic);
-        _derivativeInterpolator = _cache->getDerivativeInterpolator(sersic);
-    } 
-    catch(lsst::pex::exceptions::InvalidParameterException &e) {
-        sersic = std::min(std::max(sersic, _cache->getSlowMin()), _cache->getSlowMax()); 
-        errors[offset + SERSIC_INDEX] = sersic;
+    Parameter n = getSersicIndex();
+    if(n < _cache->getSlowMin() || n >= _cache->getSlowMax()) {
+        n = std::min(std::max(n, _cache->getSlowMin()), _cache->getSlowMax()); 
+        errors[offset+SERSIC_INDEX] = n;
+        errStr += 
+            (boost::format(" Sersic Index %.3f out of bounds [%.3f, %.3f)")%
+                n % _cache->getSlowMin() % _cache->getSlowMax()).str();
     }
 
     if(errors.size() > 0) {
         throw LSST_EXCEPT(
             lsst::meas::multifit::ParameterRangeException,
-            "SersicMorphology nonlinear parameters out of range", errors
+            "SersicMorphology nonlinear parameters out of range."+errStr, errors
         );
     }
+
+    _interpolator = _cache->getInterpolator(n);
+    _derivativeInterpolator = _cache->getDerivativeInterpolator(n);
 }
