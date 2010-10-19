@@ -215,7 +215,7 @@ SWIG_SHARED_PTR(CahcePtr, lsst::meas::multifit::Cache)
 
 SWIG_SHARED_PTR_DERIVED(PsPhotometryPtr, lsst::afw::detection::Photometry, lsst::meas::multifit::PointSourceModelPhotometry)
 SWIG_SHARED_PTR_DERIVED(SgPhotometryPtr, lsst::afw::detection::Photometry, lsst::meas::multifit::SmallGalaxyModelPhotometry)
-SWIG_SHARED_PTR_DERIVED(SgShapePtr, lsst::afw::detection::Shape, lsst::meas::multifit::SmallGalaxyModelShape)
+
 %include "lsst/meas/multifit/SourceMeasurement.h"
 
 SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model);

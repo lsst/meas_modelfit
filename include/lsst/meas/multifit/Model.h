@@ -208,7 +208,22 @@ protected:
       : _linearParameters(new ParameterVector(model.getLinearParameters())),
         _nonlinearParameters(new ParameterVector(model.getNonlinearParameters())),
         _projectionList()
-    {}
+    {
+        if(model.getLinearParameterSize() >0) {
+            _linearParameters.reset(
+                new ParameterVector(model.getLinearParameters())
+            );
+        }
+        else _linearParameters.reset(new ParameterVector());
+        if(model.getNonlinearParameterSize() >0) {
+            _nonlinearParameters.reset(
+                new ParameterVector(model.getNonlinearParameters())
+            );
+        }
+        else _nonlinearParameters.reset(new ParameterVector());
+
+
+    }
 
     explicit Model() :
        _linearParameters(), 
