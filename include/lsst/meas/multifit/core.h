@@ -58,14 +58,19 @@ typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> > Matrix
 typedef Eigen::Block<MatrixMap> MatrixMapBlock;
 typedef Eigen::Map<Eigen::Matrix<Pixel, Eigen::Dynamic, 1> > VectorMap;
 
+
 class ParameterRangeException: public lsst::pex::exceptions::RangeErrorException {
 public:
+    ParameterRangeException(
+        char const * file, int line, char const * func,
+        std::string const & message
+    ) : lsst::pex::exceptions::RangeErrorException(file, line, func, message) {}
     ParameterRangeException(
         char const * file, int line, char const * func,
         std::string const & message,
         ParameterMap outOfRangeParameterMap
     ) : lsst::pex::exceptions::RangeErrorException(file, line, func, message),
-        _outOfRangeParameterMap(outOfRangeParameterMap) 
+        _map(outOfRangeParameterMap) 
     {}
     
     virtual char const * getType(void) const throw() {
@@ -75,10 +80,13 @@ public:
         return new ParameterRangeException(*this);
     }
     ParameterMap const & getOutOfRangeParameterMap() const {
-        return _outOfRangeParameterMap;
+        return _map;
+    }
+    bool notInRange(int const parameter) const {
+        return _map.find(parameter) == _map.end();
     }
 private:
-    ParameterMap _outOfRangeParameterMap;
+    ParameterMap _map;
 };
 
 }}} // namespace lsst::meas::multifit

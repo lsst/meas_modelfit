@@ -144,6 +144,7 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 
 
 
+
 %define %downcast(BaseType, DerivedType...)
    %extend DerivedType {
        static boost::shared_ptr<DerivedType > swigConvert(

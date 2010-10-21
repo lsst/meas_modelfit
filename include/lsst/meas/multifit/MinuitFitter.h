@@ -14,27 +14,37 @@ namespace multifit {
 
 struct MinuitFitterResult {
 public:
-    enum ConvergenceFlags {
+    enum Flags {
         CONVERGED = 1,
         MAX_ITERATION_REACHED = 2
     };
     
 #ifndef SWIG
-    MinuitFitterResult(ROOT::Minuit2::FunctionMinimum const & min, Model::ConstPtr fitModel) 
-      : convergenceFlags(0),  chisq(min.Fval()), nIterations(min.NFcn()), model(fitModel) {
+    MinuitFitterResult(ROOT::Minuit2::FunctionMinimum const & min) 
+      : flags(0),  chisq(min.Fval()), nIterations(min.NFcn()) {
         if(min.IsValid()) 
-            convergenceFlags |= CONVERGED;
+            flags |= CONVERGED;
         if(min.HasReachedCallLimit())
-            convergenceFlags |= MAX_ITERATION_REACHED;
+            flags |= MAX_ITERATION_REACHED;
+        parameters = min.UserParameters().Params();
+        int nParam=parameters.size();
+        covariance = Eigen::MatrixXd(nParam, nParam);
+        for (int i=0; i < nParam; ++i) {
+            for (int j=0; j< nParam; ++j) {
+                covariance(i,j) = min.UserCovariance()(i,j);
+            }
+        }
     };
 #endif
     
-    MinuitFitterResult() : convergenceFlags(0), chisq(DBL_MAX), nIterations(0), model() {}
+    MinuitFitterResult() : flags(0), chisq(DBL_MAX), nIterations(0), model() {}
 
-    int convergenceFlags;
+    int flags;
     double chisq;
     double nIterations;
+    std::vector<double> parameters;
     Model::ConstPtr model;
+    Eigen::MatrixXd covariance;
 };
 
 class MinuitAnalyticFitter {

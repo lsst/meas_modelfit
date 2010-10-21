@@ -238,7 +238,7 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
         _policy->getInt("iterationMax"), 
         _policy->getDouble("tolerance")
     );
-    return Result(min, evaluator->getModel());
+    return Result(min);
 }
 
 /******************************************************************************
@@ -320,5 +320,5 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
         _policy->getDouble("tolerance")
     );
 
-    return Result(min, evaluator->getModel());
+    return Result(min);
 }
