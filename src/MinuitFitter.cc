@@ -197,7 +197,6 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
     int nLinear = evaluator->getLinearParameterSize();
     int nNonlinear = evaluator->getNonlinearParameterSize();
     int nParams = nLinear + nNonlinear;
-    nParams += evaluator->getNonlinearParameterSize();
 
     if(nParams != int(initialErrors.size())) {
         throw LSST_EXCEPT(
