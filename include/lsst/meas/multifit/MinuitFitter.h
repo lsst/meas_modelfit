@@ -41,7 +41,7 @@ public:
 
     int flags;
     double chisq;
-    double nIterations;
+    int nIterations;
     std::vector<double> parameters;
     Model::ConstPtr model;
     Eigen::MatrixXd covariance;

@@ -70,7 +70,6 @@ for d in (
     "examples",
     "tests",
     "doc",
-    "policy"
 ):  
     if d != ".":
         try:
