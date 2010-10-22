@@ -11,6 +11,8 @@ multifit::SmallGalaxyModelPhotometry::SmallGalaxyModelPhotometry(
         std::vector<double> const & parameters,
         Eigen::MatrixXd const & covariance
 ) {
+    init();
+
     ellipses::LogShear ls(
         parameters[Param::GAMMA1], 
         parameters[Param::GAMMA2], 
