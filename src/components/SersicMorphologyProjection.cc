@@ -93,7 +93,7 @@ components::SersicMorphologyProjection::computeLinearParameterDerivative() {
         //grab the 0th element of the _linearParameterDerivative
         PartialDerivative output(_linearParameterDerivative[0]);
 
-        Cache::Interpolator::ConstPtr interpolator(getMorphology()->getInterpolator());
+        SersicCache::Interpolator::ConstPtr interpolator(getMorphology()->getInterpolator());
         lsst::afw::geom::LinearTransform egt = *computeEllipseGridTransform();
         lsst::afw::geom::Extent2I dimensions = getDimensions();
         int midY = dimensions.getY()/2;
@@ -137,8 +137,8 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
         );
 
         SersicMorphology::ConstPtr morphology(getMorphology());
-        Cache::Interpolator::ConstPtr interpolator(morphology->getInterpolator());
-        Cache::Interpolator::ConstPtr derivativeInterpolator(morphology->getDerivativeInterpolator());
+        SersicCache::Interpolator::ConstPtr interpolator(morphology->getInterpolator());
+        SersicCache::Interpolator::ConstPtr derivativeInterpolator(morphology->getDerivativeInterpolator());
 
         EllipseGridTransform::ConstPtr ellipseGridPtr(computeEllipseGridTransform());
         EllipseGridTransform::DerivativeMatrix dEllipse(ellipseGridPtr->dEllipse());

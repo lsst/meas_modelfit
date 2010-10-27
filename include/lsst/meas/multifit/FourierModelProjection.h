@@ -35,6 +35,7 @@
 #include "lsst/afw/geom/Box.h"
 #include "lsst/afw/math/LocalKernel.h"
 #include "lsst/afw/image/Utils.h"
+#include "lsst/pex/policy/Policy.h"
 
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/WindowedFootprint.h"
@@ -63,6 +64,9 @@ public:
             ComponentModelProjection::getMorphologyProjection()
         );
     }
+
+    static CONST_PTR(lsst::pex::policy::Policy) getPolicy();
+    static void setPolicy(lsst::pex::policy::Policy policy);
 
 protected:
     friend class lsst::meas::multifit::ComponentModel;
@@ -123,12 +127,12 @@ private:
     class Shifter;
     class LinearMatrixHandler;
     class NonlinearMatrixHandler;
-    //class PsfMatrixHandler;
 
     boost::scoped_ptr<Shifter> _shifter;
     boost::scoped_ptr<LinearMatrixHandler> _linearMatrixHandler;
     boost::scoped_ptr<NonlinearMatrixHandler> _nonlinearMatrixHandler;
-    //boost::scoped_ptr<PsfMatrixHandler> _psfMatrixHandler;
+
+    static PTR(lsst::pex::policy::Policy) _policy;
 };
 
 }}} // namespace lsst::meas::multifit

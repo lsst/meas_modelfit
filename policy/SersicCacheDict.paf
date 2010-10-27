@@ -1,36 +1,30 @@
 #<? cfg paf dictionary ?>
-target: lsst.meas.multifit.SersicCacheFillFunction
+target: lsst.meas.multifit.RobustSersicCacheFillFunction
 
 definitions: {
 	epsrel: {
 		type:"double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 0.0
+		default: 1E-8
 	}
 	epsabs: {
 		type:"double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 0.00001
-	}
-	subintervalLimit: {
-		type: "int"
-		minOccurs: 1
-		maxOccurs: 1
-		default: 1000
+		default: 1E-16
 	}
 	nBinSersic: {
 		type: "int"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 100
+		default: 200
 	} 
 	nBinK: {
 		type: "int"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 100
+		default: 1000
 	} 
 	sersicMin: {
 		type: "double"
@@ -54,24 +48,36 @@ definitions: {
 		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: 1000.0
+		default: 500.0
 	}
-	radius: {
-		type: "string"
+	extrapolationK1: {
+		type: "double"
 		minOccurs: 1
 		maxOccurs: 1
-		default: "NATURAL"
+		default: 1000.0
 	}
-	truncate: {
+	extrapolationK2: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 2000.0
+	}
+	sersicInnerRadius: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 8.0
+	}
+	sersicOuterRadius: {
+		type: "double"
+		minOccurs: 1
+		maxOccurs: 1
+		default: 10.0
+	}
+	noInterpolation: {
 		type: "bool"
 		minOccurs: 1
 		maxOccurs: 1
 		default: true
-	}
-	truncationRadius: {
-		type: "double"
-		minOccurs: 1
-		maxOccurs: 1
-		default: 5.0
 	}
 }

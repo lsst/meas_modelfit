@@ -109,7 +109,7 @@ public:
         double epsrel,
         double epabs,
         double k,
-        bool noInterpolation = false
+        bool doInterpolation = false
     );
     
     double getFinalTolerance() const { return _epsabs; }
@@ -157,7 +157,7 @@ Integrator::Integrator(
     double epsrel,
     double epsabs1,
     double k,
-    bool noInterpolation
+    bool doInterpolation
 ) : _function(function), _endpoints(endpoints), _integrals(integrals),
     _debug("lsst.meas.multifit.ModifiedSersic"),
     _epsrel(epsrel), _epsabs(epsabs1), _k(k), _kSquared(k*k)
@@ -190,7 +190,7 @@ Integrator::Integrator(
             }
         }
     }
-    if (noInterpolation) {
+    if (!doInterpolation) {
         for (; iLower < _size; ++iLower) {
             integrate(iLower);
         }
@@ -311,8 +311,13 @@ int const Integrator::MAX_TINY_STEPS;
 } // unnamed namespace
 
 multifit::ModifiedSersicFunction::ModifiedSersicFunction(double n, double inner, double outer) 
-    : _n(n), _inner(inner), _outer(outer) 
+    :  _inner(inner), _outer(outer) 
 {
+    setSersicIndex(n);
+}
+
+void multifit::ModifiedSersicFunction::setSersicIndex(double n) {
+    _n = n;
     double e = -std::pow(_inner, 1.0 / _n);
     double f = std::exp(e);
     double df = e * f / (_n * _inner);
@@ -322,6 +327,7 @@ multifit::ModifiedSersicFunction::ModifiedSersicFunction(double n, double inner,
     _a[2] = -2.0 * _a[1] * _outer;
     _a[3] = _a[1] * _outer * _outer;
 }
+
 
 double multifit::ModifiedSersicFunction::operator()(double r) const {
     return (r <= _inner) ? 
@@ -351,8 +357,8 @@ double multifit::ModifiedSersicFunction::integrateOuter(double radius, int m) co
 
 multifit::ModifiedSersicHankelTransform::ModifiedSersicHankelTransform(
     ModifiedSersicFunction const & function,
-    double epsrel, double epsabs, bool noInterpolation
-) : _function(function), _epsrel(epsrel), _epsabs(epsabs), _noInterpolation(noInterpolation) {
+    double epsrel, double epsabs, bool doInterpolation
+) : _function(function), _epsrel(epsrel), _epsabs(epsabs), _doInterpolation(doInterpolation) {
     if (_epsrel < 0.0) _epsrel = std::sqrt(std::numeric_limits<double>::epsilon());
     if (_epsabs < 0.0) _epsabs = std::numeric_limits<double>::epsilon();
 }
@@ -361,7 +367,7 @@ double multifit::ModifiedSersicHankelTransform::operator()(double k) const {
     if (k <= _epsabs) {
         return _function.integrate(_function.getOuter(), 1) * gsl_sf_bessel_J0(0.0);
     }
-    Integrator integrator(_function, _endpoints, _integrals, _epsrel, _epsabs, k, _noInterpolation);
+    Integrator integrator(_function, _endpoints, _integrals, _epsrel, _epsabs, k, _doInterpolation);
     double result = sum(_integrals);
     if (std::fabs(result) < integrator.getFinalTolerance())
         result = 0.0;

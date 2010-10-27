@@ -32,7 +32,7 @@ import numpy.random
 import lsst.afw.display.ds9 as ds9
 import lsst.pex.logging as pexLog
 import sys
-
+import eups
 
 def makeModelExposure(model, psf, affine, noiseFactor=0):
     fp = model.computeProjectionFootprint(psf, affine)
@@ -100,11 +100,12 @@ def applyFitter():
     
     print >> sys.stderr, "making cache"
     try:
-        cache = measMult.Cache.load("/home/dubcovsky/multifit/cache_10x4000")
+        root = os.path.join(eups.productDir("multifitData"), "cache")
+        path = os.path.join(root, "sersicCache.boost")
+        cache = measMult.SersicCache.load(path)
     except:
         pol = pexPol.Policy()
-        cache = measMult.makeRobustSersicCache(pol)
-        cache.save("robustCache")
+        cache = measMult.SersicCache.make(pol)        
     measMult.SersicMorphology.setSersicCache(cache)
 
     print >> sys.stderr, "making model"

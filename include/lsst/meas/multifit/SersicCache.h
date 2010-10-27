@@ -1,103 +1,126 @@
-/* 
- * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
- * 
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
- * see <http://www.lsstcorp.org/LegalNotices/>.
- */
- 
-#ifndef LSST_MEAS_MULTIFIT_SERSIC_CACHE_FILL_FUNCTION_H
-#define LSST_MEAS_MULTIFIT_SERSIC_CACHE_FILL_FUNCTION_H
+#ifndef LSST_MEAS_MULTIFIT_SERSIC_CACHE_H
+#define LSST_MEAS_MULTIFIT_SERSIC_CACHE_H
 
-#include <boost/make_shared.hpp>
+
+#include <Eigen/Core>
 #include "lsst/afw/geom.h"
-#include "lsst/meas/multifit/Cache.h"
 #include "lsst/pex/policy/DefaultPolicyFile.h"
+
+namespace boost {
+namespace serialization {
+    class access;
+}}
 
 namespace lsst {
 namespace meas {
 namespace multifit {
 
-#ifndef SWIG
-class SersicCacheFillFunction : public Cache::FillFunction {
-public: 
+class InterpolationFunction {
+public:
+    enum ExtrapolationParams {A=0, B, C, NPARAM};
 
-    enum SersicRadiusEnum { RADIUS_HALF_INTEGRAL, RADIUS_HALF_MAX, RADIUS_NATURAL };
+    typedef boost::shared_ptr<InterpolationFunction> Ptr;
+    typedef boost::shared_ptr<InterpolationFunction const> ConstPtr;
+    typedef Eigen::Matrix<double, 1, NPARAM> ExtrapolationParameters;
 
-    struct Options {
-        SersicRadiusEnum radius;
-        bool truncate;
-        double truncationRadius;
-
-        explicit Options(
-            SersicRadiusEnum radius_=RADIUS_HALF_MAX,
-            bool truncate_=true,
-            double truncationRadius_=5.0
-        ) : radius(radius_), truncate(truncate_), truncationRadius(truncationRadius_) {}
-    };
-
-    SersicCacheFillFunction (
-        double const & epsabs, double const & epsrel, int const & limit, Options const & options=Options()
-    )
-      : Cache::FillFunction(0),
-        _lastSersic(std::numeric_limits<double>::quiet_NaN()),
-        _epsabs(epsabs), _epsrel(epsrel), _limit(limit),
-        _params(options)
+    InterpolationFunction(
+        double const min, double const max, double const step,
+        Eigen::VectorXd const & values,
+        ExtrapolationParameters const & extrapolationParameters
+    ) : _min(min), _max(max), _step(step), 
+        _values(values), 
+        _extraParams(extrapolationParameters) 
     {}
 
-    virtual double operator()(double sersic, double k) const;
-    virtual Cache::FillFunction::Ptr clone() const {
-        return boost::make_shared<SersicCacheFillFunction>(_epsabs, _epsrel, _limit);
-    }
+    double operator() (double x) const;
+    double d(double x) const;
 
-private:
-    class IntegralParameters {
-    public:    
-        double const & getK() const {return _k;}
-        double const & getN() const {return _n;}
-        double const & getKappa() const {return _kappa;}
-        double const & getNorm() const {return _norm;}
-
-        void setK(double const & k) {_k = std::abs(k);}
-        void setN(double const & n);
-
-        explicit IntegralParameters(Options const & options) : _options(options) {}
-
-        Options const & getOptions() const { return _options; }
-    private:
-        double _k, _n, _kappa, _norm;
-        Options _options;
-    };
-
-    static double sersicFunction(double radius, void * parameters);
-
-    double _lastSersic;
-    double _epsabs, _epsrel;
-    int _limit;
-    mutable IntegralParameters _params;
+protected:
+    double _min, _max, _step;
+    Eigen::VectorXd _values;
+    ExtrapolationParameters _extraParams;
 };
+
+class SersicCache {
+public:   
+    typedef boost::shared_ptr<SersicCache> Ptr;
+    typedef boost::shared_ptr<SersicCache const> ConstPtr;
+
+    typedef InterpolationFunction Interpolator;
+
+    static ConstPtr get(std::string const & name="");
+    static ConstPtr make(
+        lsst::pex::policy::Policy policy, 
+        bool const doOverwrite=false,
+        std::string const & name=""
+    );
+    static ConstPtr make(
+        double const sersicMin, double const sersicMax,
+        double const kMin, double const kMax,
+        int const nSersic, int const nK,        
+        double const innerRadius, double const outerRadius,
+        double const extrapolationK1, double const extrapolationK2,
+        double epsrel=-1.0, double epsabs=-1.0,        
+        bool const & doOverwrite=false,
+        std::string const & name="" 
+    );
+    static ConstPtr load(
+        std::string const & filepath,         
+        bool const & doOverwrite=false,
+        std::string const & name="" 
+    ); 
+    void save(std::string const & filepath) const;
+
+    Interpolator::ConstPtr getInterpolator(double const sersic) const;
+    Interpolator::ConstPtr getDerivativeInterpolator(double const sersic) const;
+
+    double const getSersicMin() const {return _sersicMin;}
+    double const getSersicMax() const {return _sersicMax;}
+    double const getKMin() const {return _kMin;}
+    double const getKMax() const {return _kMax;}
+    double const getSersicStep() const {return _sersicStep;}
+    double const getKStep() const {return _kStep;}
+    double const getInnerSersicRadius() const {return _inner;}
+    double const getOuterSersicRadius() const {return _outer;}
+    double const getExtrapolationK1() const {return _extrapolationK1;}
+    double const getExtrapolationK2() const {return _extrapolationK2;}
+    double const getEpsrel() const {return _epsrel;}
+    double const getEpsabs() const {return _epsabs;}
+    int const getNSersic() const {return int((_sersicMax - _sersicMin)/_sersicStep);}
+    int const getNK() const {return int((_kMax - _kMin)/_kStep);}
+    
+    Eigen::MatrixXd const & getDataPoints() const {return _dataPoints;}
+private:
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive & ar, unsigned int const);
+    
+    typedef Eigen::Matrix<double, Eigen::Dynamic, Interpolator::NPARAM> ExtrapolationParameters;
+
+    SersicCache(
+        double const sersicMin, double const sersicMax,
+        double const kMin, double const kMax,
+        int const nSersic, int const nK,        
+        double const innerRadius, double const outerRadius,
+        double const extrapolationK1, double const extrapolationK2,
+        double epsrel=-1.0, double epsabs=-1.0
+    );
+
+    SersicCache(){};
+
+
+
+    double _sersicMin, _sersicMax, _kMin, _kMax;
+    double _sersicStep, _kStep;    
+    double _inner, _outer;
+    double _extrapolationK1, _extrapolationK2;
+    double _epsrel, _epsabs;
+    Eigen::MatrixXd _dataPoints;
+    ExtrapolationParameters _extraParams;
+    static std::map<std::string, Ptr> _registry;
+};
+}}}
 #endif
-
-Cache::ConstPtr makeSersicCache(lsst::pex::policy::Policy policy);
-
-}}} //end namespace lsst::meas::multifit
-
-#endif //LSST_MEAS_MULTIFIT_SERSIC_CACHE_FILL_FUNCTION_H
-
-
 
 

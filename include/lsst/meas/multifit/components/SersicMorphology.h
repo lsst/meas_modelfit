@@ -24,7 +24,7 @@
 #define LSST_MEAS_MULTIFIT_SERSIC_MORPHOLOGY_H
 
 #include "lsst/meas/multifit/components/Morphology.h"
-#include "lsst/meas/multifit/Cache.h"
+#include "lsst/meas/multifit/SersicCache.h"
 
 namespace lsst {
 namespace meas {
@@ -94,7 +94,7 @@ public:
         size_t const & start=0
     ) const;
 
-    static void setSersicCache(Cache::ConstPtr const & cache) {
+    static void setSersicCache(SersicCache::ConstPtr const & cache) {
         _cache=cache;
     }
 protected:
@@ -102,14 +102,14 @@ protected:
 
     virtual void _handleNonlinearParameterChange();
 
-    multifit::Cache::Interpolator::ConstPtr const & getInterpolator() const {
+    multifit::SersicCache::Interpolator::ConstPtr const & getInterpolator() const {
         return _interpolator;
     }
-    multifit::Cache::Interpolator::ConstPtr const & getDerivativeInterpolator() const {
+    multifit::SersicCache::Interpolator::ConstPtr const & getDerivativeInterpolator() const {
         return _derivativeInterpolator;
     }
 
-    multifit::Cache::ConstPtr const & getSersicCache() const {
+    multifit::SersicCache::ConstPtr const & getSersicCache() const {
         return _cache;
     }
 
@@ -130,9 +130,9 @@ protected:
 
 
 private:
-    Cache::Interpolator::ConstPtr _interpolator;
-    Cache::Interpolator::ConstPtr _derivativeInterpolator;
-    static Cache::ConstPtr _cache;
+    SersicCache::Interpolator::ConstPtr _interpolator;
+    SersicCache::Interpolator::ConstPtr _derivativeInterpolator;
+    static SersicCache::ConstPtr _cache;
 };
 
 

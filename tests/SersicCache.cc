@@ -42,40 +42,40 @@ using namespace std;
 namespace multifit = lsst::meas::multifit;
 
 BOOST_AUTO_TEST_CASE(SersicCache) {
-    multifit::Cache::ConstPtr cache;
+    multifit::SersicCache::ConstPtr cache;
     try {
-        cache = multifit::Cache::load("testCache");
+        cache = multifit::SersicCache::load("testCache");
     } catch (...) {
         lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "SersicCache.paf", "tests");
         lsst::pex::policy::Policy pol;
         file.load(pol);
-        cache = multifit::makeSersicCache(pol);
+        cache = multifit::SersicCache::make(pol);
     }
 
     BOOST_CHECK(cache);
 
-    double slowMin = cache->getSlowMin(), slowMax = cache->getSlowMax();
-    double fastMin = cache->getFastMin(), fastMax = cache->getFastMax(); 
-    multifit::Cache::Interpolator::ConstPtr functor;
-    BOOST_CHECK_NO_THROW(functor = cache->getInterpolator(slowMin));
+    double sersicMin = cache->getSersicMin(), sersicMax = cache->getSersicMax();
+    double kMin = cache->getKMin(), kMax = cache->getKMax(); 
+    multifit::SersicCache::Interpolator::ConstPtr functor;
+    BOOST_CHECK_NO_THROW(functor = cache->getInterpolator(sersicMin));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(fastMin));
-    BOOST_CHECK_NO_THROW((*functor)(fastMax-1.0));
+    BOOST_CHECK_NO_THROW((*functor)(kMin));
+    BOOST_CHECK_NO_THROW((*functor)(kMax-1.0));
 
-    BOOST_CHECK_NO_THROW(functor = cache->getDerivativeInterpolator(slowMin));
+    BOOST_CHECK_NO_THROW(functor = cache->getDerivativeInterpolator(sersicMin));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(fastMin));
-    BOOST_CHECK_NO_THROW((*functor)(fastMax-1.0));
+    BOOST_CHECK_NO_THROW((*functor)(kMin));
+    BOOST_CHECK_NO_THROW((*functor)(kMax-1.0));
 
-    BOOST_CHECK_NO_THROW(functor = cache->getInterpolator(slowMax -1.0));
+    BOOST_CHECK_NO_THROW(functor = cache->getInterpolator(sersicMax -1.0));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(fastMin));
-    BOOST_CHECK_NO_THROW((*functor)(fastMax - 1.0));
+    BOOST_CHECK_NO_THROW((*functor)(kMin));
+    BOOST_CHECK_NO_THROW((*functor)(kMax - 1.0));
     
-    BOOST_CHECK_NO_THROW(functor = cache->getDerivativeInterpolator(slowMax- 1.0));
+    BOOST_CHECK_NO_THROW(functor = cache->getDerivativeInterpolator(sersicMax- 1.0));
     BOOST_CHECK(functor);
-    BOOST_CHECK_NO_THROW((*functor)(fastMin));
-    BOOST_CHECK_NO_THROW((*functor)(fastMax - 1.0));
+    BOOST_CHECK_NO_THROW((*functor)(kMin));
+    BOOST_CHECK_NO_THROW((*functor)(kMax - 1.0));
 
     double const * data = cache->getDataPoints().data();
     for(int i = 0; i < cache->getDataPoints().size(); ++i, ++data) {

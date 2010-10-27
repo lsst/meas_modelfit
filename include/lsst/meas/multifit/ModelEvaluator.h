@@ -265,6 +265,10 @@ private:
         NONLINEAR_PARAMETER_DERIVATIVE = 1<<2,
     };
 
+    void allocateModelImageBuffer();
+    void allocateLinearDerivativeBuffer();
+    void allocateNonlinearDerivativeBuffer();
+
     int _nMinPix;
     int _validProducts;
     Model::Ptr _model;    

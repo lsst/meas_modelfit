@@ -12,6 +12,10 @@ namespace meas {
 namespace multifit {
 
 struct Flags{
+    /** 
+     * meas::multifit::Flags are a continuation of meas::algorithms::Flags
+     * and occupy the same bit vector in afw::detection::Source
+     */
     enum {
         FAIL_INIT_PS_NAN        = 0x00010000, 
         FAIL_INIT_PS_NO_PIX     = 0x00020000, 
@@ -54,18 +58,21 @@ public:
     typedef lsst::afw::detection::Measurement<Base> Measurement;
 
     enum {E1=Base::NVALUE, E2, R, N, 
-        FLUX_FLUX_COV, FLUX_E1_COV, FLUX_E2_COV, FLUX_R_COV, FLUX_N_COV, 
+        AMP_AMP_COV, AMP_E1_COV, AMP_E2_COV, AMP_R_COV, AMP_N_COV, 
         E1_E1_COV, E1_E2_COV, E1_R_COV, E1_N_COV,
         E2_E2_COV, E2_R_COV, E2_N_COV,
         R_R_COV, R_N_COV,
         N_N_COV, 
+        AMPLITUDE,
         NVALUE
     };
 
     SmallGalaxyModelPhotometry(
         std::vector<double> const & parameters,
-        Eigen::MatrixXd const & covariance
+        Eigen::MatrixXd const & covariance,
+        double innerSersicRadius, double outerSersicRadius
     );
+
     virtual ~SmallGalaxyModelPhotometry(){}
 #ifndef SWIG
     virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);

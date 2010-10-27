@@ -50,7 +50,7 @@
 #include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/components/Astrometry.h"
 #include "lsst/meas/multifit/ModelFactory.h"
-#include "lsst/meas/multifit/RobustSersicCache.h"
+#include "lsst/meas/multifit/SersicCache.h"
 
 using namespace std;
 namespace multifit = lsst::meas::multifit;
@@ -59,14 +59,14 @@ namespace geom = lsst::afw::geom;
 namespace detection = lsst::afw::detection;
 
 BOOST_AUTO_TEST_CASE(SersicModelProjection) {
-    multifit::Cache::ConstPtr cache;
+    multifit::SersicCache::ConstPtr cache;
     try {
-        cache = multifit::Cache::load("robustSersicCache");
+        cache = multifit::SersicCache::load("testCache");
     } catch (...){
-        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "RobustSersicCache.paf", "tests");
+        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "SersicCache.paf", "tests");
         lsst::pex::policy::Policy pol;
         file.load(pol);
-        cache = multifit::makeRobustSersicCache(pol);
+        cache = multifit::SersicCache::make(pol);
     }
     multifit::components::SersicMorphology::setSersicCache(cache);
 

@@ -28,7 +28,7 @@
 
 namespace components = lsst::meas::multifit::components;
 
-lsst::meas::multifit::Cache::ConstPtr components::SersicMorphology::_cache;
+lsst::meas::multifit::SersicCache::ConstPtr components::SersicMorphology::_cache;
 
 lsst::afw::geom::ellipses::Core::Ptr 
 components::SersicMorphology::computeBoundingEllipseCore() const {  
@@ -82,12 +82,12 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
     }
 
     Parameter n = getSersicIndex();
-    if(n < _cache->getSlowMin() || n >= _cache->getSlowMax()) {
-        n = std::min(std::max(n, _cache->getSlowMin()), _cache->getSlowMax()); 
+    if(n < _cache->getSersicMin() || n >= _cache->getSersicMax()) {
+        n = std::min(std::max(n, _cache->getSersicMin()), _cache->getSersicMax()); 
         errors[offset+SERSIC_INDEX] = n;
         errStr += 
             (boost::format(" Sersic Index %.3f out of bounds [%.3f, %.3f)")%
-                n % _cache->getSlowMin() % _cache->getSlowMax()).str();
+                n % _cache->getSersicMin() % _cache->getSersicMax()).str();
     }
 
     if(errors.size() > 0) {

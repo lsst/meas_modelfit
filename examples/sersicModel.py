@@ -81,6 +81,16 @@ def main():
     logShear = lsst.afw.geom.ellipses.LogShear(axes)
 
     sersicIndex = 1.25
+
+    try:
+        root = os.path.join(eups.productDir("multifitData"), "cache")
+        path = os.path.join(root, "sersicCache.boost")
+        cache = measMult.SersicCache.load(path)
+    except:
+        pol = pexPol.Policy()
+        cache = measMult.SersicCache.make(pol)        
+    measMult.SersicMorphology.setSersicCache(cache)
+
     model = measMult.createSersicModel(flux, centroid, logShear, sersicIndex)
     exp = makeModelExposure(model, psf, wcs)
 

@@ -444,8 +444,35 @@ multifit::FourierModelProjection::FourierModelProjection(
     _setDimensions();
 }
 
+PTR(lsst::pex::policy::Policy) multifit::FourierModelProjection::_policy;
 
+CONST_PTR(lsst::pex::policy::Policy) multifit::FourierModelProjection::getPolicy() {
+    if(!_policy) {
+        lsst::pex::policy::DefaultPolicyFile file(
+            "meas_multifit", "FourierModelProjectionDict.paf", "policy"
+        );
+        _policy = boost::shared_ptr<lsst::pex::policy::Policy>(
+            lsst::pex::policy::Policy::createPolicy(file)
+        );
+    }
+    return _policy;
+}
 
+void multifit::FourierModelProjection::setPolicy(
+    lsst::pex::policy::Policy policy
+) {    
+    if(_policy) {
+        lsst::pex::policy::DefaultPolicyFile file(
+            "meas_multifit", "FourierModelProjectionDict.paf", "policy"
+        );
+        _policy = boost::shared_ptr<lsst::pex::policy::Policy>(
+            lsst::pex::policy::Policy::createPolicy(file)
+        );
+    }
+    
+    policy.mergeDefaults(*_policy);
+    *_policy = policy;
+}
 /**
  * Determine size of all arrays
  *
@@ -454,6 +481,13 @@ multifit::FourierModelProjection::FourierModelProjection(
  */
 void multifit::FourierModelProjection::_setDimensions() {
     afwGeom::Extent2I dimensions = getMorphologyProjection()->getDimensions();
+    int area = dimensions.getX()*dimensions.getY();
+    if(area > getPolicy()->getInt("maxArea")){
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::RuntimeErrorException,
+            (boost::format("Fourier space area of the model projection is too large %1%")%area).str()
+        );
+    }
     afwGeom::PointD centerOnExposure = _getPsfPosition();
 
     afwGeom::Point2I bboxMin = afwGeom::Point2I::make(

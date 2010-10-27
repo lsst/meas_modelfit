@@ -1,108 +1,103 @@
-/* 
- * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
- * 
- * This product includes software developed by the
- * LSST Project (http://www.lsst.org/).
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
- * see <http://www.lsstcorp.org/LegalNotices/>.
- */
- 
 #include "lsst/meas/multifit/SersicCache.h"
+#include "lsst/meas/multifit/ModifiedSersic.h"
+#include "lsst/pex/exceptions/Runtime.h"
+#include "lsst/pex/logging/Debug.h"
+#include "lsst/utils/ieee.h"
 
-#include <cmath>
-#include <gsl/gsl_integration.h>
-#include <gsl/gsl_sf_bessel.h>
-#include <gsl/gsl_errno.h>
-#include <boost/math/special_functions/bessel.hpp>
-#include <boost/math/special_functions/gamma.hpp>
+#include <fstream>
+#include <boost/serialization/list.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/make_shared.hpp>
+#include <Eigen/LU>
+#include <Eigen/Array>
 
 namespace multifit = lsst::meas::multifit;
-      
-void multifit::SersicCacheFillFunction::IntegralParameters::setN(
-    double const & n
-) {         
-    _n = std::abs(n);
-    double twoN = _n * 2;
-    switch (_options.radius) {
-    case RADIUS_HALF_INTEGRAL:
-        _kappa = boost::math::gamma_p_inv(twoN, 0.5);
-        _norm = M_PI * twoN * std::pow(_kappa, -twoN) * 
-            boost::math::tgamma(twoN);
-        break;
-    case RADIUS_HALF_MAX:
-        _kappa = M_LN2;
-        _norm = 1.0;
-        break;
-    case RADIUS_NATURAL:
-        _kappa = 1.0;
-        _norm = 1.0;
-        break;
-    }
-};
 
-double multifit::SersicCacheFillFunction::sersicFunction(
-    double radius, void * parameters
+namespace {
+
+void fitRational(
+    Eigen::Vector3d const & k, 
+    Eigen::Vector3d const & values,
+    double & a0, double & a1, double & a2
 ) {
-    IntegralParameters const & temp = *static_cast<IntegralParameters*>(
-        parameters
-    );
-   
-    gsl_sf_result j0;
-    int err = gsl_sf_bessel_J0_e(temp.getK()*radius, &j0);
-    if(err || j0.val != j0.val)
-        j0.val = 0;
-
-    double exponent = temp.getKappa() * (-std::pow(radius, 1.0/temp.getN()));
-    double cutoff = 0.0;
-    if (temp.getOptions().truncate) {
-        cutoff = std::exp(temp.getKappa() * (-std::pow(5.0, 1.0/temp.getN())));
+    Eigen::Matrix3d matrix;
+    matrix.col(0).fill(1.0);
+    matrix.col(1) = k.cwise().inverse();
+    matrix.col(2) = k.cwise().inverse().cwise().square();
+    Eigen::Vector3d model;
+    Eigen::LU<Eigen::Matrix3d> lu(matrix);
+    lu.solve(values, &model);
+    a0 = model[0];
+    a1 = model[1];
+    a2 = model[2];
+    if (lsst::utils::isnan(a0) || lsst::utils::isnan(a1) || lsst::utils::isnan(a2)) {
+        a0 = a1 = a2 = 0.0;        
     }
-    return (radius*j0.val*((std::exp(exponent) - cutoff)) / temp.getNorm());
 }
 
-double multifit::SersicCacheFillFunction::operator() (double sersic, double k) const {       
-    gsl_function func;
-    func.function = sersicFunction;
-    func.params = static_cast<void*>(&_params);
+} //end annonymous namespace
 
-    // compute parameter dimensions, and allocate grid
-    if(sersic != _lastSersic) {
-        _params.setN(sersic);
-    } 
-    _params.setK(k);
 
-    double result, abserr;
-    gsl_error_handler_t * oldErrorHandler = gsl_set_error_handler_off();
+///////////////////////////////////////////////////////////////////////////////
+// InterpolationFunction
+///////////////////////////////////////////////////////////////////////////////
+double multifit::InterpolationFunction::operator()(double p) const {
+    if (p < _max) {
+        if (p < _min) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::InvalidParameterException,
+                (boost::format("Operand value (%1%) is outside of valid range [%2%, %3%)")%
+                    p % _min % _max).str()
+            );
+        }
+        int i = static_cast<int>((p - _min) / _step);    
+
+
+        double w1 = (p - (_min + _step*i))/_step;
+        double w0 = 1 - w1;
+        double v0 = _values[i];
+        double v1 = _values[i+1];
+
+        return w0*v0 + w1*v1;
+    }
     
-    gsl_integration_workspace * ws = gsl_integration_workspace_alloc(_limit);
-    if (_params.getOptions().truncate) {
-        gsl_integration_qag(
-            &func, 0, _params.getOptions().truncationRadius, _epsabs, _epsrel, _limit,
-            GSL_INTEG_GAUSS61, ws, &result, &abserr
-        );
-    } else {  
-        gsl_integration_qagiu(&func, 0, _epsabs, _epsrel, _limit, ws, &result, &abserr);
-    }
-    gsl_integration_workspace_free(ws);
-    gsl_set_error_handler(oldErrorHandler);
-
-    return result;
+    return _extraParams[A] + _extraParams[B] / p + _extraParams[C] / (p*p);
 }
 
-multifit::Cache::ConstPtr multifit::makeSersicCache(lsst::pex::policy::Policy policy) {
+double multifit::InterpolationFunction::d(double p) const {
+    if (p < _max) {
+       if (p < _min) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::InvalidParameterException,
+                (boost::format("Operand value (%1%) is outside of valid range [%2%, %3%)")%
+                    p % _min % _max).str()
+            );
+        }
+        int i = static_cast<int>((p - _min) / _step);    
+
+        double v0 = _values[i];
+        double v1 = _values[i+1];
+         
+        return (v1 - v0)/_step; 
+    }
+    return -_extraParams[B] / (p*p) - 2.0 * _extraParams[C] / (p*p*p);
+}
+///////////////////////////////////////////////////////////////////////////////
+// SersicCache
+///////////////////////////////////////////////////////////////////////////////
+
+std::map<std::string, multifit::SersicCache::Ptr> multifit::SersicCache::_registry;
+
+multifit::SersicCache::ConstPtr multifit::SersicCache::get(std::string const & name) {
+    return _registry[name];
+}
+
+multifit::SersicCache::ConstPtr multifit::SersicCache::make(
+    lsst::pex::policy::Policy policy,
+    bool const doOverwrite,
+    std::string const & name
+) {
     lsst::pex::policy::DefaultPolicyFile defSource(
         "meas_multifit",
         "SersicCacheDict.paf",
@@ -111,35 +106,216 @@ multifit::Cache::ConstPtr multifit::makeSersicCache(lsst::pex::policy::Policy po
     lsst::pex::policy::Policy defPol(defSource);
     policy.mergeDefaults(defPol);
 
-    SersicCacheFillFunction::Options options;
-    std::string radiusString = policy.getString("radius");
-    if (radiusString == "HALF_INTEGRAL") {
-        options.radius = SersicCacheFillFunction::RADIUS_HALF_INTEGRAL;
-    } else if (radiusString == "HALF_MAX") {
-        options.radius = SersicCacheFillFunction::RADIUS_HALF_MAX;
-    } else if (radiusString == "NATURAL") {
-        options.radius = SersicCacheFillFunction::RADIUS_NATURAL;
-    } else {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Sersic radius must be one of 'HALF_INTEGRAL', 'HALF_MAX', 'NATURAL'."
-        );
-    }
-    options.truncate = policy.getBool("truncate");
-    options.truncationRadius = policy.getDouble("truncationRadius");
-    SersicCacheFillFunction fillFunction(
-        policy.getDouble("epsabs"), 
-        policy.getDouble("epsrel"),
-        policy.getInt("subintervalLimit"),
-        options
-    );
-
-    return Cache::make(
+    return SersicCache::make(
         policy.getDouble("sersicMin"), policy.getDouble("sersicMax"),
         policy.getDouble("kMin"), policy.getDouble("kMax"),
         policy.getInt("nBinSersic"), policy.getInt("nBinK"),
-        &fillFunction, 
-        Cache::InterpolatorFactory::get(""), 
-        "Sersic", false
+        policy.getDouble("sersicInnerRadius"), 
+        policy.getDouble("sersicOuterRadius"), 
+        policy.getDouble("extrapolationK1"),
+        policy.getDouble("extrapolationK2"),
+        policy.getDouble("epsabs"), 
+        policy.getDouble("epsrel"),
+        doOverwrite,
+        name
     );
 }
+
+
+multifit::SersicCache::ConstPtr multifit::SersicCache::make(
+    double const sersicMin, double const sersicMax,
+    double const kMin, double const kMax,
+    int const nSersic, int const nK,
+    double const innerRadius, double const outerRadius,
+    double const extrapolationk1, double const extrapolationk2,
+    double epsrel, double epsabs,
+    bool const & doOverwrite,
+    std::string const & name
+) {
+
+    if(!doOverwrite && !name.empty()) {
+        std::map<std::string, Ptr>::const_iterator i = _registry.find(name);
+        if(i != _registry.end()){
+            return i->second;
+        }
+    }
+    Ptr cache(
+        new SersicCache(
+            sersicMin, sersicMax, kMin, kMax, 
+            nSersic, nK, 
+            innerRadius, outerRadius,
+            extrapolationk1, extrapolationk2,
+            epsrel, epsabs
+        )
+    );
+    if(doOverwrite && !name.empty()) {
+            _registry[name] = cache;
+    }
+    
+    return cache;
+}
+
+multifit::SersicCache::ConstPtr multifit::SersicCache::load(
+    std::string const & filepath,
+    bool const & doOverwrite,
+    std::string const & name
+) {
+    std::map<std::string, Ptr>::const_iterator i = _registry.find(name);
+    bool useRegistry = i != _registry.end() && !doOverwrite;
+    if(useRegistry) {
+        return i->second;        
+    }    
+
+    Ptr cache(new SersicCache());
+    std::ifstream ifs(filepath.c_str());
+    boost::archive::text_iarchive ia(ifs);
+    ia >> *cache;
+    
+    if(!useRegistry) {
+        _registry[name] = cache;
+    }
+
+    return cache;
+}
+
+
+void multifit::SersicCache::save(std::string const & filepath) const {
+    std::ofstream ofs(filepath.c_str());
+    boost::archive::text_oarchive oa(ofs);
+    oa << *this;
+}
+
+multifit::SersicCache::SersicCache(
+    double const sersicMin, double const sersicMax,
+    double const kMin, double const kMax,
+    int const nSersic, int const nK,
+    double const innerRadius, double const outerRadius,
+    double const extrapolationK1, double const extrapolationK2,
+    double epsrel, double epsabs
+) : _sersicMin(sersicMin), _sersicMax(sersicMax), _kMin(kMin), _kMax(kMax),
+    _sersicStep((sersicMax-sersicMin)/nSersic), _kStep((kMax-kMin)/nK),
+    _inner(innerRadius), _outer(outerRadius),
+    _extrapolationK1(extrapolationK1), _extrapolationK2(extrapolationK2),
+    _epsrel(epsrel), _epsabs(epsabs),
+    _dataPoints(nSersic+1, nK+1),
+    _extraParams(nSersic+1, Interpolator::NPARAM)
+{
+    lsst::pex::logging::Debug debug("lsst.meas.multifit.SersicCache");
+
+    //compute the data points
+    //outer loop over sersic dimension
+    int nRows = nSersic+1, nCols = nK+1;
+
+    double sersic=sersicMin;
+    ModifiedSersicHankelTransform hankel(
+        ModifiedSersicFunction(sersicMin, _inner, _outer),
+        epsrel, epsabs
+    );
+    for(int i = 0; i < nRows; ++i, sersic+=_sersicStep) {
+        if(i > 0) {
+            hankel.setSersicIndex(sersic);
+        }
+        double k = kMin;
+        debug.debug<5>("Filling row %d of %d.", i, nRows);
+        //inner loop over k dimension 
+        Eigen::MatrixXd::RowXpr row = _dataPoints.row(i);
+        for (int j = 0; j < nCols; ++j, k += _kStep) {
+            //set grid point
+            debug.debug<8>("Filling item %d of %d (column %d of %d).",
+                           i*nCols + j, nCols * nRows, j, nCols);
+            row[j] = hankel(k);
+        }
+        
+        double v0 = row[nK];
+        double v1 = hankel(extrapolationK1);
+        double v2 = hankel(extrapolationK2);
+        
+        ExtrapolationParameters::RowXpr params = _extraParams.row(i);
+        ::fitRational(
+            Eigen::Vector3d(kMax, extrapolationK1, extrapolationK2),
+            Eigen::Vector3d(v0, v1, v2),
+            params[Interpolator::A], params[Interpolator::B], params[Interpolator::C]
+        );
+    }
+}
+
+multifit::SersicCache::Interpolator::ConstPtr multifit::SersicCache::getInterpolator(
+    double const sersic
+) const {
+    if (sersic < _sersicMin || sersic >= _sersicMax) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            (boost::format("Operand value %1% is outside of valid range [%2%, %3%)")%
+                sersic % _sersicMin % _sersicMax).str()
+        );
+    }
+
+    int i = static_cast<int>((sersic - _sersicMin) / _sersicStep);
+    double s = (sersic - (_sersicMin+_sersicStep*i))/_sersicStep;
+        
+    Eigen::VectorXd r(_dataPoints.row(i)*(1 - s) + _dataPoints.row(i+1)*s);
+    Interpolator::ExtrapolationParameters params =
+        _extraParams.row(i)*(1-s) + _extraParams.row(i+1)*s;
+    return boost::make_shared<Interpolator>(_kMin, _kMax, _kStep, r, params);
+}
+
+multifit::SersicCache::Interpolator::ConstPtr multifit::SersicCache::getDerivativeInterpolator(
+    double const sersic
+) const {
+    if (sersic < _sersicMin || sersic >= _sersicMax) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            (boost::format("Operand value %1% is outside of valid range [%2%, %3%)")%
+                sersic % _sersicMin % _sersicMax).str()
+        );
+    }
+
+    int i = static_cast<int>((sersic - _sersicMin) / _sersicStep);
+    Eigen::VectorXd r((_dataPoints.row(i+1) - _dataPoints.row(i))/ _sersicStep);
+    Interpolator::ExtrapolationParameters params =
+        (_extraParams.row(i)*(i+1) + _extraParams.row(i))/_sersicStep;
+
+    return boost::make_shared<Interpolator>(_kMin, _kMax, _kStep, r, params);
+}
+
+template <class Archive>
+void multifit::SersicCache::serialize(Archive & ar, unsigned int const) {
+    ar & _sersicStep;
+    ar & _kStep;
+    ar & _sersicMin;
+    ar & _sersicMax;
+    ar & _kMin;
+    ar & _kMax;
+    ar & _inner;
+    ar & _outer;
+    ar & _epsrel;
+    ar & _epsabs;
+    ar & _extrapolationK1;
+    ar & _extrapolationK2;
+
+    if (Archive::is_loading::value) {
+        int nRow = getNSersic() + 1;
+        int nCol = getNK() + 1;
+
+        _dataPoints = Eigen::MatrixXd(nRow, nCol);
+        _extraParams = ExtrapolationParameters(nRow, Interpolator::NPARAM);
+    }
+    
+    double * iData = _dataPoints.data();
+    for(int i =0; i < _dataPoints.size(); ++i, ++iData) {
+        ar & *iData;
+    }
+    double * iParam = _extraParams.data();
+    for(int i =0; i < _extraParams.size(); ++i, ++iParam) {
+        ar & *iParam;
+    }
+}
+
+template void multifit::SersicCache::serialize<boost::archive::text_oarchive> (
+    boost::archive::text_oarchive &, unsigned int const
+);
+template void multifit::SersicCache::serialize<boost::archive::text_iarchive> (
+    boost::archive::text_iarchive &, unsigned int const
+);
+
+

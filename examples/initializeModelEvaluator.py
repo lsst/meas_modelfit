@@ -34,9 +34,9 @@ def initializeModelEvaluator():
     centroid = afwGeom.makePointD(45, 45)
     psModel = measMult.createPointSourceModel(flux, centroid)
 
-    exposureList = makeImageStack(psModel, 15, centroid[0], centroid[1])
+    (miList, psfList, transformList) = makeImageStack(psModel, 15, centroid[0], centroid[1])
     modelEvaluator = measMult.ModelEvaluator(psModel)
-    modelEvaluator.setData(exposureList)
+    modelEvaluator.setData(miList, psfList, transformList)
 
     numpy.set_printoptions(threshold=numpy.nan)
     print "ModelEvaluator nProjections: %d"%modelEvaluator.getNProjections()

@@ -48,7 +48,7 @@
 #include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/ModelFactory.h"
-#include "lsst/meas/multifit/RobustSersicCache.h"
+#include "lsst/meas/multifit/SersicCache.h"
 
 namespace det = lsst::afw::detection;
 namespace math = lsst::afw::math;
@@ -145,15 +145,15 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
     geom::Point2D pixel = geom::makePointD(45,45);
     geom::ellipses::Axes axes(25,30,0);
 
-    multifit::Cache::ConstPtr cache;
+    multifit::SersicCache::ConstPtr cache;
 
     try {
-        cache = multifit::Cache::load("testRobustCache", "RobustSersic", false);
+        cache = multifit::SersicCache::load("testCache");
     } catch (...){
-        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "RobustSersicCache.paf", "tests");
+        lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "SersicCache.paf", "tests");
         lsst::pex::policy::Policy pol;
         file.load(pol);
-        cache = multifit::makeRobustSersicCache(pol);
+        cache = multifit::SersicCache::make(pol);
     }
     multifit::components::SersicMorphology::setSersicCache(cache);
 

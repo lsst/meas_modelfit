@@ -12,7 +12,7 @@ def makeCache():
     pol.set("noInterpolation", True)
     pol.set("extrapolationK1", 2000.0)
     pol.set("extrapolationK2", 3000.0)
-    cache = measMult.makeRobustSersicCache(pol)
+    cache = measMult.SersicCache.make(pol)
 
     if (len(sys.argv) > 1):
         cache.save(sys.argv[1])

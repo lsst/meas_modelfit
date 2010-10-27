@@ -40,6 +40,7 @@ public:
     double operator()(double r) const;
 
     double getSersicIndex() const { return  _n; }
+    void setSersicIndex(double n);
     double getOuter() const { return _outer; }
     double getInner() const { return _inner; }
 
@@ -62,15 +63,15 @@ public:
         ModifiedSersicFunction const & function, 
         double epsrel=-1.0,  ///< relative tolerance; defaults to sqrt(epsilon) if < 0.0
         double epsabs=-1.0,  ///< absolute tolerance; defaults to epsilon if < 0.0,
-        bool noInterpolation=false
+        bool doInterpolation=false
     );
 
     double operator()(double k) const;
 
     ModifiedSersicFunction const & getFunction() const { return  _function; }
-
+    
     void setFunction(ModifiedSersicFunction const & function) { _function = function; }
-
+    void setSersicIndex(double n) {_function.setSersicIndex(n); }
 private:
 
     /// Robust sum of a vector by sorting first.  Will not preserve ordering of the elements!
@@ -79,7 +80,7 @@ private:
     ModifiedSersicFunction _function;
     double _epsrel;
     double _epsabs;
-    bool _noInterpolation;
+    bool _doInterpolation;
     mutable std::vector<double> _endpoints;
     mutable std::vector<double> _integrals;
 };
