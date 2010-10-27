@@ -1,0 +1,12 @@
+#<? cfg paf dictionary ?>
+target: lsst.meas.multifit.FourierModelProjection
+
+definitions: {
+    maxArea: {
+        type: "int"
+        description: "This puts a practical limit on memory allocations"
+        minOccurs: 1
+        maxOccurs: 1
+        default: 1000000
+    }
+}
