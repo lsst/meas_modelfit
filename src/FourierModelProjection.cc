@@ -461,7 +461,7 @@ CONST_PTR(lsst::pex::policy::Policy) multifit::FourierModelProjection::getPolicy
 void multifit::FourierModelProjection::setPolicy(
     lsst::pex::policy::Policy policy
 ) {    
-    if(_policy) {
+    if(!_policy) {
         lsst::pex::policy::DefaultPolicyFile file(
             "meas_multifit", "FourierModelProjectionDict.paf", "policy"
         );
