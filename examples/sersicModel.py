@@ -26,10 +26,10 @@ import lsst.afw.geom as afwGeom
 import lsst.afw.geom.ellipses
 import lsst.afw.math as afwMath
 import lsst.afw.detection as afwDet
-
+import lsst.pex.policy as pexPol
 import numpy
 import lsst.afw.display.ds9 as ds9
-import eups
+import eups, os
 
 def makeModelExposure(model, psf, wcs, noiseFactor=0):
     fp = model.computeProjectionFootprint(psf, wcs)
@@ -83,7 +83,7 @@ def main():
     sersicIndex = 1.25
 
     try:
-        root = os.path.join(eups.productDir("multifitData"), "cache")
+        root = os.path.join(eups.productDir("meas_multifitData"), "cache")
         path = os.path.join(root, "sersicCache.boost")
         cache = measMult.SersicCache.load(path)
     except:

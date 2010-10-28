@@ -31,7 +31,8 @@ import numpy
 import numpy.random
 import lsst.afw.display.ds9 as ds9
 import lsst.pex.logging as pexLog
-import sys
+import lsst.pex.policy as pexPol
+import sys, os
 import eups
 
 def makeModelExposure(model, psf, affine, noiseFactor=0):
@@ -98,12 +99,14 @@ def applyFitter():
     sersicIndex = 1.5
     flux = 1.0
     
-    print >> sys.stderr, "making cache"
+
     try:
-        root = os.path.join(eups.productDir("multifitData"), "cache")
+        print>>sys.stderr, "loading cache"
+        root = os.path.join(eups.productDir("meas_multifitData"), "cache")
         path = os.path.join(root, "sersicCache.boost")
         cache = measMult.SersicCache.load(path)
     except:
+        print >> sys.stderr, "...failed. making cache"
         pol = pexPol.Policy()
         cache = measMult.SersicCache.make(pol)        
     measMult.SersicMorphology.setSersicCache(cache)
@@ -122,18 +125,18 @@ def applyFitter():
 
 
     print >> sys.stderr, "making evaluator"
-    modelEvaluator = measMult.ModelEvaluator(model, affine)
+    modelEvaluator = measMult.ModelEvaluator(model)
     modelEvaluator.setData(exp, psf, affine)
 
     fitterPolicy = pexPolicy.Policy()
-    fitterPolicy.set("checkGradient", True)
-    fitter = measMult.MinuitAnalyticFitter(fitterPolicy)
+    fitter = measMult.MinuitNumericFitter(fitterPolicy)
 
     result = fitter.apply(modelEvaluator, errors)
 
     print "nPix", modelEvaluator.getNPixels()
     print "nIterations", result.nIterations
     print "chisq", result.chisq
+    print "chisq/dog", result.chisq/(modelEvaluator.getNPixels()-7)
 
     om = modelEvaluator.getModel().clone()
     outExp = makeModelExposure(om, psf, affine)

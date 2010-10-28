@@ -22,7 +22,6 @@
 
 import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
-import lsst.meas.algorithms as measAlg
 import lsst.meas.multifit as measMult
 import numpy
 import numpy.random
@@ -34,7 +33,7 @@ def initializeModelEvaluator():
     centroid = afwGeom.makePointD(45, 45)
     psModel = measMult.createPointSourceModel(flux, centroid)
 
-    (miList, psfList, transformList) = makeImageStack(psModel, 15, centroid[0], centroid[1])
+    (miList, psfList, transformList) = makeImageStack(psModel, 5)
     modelEvaluator = measMult.ModelEvaluator(psModel)
     modelEvaluator.setData(miList, psfList, transformList)
 
@@ -43,7 +42,7 @@ def initializeModelEvaluator():
     print "ModelEvaluator nPixels: %d"%modelEvaluator.getNPixels()
 
     print "ModelEvaluator image vector: %s"%modelEvaluator.getDataVector()
-    print "ModelEvaluator variance vector: %s"%modelEvaluator.getVarianceVector()  
+    print "ModelEvaluator variance vector: %s"%modelEvaluator.getSigmaVector()  
     print "ModelEvaluator ModelImage: %s"%modelEvaluator.computeModelImage()
     print "ModelEvaluator LinearParameterDerivative: %s"%modelEvaluator.computeLinearParameterDerivative()
     print "ModelEvaluator NoninearParameterDerivative: %s"%modelEvaluator.computeNonlinearParameterDerivative()

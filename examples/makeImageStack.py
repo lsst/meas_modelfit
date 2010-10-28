@@ -25,7 +25,6 @@ import lsst.afw.geom as afwGeom
 import lsst.afw.image as afwImage
 import lsst.afw.math as afwMath
 import lsst.afw.detection as afwDet
-import lsst.meas.algorithms as measAlg
 import lsst.meas.multifit as measMult
 import numpy
 import numpy.random
@@ -51,7 +50,7 @@ def makeImageStack(model, depth):
     sigma = 0.5
     sigmaSq = sigma**2
 
-    miList = []
+    miList = measMult.MaskedImageListF()
     psfList = []
     transformList = []
 
@@ -77,7 +76,7 @@ def makeImageStack(model, depth):
         miList.append(mi)
         psfList.append(psf)
         transformList.append(identity)
-    return  (miList, PsfList, transformList)
+    return  (miList, psfList, transformList)
 
 def displayImageStack(depth):
     flux = 1.0
@@ -92,10 +91,10 @@ if __name__ == "__main__":
     argc = len(sys.argv)
     if argc == 1:
         displayImageStack(1)
-    else if argc == 2:
+    elif argc == 2:
         displayImageStack(int(sys.argv[1]))
     else:      
-        usage =
+        usage =\
         """
         Usage:
             makeImageStack [<depth> [<output prefix>]]

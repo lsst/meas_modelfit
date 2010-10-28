@@ -82,8 +82,8 @@ public:
     ParameterMap const & getOutOfRangeParameterMap() const {
         return _map;
     }
-    bool notInRange(int const parameter) const {
-        return _map.find(parameter) == _map.end();
+    bool isOutOfRange(int const parameter) const {
+        return _map.find(parameter) != _map.end();
     }
 private:
     ParameterMap _map;
