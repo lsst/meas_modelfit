@@ -48,6 +48,10 @@ public:
         schema->setComponent("psModel");
     }
 #endif
+
+private:
+    PointSourceModelPhotometry(void) : lsst::afw::detection::Photometry() { }
+    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry)
 };
 
 class SmallGalaxyModelPhotometry : public lsst::afw::detection::Photometry {
@@ -77,9 +81,15 @@ public:
 #ifndef SWIG
     virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
 #endif
+
+private:
+    SmallGalaxyModelPhotometry(void) : lsst::afw::detection::Photometry() { }
+    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry)
 };
 
-
 }}}
+
+LSST_REGISTER_SERIALIZER(lsst::meas::multifit::PointSourceModelPhotometry)
+LSST_REGISTER_SERIALIZER(lsst::meas::multifit::SmallGalaxyModelPhotometry)
 
 #endif
