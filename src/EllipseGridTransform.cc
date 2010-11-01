@@ -31,7 +31,9 @@ namespace ellipses = lsst::afw::geom::ellipses;
 multifit::EllipseGridTransform::EllipseGridTransform(
     ellipses::BaseCore const & ellipse,
     geom::ExtentI const & realDimensions
-) : _logShear(), _matrices(boost::make_shared<Matrices>()) {
+) : _logShear(), _matrices(new Matrices) {
+    // Do not use make_shared in the constructor for _matrices, as it bypasses
+    // Eigen's special 128-bit aligned allocator.
     _matrices->jacobian = _logShear.dAssign(ellipse);
     Eigen::Matrix2d mI = Eigen::Matrix2d::Identity();
     Eigen::Matrix2d mZ; mZ << 1.0, 0.0, 0.0,-1.0; // Z, X denote pauli spin matrices
