@@ -97,6 +97,10 @@ public:
     static void setSersicCache(SersicCache::ConstPtr const & cache) {
         _cache=cache;
     }
+
+    static multifit::SersicCache::ConstPtr const & getSersicCache() {
+        return _cache;
+    }
 protected:
     friend class SersicMorphologyProjection;
 
@@ -109,9 +113,7 @@ protected:
         return _derivativeInterpolator;
     }
 
-    multifit::SersicCache::ConstPtr const & getSersicCache() const {
-        return _cache;
-    }
+
 
     /**
      * Construct a SersicMorphology

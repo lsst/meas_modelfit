@@ -69,25 +69,24 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
     ParameterMap errors;
     std::string errStr="";
     int offset = getNonlinearParameterOffset();
-
+/*
     lsst::afw::geom::ellipses::Distortion dist(*computeBoundingEllipseCore());
     if(dist.getE() > 0.95) {
+        errStr += (boost::format(" Distortion %.3f is too large.")%dist.getE()).str();
         dist.setE(0.95);
         lsst::afw::geom::ellipses::LogShear ls(dist);
         Parameter gamma1 = ls[lsst::afw::geom::ellipses::LogShear::GAMMA1];
         Parameter gamma2 = ls[lsst::afw::geom::ellipses::LogShear::GAMMA2];
         errors[offset + GAMMA1] = gamma1;
         errors[offset + GAMMA2] = gamma2;
-        errStr += (boost::format(" Distortion %.3f is too large.")%dist.getE()).str();
     }
-
+*/
     Parameter n = getSersicIndex();
     if(n < _cache->getSersicMin() || n >= _cache->getSersicMax()) {
+        errStr += (boost::format(" Sersic Index %.3f out of bounds [%.3f, %.3f)")%
+                n % _cache->getSersicMin() % _cache->getSersicMax()).str();
         n = std::min(std::max(n, _cache->getSersicMin()), _cache->getSersicMax()); 
         errors[offset+SERSIC_INDEX] = n;
-        errStr += 
-            (boost::format(" Sersic Index %.3f out of bounds [%.3f, %.3f)")%
-                n % _cache->getSersicMin() % _cache->getSersicMax()).str();
     }
 
     if(errors.size() > 0) {

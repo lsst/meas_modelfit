@@ -135,9 +135,11 @@ protected:
      *  @name Product Enabled Checkers
      */
     //@{
-    virtual bool hasTranslationDerivative() const { return true; }
+    virtual bool hasTranslationDerivative() const { 
+        return getAstrometry()->getParameterSize() > 0; 
+    }
     virtual bool hasProjectedParameterDerivative() const {
-        return getMorphologyProjection()->getMorphology()->getNonlinearParameterSize() > 0;
+        return getMorphologyProjection()->getNonlinearParameterSize() > 0;
     }
     //@}
     

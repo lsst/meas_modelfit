@@ -70,6 +70,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
 #include "lsst/meas/multifit/MinuitFitter.h"
 #include "lsst/meas/multifit/ModelFactory.h"
+#include "lsst/meas/multifit/ModifiedSersic.h"
 #define NDARRAY_PYTHON_MAIN
 #include "ndarray/python.hpp"
 #include "ndarray/python/eigen.hpp"
@@ -139,7 +140,7 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
 %include "lsst/afw/image/lsstImageTypes.i"     // Image/Mask types and typedefs
 
 %include "lsst/meas/multifit/core.h"
-
+%include "lsst/meas/multifit/ModifiedSersic.h"
 
 
 

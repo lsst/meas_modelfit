@@ -5,7 +5,7 @@ definitions: {
     iterationMax: {
         type: "int"
         description: "specifies maximum number of iterations"
-        minOccurs: 0       
+        minOccurs: 1       
         maxOccurs: 1
         default: 0
     }
@@ -13,26 +13,48 @@ definitions: {
         type: "double"
         description: "minuit will stop iterating when the expected distance (edm)
                       will be: edm < tolerance* 10**-3."                      
-        minOccurs:0
+        minOccurs:1
         maxOccurs:1
         default: 0.1
     }
     strategy: {
         type: "int"
         description: "specifies the minuit strategy to use. 0-2"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         allowed: {
             min: 0
             max: 2
         }
-        default:0
+        default:1
+    }
+    doAnalyticGradient: {
+        type: "bool"
+        description: "if true, a model's derivatives will be used to analytically 
+                      compute the gradient. Otherwise, numeric derivatives will be
+                      computed by minuit."
+        default: false
+        minOccurs: 1
+        maxOccurs: 1
     }
     checkGradient: {
         type: "bool"
         description: "specifies whether to use the model's derivatives to compute the gradient"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: false
+    }
+    algorithm: {
+        type: "string"
+        description: "specifies which minuit optimizer to use"
+        minOccurs: 1
+        maxOccurs: 1
+        default: "MIGRAD"
+        allowed:{
+            value: "MIGRAD"          
+        }
+        allowed: {
+            value: "SIMPLEX"
+        }
     }
 }

@@ -6,13 +6,16 @@
 #include <Minuit2/InitialGradientCalculator.h>
 #include <Minuit2/Numerical2PGradientCalculator.h>
 #include <Minuit2/MnMigrad.h>
+#include <Minuit2/MnSimplex.h>
 #include <Minuit2/MinimumParameters.h>
 #include <Minuit2/MnFcn.h>
 #include <Eigen/Core>
 #include "lsst/pex/exceptions/Runtime.h"
 #include "lsst/pex/logging/Trace.h"
-
+#include <limits>
 #include <iostream>
+#include <boost/scoped_ptr.hpp>
+
 namespace multifit=lsst::meas::multifit;
 namespace pexLog = lsst::pex::logging;
 
@@ -27,7 +30,7 @@ public:
     ChisqFunction(
         multifit::ModelEvaluator::Ptr const & evaluator,
         Vector const & priorMean,
-        Vector const & priorFisherDiag
+        Vector const & priorFisherDiag 
     ) 
       : _dirty(true), 
         _evaluator(evaluator),
@@ -35,7 +38,6 @@ public:
         _priorMean(priorMean),
         _priorFisherDiag(priorFisherDiag)
     {}
-
     
     double computeValue(std::vector<double> const &params) {
         checkParams(params);
@@ -153,47 +155,17 @@ private:
     bool _checkGradient;
 };
 
-}//end anonymous namespace
 
-
-/******************************************************************************
- * Analytic Fitter
- *****************************************************************************/
-multifit::MinuitAnalyticFitter::MinuitAnalyticFitter(
-    lsst::pex::policy::Policy::Ptr const & policy
-) : _policy(policy) {        
-    if(!_policy)
-        _policy.reset(new lsst::pex::policy::Policy());
-
-    //load default policy
-    lsst::pex::policy::Policy::Ptr defaults(
-        lsst::pex::policy::Policy::createPolicy(*getDefaultPolicySource())
-    );
-    //merge in default values
-    if(defaults->canValidate()){
-        _policy->mergeDefaults(*defaults->getDictionary());
-    }
-    else {
-        _policy->mergeDefaults(*defaults);
-    } 
-}
-
-multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
-    multifit::ModelEvaluator::Ptr evaluator, std::vector<double> const & initialErrors
-) const {
-    int nParams = evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize();
-    std::vector<double> priorMean(nParams, 0.0);
-    std::vector<double> priorFisherDiag(nParams, 0.0);
-    return apply(evaluator, initialErrors, priorMean, priorFisherDiag);
-}
-
-multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
+multifit::MinuitFitterResult doMinuitFit(
     multifit::ModelEvaluator::Ptr evaluator, 
     std::vector<double> const & initialErrors,
     std::vector<double> const & priorMean,
-    std::vector<double> const & priorFisherDiag
-) const {
-    
+    std::vector<double> const & priorFisherDiag,
+    std::vector<double> const & lower,
+    std::vector<double> const & upper,
+    bool doAnalytic,
+    lsst::pex::policy::Policy::Ptr policy
+) {
     int nLinear = evaluator->getLinearParameterSize();
     int nNonlinear = evaluator->getNonlinearParameterSize();
     int nParams = nLinear + nNonlinear;
@@ -204,8 +176,19 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
             "Number of model parameters not equal to length of error vector"
         );
     }
+    if(nParams != int(priorMean.size()) || nParams != int(priorFisherDiag.size())) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "Number of model parameters not equal to length of prior mean and/or Fisher diagonal vector"
+        );
+    }
 
-    bool checkGradient = _policy->getBool("checkGradient");
+    if(nParams != int(lower.size()) || nParams != int(upper.size())) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "Number of model parameters not equal to length of limits vectors"
+        );
+    }
 
     ChisqFunction::Vector priorMeanEig(priorMean.size());
     std::copy(priorMean.begin(), priorMean.end(), priorMeanEig.data());
@@ -213,37 +196,61 @@ multifit::MinuitFitterResult multifit::MinuitAnalyticFitter::apply(
     ChisqFunction::Vector priorFisherDiagEig(priorFisherDiag.size());
     std::copy(priorFisherDiag.begin(), priorFisherDiag.end(), priorFisherDiagEig.data());
 
-    if(nParams != int(priorMean.size()) || nParams != int(priorFisherDiag.size())) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Number of model parameters not equal to length of prior mean and/or Fisher diagonal vector"
-        );
+    boost::scoped_ptr<ROOT::Minuit2::FCNBase> function;
+    if(policy->getBool("doAnalyticGradient")) {             
+        bool checkGradient = policy->getBool("checkGradient");
+        function.reset(new GradientFunction(evaluator, priorMeanEig, priorFisherDiagEig, checkGradient));
+    } else {
+        function.reset(new Function(evaluator, priorMeanEig, priorFisherDiagEig));
     }
 
-    ::GradientFunction function(evaluator, priorMeanEig, priorFisherDiagEig, checkGradient);
-
     std::vector<double> initialParams(nParams);
-    VectorMap paramMap(&initialParams[0], nParams);
+    multifit::VectorMap paramMap(&initialParams[0], nParams);
     if(nLinear >0){
         paramMap.start(nLinear) = evaluator->getLinearParameters();
     }
     if(nNonlinear >0){
         paramMap.end(nNonlinear) = evaluator->getNonlinearParameters();
     }
+    ROOT::Minuit2::MnUserParameters userParams(initialParams, initialErrors);
+    for(int i =0; i < nParams; ++i) {
+        double const & l = lower[i];
+        double const & u = upper[i];
+        if(l != std::numeric_limits<double>::infinity()){
+            if(u != std::numeric_limits<double>::infinity()) {
+                userParams.SetLimits(i, l, u);
+            }
+            else {
+                userParams.SetLowerLimit(i, l);
+            }
+        }
+        else if(u != std::numeric_limits<double>::infinity()) {
+            userParams.SetUpperLimit(i, u);
+        }
+    }
 
-    ROOT::Minuit2::MnMigrad migrad(function, initialParams, initialErrors, _policy->getInt("strategy"));
+    boost::scoped_ptr<ROOT::Minuit2::MnApplication> minimizer;
+    std::string algorithm = policy->getString("algorithm"); 
+    int strategy = policy->getInt("strategy");
+    if(algorithm == "MIGRAD") 
+        minimizer.reset(new ROOT::Minuit2::MnMigrad(*function, userParams, strategy));
+    else if (algorithm == "SIMPLEX") 
+        minimizer.reset(new ROOT::Minuit2::MnSimplex(*function, userParams, strategy));
 
-    ROOT::Minuit2::FunctionMinimum min = migrad(
-        _policy->getInt("iterationMax"), 
-        _policy->getDouble("tolerance")
+    ROOT::Minuit2::FunctionMinimum min = (*minimizer)(
+        policy->getInt("iterationMax"), 
+        policy->getDouble("tolerance")
     );
-    return Result(min);
+    return multifit::MinuitFitterResult(min);
 }
 
+}//end anonymous namespace
+
+
 /******************************************************************************
- * Numeric Fitter
+ * MinuitFitter
  *****************************************************************************/
-multifit::MinuitNumericFitter::MinuitNumericFitter(
+multifit::MinuitFitter::MinuitFitter(
     lsst::pex::policy::Policy::Ptr const & policy
 ) : _policy(policy) {        
     if(!_policy)
@@ -262,8 +269,9 @@ multifit::MinuitNumericFitter::MinuitNumericFitter(
     } 
 }
 
-multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
-    multifit::ModelEvaluator::Ptr evaluator, std::vector<double> const & initialErrors
+multifit::MinuitFitterResult multifit::MinuitFitter::apply(
+    multifit::ModelEvaluator::Ptr evaluator, 
+    std::vector<double> const & initialErrors
 ) const {
     int nParams = evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize();
     std::vector<double> priorMean(nParams, 0.0);
@@ -271,53 +279,30 @@ multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
     return apply(evaluator, initialErrors, priorMean, priorFisherDiag);
 }
 
-multifit::MinuitFitterResult multifit::MinuitNumericFitter::apply(
+multifit::MinuitFitterResult multifit::MinuitFitter::apply(
     multifit::ModelEvaluator::Ptr evaluator, 
     std::vector<double> const & initialErrors,
     std::vector<double> const & priorMean,
     std::vector<double> const & priorFisherDiag
 ) const {
-    
-    int nLinear = evaluator->getLinearParameterSize();
-    int nNonlinear = evaluator->getNonlinearParameterSize();
-    int nParams = nLinear + nNonlinear;
+    int nParams = evaluator->getLinearParameterSize() + evaluator->getNonlinearParameterSize();
+    std::vector<double> lower(nParams, std::numeric_limits<double>::infinity());
+    std::vector<double> upper(nParams, std::numeric_limits<double>::infinity());
+    return apply(evaluator, initialErrors, priorMean, priorFisherDiag, lower, upper);
+}
 
-    if(nParams != int(initialErrors.size())) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Number of model parameters not equal to length of error vector"
-        );
-    }
-
-    Eigen::VectorXd priorMeanEig(priorMean.size());
-    std::copy(priorMean.begin(), priorMean.end(), priorMeanEig.data());
-    Eigen::VectorXd priorFisherDiagEig(priorFisherDiag.size());
-    std::copy(priorFisherDiag.begin(), priorFisherDiag.end(), priorFisherDiagEig.data());
-
-    if(nParams != int(priorMean.size()) || nParams != int(priorFisherDiag.size())) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::InvalidParameterException,
-            "Number of model parameters not equal to length of prior mean and/or Fisher diagonal vector"
-        );
-    }
-
-    ::Function function(evaluator, priorMeanEig, priorFisherDiagEig);
-    
-    std::vector<double> initialParams(nParams);
-    VectorMap paramMap(&initialParams[0], nParams);
-
-    if(nLinear >0){
-        paramMap.start(nLinear) = evaluator->getLinearParameters();
-    }
-    if(nNonlinear >0){
-        paramMap.end(nNonlinear) = evaluator->getNonlinearParameters();
-    }
-    ROOT::Minuit2::MnMigrad migrad(function, initialParams, initialErrors, _policy->getInt("strategy"));
-
-    ROOT::Minuit2::FunctionMinimum min = migrad(
-        _policy->getInt("iterationMax"), 
-        _policy->getDouble("tolerance")
-    );
-
-    return Result(min);
+multifit::MinuitFitterResult multifit::MinuitFitter::apply(
+    multifit::ModelEvaluator::Ptr evaluator, 
+    std::vector<double> const & initialErrors,
+    std::vector<double> const & priorMean,
+    std::vector<double> const & priorFisherDiag,
+    std::vector<double> const & lowerLimits,
+    std::vector<double> const & upperLimits
+) const {
+    return ::doMinuitFit(
+        evaluator, initialErrors, 
+        priorMean, priorFisherDiag, 
+        lowerLimits, upperLimits, 
+        true, _policy
+    ); 
 }

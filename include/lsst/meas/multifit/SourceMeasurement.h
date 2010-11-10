@@ -22,22 +22,20 @@ struct Flags{
         FAIL_FIT_PS             = 0x00040000, 
         FAIL_INIT_SG_NAN        = 0x00080000, 
         FAIL_INIT_SG_MOMENTS    = 0x00100000,
-        FAIL_INIT_SG_DISTORTION = 0x00200000,
-        FAIL_INIT_SG_NO_PIX     = 0x00400000, 
-        FAIL_FIT_SG_DISTORTION  = 0x00800000, 
-        FAIL_FIT_SG_SERSIC      = 0x01000000,
-        FAIL_FIT_SG_FOURIER_AREA= 0x02000000,
-        FAIL_FIT_SG_OPTIMIZER   = 0x04000000,
-        PS_MAX_ITERATIONS       = 0x08000000,
-        SG_MAX_ITERATIONS       = 0x10000000,
+        FAIL_INIT_SG_NO_PIX     = 0x00200000, 
+        FAIL_FIT_SG_SERSIC      = 0x00400000,
+        FAIL_FIT_SG_FOURIER_AREA= 0x00800000,
+        FAIL_FIT_SG_OPTIMIZER   = 0x01000000,
+        PS_MAX_ITERATIONS       = 0x02000000,
+        PS_ABOVE_MAX_EDM        = 0x04000000,
+        SG_MAX_ITERATIONS       = 0x08000000,
+        SG_ABOVE_MAX_EDM        = 0x10000000,
 
         //meta flags
         FAIL_INIT_PS = FAIL_INIT_PS_NAN | FAIL_INIT_PS_NO_PIX,
         FAIL_PS = FAIL_INIT_PS | FAIL_FIT_PS,
-        FAIL_INIT_SG= FAIL_INIT_SG_NAN | FAIL_INIT_SG_MOMENTS | 
-            FAIL_INIT_SG_NO_PIX | FAIL_INIT_SG_DISTORTION,
-        FAIL_FIT_SG = FAIL_FIT_SG_DISTORTION | FAIL_FIT_SG_SERSIC | 
-            FAIL_FIT_SG_OPTIMIZER | FAIL_FIT_SG_FOURIER_AREA,
+        FAIL_INIT_SG= FAIL_INIT_SG_NAN | FAIL_INIT_SG_MOMENTS | FAIL_INIT_SG_NO_PIX,
+        FAIL_FIT_SG = FAIL_FIT_SG_SERSIC | FAIL_FIT_SG_OPTIMIZER | FAIL_FIT_SG_FOURIER_AREA,
         FAIL_SG=FAIL_INIT_SG|FAIL_FIT_SG
     };
 };
@@ -56,7 +54,7 @@ public:
 
 private:
     PointSourceModelPhotometry(void) : lsst::afw::detection::Photometry() { }
-    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry)
+    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
 };
 
 class SmallGalaxyModelPhotometry : public lsst::afw::detection::Photometry {
@@ -89,12 +87,12 @@ public:
 
 private:
     SmallGalaxyModelPhotometry(void) : lsst::afw::detection::Photometry() { }
-    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry)
+    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
 };
 
 }}}
 
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::PointSourceModelPhotometry)
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::SmallGalaxyModelPhotometry)
+LSST_REGISTER_SERIALIZER(lsst::meas::multifit::PointSourceModelPhotometry);
+LSST_REGISTER_SERIALIZER(lsst::meas::multifit::SmallGalaxyModelPhotometry);
 
 #endif

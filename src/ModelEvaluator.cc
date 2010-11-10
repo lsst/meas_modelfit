@@ -46,6 +46,9 @@ int multifit::ModelEvaluator::setData(
     typedef typename MaskedImageT::Mask Mask;
     typedef typename Mask::Pixel MaskPixel;
 
+    _projectionList.clear();
+    _validProducts = 0;
+
     MaskPixel bitmask = Mask::getPlaneBitMask("BAD") | 
         Mask::getPlaneBitMask("INTRP") | Mask::getPlaneBitMask("SAT") | 
         Mask::getPlaneBitMask("CR") | Mask::getPlaneBitMask("EDGE");

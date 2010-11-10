@@ -188,9 +188,10 @@ public:
     explicit NonlinearMatrixHandler(FourierModelProjection * parent) :
         _valid(false), _parent(parent)
     {
+        int n = (_parent->hasTranslationDerivative())? 2 : 0;
         _ifft = FFT::planMultiplexInverse(
             ndarray::makeVector(
-                _parent->getNonlinearParameterSize(),
+                n + _parent->getMorphologyProjection()->getNonlinearParameterSize(),
                 _parent->_outerBBox.getHeight(),
                 _parent->_outerBBox.getWidth()
             ),
@@ -203,8 +204,8 @@ public:
             ndarray::shallow(_finalTD) = finalFull[ndarray::view(0, 2)];
         }
         if (_parent->hasProjectedParameterDerivative()) {
-            ndarray::shallow(_kPPD) = _kFull[ndarray::view(2, _kFull.getSize<0>())];
-            ndarray::shallow(_finalPPD) = finalFull[ndarray::view(2, finalFull.getSize<0>())];
+            ndarray::shallow(_kPPD) = _kFull[ndarray::view(n, _kFull.getSize<0>())];
+            ndarray::shallow(_finalPPD) = finalFull[ndarray::view(n, finalFull.getSize<0>())];
         }
     }
 
@@ -481,11 +482,11 @@ void multifit::FourierModelProjection::setPolicy(
  */
 void multifit::FourierModelProjection::_setDimensions() {
     afwGeom::Extent2I dimensions = getMorphologyProjection()->getDimensions();
-    int area = dimensions.getX()*dimensions.getY();
-    if(area > getPolicy()->getInt("maxArea")){
+    int size = getPolicy()->getInt("fourierSize");
+    if(dimensions.getX() > size || dimensions.getY() > size) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::RuntimeErrorException,
-            (boost::format("Fourier space area of the model projection is too large %1%")%area).str()
+            "Size of model projection in fourier space is too large"
         );
     }
     afwGeom::PointD centerOnExposure = _getPsfPosition();

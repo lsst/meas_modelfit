@@ -101,11 +101,9 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     );
     lsst::pex::policy::Policy::Ptr fitterPolicy(new lsst::pex::policy::Policy());
     std::cerr << "nPix: " << evaluator->getNPixels() << "\n";
-    multifit::MinuitAnalyticFitter analytic(fitterPolicy);
-    multifit::MinuitNumericFitter numeric(fitterPolicy);
+    multifit::MinuitFitter fitter(fitterPolicy);
 
-    multifit::MinuitFitterResult numericResult = numeric.apply(evaluator, errors);
-    multifit::MinuitFitterResult analyticResult = analytic.apply(evaluator, errors);
+    multifit::MinuitFitterResult result = fitter.apply(evaluator, errors);
 
 }
 
