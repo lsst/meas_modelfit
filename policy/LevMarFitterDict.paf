@@ -49,7 +49,7 @@ definitions: {
         maxOccurs:1
         default: 1E-6
     }
-    doAnalyticGradient: {
+    doAnalyticJacobian: {
         type: "bool"
         description: "if true, a model's derivatives will be used to analytically 
                       compute the Jacobian. Otherwise, numeric derivatives will be

@@ -40,7 +40,7 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
-struct LevmarFitterResult {
+struct LevMarFitterResult {
 public:
 
     enum TerminationEnum {
@@ -65,7 +65,7 @@ public:
     
     LevMarFitterResult() : 
         termination(NONE), chisqInitial(DBL_MAX), chisqFinal(DBL_MAX),
-        nIterations(0), nFunctionEvaluations(0), nJacobianEvalutions(0) {}
+        nIterations(0), nFunctionEvaluations(0), nJacobianEvaluations(0) {}
 
     bool hasConverged() const {
         return termination == GRADIENT_SMALL || termination == PARAMETERS_UNCHANGED
@@ -95,8 +95,10 @@ public:
 
     typedef LevMarFitterResult Result;
 
-    LevMarFitter(lsst::pex::policy::Policy::Ptr const & policy = lsst::pex::policy::Policy::Ptr());
-    
+    LevMarFitter(
+        lsst::pex::policy::Policy::Ptr const & policy = lsst::pex::policy::Policy::Ptr()
+    );
+    ~LevMarFitter() {} 
     Result apply(multifit::ModelEvaluator::Ptr const & evaluator) const;
 
     Eigen::VectorXd checkDerivatives(multifit::ModelEvaluator::Ptr const & evaluator) const;

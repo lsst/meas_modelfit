@@ -75,6 +75,11 @@ public:
     };
 
     SmallGalaxyModelPhotometry(
+        Eigen::VectorXd const & parameters,
+        Eigen::MatrixXd const & covariance,
+        double innerSersicRadius, double outerSersicRadius
+    );
+    SmallGalaxyModelPhotometry(
         std::vector<double> const & parameters,
         Eigen::MatrixXd const & covariance,
         double innerSersicRadius, double outerSersicRadius
@@ -86,6 +91,11 @@ public:
 #endif
 
 private:
+    void fill(
+        double const * parameters,
+        Eigen::MatrixXd const & covariance,
+        double innerSersicRadius, double outerSersicRadius
+    );
     SmallGalaxyModelPhotometry(void) : lsst::afw::detection::Photometry() { }
     LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
 };

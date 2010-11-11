@@ -11,7 +11,22 @@ namespace Param {
 }
 
 multifit::SmallGalaxyModelPhotometry::SmallGalaxyModelPhotometry(
+        Eigen::VectorXd const & parameters,
+        Eigen::MatrixXd const & covariance,
+        double innerSersicRadius, double outerSersicRadius
+) {
+    fill(parameters.data(), covariance, innerSersicRadius, outerSersicRadius);
+}
+multifit::SmallGalaxyModelPhotometry::SmallGalaxyModelPhotometry(
         std::vector<double> const & parameters,
+        Eigen::MatrixXd const & covariance,
+        double innerSersicRadius, double outerSersicRadius
+) {
+    fill(&parameters[0], covariance, innerSersicRadius, outerSersicRadius);
+}
+
+void multifit::SmallGalaxyModelPhotometry::fill(
+        double const * parameters,
         Eigen::MatrixXd const & covariance,
         double innerSersicRadius, double outerSersicRadius
 ) {

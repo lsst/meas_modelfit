@@ -341,7 +341,7 @@ extern void dlevmar_chkjac(
     void (*jacf)(double *p, double *j, int m, int n, void *adata),
     double *p, int m, int n, void *adata, double *err);
 #endif /* LM_DBL_PREC */
--
+
 #ifdef LM_SNGL_PREC
 extern void slevmar_chkjac(
     void (*func)(float *p, float *hx, int m, int n, void *adata),
