@@ -5,8 +5,10 @@ import os
 
 pkg = env["eups_product"]
 
+levmar = [env.SharedObject(f, CPPPATH="../src/levmar") for f in glob.glob("../src/levmar/*.c")]
+
 env.SharedLibrary(
     pkg,
-    glob.glob("../src/*.cc") + glob.glob("../src/*/*.cc"),
+    glob.glob("../src/*.cc") + glob.glob("../src/*/*.cc") + levmar,
     LIBS=filter(lambda p: p != pkg, env.getlibs(pkg)),
 )

@@ -1,0 +1,61 @@
+#<? cfg paf dictionary ?>
+target: lsst.meas.multifit.LevMarFitter
+
+definitions: {
+    iterationMax: {
+        type: "int"
+        description: "specifies maximum number of iterations"
+        minOccurs: 1       
+        maxOccurs: 1
+        default: 1000
+    }
+    tau: {
+        type: "double"
+        description: "scaling factor for initial mu (where mu is the coefficient of the identity matrix
+	              adjustment to the Quasi-Newton Hessian approximation)"
+        minOccurs:1
+        maxOccurs:1
+        default: 1E-3
+    }
+    gradientEpsilon: {
+        type: "double"
+        description: "gradient elements less than this amount will be considered zero 
+                      for termination purposes"
+        minOccurs:1
+        maxOccurs:1
+        default: 1E-17
+    }
+    parameterEpsilon: {
+        type: "double"
+        description: "a parameter step norm less than this amount will be considered zero
+                      for termination purposes"
+        minOccurs:1
+        maxOccurs:1
+        default: 1E-17
+    }
+    residualEpsilon: {
+        type: "double"
+        description: "a residual difference norm less than this amount will be considered zero
+                      for termination purposes"
+        minOccurs:1
+        maxOccurs:1
+        default: 1E-17
+    }
+    delta: {
+        type: "double"
+        description: "Step length used for finite-difference derivatives.  If less than zero,
+                      slower (but more accurate) central differences will be used."
+        minOccurs:0
+        maxOccurs:1
+        default: 1E-6
+    }
+    doAnalyticGradient: {
+        type: "bool"
+        description: "if true, a model's derivatives will be used to analytically 
+                      compute the Jacobian. Otherwise, numeric derivatives will be
+                      computed by levmar."
+        default: false
+        minOccurs: 1
+        maxOccurs: 1
+    }
+}

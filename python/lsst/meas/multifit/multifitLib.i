@@ -69,6 +69,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/FourierModelProjection.h"
 #include "lsst/meas/multifit/SingleLinearParameterFitter.h"
 #include "lsst/meas/multifit/MinuitFitter.h"
+#include "lsst/meas/multifit/LevMarFitter.h"
 #include "lsst/meas/multifit/ModelFactory.h"
 #include "lsst/meas/multifit/ModifiedSersic.h"
 #define NDARRAY_PYTHON_MAIN
@@ -369,3 +370,5 @@ SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult);
 
 
 %include "lsst/meas/multifit/MinuitFitter.h"
+
+%include "lsst/meas/multifit/LevMarFitter.h"
