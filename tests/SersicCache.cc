@@ -54,8 +54,33 @@ BOOST_AUTO_TEST_CASE(SersicCache) {
 
     BOOST_CHECK(cache);
 
+    double const eps1 = 1E-8;
+    double const eps2 = 1E-6;
+
     double sersicMin = cache->getSersicMin(), sersicMax = cache->getSersicMax();
     double kMin = cache->getKMin(), kMax = cache->getKMax(); 
+
+    for (double n = sersicMin; n <= sersicMax; n += 0.125) {
+        double q = cache->convertSersicToParameter(n);
+        double dq_dn = cache->differentiateSersicToParameter(n);
+        double dn_dq = cache->differentiateParameterToSersic(q);
+        double dq_dn_numeric = (cache->convertSersicToParameter(n + eps1) 
+                                - cache->convertSersicToParameter(n - eps1)) / (2.0 * eps1);
+        double dn_dq_numeric = (cache->convertParameterToSersic(q + eps1) 
+                                - cache->convertParameterToSersic(q - eps1)) / (2.0 * eps1);
+        BOOST_CHECK(std::fabs(cache->convertParameterToSersic(q) - n) < eps1);
+        if (n > sersicMin && n < sersicMax) {
+            BOOST_CHECK(std::fabs(dq_dn - dq_dn_numeric) < eps2);
+            BOOST_CHECK(std::fabs(dn_dq - dn_dq_numeric) < eps2);
+        }
+    }
+
+    BOOST_CHECK(sersicMin <= cache->convertParameterToSersic(1E6));
+    BOOST_CHECK(sersicMin <= cache->convertParameterToSersic(1E-6));
+
+    BOOST_CHECK(sersicMax >= cache->convertParameterToSersic(1E6));
+    BOOST_CHECK(sersicMax >= cache->convertParameterToSersic(1E-6));
+
     multifit::SersicCache::Interpolator::ConstPtr functor;
     BOOST_CHECK_NO_THROW(functor = cache->getInterpolator(sersicMin));
     BOOST_CHECK(functor);

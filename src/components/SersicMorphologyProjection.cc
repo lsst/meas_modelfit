@@ -146,7 +146,9 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
         lsst::afw::geom::Extent2I dimensions = getDimensions();
         int midY = dimensions.getY()/2;
         lsst::afw::geom::Point2D point(0);
-
+        double dParam = SersicMorphology::getSersicCache()->differentiateSersicToParameter(
+            boost::static_pointer_cast<SersicMorphology const>(getMorphology())->getSersicIndex()
+        );
         int y=0,x;
         double dK, dN;
         //outer loop over rows
@@ -191,7 +193,7 @@ components::SersicMorphologyProjection::computeProjectedParameterDerivative() {
                 //Use the col-functor over the sersic cache to compute this last
                 //partial derivative w.r.t sersic index
                 try {
-                    dN = (*derivativeInterpolator)(k);
+                    dN = (*derivativeInterpolator)(k) * dParam;
                 } catch(lsst::pex::exceptions::InvalidParameterException &) {
                     throw LSST_EXCEPT(
                         lsst::pex::exceptions::LogicErrorException,

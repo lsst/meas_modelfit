@@ -58,18 +58,22 @@ components::MorphologyProjection::Ptr components::SersicMorphology::makeProjecti
     ));
 }
 
-void components::SersicMorphology::_handleNonlinearParameterChange() {
+void components::SersicMorphology::checkCache() {
     if(!_cache) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
             "Must call SersicMorphology::setSersicCache before creating and using SersicMorphology"
         );
     }
+}
 
+void components::SersicMorphology::_handleNonlinearParameterChange() {
+    checkCache();
+    Parameter n = getSersicIndex();
+/*
     ParameterMap errors;
     std::string errStr="";
     int offset = getNonlinearParameterOffset();
-/*
     lsst::afw::geom::ellipses::Distortion dist(*computeBoundingEllipseCore());
     if(dist.getE() > 0.95) {
         errStr += (boost::format(" Distortion %.3f is too large.")%dist.getE()).str();
@@ -80,8 +84,7 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
         errors[offset + GAMMA1] = gamma1;
         errors[offset + GAMMA2] = gamma2;
     }
-*/
-    Parameter n = getSersicIndex();
+
     if(n < _cache->getSersicMin() || n >= _cache->getSersicMax()) {
         errStr += (boost::format(" Sersic Index %.3f out of bounds [%.3f, %.3f)")%
                 n % _cache->getSersicMin() % _cache->getSersicMax()).str();
@@ -95,7 +98,7 @@ void components::SersicMorphology::_handleNonlinearParameterChange() {
             "SersicMorphology nonlinear parameters out of range."+errStr, errors
         );
     }
-
+*/
     _interpolator = _cache->getInterpolator(n);
     _derivativeInterpolator = _cache->getDerivativeInterpolator(n);
 }

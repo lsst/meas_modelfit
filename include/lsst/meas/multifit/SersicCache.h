@@ -74,6 +74,12 @@ public:
     Interpolator::ConstPtr getInterpolator(double const sersic) const;
     Interpolator::ConstPtr getDerivativeInterpolator(double const sersic) const;
 
+    double const convertSersicToParameter(double n) const;
+    double const convertParameterToSersic(double q) const;
+
+    double const differentiateSersicToParameter(double n) const;
+    double const differentiateParameterToSersic(double q) const;
+
     double const getSersicMin() const {return _sersicMin;}
     double const getSersicMax() const {return _sersicMax;}
     double const getKMin() const {return _kMin;}

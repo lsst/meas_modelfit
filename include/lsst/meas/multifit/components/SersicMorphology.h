@@ -65,8 +65,9 @@ public:
         lsst::afw::geom::ellipses::LogShear logShear(ellipse);
         boost::shared_ptr<ParameterVector> linear(new ParameterVector(LINEAR_SIZE));
         boost::shared_ptr<ParameterVector> nonlinear(new ParameterVector(NONLINEAR_SIZE));
+        checkCache();
         *linear << flux;
-        *nonlinear << logShear.getVector(), sersicIndex;
+        *nonlinear << logShear.getVector(), _cache->convertSersicToParameter(sersicIndex);
 
         return SersicMorphology::Ptr(new SersicMorphology(linear,nonlinear));
         
@@ -75,8 +76,9 @@ public:
     Parameter const & getFlux() const {
         return *(_linearParameters->data() + FLUX);
     }
-    Parameter const & getSersicIndex() const {
-        return *(beginNonlinear() + SERSIC_INDEX);
+    Parameter const getSersicIndex() const {
+        checkCache();
+        return _cache->convertParameterToSersic(*(beginNonlinear() + SERSIC_INDEX));
     }
 
     virtual PTR(lsst::afw::geom::ellipses::BaseCore) computeBoundingEllipseCore() const;
@@ -132,6 +134,8 @@ protected:
 
 
 private:
+    static void checkCache();
+
     SersicCache::Interpolator::ConstPtr _interpolator;
     SersicCache::Interpolator::ConstPtr _derivativeInterpolator;
     static SersicCache::ConstPtr _cache;

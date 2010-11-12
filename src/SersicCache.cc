@@ -278,6 +278,23 @@ multifit::SersicCache::Interpolator::ConstPtr multifit::SersicCache::getDerivati
     return boost::make_shared<Interpolator>(_kMin, _kMax, _kStep, r, params);
 }
 
+double const multifit::SersicCache::convertSersicToParameter(double n) const {
+    return std::log(n - _sersicMin) - std::log(_sersicMax - n);
+}
+
+double const multifit::SersicCache::convertParameterToSersic(double q) const {
+    return _sersicMin + (_sersicMax - _sersicMin) / (1.0 + std::exp(-q));
+}
+
+double const multifit::SersicCache::differentiateSersicToParameter(double n) const {
+    return 1.0 / (n - _sersicMin) + 1.0 / (_sersicMax - n);
+}
+
+double const multifit::SersicCache::differentiateParameterToSersic(double q) const {
+    double eq = 1.0 + std::exp(-q);
+    return (_sersicMax - _sersicMin) * std::exp(-q) / (eq*eq);
+}
+
 template <class Archive>
 void multifit::SersicCache::serialize(Archive & ar, unsigned int const) {
     ar & _sersicStep;
