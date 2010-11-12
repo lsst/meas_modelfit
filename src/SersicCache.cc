@@ -278,10 +278,18 @@ multifit::SersicCache::Interpolator::ConstPtr multifit::SersicCache::getDerivati
     return boost::make_shared<Interpolator>(_kMin, _kMax, _kStep, r, params);
 }
 
+/**
+ *  Defines a logistic mapping between the true Sersic index 'n' and
+ *  a parameter with infinite range, 'q'.
+ */
 double const multifit::SersicCache::convertSersicToParameter(double n) const {
     return std::log(n - _sersicMin) - std::log(_sersicMax - n);
 }
 
+/**
+ *  Defines a logistic mapping between the true Sersic index 'n' and
+ *  a parameter with infinite range, 'q'.
+ */
 double const multifit::SersicCache::convertParameterToSersic(double q) const {
     return _sersicMin + (_sersicMax - _sersicMin) / (1.0 + std::exp(-q));
 }

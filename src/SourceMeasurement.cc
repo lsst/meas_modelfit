@@ -1,4 +1,5 @@
 #include "lsst/meas/multifit/SourceMeasurement.h"
+#include "lsst/meas/multifit/components/SersicMorphology.h"
 #include "lsst/meas/multifit/ModifiedSersic.h"
 #include "lsst/afw/geom/ellipses.h"
 
@@ -38,15 +39,18 @@ void multifit::SmallGalaxyModelPhotometry::fill(
         parameters[Param::KAPPA]
     );
 
-    //re-parametrize entrire covariance matrix for storage in e1,e2,r form
+    SersicCache::ConstPtr cache = components::SersicMorphology::getSersicCache();
+    double sersicIndex = cache->convertParameterToSersic(parameters[Param::N]);
+
+    //re-parametrize entire covariance matrix for storage in e1,e2,r form
     ellipses::Distortion d;
     Eigen::Matrix<double, Param::NPARAM, Param::NPARAM> dj = 
         Eigen::Matrix<double, Param::NPARAM, Param::NPARAM>::Identity();
+    dj(Param::N, Param::N) = cache->differentiateParameterToSersic(parameters[Param::N]);
     dj.block<3,3>(Param::GAMMA1, Param::GAMMA1) = d.dAssign(ls);
     Eigen::Matrix<double, Param::NPARAM, Param::NPARAM> cov = 
         dj.transpose()*covariance*dj;
   
-
     double r = d[ellipses::Distortion::R];
     double amp = parameters[Param::AMPLITUDE];
     set<AMPLITUDE>(amp);
@@ -54,9 +58,9 @@ void multifit::SmallGalaxyModelPhotometry::fill(
     set<E2>(d[ellipses::Distortion::E2]);
     set<R>(d[ellipses::Distortion::R]);
 
-    set<N>(parameters[Param::N]);
+    set<N>(sersicIndex);
     ModifiedSersicFunction func(
-        parameters[Param::N], innerSersicRadius, outerSersicRadius
+        sersicIndex, innerSersicRadius, outerSersicRadius
     );
     double p=func.integrate(outerSersicRadius, 1)*2.0*M_PI;
     set<FLUX>(p*amp*r*r);
