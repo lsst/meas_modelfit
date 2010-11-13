@@ -27,24 +27,12 @@ public:
     {}
 
     void computeModel(VectorMap const & params, VectorMap & model) {
-        checkParams(params);
-        if (_dirty) {
-            _evaluator->setLinearParameters(params.start(_evaluator->getLinearParameterSize()));
-            _evaluator->setNonlinearParameters(
-                params.end(_evaluator->getNonlinearParameterSize())
-            );
-        }
+        setParams(params);
         model = _evaluator->computeModelImage();
     }
 
     void computeJacobian(VectorMap const & params, MatrixMap & jacobian) {
-        checkParams(params);
-        if(_dirty) {
-            _evaluator->setLinearParameters(params.start(_evaluator->getLinearParameterSize()));
-            _evaluator->setNonlinearParameters(
-                params.end(_evaluator->getNonlinearParameterSize())
-            );
-        }
+        setParams(params);
         MatrixCM const & lpd = _evaluator->computeLinearParameterDerivative();
         MatrixCM const & npd = _evaluator->computeNonlinearParameterDerivative();
         assert(jacobian.cols() == lpd.cols() + npd.cols());
@@ -73,6 +61,7 @@ private:
     void checkParams(VectorMap const & params) {
         if(_dirty)
             return;
+        
         double const * iNew = params.data();
         double const * iOld = _evaluator->getLinearParameters().data();
         for(int i = 0; i < _evaluator->getLinearParameterSize(); ++i, ++iNew, ++iOld) {
@@ -90,6 +79,25 @@ private:
 
         _dirty = false;
     }
+
+    void setParams(VectorMap const & params) {
+        checkParams(params);
+        if(_dirty) {
+            if(_evaluator->getLinearParameterSize() > 0) {
+                _evaluator->setLinearParameters(
+                    params.start(_evaluator->getLinearParameterSize())
+                );
+            }
+            if(_evaluator->getNonlinearParameterSize() > 0 ) {
+                _evaluator->setNonlinearParameters(
+                    params.end(_evaluator->getNonlinearParameterSize())
+                );
+            }
+        }
+
+        std::cerr << "stepping to params: " << params << std::endl;
+    }
+
 };
 
 }//end anonymous namespace
@@ -142,8 +150,12 @@ Eigen::VectorXd multifit::LevMarFitter::checkDerivatives(
     int nLinearParams = evaluator->getLinearParameterSize();
     int nNonlinearParams = evaluator->getNonlinearParameterSize();
     LevMarFunction::Vector parameters(nLinearParams + nNonlinearParams);
-    parameters.start(nLinearParams) = evaluator->getLinearParameters();
-    parameters.end(nNonlinearParams) = evaluator->getNonlinearParameters();
+    if(nLinearParams > 0) {
+        parameters.start(nLinearParams) = evaluator->getLinearParameters();
+    }
+    if(nNonlinearParams > 0) {
+        parameters.end(nNonlinearParams) = evaluator->getNonlinearParameters();
+    }
     Eigen::VectorXd result(evaluator->getNPixels());
     LevMarFunction adata(evaluator);
     dlevmar_chkjac(
@@ -160,8 +172,11 @@ multifit::LevMarFitterResult multifit::LevMarFitter::apply(
     int nLinearParams = evaluator->getLinearParameterSize();
     int nNonlinearParams = evaluator->getNonlinearParameterSize();
     LevMarFunction::Vector parameters(nLinearParams + nNonlinearParams);
-    parameters.segment(0, nLinearParams) = evaluator->getLinearParameters();
-    parameters.segment(nLinearParams, nNonlinearParams) = evaluator->getNonlinearParameters();
+    if(nLinearParams > 0)
+        parameters.start(nLinearParams) = evaluator->getLinearParameters();
+    if(nNonlinearParams > 0)
+        parameters.end(nNonlinearParams) = evaluator->getNonlinearParameters();
+
     LevMarFunction::MatrixRM covar(parameters.size(), parameters.size());
     LevMarFunction::Vector image = evaluator->getWeightedData();
     LevMarFunction adata(evaluator);

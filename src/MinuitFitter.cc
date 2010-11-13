@@ -85,9 +85,6 @@ private:
     Vector _priorFisherDiag;
 
     void checkParams(std::vector<double> const & params) {
-        if(_dirty)
-            return;
-
         std::vector<double>::const_iterator iNew(params.begin());
 	       
         double const * iOld = _evaluator->getLinearParameters().data();

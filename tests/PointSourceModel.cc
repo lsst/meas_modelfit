@@ -54,7 +54,6 @@ BOOST_AUTO_TEST_CASE(DerivativeTest) {
     afwGeom::PointD centroid = afwGeom::PointD::make(45,45);
 
     CONST_PTR(afwDet::Psf) psf = afwDet::createPsf("DoubleGaussian", 23, 23, 2.0);
-
     double flux = 5.45;
 
     afwGeom::AffineTransform transform;
@@ -68,6 +67,15 @@ BOOST_AUTO_TEST_CASE(DerivativeTest) {
     PTR(multifit::ModelProjection) proj = psModel->makeProjection(
         psf, transform, fp
     );
+    ndarray::Array<multifit::Pixel const, 1, 1> modelImage (proj->computeModelImage());
+    double sum=0;
+    for(int i=0; i < fp->getNpix(); ++i) {
+        sum+=modelImage[i];
+    }
+    std::cerr <<"input flux: " <<flux << std::endl;
+    std::cerr <<"pix sum: " << sum << std::endl;
+    std::cerr <<"pix sum/pix: " << (sum/fp->getNpix()) << std::endl;
+
     multifit::ParameterVector params(psModel->getNonlinearParameters());
 
     ndarray::Array<multifit::Pixel, 2, 2> analytic = ndarray::allocate<multifit::Allocator>(
@@ -101,4 +109,6 @@ BOOST_AUTO_TEST_CASE(DerivativeTest) {
 
     std::cerr << "analytic" << analytic;
     std::cerr << "numeric" << numeric;
+
+
 }

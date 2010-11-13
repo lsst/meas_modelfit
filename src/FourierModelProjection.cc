@@ -108,6 +108,7 @@ public:
             _unconvolvedMatrix = _kLPD;
             _parent->_applyKernel(_kLPD.begin(),_kLPD.end());
             _ifft->execute();
+            _xLPD /= _parent->_outerBBox.getArea();
             _matrixValid = true;
 
         }
@@ -140,7 +141,7 @@ public:
             ),
             _kLPD, 
             _xLPD
-        );
+        );        
         ndarray::shallow(_unconvolvedMatrix) = FFT::initializeK(
             _xLPD.getShape()
         );
@@ -228,6 +229,7 @@ private:
             _parent->_applyKernel(_kPPD.begin(), _kPPD.end());
         }
         _ifft->execute();
+        _xFull /= _parent->_outerBBox.getArea();
         _valid = true;
     }
 

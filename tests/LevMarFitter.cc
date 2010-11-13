@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     multifit::components::Astrometry astrometry(centroid);
 
     //define ellipse in pixel coordinates
-    geom::ellipses::Axes axes(30, 15, 1.3);
+    geom::ellipses::Axes axes(10, 15, 1.3);
 
     //transform ellipse to sky coordinates
     geom::AffineTransform transform;
