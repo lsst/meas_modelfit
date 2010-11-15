@@ -58,4 +58,12 @@ definitions: {
         minOccurs: 1
         maxOccurs: 1
     }
+    snapshotFormat: {
+        type: "string"
+        description: "a format string used to name FITS files that provide a snapshot of a 
+                      model evaluator."
+        default: "multifit-snapshot-%04i.fits"
+        minOccurs: 1
+        maxOccurs: 1
+    }
 }

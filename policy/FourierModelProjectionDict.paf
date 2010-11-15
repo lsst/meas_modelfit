@@ -7,6 +7,6 @@ definitions: {
         description: "This puts a practical limit on memory allocations"
         minOccurs: 1
         maxOccurs: 1
-        default: 100000
+        default: 1000
     }
 }

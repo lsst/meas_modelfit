@@ -8,7 +8,7 @@
 #include <boost/format.hpp>
 #include <boost/scoped_ptr.hpp>
 
-//#define MULTIFIT_DEBUG_SNAPSHOTS
+#define MULTIFIT_DEBUG_SNAPSHOTS
 
 namespace multifit=lsst::meas::multifit;
 namespace pexLog = lsst::pex::logging;
@@ -24,8 +24,11 @@ public:
     typedef Eigen::Matrix<multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic> MatrixCM;
     typedef Eigen::Map<MatrixRM> MatrixMap;
 
-    explicit LevMarFunction(multifit::ModelEvaluator::Ptr const & evaluator) 
-        : _dirty(true), _nUpdates(0), _evaluator(evaluator)
+    explicit LevMarFunction(
+        multifit::ModelEvaluator::Ptr const & evaluator,
+        std::string const & snapshotFormat
+    ) 
+        : _dirty(true), _nUpdates(0), _snapshotFormat(snapshotFormat), _evaluator(evaluator)
     {}
 
     void computeModel(VectorMap const & params, VectorMap & model) {
@@ -59,6 +62,7 @@ public:
 private:
     bool _dirty;
     int _nUpdates;
+    std::string _snapshotFormat;
     multifit::ModelEvaluator::Ptr _evaluator;
 
     void checkParams(VectorMap const & params) {
@@ -86,6 +90,7 @@ private:
     void setParams(VectorMap const & params) {
         checkParams(params);
         if(_dirty) {
+            std::cerr << "stepping to params: " << params << std::endl;
             if(_evaluator->getLinearParameterSize() > 0) {
                 _evaluator->setLinearParameters(
                     params.start(_evaluator->getLinearParameterSize())
@@ -99,12 +104,11 @@ private:
         }
 #ifdef MULTIFIT_DEBUG_SNAPSHOTS
         _evaluator->getProjectionList().front()->writeSnapshot(
-            boost::str(boost::format("multifit-snapshot-%05i.fits") % _nUpdates),
+            boost::str(boost::format(_snapshotFormat) % _nUpdates),
             _evaluator->getDataVector()
         );
         ++_nUpdates;
 #endif
-        std::cerr << "stepping to params: " << params << std::endl;
     }
 
 };
@@ -166,7 +170,7 @@ Eigen::VectorXd multifit::LevMarFitter::checkDerivatives(
         parameters.end(nNonlinearParams) = evaluator->getNonlinearParameters();
     }
     Eigen::VectorXd result(evaluator->getNPixels());
-    LevMarFunction adata(evaluator);
+    LevMarFunction adata(evaluator, _policy->getString("snapshotFormat"));
     dlevmar_chkjac(
         &LevMarFunction::func, &LevMarFunction::jacf, parameters.data(), 
         parameters.size(), result.size(), &adata, result.data()
@@ -188,7 +192,7 @@ multifit::LevMarFitterResult multifit::LevMarFitter::apply(
 
     LevMarFunction::MatrixRM covar(parameters.size(), parameters.size());
     LevMarFunction::Vector image = evaluator->getWeightedData();
-    LevMarFunction adata(evaluator);
+    LevMarFunction adata(evaluator, _policy->getString("snapshotFormat"));
     double info[LM_INFO_SZ];
     int itmax = _policy->getInt("iterationMax");
     double opts[5] = {
