@@ -58,6 +58,13 @@ definitions: {
         minOccurs: 1
         maxOccurs: 1
     }
+    doSnapshots: {
+        type: "bool"
+        description: "if true, write FITS snapshot images at every iteration."
+        default: false
+        minOccurs: 1
+        maxOccurs: 1
+    }
     snapshotFormat: {
         type: "string"
         description: "a format string used to name FITS files that provide a snapshot of a 
