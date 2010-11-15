@@ -117,6 +117,11 @@ public:
         return _footprint; 
     }
 
+    virtual void writeSnapshot(
+        std::string const & fileName,
+        ndarray::Array<Pixel const,1,1> const & data
+    );
+
 protected:
     ModelProjection(
         Model::ConstPtr const & model,

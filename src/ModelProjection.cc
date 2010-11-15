@@ -24,7 +24,9 @@
 #include <iostream> 
 #include "lsst/meas/multifit/ModelProjection.h"
 #include "lsst/meas/multifit/matrices.h"
+#include "lsst/meas/multifit/footprintUtils.h"
 #include "lsst/pex/exceptions/Runtime.h"
+#include "lsst/afw/image.h"
 
 namespace multifit = lsst::meas::multifit;
 
@@ -257,3 +259,25 @@ void multifit::ModelProjection::_handleNonlinearParameterChange() {
     _validProducts &= (~NONLINEAR_PARAMETER_DERIVATIVE);
 }
 
+void multifit::ModelProjection::writeSnapshot(
+    std::string const & fileName,
+    ndarray::Array<Pixel const,1,1> const & data
+) {
+    lsst::afw::image::BBox bbox = _footprint->getBBox();
+    lsst::afw::image::Image<Pixel> modelImage(bbox.getWidth(), bbox.getHeight(), 0.0);
+    modelImage.setXY0(bbox.getLLC());
+    lsst::afw::image::Image<Pixel> dataImage(bbox.getWidth(), bbox.getHeight(), 0.0);
+    dataImage.setXY0(bbox.getLLC());
+    lsst::afw::image::Image<Pixel> residualImage(dataImage, true);
+    residualImage.setXY0(bbox.getLLC());
+    expandImage<Pixel>(*_footprint, modelImage, computeModelImage());
+    expandImage<Pixel>(*_footprint, dataImage, data);
+    residualImage -= modelImage;
+    lsst::daf::base::PropertySet::Ptr metadata = boost::make_shared<lsst::daf::base::PropertySet>();
+    metadata->set("EXTNAME", "DATA");
+    dataImage.writeFits(fileName, metadata, "w");
+    metadata->set("EXTNAME", "MODEL");
+    modelImage.writeFits(fileName, metadata, "a");
+    metadata->set("EXTNAME", "RESIDUAL");
+    residualImage.writeFits(fileName, metadata, "a");
+}

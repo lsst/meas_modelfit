@@ -197,6 +197,10 @@ BOOST_AUTO_TEST_CASE(SersicModel) {
     lpd = evaluator.computeLinearParameterDerivative();
     npd = evaluator.computeNonlinearParameterDerivative();
     
+    evaluator.getProjectionList().front()->writeSnapshot(
+        "snapshot.fits", evaluator.getDataVector()
+    );
+
     //test for nan's in matrices
     for (int i = 0; i < evaluator.getNPixels(); ++i){
         BOOST_CHECK_EQUAL(img[i], img[i]);

@@ -5,7 +5,10 @@
 #include "lsst/pex/logging/Trace.h"
 #include <limits>
 #include <iostream>
+#include <boost/format.hpp>
 #include <boost/scoped_ptr.hpp>
+
+//#define MULTIFIT_DEBUG_SNAPSHOTS
 
 namespace multifit=lsst::meas::multifit;
 namespace pexLog = lsst::pex::logging;
@@ -22,8 +25,7 @@ public:
     typedef Eigen::Map<MatrixRM> MatrixMap;
 
     explicit LevMarFunction(multifit::ModelEvaluator::Ptr const & evaluator) 
-      : _dirty(true), 
-        _evaluator(evaluator)
+        : _dirty(true), _nUpdates(0), _evaluator(evaluator)
     {}
 
     void computeModel(VectorMap const & params, VectorMap & model) {
@@ -56,6 +58,7 @@ public:
 
 private:
     bool _dirty;
+    int _nUpdates;
     multifit::ModelEvaluator::Ptr _evaluator;
 
     void checkParams(VectorMap const & params) {
@@ -94,7 +97,13 @@ private:
                 );
             }
         }
-
+#ifdef MULTIFIT_DEBUG_SNAPSHOTS
+        _evaluator->getProjectionList().front()->writeSnapshot(
+            boost::str(boost::format("multifit-snapshot-%05i.fits") % _nUpdates),
+            _evaluator->getDataVector()
+        );
+        ++_nUpdates;
+#endif
         std::cerr << "stepping to params: " << params << std::endl;
     }
 
@@ -127,7 +136,7 @@ multifit::LevMarFitterResult::LevMarFitterResult(
  *****************************************************************************/
 multifit::LevMarFitter::LevMarFitter(
     lsst::pex::policy::Policy::Ptr const & policy
-) : _policy(policy) {        
+) : _policy(policy) {
     if(!_policy)
         _policy.reset(new lsst::pex::policy::Policy());
 

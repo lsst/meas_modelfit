@@ -66,6 +66,20 @@ void expandImage(
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
 );
 
+template <typename ImageT>
+void compressImage(
+    lsst::afw::detection::Footprint const & footprint,
+    lsst::afw::image::Image<ImageT> const & image,
+    ndarray::Array<Pixel, 1, 1> const & imageDest
+);
+
+template <typename ImageT>
+void expandImage(
+    lsst::afw::detection::Footprint const & footprint,
+    lsst::afw::image::Image<ImageT> & image,
+    ndarray::Array<Pixel const, 1, 1> const & imageSrc
+);
+
 }}} //end namespace lsst::meas::multifit
 
 #endif

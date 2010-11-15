@@ -329,6 +329,20 @@ int const multifit::FourierModelProjection::getPsfParameterSize() const {
 }
 #endif
 
+void multifit::FourierModelProjection::writeSnapshot(
+    std::string const & fileName,
+    ndarray::Array<Pixel const,1,1> const & data
+) {
+    ComponentModelProjection::writeSnapshot(fileName, data);
+    lsst::afw::math::FftLocalKernel::Ptr localKernel 
+        = boost::dynamic_pointer_cast<lsst::afw::math::FftLocalKernel>(_localKernel);
+    if (localKernel) {
+        lsst::daf::base::PropertySet::Ptr metadata = boost::make_shared<lsst::daf::base::PropertySet>();
+        metadata->set("EXTNAME", "PSF");
+        localKernel->getImage()->writeFits(fileName, metadata, "a");
+    }
+}
+
 /**
  * Compute a locally evaluated ConvolutionVisitor from the PSF's
  * kernel, and apply it to the model. This operation invalidates all

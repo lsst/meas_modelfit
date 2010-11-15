@@ -68,6 +68,11 @@ public:
     static CONST_PTR(lsst::pex::policy::Policy) getPolicy();
     static void setPolicy(lsst::pex::policy::Policy policy);
 
+    virtual void writeSnapshot(
+        std::string const & fileName,
+        ndarray::Array<Pixel const,1,1> const & data
+    );
+
 protected:
     friend class lsst::meas::multifit::ComponentModel;
 

@@ -209,15 +209,15 @@ afwDet::Footprint::Ptr multifit::clipAndMaskFootprint(
 
 namespace {
 
-//FootprintFunctor to compress an afw::Image to two ndarray::Array using a footprint
+//FootprintFunctor to compress an afw::MaskedImage to two ndarray::Array using a footprint
 template <typename ImageT, typename MaskT=afwImg::MaskPixel, typename VarianceT=afwImg::VariancePixel>
-class CompressImageFunctor : 
+class CompressMaskedImageFunctor : 
     public afwDet::FootprintFunctor<afwImg::MaskedImage<ImageT, MaskT, VarianceT> > {
 public:
     typedef afwImg::MaskedImage<ImageT, MaskT, VarianceT> MaskedImage;
     typedef afwDet::FootprintFunctor<MaskedImage> FootprintFunctor;
 
-    CompressImageFunctor(
+    CompressMaskedImageFunctor(
         MaskedImage const & src,
         ndarray::Array<multifit::Pixel, 1, 1> const & imageDest,
         ndarray::Array<multifit::Pixel, 1, 1> const & varianceDest
@@ -252,8 +252,47 @@ private:
     ndarray::Array<multifit::Pixel, 1, 1>::Iterator _imageIter, _varianceIter;
 };
 
+//FootprintFunctor to compress an afw::Image to an ndarray::Array using a footprint
+template <typename ImageT>
+class CompressImageFunctor : 
+    public afwDet::FootprintFunctor<afwImg::Image<ImageT> > {
+public:
+    typedef afwImg::Image<ImageT> Image;
+    typedef afwDet::FootprintFunctor<Image> FootprintFunctor;
+
+    CompressImageFunctor(
+        Image const & src,
+        ndarray::Array<multifit::Pixel, 1, 1> const & imageDest
+    ) : FootprintFunctor(src),
+        _imageDest(imageDest)
+    {}
+
+    virtual void reset(afwDet::Footprint const & footprint) {
+        if(_imageDest.getSize<0>() != footprint.getNpix()) {
+            throw LSST_EXCEPT(lsst::pex::exceptions::LengthErrorException,
+                              "Destination vector is not the correct length");    
+        }
+        _imageIter = _imageDest.begin();
+    }
+    virtual void operator()(
+        typename Image::xy_locator loc,
+        int x,
+        int y
+    ) {
+       *_imageIter = static_cast<multifit::Pixel>(*loc);
+       ++_imageIter;
+    }
+
+private:
+    ndarray::Array<multifit::Pixel, 1, 1> const & _imageDest;
+    ndarray::Array<multifit::Pixel, 1, 1>::Iterator _imageIter;
+};
+
 template class CompressImageFunctor<float>;
 template class CompressImageFunctor<double>;
+
+template class CompressMaskedImageFunctor<float>;
+template class CompressMaskedImageFunctor<double>;
 
 } //end annonymous namespace
 
@@ -276,24 +315,46 @@ void multifit::compressImage(
     ndarray::Array<Pixel, 1, 1> const & imageDest,
     ndarray::Array<Pixel, 1, 1> const & varianceDest
 ) {
-    ::CompressImageFunctor<ImageT, MaskT, VarianceT> functor(
+    ::CompressMaskedImageFunctor<ImageT, MaskT, VarianceT> functor(
         maskedImage, imageDest, varianceDest
     ); 
     functor.apply(footprint);
 }
 
 
+/**
+ * Compress an afwImg::Image into a single ndarray::Array
+ *
+ * This is a deep copy of all pixels of image that are in footprint.
+ * imageDest must be initialized externally, prior to calling
+ * this function, and must be of size footprint.getNpix()
+ *
+ * @param footprint defines all the desired pixels to copy
+ * @param image the source image to compress
+ * @param imageDest destination for the image pixel data
+ */
+template <typename ImageT>
+void multifit::compressImage(
+    afwDet::Footprint const & footprint,
+    afwImg::Image<ImageT> const & image,
+    ndarray::Array<Pixel, 1, 1> const & imageDest
+) {
+    ::CompressImageFunctor<ImageT> functor(image, imageDest); 
+    functor.apply(footprint);
+}
+
+
 namespace {
 
-//FootprintFunctor to expand two ndarray::Array to an afw::Image using a footprint
+//FootprintFunctor to expand two ndarray::Array to an afw::MaskedImage using a footprint
 template <typename ImageT, typename MaskT=afwImg::MaskPixel, typename VarianceT=afwImg::VariancePixel>
-class  ExpandImageFunctor : 
+class  ExpandMaskedImageFunctor : 
     public afwDet::FootprintFunctor<afwImg::MaskedImage<ImageT, MaskT, VarianceT> > {
 public:
     typedef afwImg::MaskedImage<ImageT, MaskT, VarianceT> MaskedImage;
     typedef afwDet::FootprintFunctor<MaskedImage> FootprintFunctor;
 
-    ExpandImageFunctor(
+    ExpandMaskedImageFunctor(
         MaskedImage & dest,
         ndarray::Array<multifit::Pixel const, 1, 1> const & imageSrc,
         ndarray::Array<multifit::Pixel const, 1, 1> const & varianceSrc
@@ -328,6 +389,45 @@ private:
     ndarray::Array<multifit::Pixel const, 1, 1>::Iterator _imageIter, _varianceIter; 
 };
 
+//FootprintFunctor to expand two ndarray::Array to an afw::Image using a footprint
+template <typename ImageT>
+class  ExpandImageFunctor : 
+    public afwDet::FootprintFunctor<afwImg::Image<ImageT> > {
+public:
+    typedef afwImg::Image<ImageT> Image;
+    typedef afwDet::FootprintFunctor<Image> FootprintFunctor;
+
+    ExpandImageFunctor(
+        Image & dest,
+        ndarray::Array<multifit::Pixel const, 1, 1> const & imageSrc
+    ) : FootprintFunctor(dest),
+        _imageSrc(imageSrc)
+    {}
+
+    virtual void reset(afwDet::Footprint const & footprint) {
+        if(_imageSrc.getSize<0>() != footprint.getNpix()) {
+            throw LSST_EXCEPT(lsst::pex::exceptions::LengthErrorException,
+                "Source vectors are not correct length");    
+        }        
+        _imageIter = _imageSrc.begin();
+    }
+    virtual void operator()(
+        typename Image::xy_locator loc,
+        int x,
+        int y
+    ) {
+       *loc = static_cast<ImageT>(*_imageIter);
+       ++_imageIter;
+    }
+
+private:
+    ndarray::Array<multifit::Pixel const, 1, 1> const & _imageSrc;
+    ndarray::Array<multifit::Pixel const, 1, 1>::Iterator _imageIter; 
+};
+
+template class ExpandMaskedImageFunctor<float>;
+template class ExpandMaskedImageFunctor<double>;
+
 template class ExpandImageFunctor<float>;
 template class ExpandImageFunctor<double>;
 
@@ -359,9 +459,37 @@ void multifit::expandImage(
     ndarray::Array<Pixel const, 1, 1> const & imageSrc,
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
 ) {
-    ::ExpandImageFunctor<ImageT, MaskT, VarianceT> functor(
+    ::ExpandMaskedImageFunctor<ImageT, MaskT, VarianceT> functor(
         maskedImage, imageSrc, varianceSrc
     ); 
+    functor.apply(footprint);
+}
+
+/**
+ * Expand an ndarray::Array to a full afwImg::Image
+ *
+ * This is a deep copy of all values in both inout arrays, the footprint
+ * determines what pixel in the image corresponds to each position in the array
+ * 
+ * imageSrc must be initialized externally, prior to calling
+ * this function, and must be of size footprint.getNpix()
+ *
+ * image must be initialized externally, and completely cover all pixels
+ * in the footprint. Pixels contained in the footprint will be set by this
+ * function. Those pixels outisde the footprint will not be modified.
+ *
+ * @param footprint maps array index to image location
+ * @param image destination of the copy. only those pixels contained in
+ * the footprint will be touched.
+ * @param imageSrc source for the image pixel data
+ */
+template <typename ImageT>
+void multifit::expandImage(
+    afwDet::Footprint const & footprint,
+    afwImg::Image<ImageT> & image,
+    ndarray::Array<Pixel const, 1, 1> const & imageSrc
+) {
+    ::ExpandImageFunctor<ImageT> functor(image, imageSrc); 
     functor.apply(footprint);
 }
 
@@ -398,6 +526,28 @@ template void multifit::expandImage<double>(
     afwImg::MaskedImage<double> &,
     ndarray::Array<Pixel const, 1, 1> const & imageSrc,
     ndarray::Array<Pixel const, 1, 1> const & varianceSrc
+);
+
+template void multifit::compressImage<float>(
+    afwDet::Footprint const &,
+    afwImg::Image<float> const &,
+    ndarray::Array<Pixel, 1, 1> const &
+);
+template void multifit::compressImage<double>(
+    afwDet::Footprint const &,
+    afwImg::Image<double> const &,
+    ndarray::Array<Pixel, 1, 1> const &
+);
+
+template void multifit::expandImage<float>(
+    afwDet::Footprint const & footprint,
+    afwImg::Image<float> &,
+    ndarray::Array<Pixel const, 1, 1> const & imageSrc
+);
+template void multifit::expandImage<double>(
+    afwDet::Footprint const & footprint,
+    afwImg::Image<double> &,
+    ndarray::Array<Pixel const, 1, 1> const & imageSrc
 );
 
 
