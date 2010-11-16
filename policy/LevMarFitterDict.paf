@@ -54,7 +54,7 @@ definitions: {
         description: "if true, a model's derivatives will be used to analytically 
                       compute the Jacobian. Otherwise, numeric derivatives will be
                       computed by levmar."
-        default: false
+        default: true
         minOccurs: 1
         maxOccurs: 1
     }
@@ -69,7 +69,7 @@ definitions: {
         type: "string"
         description: "a format string used to name FITS files that provide a snapshot of a 
                       model evaluator."
-        default: "multifit-snapshot-%04i.fits"
+        default: "/home/jbosch/multifit-snapshot-%04i.fits"
         minOccurs: 1
         maxOccurs: 1
     }

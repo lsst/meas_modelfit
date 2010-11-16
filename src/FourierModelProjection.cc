@@ -532,13 +532,14 @@ void multifit::FourierModelProjection::_setDimensions() {
     // Shift _innerBBox to be defined relative to _outerBBox.
     _innerBBox.shift(afwGeom::Point2I() - _outerBBox.getMin());
 
+#if 0
     std::cerr << "Outer bbox set to: ("
 	      << _outerBBox.getMinX() << ", " << _outerBBox.getMinY() << ")-(" 
 	      << _outerBBox.getMaxX() << ", " << _outerBBox.getMaxY() << ")\n";
     std::cerr << "Inner bbox set to: ("
 	      << _innerBBox.getMinX() << ", " << _innerBBox.getMinY() << ")-(" 
 	      << _innerBBox.getMaxX() << ", " << _innerBBox.getMaxY() << ")\n";
-
+#endif
 
     _localKernel->setDimensions(_outerBBox.getWidth(), _outerBBox.getHeight());
     _shifter.reset(new Shifter(this));

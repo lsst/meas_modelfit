@@ -28,6 +28,7 @@
  */
 #include "lsst/meas/multifit/ModelEvaluator.h"
 #include "lsst/meas/multifit/matrices.h"
+#include "lsst/utils/ieee.h"
 #include "lsst/meas/multifit/footprintUtils.h"
 
 #include <iostream>
@@ -78,6 +79,15 @@ int multifit::ModelEvaluator::setData(
 
     VectorMap varianceMap (_varianceVector.getData(), pixSum, 1);
     _sigma = varianceMap.cwise().sqrt(); 
+    
+    for (int n = 0; n < _sigma.size(); ++n) {
+        if (!lsst::utils::lsst_isfinite(1.0 / _sigma[n])) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::RuntimeErrorException,
+                "Non-finite pixel weight detected."
+            );
+        }
+    }
 
     return pixSum;
 }
@@ -171,6 +181,14 @@ int multifit::ModelEvaluator::setData(
 
     VectorMap varianceMap (_varianceVector.getData(), getNPixels(), 1);
     _sigma = varianceMap.cwise().sqrt(); 
+    for (int n = 0; n < _sigma.size(); ++n) {
+        if (!lsst::utils::lsst_isfinite(1.0 / _sigma[n])) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::RuntimeErrorException,
+                "Non-finite pixel weight detected."
+            );
+        }
+    }
     return pixSum;
 }
 

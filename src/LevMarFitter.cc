@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include "lsst/pex/exceptions/Runtime.h"
 #include "lsst/pex/logging/Trace.h"
+#include "lsst/utils/ieee.h"
 #include <limits>
 #include <iostream>
 #include <boost/format.hpp>
@@ -31,17 +32,42 @@ public:
     {}
 
     void computeModel(VectorMap const & params, VectorMap & model) {
+        std::cerr << "Computing model, parameters: " << params.transpose() << "\n";
         setParams(params);
         model = _evaluator->computeModelImage();
+	for (int n = 0; n < model.size(); ++n) {
+	    if (!lsst::utils::lsst_isfinite(model[n])) {
+                std::cerr << "Bad model pixel at 1-d index " << n << "; value is " << model[n] << "\n";
+                throw LSST_EXCEPT(
+                    lsst::pex::exceptions::RuntimeErrorException,
+                    "Model image contains non-finite values."
+                );
+	    }
+	}
     }
 
     void computeJacobian(VectorMap const & params, MatrixMap & jacobian) {
         setParams(params);
-        MatrixCM const & lpd = _evaluator->computeLinearParameterDerivative();
-        MatrixCM const & npd = _evaluator->computeNonlinearParameterDerivative();
-        assert(jacobian.cols() == lpd.cols() + npd.cols());
-        jacobian.block(0, 0, jacobian.rows(), lpd.cols()) = lpd;
-        jacobian.block(0, lpd.cols(), jacobian.rows(), npd.cols()) = npd;
+        int offset = 0;
+        if (_evaluator->getLinearParameterSize() > 0) {
+            MatrixCM const & lpd = _evaluator->computeLinearParameterDerivative();
+            jacobian.block(0, offset, jacobian.rows(), lpd.cols()) = lpd;
+            offset += lpd.cols();
+        }
+        if (_evaluator->getNonlinearParameterSize() > 0) {
+            MatrixCM const & npd = _evaluator->computeNonlinearParameterDerivative();
+            jacobian.block(0, offset, jacobian.rows(), npd.cols()) = npd;
+        }
+	for (int i = 0; i < jacobian.rows(); ++i) {
+            for (int j = 0; j < jacobian.cols(); ++j) {
+	        if (!lsst::utils::lsst_isfinite(jacobian(i,j))) {
+                    throw LSST_EXCEPT(
+                        lsst::pex::exceptions::RuntimeErrorException,
+                        "Model jacobian contains non-finite values."
+                    );
+                }
+            }
+	}
     }
 
     static void func(double * p, double * hx, int m, int n, void * data) {
@@ -90,7 +116,7 @@ private:
     void setParams(VectorMap const & params) {
         checkParams(params);
         if(_dirty) {
-            std::cerr << "stepping to params: " << params.transpose() << std::endl;
+	    //std::cerr << "stepping to params: " << params.transpose() << std::endl;
             if(_evaluator->getLinearParameterSize() > 0) {
                 _evaluator->setLinearParameters(
                     params.start(_evaluator->getLinearParameterSize())
