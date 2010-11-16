@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -45,7 +46,7 @@ public:
     enum NonlinearParameters {
         GAMMA1=0,
         GAMMA2,
-        KAPPA,
+        RADIUS,
         SERSIC_INDEX,
         NONLINEAR_SIZE
     };
@@ -61,16 +62,10 @@ public:
         Parameter const & flux,
         lsst::afw::geom::ellipses::BaseCore const & ellipse, 
         Parameter const & sersicIndex
-    ) { 
-        lsst::afw::geom::ellipses::LogShear logShear(ellipse);
-        boost::shared_ptr<ParameterVector> linear(new ParameterVector(LINEAR_SIZE));
-        boost::shared_ptr<ParameterVector> nonlinear(new ParameterVector(NONLINEAR_SIZE));
-        checkCache();
-        *linear << flux;
-        *nonlinear << logShear.getVector(), _cache->convertSersicToParameter(sersicIndex);
+    );
 
-        return SersicMorphology::Ptr(new SersicMorphology(linear,nonlinear));
-        
+    Parameter const getKappa() const { 
+        return std::log((*_nonlinearParameters)[RADIUS]);
     }
 
     Parameter const & getFlux() const {

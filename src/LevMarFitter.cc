@@ -90,7 +90,7 @@ private:
     void setParams(VectorMap const & params) {
         checkParams(params);
         if(_dirty) {
-            std::cerr << "stepping to params: " << params << std::endl;
+            std::cerr << "stepping to params: " << params.transpose() << std::endl;
             if(_evaluator->getLinearParameterSize() > 0) {
                 _evaluator->setLinearParameters(
                     params.start(_evaluator->getLinearParameterSize())

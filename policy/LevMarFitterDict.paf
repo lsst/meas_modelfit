@@ -23,7 +23,7 @@ definitions: {
                       for termination purposes"
         minOccurs:1
         maxOccurs:1
-        default: 1E-17
+        default: 1E-4
     }
     parameterEpsilon: {
         type: "double"
@@ -31,7 +31,7 @@ definitions: {
                       for termination purposes"
         minOccurs:1
         maxOccurs:1
-        default: 1E-17
+        default: 1E-4
     }
     residualEpsilon: {
         type: "double"
@@ -39,7 +39,7 @@ definitions: {
                       for termination purposes"
         minOccurs:1
         maxOccurs:1
-        default: 1E-17
+        default: 1E-4
     }
     delta: {
         type: "double"
@@ -61,7 +61,7 @@ definitions: {
     doSnapshots: {
         type: "bool"
         description: "if true, write FITS snapshot images at every iteration."
-        default: false
+        default: true
         minOccurs: 1
         maxOccurs: 1
     }

@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -26,11 +27,24 @@
 
 namespace components = lsst::meas::multifit::components;
 
+components::ExponentialMorphology::Ptr components::ExponentialMorphology::create(
+    Parameter const & flux,
+    lsst::afw::geom::ellipses::BaseCore const & ellipse
+) { 
+    lsst::afw::geom::ellipses::LogShear logShear(ellipse);
+    double radius = std::exp(logShear[lsst::afw::geom::ellipses::LogShear::KAPPA]);
+    boost::shared_ptr<ParameterVector> linear(new ParameterVector(LINEAR_SIZE));
+    boost::shared_ptr<ParameterVector> nonlinear(new ParameterVector(NONLINEAR_SIZE));
+    *linear << flux;
+    *nonlinear << logShear[GAMMA1], logShear[GAMMA2], radius;
+    return ExponentialMorphology::Ptr(new ExponentialMorphology(linear, nonlinear));    
+}
+
 lsst::afw::geom::ellipses::Core::Ptr 
 components::ExponentialMorphology::computeBoundingEllipseCore() const {  
     ParameterConstIterator params(beginNonlinear());
     return boost::make_shared<lsst::afw::geom::ellipses::LogShear> (
-        params[GAMMA1], params[GAMMA2], params[KAPPA]
+        params[GAMMA1], params[GAMMA2], std::log(params[RADIUS])
     );
 }
 components::Morphology::Ptr components::ExponentialMorphology::create(

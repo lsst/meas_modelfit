@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -30,11 +31,29 @@ namespace components = lsst::meas::multifit::components;
 
 lsst::meas::multifit::SersicCache::ConstPtr components::SersicMorphology::_cache;
 
+components::SersicMorphology::Ptr components::SersicMorphology::create(
+    Parameter const & flux,
+    lsst::afw::geom::ellipses::BaseCore const & ellipse, 
+    Parameter const & sersicIndex
+) { 
+    lsst::afw::geom::ellipses::LogShear logShear(ellipse);
+    double radius = std::exp(logShear[lsst::afw::geom::ellipses::LogShear::KAPPA]);
+    boost::shared_ptr<ParameterVector> linear(new ParameterVector(LINEAR_SIZE));
+    boost::shared_ptr<ParameterVector> nonlinear(new ParameterVector(NONLINEAR_SIZE));
+    checkCache();
+    *linear << flux;
+    *nonlinear << logShear[GAMMA1], logShear[GAMMA2], radius, 
+        _cache->convertSersicToParameter(sersicIndex);
+    
+    return SersicMorphology::Ptr(new SersicMorphology(linear, nonlinear));
+    
+}
+
 lsst::afw::geom::ellipses::Core::Ptr 
 components::SersicMorphology::computeBoundingEllipseCore() const {  
     ParameterConstIterator params(beginNonlinear());
     return boost::make_shared<lsst::afw::geom::ellipses::LogShear> (
-        params[GAMMA1], params[GAMMA2], params[KAPPA]
+        params[GAMMA1], params[GAMMA2], std::log(params[RADIUS])
     );
 }
 components::Morphology::Ptr components::SersicMorphology::create(

@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -44,7 +45,7 @@ public:
     enum NonlinearParameters {
         GAMMA1=0,
         GAMMA2,
-        KAPPA,
+        RADIUS,
         NONLINEAR_SIZE
     };
 
@@ -58,14 +59,10 @@ public:
     static ExponentialMorphology::Ptr create(
         Parameter const & flux,
         lsst::afw::geom::ellipses::BaseCore const & ellipse
-    ) { 
-        lsst::afw::geom::ellipses::LogShear logShear(ellipse);
-        boost::shared_ptr<ParameterVector> linear(new ParameterVector(LINEAR_SIZE));
-        boost::shared_ptr<ParameterVector> nonlinear(new ParameterVector(NONLINEAR_SIZE));
-        *linear << flux;
-        *nonlinear << logShear.getVector();
-        return ExponentialMorphology::Ptr(new ExponentialMorphology(linear,nonlinear));
-        
+    );
+
+    Parameter const getKappa() const { 
+        return std::log((*_nonlinearParameters)[RADIUS]);
     }
 
     Parameter const & getFlux() const {

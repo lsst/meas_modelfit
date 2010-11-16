@@ -82,13 +82,14 @@ BOOST_AUTO_TEST_CASE(BasicFitter) {
     multifit::ModelProjection::Ptr projection(model->makeProjection(psf, transform, fp));
     ndarray::Array<multifit::Pixel const, 1, 1> modelImage(projection->computeModelImage());
     ndarray::Array<multifit::Pixel, 1 ,1> variance(ndarray::allocate(ndarray::makeVector(fp->getNpix())));
-    variance = 0.5*0.5;
+    variance = 0.000001;
 
     multifit::expandImage(*fp, mi, modelImage, variance);
    
     math::Random random;
     image::Image<double> randomImg(mi.getWidth(), mi.getHeight());
     math::randomGaussianImage<image::Image<double> >(&randomImg, random);
+    randomImg *= 0.001;
     *mi.getImage() += randomImg;
 
     multifit::ModelEvaluator::Ptr evaluator(

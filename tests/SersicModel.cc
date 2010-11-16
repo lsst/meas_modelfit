@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(SersicModelProjection) {
     BOOST_CHECK_EQUAL(nonlinear[1], centroid[1]);
     BOOST_CHECK_EQUAL(nonlinear[2], logShear[0]);
     BOOST_CHECK_EQUAL(nonlinear[3], logShear[1]);
-    BOOST_CHECK_EQUAL(nonlinear[4], logShear[2]);
+    BOOST_CHECK_EQUAL(nonlinear[4], std::exp(logShear[2]));
 
     ndarray::Array<multifit::Pixel const, 1, 1> modelImg; 
     ndarray::Array<multifit::Pixel const, 2, 1> lpd, npd;

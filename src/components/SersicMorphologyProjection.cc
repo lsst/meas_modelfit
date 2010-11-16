@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -217,8 +218,14 @@ components::SersicMorphologyProjection::computeProjectedParameterJacobian() cons
             getNonlinearParameterSize()
         )
     );
-    
-    m->block<3,3>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).d();
+    lsst::afw::geom::ellipses::LogShear::Ptr ellipse = 
+        boost::static_pointer_cast<lsst::afw::geom::ellipses::LogShear>(
+            getMorphology()->computeBoundingEllipseCore()
+        );
+    double radius = std::exp((*ellipse)[lsst::afw::geom::ellipses::LogShear::KAPPA]);
+    Eigen::Matrix3d radiusJacobian = Eigen::Matrix3d::Identity();
+    radiusJacobian(2,2) = 1.0 / radius;
+    m->block<3,3>(0,0) = ellipse->transform(getTransform()).d() * radiusJacobian;
     (*m)(3,3) = 1;
     return ParameterJacobianMatrixPtr(m);
 }
@@ -227,8 +234,8 @@ components::MorphologyProjection::TransformJacobianMatrixPtr
 components::SersicMorphologyProjection::computeTransformParameterJacobian() const {
     TransformJacobianMatrix * m = new TransformJacobianMatrix(
         TransformJacobianMatrix::Zero(getNonlinearParameterSize(), TransformJacobianMatrix::ColsAtCompileTime)
-    );    
-    m->block<3,4>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(
+    );
+    m->block<3,4>(0,0) = getMorphology()->computeBoundingEllipseCore()->transform(
         getTransform()
     ).dTransform();
     return TransformJacobianMatrixPtr(m);
