@@ -30,9 +30,14 @@ public:
     ChisqFunction(
         multifit::ModelEvaluator::Ptr const & evaluator,
         Vector const & priorMean,
-        Vector const & priorFisherDiag 
+        Vector const & priorFisherDiag,
+        bool doSnapshots,
+        std::string const & snapshotFormat
     ) 
       : _dirty(true), 
+        _doSnapshots(doSnapshots),
+        _nUpdates(0),
+        _snapshotFormat(snapshotFormat),
         _evaluator(evaluator),
         _measured(evaluator->getWeightedData()),
         _priorMean(priorMean),
@@ -40,11 +45,10 @@ public:
     {}
     
     double computeValue(std::vector<double> const &params) {
-        checkParams(params);
-        if(_dirty) {
-            _evaluator->setLinearParameters(&params[0]);
-            _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);
-        }
+        std::cerr << "Computing value: ";
+        std::copy(params.begin(), params.end(), std::ostream_iterator<double>(std::cerr, " "));
+        std::cerr << std::endl;
+        setParams(params);
         Vector modeled = _evaluator->computeModelImage();
         Vector residual = (_measured-modeled);
         Vector priorDelta(params.size());
@@ -56,15 +60,14 @@ public:
     }
 
     std::vector<double> computeGradient(std::vector<double> const &params) {
-        checkParams(params);
-        if(_dirty) {
-            _evaluator->setLinearParameters(&params[0]);
-            _evaluator->setNonlinearParameters(&params[_evaluator->getLinearParameterSize()]);            
-        }
+        std::cerr << "Computing gradient: ";
+        std::copy(params.begin(), params.end(), std::ostream_iterator<double>(std::cerr, " "));
+        std::cerr << std::endl;
+        setParams(params);
         Vector modeled = _evaluator->computeModelImage();
         Vector residual = (_measured-modeled);
-        Matrix lpd = _evaluator->computeLinearParameterDerivative();
-        Matrix npd = _evaluator->computeNonlinearParameterDerivative();
+        Matrix const & lpd = _evaluator->computeLinearParameterDerivative();
+        Matrix const & npd = _evaluator->computeNonlinearParameterDerivative();
 
         Eigen::VectorXd priorDelta(params.size());
         std::copy(params.begin(), params.end(), priorDelta.data());
@@ -79,6 +82,9 @@ public:
     }
 private:
     bool _dirty;
+    bool _doSnapshots;
+    int _nUpdates;
+    std::string _snapshotFormat;
     multifit::ModelEvaluator::Ptr _evaluator;
     Vector _measured;
     Vector _priorMean;
@@ -103,17 +109,35 @@ private:
 
         _dirty = false;
     }
+
+    void setParams(std::vector<double> const & params) {
+        checkParams(params);
+        if(_dirty) {
+            int offset = 0;
+            if(_evaluator->getLinearParameterSize() > 0) {
+                _evaluator->setLinearParameters(&params.front());
+                offset += _evaluator->getLinearParameterSize();
+            }
+            if(_evaluator->getNonlinearParameterSize() > 0 ) {
+                _evaluator->setNonlinearParameters(&params.front() + offset);
+            }
+        }
+        if (_doSnapshots) {
+            _evaluator->getProjectionList().front()->writeSnapshot(
+                boost::str(boost::format(_snapshotFormat) % _nUpdates),
+                _evaluator->getDataVector()
+            );
+        ++_nUpdates;
+        }
+    }
+
 };
 
 
 class Function : public ROOT::Minuit2::FCNBase {
 public:
-    Function(
-        multifit::ModelEvaluator::Ptr evaluator, 
-        ChisqFunction::Vector const & priorMean,
-        ChisqFunction::Vector const & priorFisherDiag
-    ) :
-        _chisqFunction(evaluator, priorMean, priorFisherDiag)
+    Function(ChisqFunction const & chisqFunction) :
+        _chisqFunction(chisqFunction)
     {}
 
     virtual ~Function() {}
@@ -129,12 +153,10 @@ private:
 class GradientFunction : public ROOT::Minuit2::FCNGradientBase {
 public:
     GradientFunction(
-        multifit::ModelEvaluator::Ptr evaluator,
-        ChisqFunction::Vector const & priorMean,
-        ChisqFunction::Vector const & priorFisherDiag,
+        ChisqFunction const & chisqFunction,
         bool checkGradient=false
     ) :
-        _chisqFunction(evaluator, priorMean, priorFisherDiag),
+        _chisqFunction(chisqFunction),
         _checkGradient(checkGradient)
     {}
 
@@ -160,7 +182,6 @@ multifit::MinuitFitterResult doMinuitFit(
     std::vector<double> const & priorFisherDiag,
     std::vector<double> const & lower,
     std::vector<double> const & upper,
-    bool doAnalytic,
     lsst::pex::policy::Policy::Ptr policy
 ) {
     int nLinear = evaluator->getLinearParameterSize();
@@ -193,20 +214,18 @@ multifit::MinuitFitterResult doMinuitFit(
     ChisqFunction::Vector priorFisherDiagEig(priorFisherDiag.size());
     std::copy(priorFisherDiag.begin(), priorFisherDiag.end(), priorFisherDiagEig.data());
 
-    boost::scoped_ptr<ROOT::Minuit2::FCNBase> function;
-    if(policy->getBool("doAnalyticGradient")) {             
-        bool checkGradient = policy->getBool("checkGradient");
-        function.reset(new GradientFunction(evaluator, priorMeanEig, priorFisherDiagEig, checkGradient));
-    } else {
-        function.reset(new Function(evaluator, priorMeanEig, priorFisherDiagEig));
-    }
+    ChisqFunction chisqFunction(
+        evaluator, priorMeanEig, priorFisherDiagEig, 
+        policy->getBool("doSnapshots"),
+        policy->getString("snapshotFormat")
+    );
 
     std::vector<double> initialParams(nParams);
     multifit::VectorMap paramMap(&initialParams[0], nParams);
-    if(nLinear >0){
+    if(nLinear > 0){
         paramMap.start(nLinear) = evaluator->getLinearParameters();
     }
-    if(nNonlinear >0){
+    if(nNonlinear > 0){
         paramMap.end(nNonlinear) = evaluator->getNonlinearParameters();
     }
     ROOT::Minuit2::MnUserParameters userParams(initialParams, initialErrors);
@@ -226,13 +245,27 @@ multifit::MinuitFitterResult doMinuitFit(
         }
     }
 
+    boost::scoped_ptr<ROOT::Minuit2::FCNBase> function;
     boost::scoped_ptr<ROOT::Minuit2::MnApplication> minimizer;
     std::string algorithm = policy->getString("algorithm"); 
     int strategy = policy->getInt("strategy");
-    if(algorithm == "MIGRAD") 
-        minimizer.reset(new ROOT::Minuit2::MnMigrad(*function, userParams, strategy));
-    else if (algorithm == "SIMPLEX") 
+    if(algorithm == "MIGRAD") {
+        if(policy->getBool("doAnalyticGradient")) {
+            bool checkGradient = policy->getBool("checkGradient");
+            function.reset(new GradientFunction(chisqFunction, checkGradient));
+            minimizer.reset(
+                new ROOT::Minuit2::MnMigrad(
+                    static_cast<ROOT::Minuit2::FCNGradientBase&>(*function), userParams, strategy
+                )
+            );
+        } else {
+            function.reset(new Function(chisqFunction));
+            minimizer.reset(new ROOT::Minuit2::MnMigrad(*function, userParams, strategy));
+        }
+    } else if (algorithm == "SIMPLEX") {
+        function.reset(new Function(chisqFunction));
         minimizer.reset(new ROOT::Minuit2::MnSimplex(*function, userParams, strategy));
+    }
 
     ROOT::Minuit2::FunctionMinimum min = (*minimizer)(
         policy->getInt("iterationMax"), 
@@ -300,6 +333,6 @@ multifit::MinuitFitterResult multifit::MinuitFitter::apply(
         evaluator, initialErrors, 
         priorMean, priorFisherDiag, 
         lowerLimits, upperLimits, 
-        true, _policy
+        _policy
     ); 
 }
