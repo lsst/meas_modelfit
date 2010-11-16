@@ -1,3 +1,4 @@
+// -*- lsst-c++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -218,7 +219,7 @@ components::SersicMorphologyProjection::computeProjectedParameterJacobian() cons
         )
     );
     
-    m->block<3,3>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).d();
+    m->block<3,3>(0,0) = getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).d();
     (*m)(3,3) = 1;
     return ParameterJacobianMatrixPtr(m);
 }
@@ -228,7 +229,7 @@ components::SersicMorphologyProjection::computeTransformParameterJacobian() cons
     TransformJacobianMatrix * m = new TransformJacobianMatrix(
         TransformJacobianMatrix::Zero(getNonlinearParameterSize(), TransformJacobianMatrix::ColsAtCompileTime)
     );    
-    m->block<3,4>(0,0) << getMorphology()->computeBoundingEllipseCore()->transform(
+    m->block<3,4>(0,0) = getMorphology()->computeBoundingEllipseCore()->transform(
         getTransform()
     ).dTransform();
     return TransformJacobianMatrixPtr(m);

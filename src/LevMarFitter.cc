@@ -31,17 +31,24 @@ public:
     {}
 
     void computeModel(VectorMap const & params, VectorMap & model) {
+        std::cerr << "Computing model: " << params.transpose() << "\n";
         setParams(params);
         model = _evaluator->computeModelImage();
     }
 
     void computeJacobian(VectorMap const & params, MatrixMap & jacobian) {
+        std::cerr << "Computing jacobian: " << params.transpose() << "\n";
         setParams(params);
-        MatrixCM const & lpd = _evaluator->computeLinearParameterDerivative();
-        MatrixCM const & npd = _evaluator->computeNonlinearParameterDerivative();
-        assert(jacobian.cols() == lpd.cols() + npd.cols());
-        jacobian.block(0, 0, jacobian.rows(), lpd.cols()) = lpd;
-        jacobian.block(0, lpd.cols(), jacobian.rows(), npd.cols()) = npd;
+        int offset = 0;
+        if (_evaluator->getLinearParameterSize() > 0) {
+            MatrixCM const & lpd = _evaluator->computeLinearParameterDerivative();
+            jacobian.block(0, offset, jacobian.rows(), lpd.cols()) = lpd;
+            offset += lpd.cols();
+        }
+        if (_evaluator->getNonlinearParameterSize() > 0) {
+            MatrixCM const & npd = _evaluator->computeNonlinearParameterDerivative();
+            jacobian.block(0, offset, jacobian.rows(), npd.cols()) = npd;
+        }
     }
 
     static void func(double * p, double * hx, int m, int n, void * data) {
@@ -90,7 +97,6 @@ private:
     void setParams(VectorMap const & params) {
         checkParams(params);
         if(_dirty) {
-            std::cerr << "stepping to params: " << params << std::endl;
             if(_evaluator->getLinearParameterSize() > 0) {
                 _evaluator->setLinearParameters(
                     params.start(_evaluator->getLinearParameterSize())

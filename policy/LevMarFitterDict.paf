@@ -23,7 +23,7 @@ definitions: {
                       for termination purposes"
         minOccurs:1
         maxOccurs:1
-        default: 1E-17
+        default: 1E-4
     }
     parameterEpsilon: {
         type: "double"
@@ -31,7 +31,7 @@ definitions: {
                       for termination purposes"
         minOccurs:1
         maxOccurs:1
-        default: 1E-17
+        default: 1E-4
     }
     residualEpsilon: {
         type: "double"
@@ -39,7 +39,7 @@ definitions: {
                       for termination purposes"
         minOccurs:1
         maxOccurs:1
-        default: 1E-17
+        default: 1E-4
     }
     delta: {
         type: "double"
@@ -54,7 +54,7 @@ definitions: {
         description: "if true, a model's derivatives will be used to analytically 
                       compute the Jacobian. Otherwise, numeric derivatives will be
                       computed by levmar."
-        default: false
+        default: true
         minOccurs: 1
         maxOccurs: 1
     }
