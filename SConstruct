@@ -30,7 +30,7 @@ LSST Multifit Implementation.
 
 # Explicit build for m4-generated headers, since SCons doesn't do dependency
 # checking on those.
-env.Append(M4FLAGS="-I%s" % os.path.join(os.path.abspath('.'),'m4'))
+env.Append(M4FLAGS=["-I%s" % os.path.join(os.path.abspath('.'),'m4')])
 generated = ["include/ndarray/Array.hpp",
              "include/ndarray/operators.hpp",
              "include/ndarray/Vector.hpp",
