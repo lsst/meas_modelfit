@@ -36,7 +36,7 @@ public:
         parameters = min.UserParameters().Params();
         int nParam=parameters.size();        
         covariance = Eigen::MatrixXd::Zero(nParam, nParam);
-        if(min.HasCovariance()) {
+        if(min.HasCovariance() && min.HasValidCovariance()) {
             for (int i=0; i < nParam; ++i) {
                 for (int j=0; j< nParam; ++j) {
                     covariance(i,j) = min.UserCovariance()(i,j);

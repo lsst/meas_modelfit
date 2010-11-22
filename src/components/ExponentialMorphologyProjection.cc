@@ -29,6 +29,8 @@
 namespace multifit = lsst::meas::multifit;
 namespace components = multifit::components;
 
+double const components::ExponentialMorphologyProjection::UNCONVOLVED_RADIUS_FACTOR = 6.0;
+
 void components::ExponentialMorphologyProjection::_recomputeDimensions() {
     lsst::afw::geom::ellipses::BaseCore::Ptr transformedEllipse(
         getMorphology()->computeBoundingEllipseCore()->transform(getTransform()).copy()
