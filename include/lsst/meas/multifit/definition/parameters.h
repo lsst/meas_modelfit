@@ -24,15 +24,15 @@
 #ifndef LSST_MEAS_MULTIFIT_DEFINITION_parameters
 #define LSST_MEAS_MULTIFIT_DEFINITION_parameters
 
-#include "lsst/afw/geom/ellipses.hpp"
-#include "lsst/meas/multifit/constants.hpp"
+#include "lsst/meas/multifit/constants.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 
 namespace lsst { namespace meas { namespace multifit {
+
 namespace grid {
-template <parameters::Enum E> class ParameterComponent;
-}
+template <ParameterType E> class ParameterComponent;
+} // namespace grid
 
 namespace definition {
 
@@ -47,9 +47,6 @@ namespace definition {
  *  to vary in an optimization procedure; it should maintain enough
  *  state to be able to compute its products (which are 
  *  subclass-dependent) even when inactive.
- *
- *  In the future, Parameters will also manage any Bayesian priors
- *  and constraints that may be present.
  */
 template <typename Derived, typename Value_, int size_>
 class ParameterComponentBase {
@@ -77,7 +74,7 @@ protected:
     Value _value;
 };
 
-template <parameters::Enum P> class ParameterComponent;
+template <ParameterType P> class ParameterComponent;
 
 /**
  *  @brief Parameters representing a position.
@@ -86,13 +83,13 @@ template <parameters::Enum P> class ParameterComponent;
  *  position.
  */
 template <>
-class ParameterComponent<parameters::POSITION>
-    : public ParameterComponentBase<ParameterComponent<parameters::POSITION>,agl::ExtentD,2>
+class ParameterComponent<POSITION>
+    : public ParameterComponentBase<ParameterComponent<POSITION>,lsst::afw::geom::Extent2D,2>
 {
-    typedef ParameterComponentBase<ParameterComponent<parameters::POSITION>,agl::ExtentD,2> Base;
+    typedef ParameterComponentBase<ParameterComponent<POSITION>,lsst::afw::geom::Extent2D,2> Base;
 public:
 
-    explicit ParameterComponent(agl::PointD const & reference, Value const & value = Value()) :
+    explicit ParameterComponent(lsst::afw::geom::Point2D const & reference, Value const & value = Value()) :
         Base(value),
         _reference(reference)
     {}
@@ -102,13 +99,13 @@ public:
         _reference(other._reference)
     {}
 
-    agl::PointD const getPosition() const { return _reference + _value; }
+    lsst::afw::geom::Point2D const getPosition() const { return _reference + _value; }
 
-    agl::PointD const & getReference() const { return _reference; }
+    lsst::afw::geom::Point2D const & getReference() const { return _reference; }
     
 protected:
 
-    template <parameters::Enum E> friend class grid::ParameterComponent;
+    template <ParameterType E> friend class grid::ParameterComponent;
 
     void _writeParameters(double * param_iter) const {
         param_iter[0] = _value.getX();
@@ -120,23 +117,19 @@ protected:
         _value.setY(param_iter[1]); 
     }
 
-    agl::PointD _reference;
+    lsst::afw::geom::Point2D _reference;
 };
 
-typedef ParameterComponent<parameters::POSITION> PositionComponent;
+typedef ParameterComponent<POSITION> PositionComponent;
 
 /**
  *  @brief A radius parameter.
  */
 template<>
-class ParameterComponent<parameters::RADIUS> 
-    : public ParameterComponentBase<ParameterComponent<parameters::RADIUS>,agl::ellipses::ArithmeticRadius,1>
+class ParameterComponent<RADIUS> 
+    : public ParameterComponentBase<ParameterComponent<RADIUS>,EllipseCore::Radius,1>
 {
-    typedef ParameterComponentBase<
-        ParameterComponent<parameters::RADIUS>,
-        agl::ellipses::ArithmeticRadius,
-        1
-        > Base;
+    typedef ParameterComponentBase<ParameterComponent<RADIUS>,EllipseCore::Radius,1> Base;
 public:
 
     explicit ParameterComponent(Value const & value) : Base(value) {}
@@ -145,7 +138,7 @@ public:
 
 protected:
 
-    template <parameters::Enum E> friend class grid::ParameterComponent;
+    template <ParameterType E> friend class grid::ParameterComponent;
 
     void _writeParameters(double * param_iter) const { param_iter[0] = _value; }
 
@@ -153,21 +146,17 @@ protected:
 
 };
 
-typedef ParameterComponent<parameters::RADIUS> RadiusComponent;
+typedef ParameterComponent<RADIUS> RadiusComponent;
 
 
 /**
  *  @brief A pair of ellipticity parameters.
  */
 template <>
-class ParameterComponent<parameters::ELLIPTICITY>
-    : public ParameterComponentBase<ParameterComponent<parameters::ELLIPTICITY>,agl::ellipses::LogShear,2> 
+class ParameterComponent<ELLIPTICITY>
+    : public ParameterComponentBase<ParameterComponent<ELLIPTICITY>,EllipseCore::Ellipticity,2> 
 {
-    typedef ParameterComponentBase<
-        ParameterComponent<parameters::ELLIPTICITY>,
-        agl::ellipses::LogShear,
-        2
-        > Base;
+    typedef ParameterComponentBase<ParameterComponent<ELLIPTICITY>,EllipseCore::Ellipticity,2> Base;
 public:
 
     explicit ParameterComponent(Value const & value) : Base(value) {}
@@ -176,7 +165,7 @@ public:
 
 protected:
 
-    template <parameters::Enum E> friend class grid::ParameterComponent;
+    template <ParameterType E> friend class grid::ParameterComponent;
 
     void _writeParameters(double * param_iter) const {
         param_iter[0] = _value.getE1();
@@ -189,7 +178,7 @@ protected:
     }
 };
 
-typedef ParameterComponent<parameters::ELLIPTICITY> EllipticityComponent;
+typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
 
 }}}} // namespace lsst::meas::multifit::definition
 

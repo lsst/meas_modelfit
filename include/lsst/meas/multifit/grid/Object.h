@@ -24,10 +24,10 @@
 #ifndef LSST_MEAS_MULTIFIT_GRID_Object
 #define LSST_MEAS_MULTIFIT_GRID_Object
 
-#include "multifit/definition/Object.hpp"
-#include "multifit/grid/parameters.hpp"
-#include "multifit/grid/Array.hpp"
-#include "multifit/grid/Source.hpp"
+#include "lsst/meas/multifit/definition/Object.h"
+#include "lsst/meas/multifit/grid/parameters.h"
+#include "lsst/meas/multifit/grid/Array.h"
+#include "lsst/meas/multifit/grid/Source.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 

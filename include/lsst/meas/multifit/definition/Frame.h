@@ -25,8 +25,6 @@
 #define LSST_MEAS_MULTIFIT_DEFINITION_Frame
 
 #include "lsst/ndarray.hpp"
-#include "lsst/afw/image/Wcs.h"
-#include "lsst/afw/detection/LocalPsf.h"
 #include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
@@ -52,7 +50,7 @@ public:
     
     Frame(
         ID id_, 
-        agl::masks::Footprint const & footprint_,
+        Footprint const & footprint_,
         ndarray::Array<double,1,1> const & data_,
         ndarray::Array<double,1,1> const & weights_ = ndarray::Array<double,1,1>()
     ) : id(id_), filter(), start_time(0), stop_time(0), wcs(), psf(),
@@ -64,9 +62,9 @@ public:
         Filter const * filter_,
         Timestamp start_time_,
         Timestamp stop_time_,
-        lsst::afw::image::Wcs::Ptr const & wcs_,
-        lsst::afw::detection::Psf::Ptr const & psf_,
-        lsst::afw::detection::Footprint::Ptr const & footprint_,
+        Wcs::Ptr const & wcs_,
+        Psf::Ptr const & psf_,
+        Footprint::Ptr const & footprint_,
         ndarray::Array<double,1,1> const & data_,
         ndarray::Array<double,1,1> const & weights_
     ) : id(id_), filter(filter_), start_time(start_time_), stop_time(stop_time_), 
@@ -85,10 +83,10 @@ public:
     Timestamp start_time;
     Timestamp stop_time;
 
-    lsst::afw::image::Wcs::Ptr wcs;
-    lsst::afw::detection::Psf::Ptr psf;
+    Wcs::Ptr wcs;
+    Psf::Ptr psf;
 
-    agl::masks::Footprint footprint;
+    Footprint footprint;
     ndarray::Array<double,1,1> data;
     ndarray::Array<double,1,1> weights;
 };

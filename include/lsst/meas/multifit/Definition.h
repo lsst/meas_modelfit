@@ -24,10 +24,9 @@
 #ifndef LSST_MEAS_MULTIFIT_Definition
 #define LSST_MEAS_MULTIFIT_Definition
 
-#include "lsst/afw/image/Wcs.h"
-#include "lsst/meas/multifit/definition/Frame.hpp"
-#include "lsst/meas/multifit/definition/Object.hpp"
-#include "lsst/meas/multifit/definition/Set.hpp"
+#include "lsst/meas/multifit/definition/Frame.h"
+#include "lsst/meas/multifit/definition/Object.h"
+#include "lsst/meas/multifit/definition/Set.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -43,14 +42,14 @@ public:
 
     Definition() {}
 
-    explicit Definition(lsst::afw::image::Wcs::Ptr const & wcs_) : wcs(wcs_) {}
+    explicit Definition(Wcs::Ptr const & wcs_) : wcs(wcs_) {}
 
     Definition(Definition const & other);
 
     FrameSet frames;
     ObjectSet objects;
 
-    lsst::afw::image::Wcs::Ptr wcs;
+    Wcs::Ptr wcs;
 };
 
 }}} // namespace lsst::meas::multifit

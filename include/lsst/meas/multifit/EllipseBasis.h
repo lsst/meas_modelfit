@@ -24,8 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_EllipseBasis
 #define LSST_MEAS_MULTIFIT_EllipseBasis
 
-#include "lsst/afw/detection/LocalPsf.h"
-#include "lsst/afw/geom/ellipses.h"
+#include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -45,7 +44,7 @@ public:
      *         parametrization.
      */
     ConvolvedBasis::Ptr convolve(
-        lsst::afw::detection::LocalPsf const & psf,
+        LocalPsf::Ptr const & psf,
         lsst::afw::geom::Point2D const & position
     ) const {
         return boost::static_pointer_cast<ConvolvedBasis>(_convolve(psf, position));
@@ -56,7 +55,7 @@ public:
 
     /// @brief Evaluate the basis functions on the given footprint.
     void evaluate(
-        lsst::afw::detection::FootprintArray<double,2,1> const & matrix,
+        FootprintMatrix<double,2,1> const & matrix,
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
@@ -69,12 +68,12 @@ protected:
     EllipseBasis(EllipseBasis const & other) : _size(other._size) {}
 
     virtual void _evaluate(
-        lsst::afw::detection::FootprintArray<double,2,1> const & matrix,
+        FootprintMatrix const & matrix,
         lsst::afw::geom::Ellipse const & ellipse
     ) const = 0;
 
     virtual EllipseBasis::Ptr _convolve(
-        lsst::afw::detection::LocalPsf const & psf,
+        LocalPsf const & psf,
         lsst::afw::geom::Point2D const & position
     ) const = 0;
 

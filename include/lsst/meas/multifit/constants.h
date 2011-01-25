@@ -28,8 +28,35 @@
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/detection/LocalPsf.h"
+#include "lsst/pex/exceptions.h"
+
+#define FRIEND_MAKE_SHARED_1(T, A1)                                       \
+    friend boost::shared_ptr<T> boost::make_shared<T,A1>(A1 const &)
+
+#define FRIEND_MAKE_SHARED_2(T, A1, A2)                                   \
+    friend boost::shared_ptr<T> boost::make_shared<T,A1,A2>(A1 const &, A2 const &)
+
+#define FRIEND_MAKE_SHARED_3(T, A1, A2, A3)                               \
+    friend boost::shared_ptr<T> boost::make_shared<T,A1,A2,A3>(A1 const &, A2 const &, A3 const &)
+
+#define FRIEND_MAKE_SHARED_4(T, A1, A2, A3, A4)                         \
+    friend boost::shared_ptr<T> boost::make_shared<T,A1,A2,A3,A4>(      \
+        A1 const &, A2 const &, A3 const &, A4 const &                  \
+    )
 
 namespace lsst { namespace meas { namespace multifit {
+
+namespace detail {
+
+inline void checkSize(int actualSize, int expectedSize, char const * message) {
+    if (actualSize != expectedSize) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::RangeErrorException, (boost::format(message) % actualSize % expectedSize)
+        );
+    }
+}
+
+} // namespace detail
 
 typedef long long Timestamp;
 typedef int ID;
@@ -43,6 +70,10 @@ typedef lsst::afw::image::Wcs Wcs;
 typedef lsst::afw::detection::Psf Psf;
 typedef lsst::afw::detection::LocalPsf LocalPsf;
 typedef lsst::afw::detection::Footprint Footprint;
+
+typedef lsst::afw::detection::FootprintArray<double,1,1> FootprintVector;
+typedef lsst::afw::detection::FootprintArray<double,2,1> FootprintMatrix;
+
 
 }}} // namespace lsst::meas::multifit
 

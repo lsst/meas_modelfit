@@ -24,30 +24,24 @@
 #ifndef LSST_MEAS_MULTIFIT_Evaluator
 #define LSST_MEAS_MULTIFIT_Evaluator
 
-#include "multifit/Grid.hpp"
-#include "multifit/Interpreter.hpp"
-#include "multifit/ParameterConstraint.hpp"
-#include <modeling/parameters.hpp>
-#include <modeling/Evaluator.hpp>
+#include "lsst/meas/multifit/Grid.h"
+#include "lsst/meas/multifit/Interpreter.h"
+#include "lsst/meas/multifit/BaseEvaluator.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-class Evaluator : public modeling::Evaluator {
+class Evaluator : public BaseEvaluator {
 public:
 
     typedef boost::shared_ptr<Evaluator> Ptr;
 
-    boost::shared_ptr<agl::wcs::Projection const> getWCS() const;
+    Wcs::Ptr getWCS() const;
 
     Definition makeDefinition() const;
-    Definition makeDefinition(parameters::ConstArray const & parameters) const;
+    Definition makeDefinition(ndarray::Array<double const,1,1> const & parameters) const;
     
     Interpreter makeInterpreter(std::string const & ellipse_name) const {
         return Interpreter(_grid, ellipse_name);
-    }
-
-    ParameterConstraint::Ptr makeParameterConstraint(double max_centroid_shift) const {
-        return boost::make_shared<ParameterConstraint>(max_centroid_shift, _grid);
     }
 
     static Ptr make(Definition const & definition);
@@ -56,19 +50,19 @@ protected:
 
     virtual void _evaluateModelMatrix(
         ndarray::Array<double,2,2> const & matrix,
-        modeling::parameters::ConstArray const & param
+        ndarray::Array<double const,1,1> const & param
     ) const;
 
     virtual void _evaluateModelDerivative(
         ndarray::Array<double,3,3> const & matrix,
-        modeling::parameters::ConstArray const & param
+        ndarray::Array<double const,1,1> const & param
     ) const;
 
-    virtual void _writeInitialParameters(parameters::Array const & param) const;
+    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & param) const;
 
 private:
     
-    FRIEND_MAKE_SHARED_1(multifit::Evaluator, boost::shared_ptr<multifit::Grid>);
+    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<Grid>);
 
     explicit Evaluator(boost::shared_ptr<Grid> const & grid);
 

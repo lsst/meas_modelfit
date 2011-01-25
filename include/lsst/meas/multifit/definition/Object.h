@@ -24,9 +24,8 @@
 #ifndef LSST_MEAS_MULTIFIT_DEFINITION_Object
 #define LSST_MEAS_MULTIFIT_DEFINITION_Object
 
-#include "multifit/definition/parameters.hpp"
-#include <modeling/EllipseBasis.hpp>
-#include <modeling/LinearConstraint.hpp>
+#include "lsst/meas/multifit/definition/parameters.h"
+#include "lsst/meas/multifit/EllipseBasis.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
@@ -69,9 +68,6 @@ public:
     modeling::EllipseBasis::Ptr basis;
     double radius_factor;
     bool is_variable;
-
-    modeling::LinearConstraint::Ptr inequality_constraint;
-    modeling::LinearConstraint::Ptr equality_constraint;
 
 };
 

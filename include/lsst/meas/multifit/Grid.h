@@ -24,10 +24,10 @@
 #ifndef LSST_MEAS_MULTIFIT_Grid
 #define LSST_MEAS_MULTIFIT_Grid
 
-#include "multifit/grid/Frame.hpp"
-#include "multifit/grid/Object.hpp"
-#include "multifit/grid/Array.hpp"
-#include "multifit/Definition.hpp"
+#include "lsst/meas/multifit/grid/Frame.h"
+#include "lsst/meas/multifit/grid/Object.h"
+#include "lsst/meas/multifit/grid/Array.h"
+#include "lsst/meas/multifit/Definition.h"
 
 #include <boost/scoped_array.hpp>
 #include <map>
@@ -73,7 +73,7 @@ public:
     int pixel_count;
     int parameter_count;
 
-    boost::shared_ptr<agl::wcs::Projection const> wcs;
+    Wcs::Ptr wcs;
 
 private:
 

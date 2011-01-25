@@ -35,8 +35,7 @@
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
 /**
- *  A set/map hybrid that sorts based a member of
- *  the container value_type.
+ *  A set/map hybrid that sorts based a member of the container value_type.
  *
  *  This is mostly just a thin wrapper around a Boost.MultiIndex
  *  container that const_casts references to be mutable (since the

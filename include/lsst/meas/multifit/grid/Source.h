@@ -24,8 +24,8 @@
 #ifndef LSST_MEAS_MULTIFIT_GRID_Source
 #define LSST_MEAS_MULTIFIT_GRID_Source
 
-#include <agl/AffineTransform.hpp>
-#include <modeling/EllipseBasis.hpp>
+#include "lsst/afw/geom/AffineTransform.h"
+#include "lsst/afw/meas/multifit/EllipseBasis.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 

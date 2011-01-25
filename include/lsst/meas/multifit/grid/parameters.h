@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_GRID_parameters
 #define LSST_MEAS_MULTIFIT_GRID_parameters
 
-#include "multifit/definition/parameters.hpp"
+#include "lsst/meas/multifit/definition/parameters.h"
 
 #include <boost/iterator/indirect_iterator.hpp>
 #include <vector>
@@ -37,7 +37,7 @@ class Grid;
 
 namespace grid {
 
-template <parameters::Enum E>
+template <ParameterType E>
 class ParameterComponent : public definition::ParameterComponent<E> {
 public:
 
@@ -62,7 +62,7 @@ public:
 };
 
 template <>
-class ParameterComponent<parameters::RADIUS> : public definition::RadiusComponent {
+class ParameterComponent<RADIUS> : public definition::RadiusComponent {
 public:
 
     typedef definition::RadiusComponent Base;
@@ -87,9 +87,9 @@ public:
 
 };
 
-typedef ParameterComponent<parameters::POSITION> PositionComponent;
-typedef ParameterComponent<parameters::RADIUS> RadiusComponent;
-typedef ParameterComponent<parameters::ELLIPTICITY> EllipticityComponent;
+typedef ParameterComponent<POSITION> PositionComponent;
+typedef ParameterComponent<RADIUS> RadiusComponent;
+typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
 
 template <typename T>
 class ComponentArray {
