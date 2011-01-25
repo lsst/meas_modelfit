@@ -20,4 +20,4 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from multifitLib import *
+#from multifitLib import *
