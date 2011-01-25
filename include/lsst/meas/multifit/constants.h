@@ -20,8 +20,30 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_MULTIFIT
-#define LSST_MULTIFIT
 
-#endif
+#ifndef LSST_MEAS_MULTIFIT_constants
+#define LSST_MEAS_MULTIFIT_constants
+
+#include "lsst/afw/geom/ellipses.h"
+#include "lsst/afw/image/Wcs.h"
+#include "lsst/afw/detection/Psf.h"
+#include "lsst/afw/detection/LocalPsf.h"
+
+namespace lsst { namespace meas { namespace multifit {
+
+typedef long long Timestamp;
+typedef int ID;
+
+enum ParameterType { POSITION, RADIUS, ELLIPTICITY };
+
+// TODO: change after afw ellipses is updated.
+typedef lsst::afw::geom::ellipses::LogShear EllipseCore;
+
+typedef lsst::afw::image::Wcs Wcs;
+typedef lsst::afw::detection::Psf Psf;
+typedef lsst::afw::detection::LocalPsf LocalPsf;
+typedef lsst::afw::detection::Footprint Footprint;
+
+}}} // namespace lsst::meas::multifit
+
+#endif // !LSST_MEAS_MULTIFIT_constants

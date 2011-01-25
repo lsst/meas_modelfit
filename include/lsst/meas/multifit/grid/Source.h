@@ -20,8 +20,36 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_MULTIFIT
-#define LSST_MULTIFIT
 
-#endif
+#ifndef LSST_MEAS_MULTIFIT_GRID_Source
+#define LSST_MEAS_MULTIFIT_GRID_Source
+
+#include <agl/AffineTransform.hpp>
+#include <modeling/EllipseBasis.hpp>
+
+namespace lsst { namespace meas { namespace multifit { namespace grid {
+
+class Frame;
+class Object;
+
+class Source {
+public:
+
+    Source(
+        Frame const & frame, Object const & object, 
+        boost::shared_ptr<agl::wcs::Projection const> const & wcs
+    );
+
+    Frame const & frame;
+    Object const & object;
+
+    agl::AffineTransform transform;
+    modeling::EllipseBasis::Ptr basis;
+
+    mutable void * extra;
+
+};
+
+}}}} // namespace lsst::meas::multifit::grid
+
+#endif // !LSST_MEAS_MULTIFIT_GRID_sources

@@ -20,8 +20,34 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_MULTIFIT
-#define LSST_MULTIFIT
 
-#endif
+#ifndef LSST_MEAS_MULTIFIT_GRID_Frame
+#define LSST_MEAS_MULTIFIT_GRID_Frame
+
+#include "multifit/definition/Frame.hpp"
+#include "multifit/grid/Source.hpp"
+
+namespace lsst { namespace meas { namespace multifit { namespace grid {
+
+class Frame : public definition::Frame {
+public:
+
+    Frame(definition::Frame const & definition_, int offset, int filter_index, int frame_index);
+
+    int pixel_offset;
+    int pixel_count;
+
+    int filter_index;
+    int frame_index;
+
+    mutable void * extra;
+
+    void applyWeights(ndarray::Array<double,2,1> const & matrix) const;
+
+    void applyWeights(ndarray::Array<double,1,0> const & vector) const;
+
+};
+
+}}}} // namespace lsst::meas::multifit::grid
+
+#endif // !LSST_MEAS_MULTIFIT_GRID_Frame

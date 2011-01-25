@@ -20,8 +20,39 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_MULTIFIT
-#define LSST_MULTIFIT
 
-#endif
+#ifndef LSST_MEAS_MULTIFIT_Definition
+#define LSST_MEAS_MULTIFIT_Definition
+
+#include "lsst/afw/image/Wcs.h"
+#include "lsst/meas/multifit/definition/Frame.hpp"
+#include "lsst/meas/multifit/definition/Object.hpp"
+#include "lsst/meas/multifit/definition/Set.hpp"
+
+namespace lsst { namespace meas { namespace multifit {
+
+class Definition {
+public:
+
+    typedef definition::Filter Filter;
+    typedef definition::Frame Frame;
+    typedef definition::Object Object;
+
+    typedef definition::Set<Frame,ID,&Frame::id> FrameSet;
+    typedef definition::Set<Object,ID,&Object::id> ObjectSet; 
+
+    Definition() {}
+
+    explicit Definition(lsst::afw::image::Wcs::Ptr const & wcs_) : wcs(wcs_) {}
+
+    Definition(Definition const & other);
+
+    FrameSet frames;
+    ObjectSet objects;
+
+    lsst::afw::image::Wcs::Ptr wcs;
+};
+
+}}} // namespace lsst::meas::multifit
+
+#endif // !LSST_MEAS_MULTIFIT_Definition
