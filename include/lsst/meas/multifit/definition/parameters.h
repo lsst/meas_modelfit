@@ -107,14 +107,14 @@ protected:
 
     template <ParameterType E> friend class grid::ParameterComponent;
 
-    void _writeParameters(double * param_iter) const {
-        param_iter[0] = _value.getX();
-        param_iter[1] = _value.getY();
+    void _writeParameters(double * paramIter) const {
+        paramIter[0] = _value.getX();
+        paramIter[1] = _value.getY();
     }
 
-    void _readParameters(double const * param_iter) {
-        _value.setX(param_iter[0]);
-        _value.setY(param_iter[1]); 
+    void _readParameters(double const * paramIter) {
+        _value.setX(paramIter[0]);
+        _value.setY(paramIter[1]); 
     }
 
     lsst::afw::geom::Point2D _reference;
@@ -127,9 +127,9 @@ typedef ParameterComponent<POSITION> PositionComponent;
  */
 template<>
 class ParameterComponent<RADIUS> 
-    : public ParameterComponentBase<ParameterComponent<RADIUS>,EllipseCore::Radius,1>
+    : public ParameterComponentBase<ParameterComponent<RADIUS>,Radius,1>
 {
-    typedef ParameterComponentBase<ParameterComponent<RADIUS>,EllipseCore::Radius,1> Base;
+    typedef ParameterComponentBase<ParameterComponent<RADIUS>,Radius,1> Base;
 public:
 
     explicit ParameterComponent(Value const & value) : Base(value) {}
@@ -140,9 +140,9 @@ protected:
 
     template <ParameterType E> friend class grid::ParameterComponent;
 
-    void _writeParameters(double * param_iter) const { param_iter[0] = _value; }
+    void _writeParameters(double * paramIter) const { paramIter[0] = _value; }
 
-    void _readParameters(double const * param_iter) { _value = param_iter[0]; }
+    void _readParameters(double const * paramIter) { _value = paramIter[0]; }
 
 };
 
@@ -154,9 +154,9 @@ typedef ParameterComponent<RADIUS> RadiusComponent;
  */
 template <>
 class ParameterComponent<ELLIPTICITY>
-    : public ParameterComponentBase<ParameterComponent<ELLIPTICITY>,EllipseCore::Ellipticity,2> 
+    : public ParameterComponentBase<ParameterComponent<ELLIPTICITY>,Ellipticity,2> 
 {
-    typedef ParameterComponentBase<ParameterComponent<ELLIPTICITY>,EllipseCore::Ellipticity,2> Base;
+    typedef ParameterComponentBase<ParameterComponent<ELLIPTICITY>, Ellipticity,2> Base;
 public:
 
     explicit ParameterComponent(Value const & value) : Base(value) {}
@@ -167,14 +167,14 @@ protected:
 
     template <ParameterType E> friend class grid::ParameterComponent;
 
-    void _writeParameters(double * param_iter) const {
-        param_iter[0] = _value.getE1();
-        param_iter[1] = _value.getE2();
+    void _writeParameters(double * paramIter) const {
+        paramIter[0] = _value.getE1();
+        paramIter[1] = _value.getE2();
     }
 
-    void _readParameters(double const * param_iter) {
-        _value.setE1(param_iter[0]);
-        _value.setE2(param_iter[1]);
+    void _readParameters(double const * paramIter) {
+        _value.setE1(paramIter[0]);
+        _value.setE2(paramIter[1]);
     }
 };
 

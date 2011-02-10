@@ -32,13 +32,13 @@ namespace lsst { namespace meas { namespace multifit { namespace grid {
 class Frame : public definition::Frame {
 public:
 
-    Frame(definition::Frame const & definition_, int offset, int filter_index, int frame_index);
+    Frame(definition::Frame const & definition_, int offset, int filterIndex, int frameIndex);
 
-    int pixel_offset;
-    int pixel_count;
+    int pixelOffset;
+    int pixelCount;
 
-    int filter_index;
-    int frame_index;
+    int filterIndex;
+    int frameIndex;
 
     mutable void * extra;
 

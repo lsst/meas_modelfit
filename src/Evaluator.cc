@@ -7,8 +7,10 @@ Definition Evaluator::makeDefinition() const {
     return _grid->makeDefinition();
 }
 
-Definition Evaluator::makeDefinition(ndarray::Array<double const,1,1> const & parameters) const {
-    checkSize(
+Definition Evaluator::makeDefinition(
+    ndarray::Array<double const,1,1> const & parameters
+) const {
+    detail::checkSize(
         parameters.getSize<0>(), getParameterSize(),
         "Parameter vector size (%s) is incorrect; expected (%s)."
     );
@@ -26,64 +28,66 @@ void Evaluator::_evaluateModelMatrix(
 ) const {
     matrix.deep() = 0.0;
     for (
-        Grid::ObjectArray::const_iterator object_iter = _grid->objects.begin();
-        object_iter != _grid->objects.end();
-        ++object_iter
+        Grid::ObjectArray::const_iterator object = _grid->objects.begin();
+        object != _grid->objects.end(); ++object
     ) {
-        if (object_iter->basis) {
-            lsst::afw::geom::Ellipse ellipse = object_iter->makeEllipse(param.getData());
+        if (object->basis) {
+            lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(param.getData());
             for (
-                Grid::SourceArray::const_iterator source_iter = object_iter->sources.begin();
-                source_iter != object_iter->sources.end();
-                ++source_iter
+                Grid::SourceArray::const_iterator source = object->sources.begin();
+                source != object->sources.end(); ++source
             ) {
-                int coefficient_offset = object_iter->coefficient_offset;
-                if (object_iter->is_variable) {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.frame_index;
+                int coefficientOffset = object->coefficientOffset;
+                if (object->isVariable) {
+                    coefficientOffset += object->coefficientCount * source->frame.frameIndex;
                 } else {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.filter_index;
-                }
-                lsst::afw::geom::FootprintMatrix block(
-                    source_iter->frame.footprint,
-                    matrix[
-                        ndarray::view(
-                            source_iter->frame.pixel_offset, 
-                            source_iter->frame.pixel_offset + source_iter->frame.pixel_count
-                        )(
-                            coefficient_offset,
-                            coefficient_offset + object_iter->coefficient_count
-                        )
-                    ]
+                    coefficientOffset += object->coefficientCount * source->frame.filterIndex;
+                }            
+
+                lsst::ndarray::Array<double,2,1> block = matrix[
+                    lsst::ndarray::view(
+                        source->frame.pixelOffset, 
+                        source->frame.pixelOffset + source->frame.pixelCount
+                    )(
+                        coefficientOffset, 
+                        coefficientOffset+object->coefficientCount
+                    )
+                ];
+                source->basis->evaluate(
+                    block, 
+                    source->frame.footprint, 
+                    ellipse.transform(source->transform)
                 );
-                source_iter->basis->evaluate(block, ellipse.transform(source_iter->transform));
-                source_iter->frame.applyWeights(block.getArray());
+                source->frame.applyWeights(block);
             }
         } else {
-            lsst::afw::geom::Point2D point = object_iter->makePoint(param.getData());
+            lsst::afw::geom::Point2D point = object->makePoint(param.getData());
             for (
-                Grid::SourceArray::const_iterator source_iter = object_iter->sources.begin();
-                source_iter != object_iter->sources.end();
-                ++source_iter
+                Grid::SourceArray::const_iterator source = object->sources.begin();
+                source != object->sources.end();
+                ++source
             ) {
-                int coefficient_offset = object_iter->coefficient_offset;
-                if (object_iter->is_variable) {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.frame_index;
+                int coefficientOffset = object->coefficientOffset;
+                if (object->isVariable) {
+                    coefficientOffset += object->coefficientCount * source->frame.frameIndex;
                 } else {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.filter_index;
+                    coefficientOffset += object->coefficientCount * source->frame.filterIndex;
                 }
-                lsst::afw::detection::FootprintMatrix block(
-                    source_iter->frame.footprint,
-                    matrix[
-                        ndarray::view(
-                            source_iter->frame.pixel_offset, 
-                            source_iter->frame.pixel_offset + source_iter->frame.pixel_count
-                        )(
-                            coefficient_offset
-                        )
-                    ]
-                );
-                source_iter->frame.psf->evaluatePointSource(block, source_iter->transform(point));
-                source_iter->frame.applyWeights(block.getArray());
+                lsst::ndarray::Array<double,1,0> block = matrix[
+                    lsst::ndarray::view(
+                        source->frame.pixelOffset, 
+                        source->frame.pixelOffset + source->frame.pixelCount
+                    )(
+                        coefficientOffset
+                    )
+                ];
+                //TODO rename to correct psf name
+                //source->frame.psf->evaluatePointSource(
+                //    block, 
+                //    source->frame.footprint, 
+                //    source->transform(point)
+                //);
+                source->frame.applyWeights(block);
             }            
         }
     }
@@ -91,95 +95,96 @@ void Evaluator::_evaluateModelMatrix(
 
 void Evaluator::_evaluateModelDerivative(
     ndarray::Array<double,3,3> const & derivative,
-    parameters::ConstArray const & param
+    ndarray::Array<double const,1,1> const & param
 ) const {
     derivative.deep() = 0.0;
     for (
-        Grid::ObjectArray::const_iterator object_iter = _grid->objects.begin();
-        object_iter != _grid->objects.end();
-        ++object_iter
+        Grid::ObjectArray::const_iterator object = _grid->objects.begin();
+        object != _grid->objects.end();
+        ++object
     ) {
-        if (object_iter->basis) {
-            lsst::afw::geom::Ellipse ellipse = object_iter->makeEllipse(param.getData());
+        if (object->basis) {
+            lsst::afw::geom::Ellipse ellipse = object->makeEllipse(param.getData());
             for (
-                Grid::SourceArray::const_iterator source_iter = object_iter->sources.begin();
-                source_iter != object_iter->sources.end();
-                ++source_iter
+                Grid::SourceArray::const_iterator source = object->sources.begin();
+                source != object->sources.end();
+                ++source
             ) {
-                int coefficient_offset = object_iter->coefficient_offset;
-                if (object_iter->is_variable) {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.frame_index;
+                int coefficientOffset = object->coefficientOffset;
+                if (object->isVariable) {
+                    coefficientOffset += object->coefficientCount * source->frame.frameIndex;
                 } else {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.filter_index;
+                    coefficientOffset += object->coefficientCount * source->frame.filterIndex;
                 }
-                lsst::afw::detection::FootprintMatrix fiducial(
-                    source_iter->frame.footprint,
-                    ndarray::makeVector(object_iter->coefficient_count)
+                ndarray::Array<double, 2, 2> fiducial = lsst::ndarray::allocate(
+                    lsst::ndarray::makeVector(source->frame.pixelCount, object->coefficientCount)
                 );
-                source_iter->basis->evaluate(fiducial, ellipse.transform(source_iter->transform));
+                source->basis->evaluate(fiducial, source->frame.footprint, ellipse.transform(source->transform));
                 ndarray::Array<double,3,1> block = 
                     derivative[
                         ndarray::view(
                         )(
-                            source_iter->frame.pixel_offset, 
-                            source_iter->frame.pixel_offset + source_iter->frame.pixel_count
+                            source->frame.pixelOffset, 
+                            source->frame.pixelOffset + source->frame.pixelCount
                         )(
-                            coefficient_offset,
-                            coefficient_offset + object_iter->coefficient_count
+                            coefficientOffset,
+                            coefficientOffset + object->coefficientCount
                         )
                     ];
                 for (int n = 0; n < 5; ++n) {
-                    std::pair<int,double> p = object_iter->perturbEllipse(ellipse, n);
+                    std::pair<int,double> p = object->perturbEllipse(ellipse, n);
                     if (p.first < 0) continue;
-                    source_iter->basis->evaluate(
-                        source_iter->frame.footprint.attachArray(block[p.first].shallow()), 
-                        ellipse.transform(source_iter->transform)
+                    source->basis->evaluate(
+                        block[p.first],                        
+                        source->frame.footprint, 
+                        ellipse.transform(source->transform)
                     );
-                    block[p.first] -= fiducial.getArray();
+                    block[p.first] -= fiducial;
                     block[p.first] /= p.second;
-                    object_iter->unperturbEllipse(ellipse, n, p.second);
-                    source_iter->frame.applyWeights(block[p.first]);
+                    object->unperturbEllipse(ellipse, n, p.second);
+                    source->frame.applyWeights(block[p.first]);
                 }
             }
         } else {
-            lsst::afw::geom::Point2D point = object_iter->makePoint(param.getData());
+            lsst::afw::geom::Point2D point = object->makePoint(param.getData());
             for (
-                Grid::SourceArray::const_iterator source_iter = object_iter->sources.begin();
-                source_iter != object_iter->sources.end();
-                ++source_iter
+                Grid::SourceArray::const_iterator source = object->sources.begin();
+                source != object->sources.end();
+                ++source
             ) {
-                int coefficient_offset = object_iter->coefficient_offset;
-                if (object_iter->is_variable) {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.frame_index;
+                int coefficientOffset = object->coefficientOffset;
+                if (object->isVariable) {
+                    coefficientOffset += object->coefficientCount * source->frame.frameIndex;
                 } else {
-                    coefficient_offset += object_iter->coefficient_count * source_iter->frame.filter_index;
+                    coefficientOffset += object->coefficientCount * source->frame.filterIndex;
                 }
-                lsst::afw::detection::FootprintMatrix fiducial(
-                    source_iter->frame.footprint,
-                    ndarray::Vector<int,0>()
+                lsst::ndarray::Array<double, 1, 1> fiducial = lsst::ndarray::allocate(
+                    lsst::ndarray::makeVector(source->frame.pixelCount)
                 );
-                source_iter->frame.psf->evaluatePointSource(fiducial, source_iter->transform(point));
+                //TODO rename to actual method in psf
+                //source->frame.psf->evaluatePointSource(fiducial, source->transform(point));
                 ndarray::Array<double,2,0> block = 
                     derivative[
                         ndarray::view(
                         )(
-                            source_iter->frame.pixel_offset, 
-                            source_iter->frame.pixel_offset + source_iter->frame.pixel_count
+                            source->frame.pixelOffset, 
+                            source->frame.pixelOffset + source->frame.pixelCount
                         )(
-                            coefficient_offset
+                            coefficientOffset
                         )
                     ];
                 for (int n = 0; n < 2; ++n) {
-                    std::pair<int,double> p = object_iter->perturbPoint(point, n);
+                    std::pair<int,double> p = object->perturbPoint(point, n);
                     if (p.first < 0) continue;
-                    source_iter->frame.psf->evaluatePointSource(
-                        source_iter->frame.footprint.attachArray(block[p.first].shallow()),
-                        source_iter->transform(point)
-                    );
-                    block[p.first] -= fiducial.getArray();
+                    //TODO: rename to actual method in psf
+                    //source->frame.psf->evaluatePointSource(
+                    //    source->frame.footprint.attachArray(block[p.first].shallow()),
+                    //    source->transform(point)
+                    //);
+                    block[p.first] -= fiducial;
                     block[p.first] /= p.second;
-                    object_iter->unperturbPoint(point, n, p.second);
-                    source_iter->frame.applyWeights(block[p.first]);
+                    object->unperturbPoint(point, n, p.second);
+                    source->frame.applyWeights(block[p.first]);
                 }
             }
         }
@@ -191,7 +196,7 @@ void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & param
 }
 
 Evaluator::Evaluator(boost::shared_ptr<Grid> const & grid) :
-    BaseEvaluator(grid->pixel_count, grid->coefficient_count, grid->parameter_count),
+    BaseEvaluator(grid->pixelCount, grid->coefficientCount, grid->parameterCount),
     _grid(grid)
 {
     _initialize();
@@ -203,18 +208,17 @@ Evaluator::Evaluator(Evaluator const & other) : BaseEvaluator(other), _grid(othe
 
 void Evaluator::_initialize() {
     for (
-        Grid::FrameArray::const_iterator frame_iter = _grid->frames.begin();
-        frame_iter != _grid->frames.end();
-        ++frame_iter
+        Grid::FrameArray::const_iterator i = _grid->frames.begin();
+        i != _grid->frames.end(); ++i
     ) {
-        if (frame_iter->weights.empty()) {
-            _data_vector[
-                ndarray::view(frame_iter->pixel_offset, frame_iter->pixel_offset + frame_iter->pixel_count)
-            ] = frame_iter->data;
+        if (i->weights.empty()) {
+            _dataVector[
+                ndarray::view(i->pixelOffset, i->pixelOffset + i->pixelCount)
+            ] = i->data;
         } else {
-            _data_vector[
-                ndarray::view(frame_iter->pixel_offset, frame_iter->pixel_offset + frame_iter->pixel_count)
-            ] = frame_iter->data / frame_iter->weights;
+            _dataVector[
+                ndarray::view(i->pixelOffset, i->pixelOffset + i->pixelCount)
+            ] = (i->data / i->weights);
         }
     }
 }

@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_GRID_Source
 
 #include "lsst/afw/geom/AffineTransform.h"
-#include "lsst/afw/meas/multifit/EllipseBasis.h"
+#include "lsst/meas/multifit/EllipseBasis.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
@@ -37,14 +37,14 @@ public:
 
     Source(
         Frame const & frame, Object const & object, 
-        boost::shared_ptr<agl::wcs::Projection const> const & wcs
+        CONST_PTR(lsst::afw::image::Wcs) const & wcs
     );
 
     Frame const & frame;
     Object const & object;
 
-    agl::AffineTransform transform;
-    modeling::EllipseBasis::Ptr basis;
+    lsst::afw::geom::AffineTransform transform;
+    EllipseBasis::Ptr basis;
 
     mutable void * extra;
 

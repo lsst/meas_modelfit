@@ -43,16 +43,16 @@ public:
     typedef boost::shared_ptr<BaseEvaluator> Ptr;
 
     /// @brief Size of data vector (number of rows of matrix).
-    int getDataSize() const { return _data_vector.getSize<0>(); }
+    int getDataSize() const { return _dataVector.getSize<0>(); }
 
     /// @brief Size of coefficient vector (number of colums of matrix).
-    int getCoefficientSize() const { return _coefficient_size; }
+    int getCoefficientSize() const { return _coefficientSize; }
 
     /// @brief Number of parameters.
-    int getParameterSize() const { return _parameter_size; }
+    int getParameterSize() const { return _parameterSize; }
 
     /// @brief Data vector.
-    ndarray::Array<double const,1,1> getDataVector() const { return _data_vector; }
+    ndarray::Array<double const,1,1> getDataVector() const { return _dataVector; }
 
     /// @brief Evaluate the matrix with the given parameters.
     void evaluateModelMatrix(
@@ -72,26 +72,26 @@ public:
 
     void writeInitialParameters(ndarray::Array<double,1,1> const & param) const;
 
-    virtual ~Evaluator() {}
+    virtual ~BaseEvaluator() {}
 
 protected:
 
-    BaseEvaluator(int data_size, int coefficient_size, int parameter_size) :
-        _coefficient_size(coefficient_size),
-        _parameter_size(parameter_size),
-        _data_vector(ndarray::allocate(ndarray::makeVector(data_size)))
+    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize) :
+        _coefficientSize(coefficientSize),
+        _parameterSize(parameterSize),
+        _dataVector(ndarray::allocate(ndarray::makeVector(dataSize)))
     {}
 
-    BaseEvaluator(ndarray::Array<double,1,1> const & data, int coefficient_size, int parameter_size) :
-        _coefficient_size(coefficient_size),
-        _parameter_size(parameter_size),
-        _data_vector(data)
+    BaseEvaluator(ndarray::Array<double,1,1> const & data, int coefficientSize, int parameterSize) :
+        _coefficientSize(coefficientSize),
+        _parameterSize(parameterSize),
+        _dataVector(data)
     {}
 
-    BaseEvaluator(Evaluator const & other) :
-        _coefficient_size(other._coefficient_size), 
-        _parameter_size(other._parameter_size), 
-        _data_vector(other._data_vector)
+    BaseEvaluator(BaseEvaluator const & other) :
+        _coefficientSize(other._coefficientSize), 
+        _parameterSize(other._parameterSize), 
+        _dataVector(other._dataVector)
     {}
 
     virtual void _evaluateModelMatrix(
@@ -106,9 +106,9 @@ protected:
 
     virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & param) const = 0;
 
-    int const _coefficient_size;
-    int const _parameter_size;
-    ndarray::Array<double,1,1> _data_vector;
+    int const _coefficientSize;
+    int const _parameterSize;
+    ndarray::Array<double,1,1> _dataVector;
 
 private:
     void operator=(BaseEvaluator const &) {}

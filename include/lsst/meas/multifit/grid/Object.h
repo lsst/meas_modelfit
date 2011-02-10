@@ -24,6 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_GRID_Object
 #define LSST_MEAS_MULTIFIT_GRID_Object
 
+#include "lsst/afw/geom/ellipses.h"
 #include "lsst/meas/multifit/definition/Object.h"
 #include "lsst/meas/multifit/grid/parameters.h"
 #include "lsst/meas/multifit/grid/Array.h"
@@ -36,18 +37,18 @@ public:
 
     typedef Array<Source> SourceArray;
 
-    Object(definition::Object const & definition_, int offset, int frame_count, int filter_count);
+    Object(definition::Object const & definition_, int offset, int frameCount, int filterCount);
 
     Object(Object const & other) :
         definition::Object(other),
-        coefficient_offset(other.coefficient_offset),
-        coefficient_count(other.coefficient_count),
+        coefficientOffset(other.coefficientOffset),
+        coefficientCount(other.coefficientCount),
         sources(),
         extra(0)
     {}
 
-    int coefficient_offset;
-    int coefficient_count;
+    int coefficientOffset;
+    int coefficientCount;
 
     SourceArray sources;
 
@@ -66,36 +67,36 @@ public:
     }
 
     /// @brief Construct the point corresponding to this object from a parameter vector.
-    agl::PointD makePoint(double const * param_iter) const;
+    lsst::afw::geom::Point2D makePoint(double const * paramIter) const;
 
     /**
      *  Perturb a point by changing the nth position parameter.
      *  Returns the offset of the nth position parameter and the
      *  size of the perturbation.
      */
-    std::pair<int,double> perturbPoint(agl::PointD & point, int n) const;
+    std::pair<int,double> perturbPoint(lsst::afw::geom::Point2D & point, int n) const;
 
     /**
      *  Unperturb a point by changing the nth position parameter.
      */
-    void unperturbPoint(agl::PointD & point, int n, double perturbation) const {
+    void unperturbPoint(lsst::afw::geom::Point2D & point, int n, double perturbation) const {
         point[n] -= perturbation;
     }
 
     /// @brief Construct the ellipse corresponding to this object from a parameter vector.
-    agl::Ellipse makeEllipse(double const * param_iter) const;
+    lsst::afw::geom::ellipses::Ellipse makeEllipse(double const * paramIter) const;
 
     /**
      *  Perturb an ellipse by changing the nth ellipse parameter.
      *  Returns the offset of the nth ellipse parameter and the
      *  size of the perturbation.
      */
-    std::pair<int,double> perturbEllipse(agl::Ellipse & elllipse, int n) const;
+    std::pair<int,double> perturbEllipse(lsst::afw::geom::ellipses::Ellipse & elllipse, int n) const;
 
     /**
      *  Unperturb a point by changing the nth position parameter.
      */
-    void unperturbEllipse(agl::Ellipse & ellipse, int n, double perturbation) const;
+    void unperturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n, double perturbation) const;
 
 };
 

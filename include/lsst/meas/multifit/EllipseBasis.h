@@ -43,11 +43,8 @@ public:
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
      *         parametrization.
      */
-    ConvolvedBasis::Ptr convolve(
-        LocalPsf::Ptr const & psf,
-        lsst::afw::geom::Point2D const & position
-    ) const {
-        return boost::static_pointer_cast<ConvolvedBasis>(_convolve(psf, position));
+    ConvolvedBasis::Ptr convolve(PTR(LocalPsf) const & psf) const {
+        return boost::static_pointer_cast<ConvolvedBasis>(_convolve(psf));
     }
 
     /// @brief Number of basis functions.
@@ -55,7 +52,8 @@ public:
 
     /// @brief Evaluate the basis functions on the given footprint.
     void evaluate(
-        FootprintMatrix<double,2,1> const & matrix,
+        lsst::ndarray::Array<double, 2, 1> const & matrix,
+        PTR(Footprint) const & footprint,
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
@@ -68,14 +66,12 @@ protected:
     EllipseBasis(EllipseBasis const & other) : _size(other._size) {}
 
     virtual void _evaluate(
-        FootprintMatrix const & matrix,
+        lsst::ndarray::Array<double, 2, 1> const & matrix,
+        PTR(Footprint) const & footprint,
         lsst::afw::geom::Ellipse const & ellipse
     ) const = 0;
 
-    virtual EllipseBasis::Ptr _convolve(
-        LocalPsf const & psf,
-        lsst::afw::geom::Point2D const & position
-    ) const = 0;
+    virtual EllipseBasis::Ptr _convolve(PTR(LocalPsf) const & psf) const = 0;
 
 private:
 

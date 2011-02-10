@@ -73,7 +73,7 @@ public:
 
     int const offset;
 
-    std::set<definition::EllipticityComponent::Ptr> associated_ellipticities;
+    std::set<definition::EllipticityComponent::Ptr> associatedEllipticities;
 
     void writeParameters(double * parameters) const { this->_writeParameters(parameters + offset); }
 
@@ -107,20 +107,20 @@ public:
     typedef boost::indirect_iterator<PtrIter> iterator;
     typedef boost::indirect_iterator<PtrIter,T const> const_iterator;
 
-    ComponentArray() : _ptr_vec() {}
+    ComponentArray() : _ptrVec() {}
 
-    const_iterator begin() const { return _ptr_vec.begin(); }
-    const_iterator end() const { return _ptr_vec.end(); }
+    const_iterator begin() const { return _ptrVec.begin(); }
+    const_iterator end() const { return _ptrVec.end(); }
 
-    size_type size() const { return _ptr_vec.size(); }
+    size_type size() const { return _ptrVec.size(); }
 
-    bool empty() const { return _ptr_vec.empty(); }
+    bool empty() const { return _ptrVec.empty(); }
 
 private:
 
     friend class multifit::Grid;
 
-    PtrVec _ptr_vec;
+    PtrVec _ptrVec;
 
 };
 

@@ -28,6 +28,7 @@
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/detection/LocalPsf.h"
+#include "lsst/afw/detection/Footprint.h"
 #include "lsst/pex/exceptions.h"
 
 #define FRIEND_MAKE_SHARED_1(T, A1)                                       \
@@ -51,7 +52,8 @@ namespace detail {
 inline void checkSize(int actualSize, int expectedSize, char const * message) {
     if (actualSize != expectedSize) {
         throw LSST_EXCEPT(
-            lsst::pex::exceptions::RangeErrorException, (boost::format(message) % actualSize % expectedSize)
+            lsst::pex::exceptions::RangeErrorException, 
+            (boost::format(message) % actualSize % expectedSize).str()
         );
     }
 }
@@ -63,16 +65,19 @@ typedef int ID;
 
 enum ParameterType { POSITION, RADIUS, ELLIPTICITY };
 
-// TODO: change after afw ellipses is updated.
-typedef lsst::afw::geom::ellipses::LogShear EllipseCore;
+typedef lsst::afw::geom::ellipses::ArithmeticRadius Radius;
+typedef lsst::afw::geom::ellipses::LogShear Ellipticity;
+typedef lsst::afw::geom::ellipses::Separable<Ellipticity, Radius> EllipseCore;
+typedef lsst::afw::geom::ellipses::Ellipse Ellipse;
 
 typedef lsst::afw::image::Wcs Wcs;
 typedef lsst::afw::detection::Psf Psf;
 typedef lsst::afw::detection::LocalPsf LocalPsf;
 typedef lsst::afw::detection::Footprint Footprint;
 
-typedef lsst::afw::detection::FootprintArray<double,1,1> FootprintVector;
-typedef lsst::afw::detection::FootprintArray<double,2,1> FootprintMatrix;
+//TODO remove typedefs
+//typedef lsst::afw::detection::FootprintArray<double,1,1> FootprintVector;
+//typedef lsst::afw::detection::FootprintArray<double,2,1> FootprintMatrix;
 
 
 }}} // namespace lsst::meas::multifit

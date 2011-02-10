@@ -37,26 +37,26 @@ public:
 class Object {
 public:
 
-    explicit Object(ID id_) : id(id_), radius_factor(1.0), is_variable(false) {}
+    explicit Object(ID id_) : id(id_), radiusFactor(1.0), isVariable(false) {}
 
     Object(Object const & other) : 
         id(other.id), position(other.position),
         radius(other.radius), ellipticity(other.ellipticity),
         basis(other.basis),
-        radius_factor(other.radius_factor),
-        is_variable(other.is_variable) 
+        radiusFactor(other.radiusFactor),
+        isVariable(other.isVariable) 
     {}
 
     static Object makeStar(
         ID id, 
-        agl::PointD const & position, 
-        bool is_variable = false
+        lsst::afw::geom::Point2D const & position, 
+        bool isVariable = false
     );
 
     static Object makeGalaxy(
         ID id,
-        modeling::EllipseBasis::Ptr const & basis,
-        agl::Ellipse const & ellipse
+        EllipseBasis::Ptr const & basis,
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
     );        
 
     ID const id;
@@ -65,9 +65,9 @@ public:
     RadiusComponent::Ptr radius;
     EllipticityComponent::Ptr ellipticity;
 
-    modeling::EllipseBasis::Ptr basis;
-    double radius_factor;
-    bool is_variable;
+    EllipseBasis::Ptr basis;
+    double radiusFactor;
+    bool isVariable;
 
 };
 

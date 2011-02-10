@@ -1,4 +1,5 @@
 #include "lsst/meas/multifit/Grid.h"
+#include "lsst/meas/multifit/constants.h"
 #include <boost/format.hpp>
 #include <limits>
 
@@ -8,7 +9,7 @@ namespace {
 
 static double const EPSILON = std::sqrt(std::numeric_limits<double>::epsilon());
 
-template <parameters::Enum E>
+template <ParameterType E>
 void initializeGridComponents(
     grid::Object * const first, grid::Object * const last,
     std::vector< boost::shared_ptr< grid::ParameterComponent<E> > > & vec, int & offset,
@@ -40,7 +41,7 @@ void initializeGridComponents(
     }
 }
 
-template <parameters::Enum E, typename Iterator>
+template <ParameterType E, typename Iterator>
 void initializeDefinitionComponents(
     Iterator const & first, Iterator const & last,
     boost::shared_ptr< definition::ParameterComponent<E> > definition::Object::*member
@@ -54,9 +55,9 @@ void initializeDefinitionComponents(
         std::pair<Ptr,Ptr> item(obj.*member, Ptr());
         std::pair<typename Map::iterator,bool> r = unique.insert(item);
         if (r.second) {
-            grid::ParameterComponent<E> & grid_component
+            grid::ParameterComponent<E> & gridComponent
                 = static_cast< grid::ParameterComponent<E> & >(*r.first->first);
-            r.first->second = grid_component.makeDefinition();
+            r.first->second = gridComponent.makeDefinition();
         }
     }
     for (Iterator i = first; i != last; ++i) {
@@ -67,7 +68,7 @@ void initializeDefinitionComponents(
     }
 }
 
-template <parameters::Enum E, typename Iterator>
+template <ParameterType E, typename Iterator>
 void initializeDefinitionComponents(
     Iterator const & first, Iterator const & last, double const * parameters,
     boost::shared_ptr< definition::ParameterComponent<E> > definition::Object::*member
@@ -81,9 +82,9 @@ void initializeDefinitionComponents(
         std::pair<Ptr,Ptr> item(obj.*member, Ptr());
         std::pair<typename Map::iterator,bool> r = unique.insert(item);
         if (r.second) {
-            grid::ParameterComponent<E> & grid_component
+            grid::ParameterComponent<E> & gridComponent
                 = static_cast< grid::ParameterComponent<E> & >(*r.first->first);
-            r.first->second = grid_component.makeDefinition(parameters);
+            r.first->second = gridComponent.makeDefinition(parameters);
         }
     }
     for (Iterator i = first; i != last; ++i) {
@@ -134,16 +135,16 @@ find(Array<T> const & array, ID const id) {
 template Object const & find(Array<Object> const &, ID const);
 template Frame const & find(Array<Frame> const &, ID const);
 
-Object::Object(definition::Object const & definition_, int offset, int frame_count, int filter_count) :
+Object::Object(definition::Object const & definition_, int offset, int frameCount, int filterCount) :
     definition::Object(definition_), 
-    coefficient_offset(offset),
-    coefficient_count(1)
+    coefficientOffset(offset),
+    coefficientCount(1)
 {
     if (!position) {
         throw definition::InvalidDefinitionError("All objects must have a position component.");
     }
     if (basis) {
-        coefficient_count = basis->getSize();
+        coefficientCount = basis->getSize();
         if (!radius || !ellipticity) {
             throw definition::InvalidDefinitionError(
                 "Objects with a basis must have a radius and ellipticity component."
@@ -158,18 +159,18 @@ Object::Object(definition::Object const & definition_, int offset, int frame_cou
     }
  }
 
-agl::PointD Object::makePoint(double const * param_iter) const {
-    agl::PointD result;
+lsst::afw::geom::Point2D Object::makePoint(double const * paramIter) const {
+    lsst::afw::geom::Point2D result;
     if (position->active) {
-        double const * p = param_iter + getPosition().offset;
-        result = position->getReference() + agl::ExtentD(p[0], p[1]);
+        double const * p = paramIter + getPosition().offset;
+        result = position->getReference() + lsst::afw::geom::Extent2D(p[0], p[1]);
     } else {
         result = position->getPosition();
     }
     return result;
 }
 
-std::pair<int,double> Object::perturbPoint(agl::PointD & point, int n) const {
+std::pair<int,double> Object::perturbPoint(lsst::afw::geom::Point2D & point, int n) const {
     if (!position->active) return std::pair<int,double>(-1, 0.0);
     double parameter = point[n] - position->getReference()[n];
     std::pair<int,double> result(getPosition().offset + n, ((parameter < 0) ? EPSILON : -EPSILON));
@@ -177,9 +178,8 @@ std::pair<int,double> Object::perturbPoint(agl::PointD & point, int n) const {
     return result;
 }
 
-agl::Ellipse Object::makeEllipse(double const * param_iter) const {
-    typedef agl::ellipses::Separable<EllipticityComponent::Value,RadiusComponent::Value> EllipseCore;
-    agl::Ellipse result(
+lsst::afw::geom::ellipses::Ellipse Object::makeEllipse(double const * paramIter) const {
+    lsst::afw::geom::Ellipse result(
         EllipseCore(
             ellipticity->getValue(),
             radius->getValue()
@@ -187,27 +187,26 @@ agl::Ellipse Object::makeEllipse(double const * param_iter) const {
         position->getPosition()
     );
     if (position->active) {
-        double const * p = param_iter + getPosition().offset;
-        result.getCenter() = position->getReference() + agl::ExtentD(p[0], p[1]);
+        double const * p = paramIter + getPosition().offset;
+        result.getCenter() = position->getReference() + lsst::afw::geom::Extent2D(p[0], p[1]);
     }
     if (ellipticity->active) {
-        double const * p = param_iter + getEllipticity().offset;
+        double const * p = paramIter + getEllipticity().offset;
         static_cast<EllipseCore&>(result.getCore()).getEllipticity().setE1(p[0]);
         static_cast<EllipseCore&>(result.getCore()).getEllipticity().setE2(p[1]);
     }
     if (radius->active) {
-        double const * p = param_iter + getRadius().offset;
+        double const * p = paramIter + getRadius().offset;
         static_cast<EllipseCore&>(result.getCore()).setRadius(p[0]);
     }
-    result.getCore().scale(radius_factor);
+    result.getCore().scale(radiusFactor);
     return result;
 }
 
-std::pair<int,double> Object::perturbEllipse(agl::Ellipse & ellipse, int n) const {
+std::pair<int,double> Object::perturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n) const {
     if (n < 3) {
-        typedef agl::ellipses::Separable<EllipticityComponent::Value,RadiusComponent::Value> Core;
-        Core & core = static_cast<Core &>(ellipse.getCore());
-        core.scale(1.0 / radius_factor);
+        EllipseCore & core = static_cast<EllipseCore &>(ellipse.getCore());
+        core.scale(1.0 / radiusFactor);
         double * parameter;
         std::pair<int,double> result;
         if (n == 2) {
@@ -230,17 +229,19 @@ std::pair<int,double> Object::perturbEllipse(agl::Ellipse & ellipse, int n) cons
             }
         }
         *parameter += result.second;
-        core.scale(radius_factor);
+        core.scale(radiusFactor);
         return result;
     } else {
         return perturbPoint(ellipse.getCenter(), n-3);
     }
 }
 
-void Object::unperturbEllipse(agl::Ellipse & ellipse, int n, double perturbation) const {
+void Object::unperturbEllipse(
+    lsst::afw::geom::ellipses::Ellipse & ellipse, 
+    int n, double perturbation
+) const {
     if (n < 3) {
-        typedef agl::ellipses::Separable<EllipticityComponent::Value,RadiusComponent::Value> Core;
-        Core & core = static_cast<Core &>(ellipse.getCore());
+        EllipseCore & core = static_cast<EllipseCore &>(ellipse.getCore());
         double * parameter;
         std::pair<int,double> result;
         if (n == 2) {
@@ -254,9 +255,9 @@ void Object::unperturbEllipse(agl::Ellipse & ellipse, int n, double perturbation
     }
 }
 
-Frame::Frame(definition::Frame const & definition_, int offset, int filter_index_, int frame_index_) :
-    definition::Frame(definition_), pixel_offset(offset), pixel_count(footprint.getArea()), 
-    filter_index(filter_index_), frame_index(frame_index_), extra(0) 
+Frame::Frame(definition::Frame const & definition_, int offset, int filterIndex_, int frameIndex_) :
+    definition::Frame(definition_), pixelOffset(offset), pixelCount(footprint->getNpix()), 
+    filterIndex(filterIndex_), frameIndex(frameIndex_), extra(0) 
 {}
 
 void Frame::applyWeights(ndarray::Array<double,2,1> const & matrix) const {
@@ -273,7 +274,7 @@ void Frame::applyWeights(ndarray::Array<double,1,0> const & vector) const {
 
 Source::Source(
     Frame const & frame_, Object const & object_, 
-    boost::shared_ptr<agl::wcs::Projection const> const & wcs
+    CONST_PTR(lsst::afw::image::Wcs) const & wcs
 ) :
     frame(frame_), object(object_), 
     transform()
@@ -284,7 +285,8 @@ Source::Source(
                 "If the definition WCS is set, all frames must have a WCS."
             );
         }
-        transform = wcs->to(*frame.wcs).linearize(object.position->getPosition());
+        //TODO figure out how to do this with afw wcs
+        //transform = wcs->to(*frame.wcs).linearize(object.position->getPosition());
     } else {
         if (frame.wcs) {
             throw definition::InvalidDefinitionError(
@@ -294,7 +296,9 @@ Source::Source(
     }
     if (object.basis) {
         if (frame.psf) {
-            basis = object.basis->convolve(*frame.psf, transform(object.position->getPosition()));
+            basis = object.basis->convolve(
+                frame.psf->getLocalPsf(transform(object.position->getPosition()))
+            );
         } else {
             basis = object.basis;
         }
@@ -311,44 +315,44 @@ Source::Source(
 
 template <typename ObjectIterator, typename FrameIterator>
 void Grid::_initialize(
-    ObjectIterator const & object_begin, ObjectIterator const & object_end,
-    FrameIterator const & frame_begin, FrameIterator const & frame_end
+    ObjectIterator const & objectBegin, ObjectIterator const & objectEnd,
+    FrameIterator const & frameBegin, FrameIterator const & frameEnd
 ) {
-    objects._last = objects._first = reinterpret_cast<grid::Object*>(_object_data.get());
-    frames._last = frames._first = reinterpret_cast<grid::Frame*>(_frame_data.get());
-    sources._last = sources._first = reinterpret_cast<grid::Source*>(_source_data.get());
+    objects._last = objects._first = reinterpret_cast<grid::Object*>(_objectData.get());
+    frames._last = frames._first = reinterpret_cast<grid::Frame*>(_frameData.get());
+    sources._last = sources._first = reinterpret_cast<grid::Source*>(_sourceData.get());
     try {
-        int frame_count = 0;
-        for (FrameIterator i = frame_begin; i != frame_end; ++i) {
+        int frameCount = 0;
+        for (FrameIterator i = frameBegin; i != frameEnd; ++i) {
             std::pair<FilterMap::iterator,bool> r = filters.insert(
-                std::make_pair(i->filter, filter_count)
+                std::make_pair(i->filter, filterCount)
             );
-            if (r.second) ++filter_count;
+            if (r.second) ++filterCount;
             grid::Frame * new_frame = new (frames._last++) grid::Frame(
-                *i, pixel_count, r.first->second, frame_count
+                *i, pixelCount, r.first->second, frameCount
             );
-            pixel_count += new_frame->pixel_count;
-            ++frame_count;
+            pixelCount += new_frame->pixelCount;
+            ++frameCount;
         }
-        for (ObjectIterator i = object_begin; i != object_end; ++i) {
+        for (ObjectIterator i = objectBegin; i != objectEnd; ++i) {
             grid::Object * new_object 
-                = new (objects._last++) grid::Object(*i, coefficient_count, frames.size(), filter_count);
-            coefficient_count += new_object->coefficient_count;
+                = new (objects._last++) grid::Object(*i, coefficientCount, frames.size(), filterCount);
+            coefficientCount += new_object->coefficientCount;
             new_object->sources._first = sources._last;
             for (grid::Frame * j = frames._first; j != frames._last; ++j) {
                 new (sources._last++) grid::Source(*j, *new_object, wcs);
             }
             new_object->sources._last = sources._last;
         }
-        initializeGridComponents(objects._first, objects._last, positions._ptr_vec, parameter_count, 
+        initializeGridComponents(objects._first, objects._last, positions._ptrVec, parameterCount, 
                                  &definition::Object::position);
-        initializeGridComponents(objects._first, objects._last, radii._ptr_vec, parameter_count,
+        initializeGridComponents(objects._first, objects._last, radii._ptrVec, parameterCount,
                                  &definition::Object::radius);
-        initializeGridComponents(objects._first, objects._last, ellipticities._ptr_vec, parameter_count,
+        initializeGridComponents(objects._first, objects._last, ellipticities._ptrVec, parameterCount,
                                  &definition::Object::ellipticity);
         for (ObjectArray::const_iterator i = objects.begin(); i != objects.end(); ++i) {
             if (i->radius) {
-                i->getRadius().associated_ellipticities.insert(i->ellipticity);
+                i->getRadius().associatedEllipticities.insert(i->ellipticity);
             }
         }
     } catch (...) {
@@ -364,14 +368,14 @@ void Grid::_destroy() {
 }
 
 Grid::Grid(Definition const & definition) :
-    filter_count(0),
-    coefficient_count(0),
-    pixel_count(0),
-    parameter_count(0),
+    filterCount(0),
+    coefficientCount(0),
+    pixelCount(0),
+    parameterCount(0),
     wcs(definition.wcs),
-    _object_data(new char[sizeof(grid::Object) * definition.objects.size()]),
-    _frame_data(new char[sizeof(grid::Frame) * definition.frames.size()]),
-    _source_data(new char[sizeof(grid::Source) * definition.frames.size() * definition.objects.size()])
+    _objectData(new char[sizeof(grid::Object) * definition.objects.size()]),
+    _frameData(new char[sizeof(grid::Frame) * definition.frames.size()]),
+    _sourceData(new char[sizeof(grid::Source) * definition.frames.size() * definition.objects.size()])
 {
     _initialize(
         definition.objects.begin(), definition.objects.end(),
@@ -380,14 +384,14 @@ Grid::Grid(Definition const & definition) :
 }
 
 Grid::Grid(Grid const & other) :
-    filter_count(0),
-    coefficient_count(0),
-    pixel_count(0),
-    parameter_count(0),
+    filterCount(0),
+    coefficientCount(0),
+    pixelCount(0),
+    parameterCount(0),
     wcs(other.wcs),
-    _object_data(new char[sizeof(grid::Object) * other.objects.size()]),
-    _frame_data(new char[sizeof(grid::Frame) * other.frames.size()]),
-    _source_data(new char[sizeof(grid::Source) * other.sources.size()])
+    _objectData(new char[sizeof(grid::Object) * other.objects.size()]),
+    _frameData(new char[sizeof(grid::Frame) * other.frames.size()]),
+    _sourceData(new char[sizeof(grid::Source) * other.sources.size()])
 {
     _initialize(
         other.objects.begin(), other.objects.end(),
@@ -418,15 +422,15 @@ Definition Grid::makeDefinition() const {
     return r;
 }
 
-void Grid::writeParameters(double * param_iter) const {
+void Grid::writeParameters(double * paramIter) const {
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        i->writeParameters(param_iter);
+        i->writeParameters(paramIter);
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        i->writeParameters(param_iter);
+        i->writeParameters(paramIter);
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        i->writeParameters(param_iter);
+        i->writeParameters(paramIter);
     }
 }
 

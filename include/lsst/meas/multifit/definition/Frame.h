@@ -50,29 +50,29 @@ public:
     
     Frame(
         ID id_, 
-        Footprint const & footprint_,
+        Footprint::Ptr const & footprint_,
         ndarray::Array<double,1,1> const & data_,
         ndarray::Array<double,1,1> const & weights_ = ndarray::Array<double,1,1>()
-    ) : id(id_), filter(), start_time(0), stop_time(0), wcs(), psf(),
+    ) : id(id_), filter(), startTime(0), stopTime(0), wcs(), psf(),
         footprint(footprint_), data(data_), weights(weights_)
     {}
 
     Frame(
         ID id_,
         Filter const * filter_,
-        Timestamp start_time_,
-        Timestamp stop_time_,
+        Timestamp startTime_,
+        Timestamp stopTime_,
         Wcs::Ptr const & wcs_,
         Psf::Ptr const & psf_,
         Footprint::Ptr const & footprint_,
         ndarray::Array<double,1,1> const & data_,
         ndarray::Array<double,1,1> const & weights_
-    ) : id(id_), filter(filter_), start_time(start_time_), stop_time(stop_time_), 
+    ) : id(id_), filter(filter_), startTime(startTime_), stopTime(stopTime_), 
         wcs(wcs_), psf(psf_), footprint(footprint_), data(data_), weights(weights_)
     {}
 
     Frame(Frame const & other) :
-        id(other.id), filter(other.filter), start_time(other.start_time), stop_time(other.stop_time),
+        id(other.id), filter(other.filter), startTime(other.startTime), stopTime(other.stopTime),
         wcs(other.wcs), psf(other.psf), footprint(other.footprint), data(other.data), weights(other.weights)
     {}
 
@@ -80,13 +80,13 @@ public:
     
     Filter const * filter;
 
-    Timestamp start_time;
-    Timestamp stop_time;
+    Timestamp startTime;
+    Timestamp stopTime;
 
     Wcs::Ptr wcs;
     Psf::Ptr psf;
 
-    Footprint footprint;
+    Footprint::Ptr footprint;
     ndarray::Array<double,1,1> data;
     ndarray::Array<double,1,1> weights;
 };

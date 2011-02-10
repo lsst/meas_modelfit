@@ -52,9 +52,9 @@ public:
     Grid(Grid const & other);
 
     Definition makeDefinition() const;
-    Definition makeDefinition(double const * param_iter) const;
+    Definition makeDefinition(double const * paramIter) const;
 
-    void writeParameters(double * param_iter) const;
+    void writeParameters(double * paramIter) const;
 
     ~Grid() { _destroy(); }
 
@@ -68,10 +68,10 @@ public:
 
     FilterMap filters;
 
-    int filter_count;
-    int coefficient_count;
-    int pixel_count;
-    int parameter_count;
+    int filterCount;
+    int coefficientCount;
+    int pixelCount;
+    int parameterCount;
 
     Wcs::Ptr wcs;
 
@@ -81,13 +81,13 @@ private:
 
     template <typename ObjectIterator, typename FrameIterator>
     void _initialize(
-        ObjectIterator const & object_begin, ObjectIterator const & object_end,
-        FrameIterator const & frame_begin, FrameIterator const & frame_end
+        ObjectIterator const & objectBegin, ObjectIterator const & objectEnd,
+        FrameIterator const & frameBegin, FrameIterator const & frameEnd
     );
 
-    boost::scoped_array<char> _object_data;
-    boost::scoped_array<char> _frame_data;
-    boost::scoped_array<char> _source_data;
+    boost::scoped_array<char> _objectData;
+    boost::scoped_array<char> _frameData;
+    boost::scoped_array<char> _sourceData;
 
 };
 
