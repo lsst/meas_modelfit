@@ -37,15 +37,15 @@ public:
 
     Source(
         Frame const & frame, Object const & object, 
-        CONST_PTR(lsst::afw::image::Wcs) const & wcs
+        CONST_PTR(afw::image::Wcs) const & wcs
     );
 
     Frame const & frame;
     Object const & object;
 
-    lsst::afw::geom::AffineTransform transform;
+    afw::geom::AffineTransform transform;
     EllipseBasis::Ptr basis;
-
+    afw::detection::LocalPsf::Ptr localPsf;
     mutable void * extra;
 
 };

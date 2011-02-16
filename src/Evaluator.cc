@@ -1,4 +1,5 @@
 #include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/afw/detection/FootprintArray.h"
 #include <limits>
 
 namespace lsst { namespace meas { namespace multifit {
@@ -61,7 +62,7 @@ void Evaluator::_evaluateModelMatrix(
                 source->frame.applyWeights(block);
             }
         } else {
-            lsst::afw::geom::Point2D point = object->makePoint(param.getData());
+            afw::geom::Point2D point = object->makePoint(param.getData());
             for (
                 Grid::SourceArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
@@ -73,7 +74,7 @@ void Evaluator::_evaluateModelMatrix(
                 } else {
                     coefficientOffset += object->coefficientCount * source->frame.filterIndex;
                 }
-                lsst::ndarray::Array<double,1,0> block = matrix[
+                ndarray::Array<double,1,0> block = matrix[
                     lsst::ndarray::view(
                         source->frame.pixelOffset, 
                         source->frame.pixelOffset + source->frame.pixelCount
@@ -81,12 +82,11 @@ void Evaluator::_evaluateModelMatrix(
                         coefficientOffset
                     )
                 ];
-                //TODO rename to correct psf name
-                //source->frame.psf->evaluatePointSource(
-                //    block, 
-                //    source->frame.footprint, 
-                //    source->transform(point)
-                //);
+                source->localPsf->evaluatePointSource(
+                    *source->frame.footprint, 
+                    source->transform(point),
+                    block
+                );
                 source->frame.applyWeights(block);
             }            
         }
@@ -131,6 +131,8 @@ void Evaluator::_evaluateModelDerivative(
                             coefficientOffset + object->coefficientCount
                         )
                     ];
+                //TODO remove magic number 5 
+                //this is the number of ellipse parameters
                 for (int n = 0; n < 5; ++n) {
                     std::pair<int,double> p = object->perturbEllipse(ellipse, n);
                     if (p.first < 0) continue;
@@ -158,11 +160,11 @@ void Evaluator::_evaluateModelDerivative(
                 } else {
                     coefficientOffset += object->coefficientCount * source->frame.filterIndex;
                 }
-                lsst::ndarray::Array<double, 1, 1> fiducial = lsst::ndarray::allocate(
-                    lsst::ndarray::makeVector(source->frame.pixelCount)
-                );
-                //TODO rename to actual method in psf
-                //source->frame.psf->evaluatePointSource(fiducial, source->transform(point));
+                ndarray::Array<double, 1, 1> fiducial = source->localPsf->evaluatePointSource(
+                    *source->frame.footprint,
+                    source->transform(point)
+                );   
+
                 ndarray::Array<double,2,0> block = 
                     derivative[
                         ndarray::view(
@@ -173,14 +175,17 @@ void Evaluator::_evaluateModelDerivative(
                             coefficientOffset
                         )
                     ];
+                //TODO remove magice number 2
+                //this is the number of position parameters
                 for (int n = 0; n < 2; ++n) {
                     std::pair<int,double> p = object->perturbPoint(point, n);
                     if (p.first < 0) continue;
-                    //TODO: rename to actual method in psf
-                    //source->frame.psf->evaluatePointSource(
-                    //    source->frame.footprint.attachArray(block[p.first].shallow()),
-                    //    source->transform(point)
-                    //);
+ 
+                    source->localPsf->evaluatePointSource(
+                        *source->frame.footprint,
+                        source->transform(point),
+                        block[p.first]
+                    );
                     block[p.first] -= fiducial;
                     block[p.first] /= p.second;
                     object->unperturbPoint(point, n, p.second);

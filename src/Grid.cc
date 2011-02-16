@@ -274,19 +274,22 @@ void Frame::applyWeights(ndarray::Array<double,1,0> const & vector) const {
 
 Source::Source(
     Frame const & frame_, Object const & object_, 
-    CONST_PTR(lsst::afw::image::Wcs) const & wcs
+    CONST_PTR(afw::image::Wcs) const & wcs
 ) :
     frame(frame_), object(object_), 
     transform()
 {
+    if(frame.psf) {
+        localPsf = frame.psf->getLocalPsf(transform(object.position->getPosition()));
+    }
     if (wcs) {
         if (!frame.wcs) {
             throw definition::InvalidDefinitionError(
                 "If the definition WCS is set, all frames must have a WCS."
             );
         }
-        //TODO figure out how to do this with afw wcs
-        //transform = wcs->to(*frame.wcs).linearize(object.position->getPosition());
+	afw::geom::Point2D point = object.position->getPosition();
+        transform = frame.wcs->linearizeSkyToPixel(point)*wcs->linearizePixelToSky(point);
     } else {
         if (frame.wcs) {
             throw definition::InvalidDefinitionError(
@@ -295,10 +298,8 @@ Source::Source(
         }
     }
     if (object.basis) {
-        if (frame.psf) {
-            basis = object.basis->convolve(
-                frame.psf->getLocalPsf(transform(object.position->getPosition()))
-            );
+        if (frame.psf) {            
+            basis = object.basis->convolve(localPsf);
         } else {
             basis = object.basis;
         }
