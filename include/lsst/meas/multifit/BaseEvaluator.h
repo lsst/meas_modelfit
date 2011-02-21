@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_BaseEvaluator
 #define LSST_MEAS_MULTIFIT_BaseEvaluator
 
-#include "lsst/ndarray.hpp"
+#include "lsst/ndarray.h"
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 

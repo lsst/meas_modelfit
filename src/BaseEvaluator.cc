@@ -1,6 +1,6 @@
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
-#include "lsst/ndarray/eigen.hpp"
+#include "lsst/ndarray/eigen.h"
 #include <limits>
 
 namespace lsst { namespace meas { namespace multifit {

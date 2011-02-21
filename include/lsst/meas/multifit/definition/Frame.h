@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_DEFINITION_Frame
 #define LSST_MEAS_MULTIFIT_DEFINITION_Frame
 
-#include "lsst/ndarray.hpp"
+#include "lsst/ndarray.h"
 #include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {

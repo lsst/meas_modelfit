@@ -21,24 +21,25 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_EllipseBasis
-#define LSST_MEAS_MULTIFIT_EllipseBasis
+#ifndef LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletBasis
+#define LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletBasis
 
-#include "lsst/meas/multifit/constants.h"
-#include <boost/noncopyable.hpp>
+#include "lsst/meas/multifit/EllipseBasis.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace shapelets {
+
+class ShapeletConvolvedBasis;
 
 /**
- *  @brief An abstract base class for parametrized sets of basis functions.
+ *  @brief An EllipseBasis subclass for a single, scaled shapelet expansion.
  *
- *  EllipseBasis subclasses should be immutable.
+ *  ShapeletBasis subclasses should be immutable.
  */
-class EllipseBasis : private boost::noncopyable {
+class ShapeletBasis : public EllipseBasis {
 public:
 
-    typedef boost::shared_ptr<EllipseBasis> Ptr;
-    typedef EllipseBasis ConvolvedBasis;
+    typedef boost::shared_ptr<ShapeletBasis> Ptr;
+    typedef ShapeletConvolvedBasis ConvolvedBasis;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
@@ -48,38 +49,38 @@ public:
         return boost::static_pointer_cast<ConvolvedBasis>(_convolve(psf));
     }
 
-    /// @brief Number of basis functions.
-    int getSize() const { return _size; };
+    /// @brief Order of the shapelet expansion.
+    int getOrder() const { return _order; };
 
-    /// @brief Evaluate the basis functions on the given footprint.
-    void evaluate(
-        lsst::ndarray::Array<double, 2, 1> const & matrix,
-        PTR(Footprint) const & footprint,
-        lsst::afw::geom::Ellipse const & ellipse
-    ) const;
+    /// @brief Order of the shapelet expansion.
+    double getScale() const { return _scale; };
 
-    virtual ~EllipseBasis() {}
+    static Ptr make(int order, double scale=1.0) {
+        return boost::make_shared<ShapeletBasis>(order, scale);
+    }
 
 protected:
-
-    explicit EllipseBasis(int size) : _size(size) {}
-
-    EllipseBasis(EllipseBasis const & other) : _size(other._size) {}
 
     virtual void _evaluate(
         lsst::ndarray::Array<double, 2, 1> const & matrix,
         PTR(Footprint) const & footprint,
         lsst::afw::geom::Ellipse const & ellipse
-    ) const = 0;
+    ) const;
 
-    virtual EllipseBasis::Ptr _convolve(PTR(LocalPsf) const & psf) const = 0;
+    virtual PTR(EllipseBasis) _convolve(PTR(LocalPsf) const & psf) const;
 
 private:
 
-    int const _size;
+    FRIEND_MAKE_SHARED_2(ShapeletBasis, int, double);
 
+    ShapeletBasis(int order, double scale);
+
+    int _order;
+    double _scale;
+
+    void operator=(ShapeletBasis const &) {}
 };
 
-}}} // namespace lsst::meas::multifit
+}}}} // namespace lsst::meas::multifit::shapelets
 
-#endif // !LSST_MEAS_MULTIFIT_EllipseBasis
+#endif // !LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletBasis
