@@ -21,25 +21,25 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletBasis
-#define LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletBasis
+#ifndef LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletModelBasis
+#define LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletModelBasis
 
-#include "lsst/meas/multifit/EllipseBasis.h"
+#include "lsst/meas/multifit/ModelBasis.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace shapelets {
 
-class ShapeletConvolvedBasis;
+class ConvolvedShapeletModelBasis;
 
 /**
- *  @brief An EllipseBasis subclass for a single, scaled shapelet expansion.
+ *  @brief An ModelBasis subclass for a single, scaled shapelet expansion.
  *
- *  ShapeletBasis subclasses should be immutable.
+ *  ShapeletModelBasis subclasses should be immutable.
  */
-class ShapeletBasis : public EllipseBasis {
+class ShapeletModelBasis : public ModelBasis {
 public:
 
-    typedef boost::shared_ptr<ShapeletBasis> Ptr;
-    typedef ShapeletConvolvedBasis ConvolvedBasis;
+    typedef boost::shared_ptr<ShapeletModelBasis> Ptr;
+    typedef ConvolvedShapeletModelBasis ConvolvedBasis;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
@@ -56,7 +56,7 @@ public:
     double getScale() const { return _scale; };
 
     static Ptr make(int order, double scale=1.0) {
-        return boost::make_shared<ShapeletBasis>(order, scale);
+        return boost::make_shared<ShapeletModelBasis>(order, scale);
     }
 
 protected:
@@ -67,20 +67,20 @@ protected:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
-    virtual PTR(EllipseBasis) _convolve(PTR(LocalPsf) const & psf) const;
+    virtual PTR(ModelBasis) _convolve(PTR(LocalPsf) const & psf) const;
 
 private:
 
-    FRIEND_MAKE_SHARED_2(ShapeletBasis, int, double);
+    FRIEND_MAKE_SHARED_2(ShapeletModelBasis, int, double);
 
-    ShapeletBasis(int order, double scale);
+    ShapeletModelBasis(int order, double scale);
 
     int _order;
     double _scale;
 
-    void operator=(ShapeletBasis const &) {}
+    void operator=(ShapeletModelBasis const &) {}
 };
 
 }}}} // namespace lsst::meas::multifit::shapelets
 
-#endif // !LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletBasis
+#endif // !LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletModelBasis

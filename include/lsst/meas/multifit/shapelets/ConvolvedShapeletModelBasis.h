@@ -21,22 +21,22 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletConvolvedBasis
-#define LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletConvolvedBasis
+#ifndef LSST_MEAS_MULTIFIT_SHAPELETS_ConvolvedShapeletModelBasis
+#define LSST_MEAS_MULTIFIT_SHAPELETS_ConvolvedShapeletModelBasis
 
-#include "lsst/meas/multifit/shapelets/ShapeletBasis.h"
+#include "lsst/meas/multifit/shapelets/ShapeletModelBasis.h"
 #include "lsst/meas/multifit/shapelets/ShapeletConvolution.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace shapelets {
 
 /**
- *  @brief A convolved ShapeletBasis.
+ *  @brief A convolved ShapeletModelBasis.
  */
-class ShapeletConvolvedBasis : public EllipseBasis {
+class ConvolvedShapeletModelBasis : public ModelBasis {
 public:
 
-    typedef boost::shared_ptr<ShapeletConvolvedBasis> Ptr;
-    typedef EllipseBasis ConvolvedBasis;
+    typedef boost::shared_ptr<ConvolvedShapeletModelBasis> Ptr;
+    typedef ModelBasis ConvolvedBasis;
 
     int getOrder() const { return _convolution->getColOrder(); }
 
@@ -45,13 +45,13 @@ public:
 protected:
 
     FRIEND_MAKE_SHARED_2(
-        ShapeletConvolvedBasis,
-        lsst::meas::multifit::shapelets::ShapeletBasis,
+        ConvolvedShapeletModelBasis,
+        lsst::meas::multifit::shapelets::ShapeletModelBasis,
         lsst::afw::math::shapelets::EllipticalShapeletFunction
     );
 
-    explicit ShapeletConvolvedBasis(
-        ShapeletBasis const & basis,
+    explicit ConvolvedShapeletModelBasis(
+        ShapeletModelBasis const & basis,
         lsst::afw::math::shapelets::EllipticalShapeletFunction const & psf
     );
 
@@ -61,15 +61,15 @@ protected:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
-    virtual EllipseBasis::Ptr _convolve(PTR(LocalPsf) const & psf) const { return EllipseBasis::Ptr(); }
+    virtual ModelBasis::Ptr _convolve(PTR(LocalPsf) const & psf) const { return ModelBasis::Ptr(); }
 
 private:
 
     ShapeletConvolution::Ptr _convolution;
-    ShapeletBasis::Ptr _frontBasis;
+    ShapeletModelBasis::Ptr _frontBasis;
     double _scale;
 };
 
 }}}} // namespace lsst::meas::multifit::shapelets
 
-#endif // !LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletBasis
+#endif // !LSST_MEAS_MULTIFIT_SHAPELETS_ShapeletModelBasis

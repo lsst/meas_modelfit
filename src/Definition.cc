@@ -17,7 +17,7 @@ Object Object::makeStar(
 
 Object Object::makeGalaxy(
     ID id,
-    EllipseBasis::Ptr const & basis,
+    ModelBasis::Ptr const & basis,
     lsst::afw::geom::ellipses::Ellipse const & ellipse
 ) {
     Object r(id);

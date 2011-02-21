@@ -21,24 +21,24 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "lsst/meas/multifit/shapelets/ShapeletBasis.h"
-#include "lsst/meas/multifit/shapelets/ShapeletConvolvedBasis.h"
+#include "lsst/meas/multifit/shapelets/ShapeletModelBasis.h"
+#include "lsst/meas/multifit/shapelets/ConvolvedShapeletModelBasis.h"
 #include "lsst/ndarray/eigen.h"
 
 namespace mf = lsst::meas::multifit;
 namespace mfShapelets = lsst::meas::multifit::shapelets;
 namespace afwShapelets = lsst::afw::math::shapelets;
 
-mfShapelets::ShapeletConvolvedBasis::ShapeletConvolvedBasis(
-    ShapeletBasis const & basis,
+mfShapelets::ConvolvedShapeletModelBasis::ConvolvedShapeletModelBasis(
+    ShapeletModelBasis const & basis,
     lsst::afw::math::shapelets::EllipticalShapeletFunction const & psf
-) : EllipseBasis(basis.getSize()),
+) : ModelBasis(basis.getSize()),
     _convolution(boost::make_shared<ShapeletConvolution>(basis.getOrder(), psf)),
-    _frontBasis(ShapeletBasis::make(_convolution->getRowOrder(), 1.0)),
+    _frontBasis(ShapeletModelBasis::make(_convolution->getRowOrder(), 1.0)),
     _scale(basis.getScale())
 {}
 
-void mfShapelets::ShapeletConvolvedBasis::_evaluate(
+void mfShapelets::ConvolvedShapeletModelBasis::_evaluate(
     lsst::ndarray::Array<double,2,1> const & matrix,
     lsst::afw::detection::Footprint::Ptr const & footprint,
     lsst::afw::geom::Ellipse const & ellipse

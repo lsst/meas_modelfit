@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_EllipseBasis
-#define LSST_MEAS_MULTIFIT_EllipseBasis
+#ifndef LSST_MEAS_MULTIFIT_ModelBasis
+#define LSST_MEAS_MULTIFIT_ModelBasis
 
 #include "lsst/meas/multifit/constants.h"
 #include <boost/noncopyable.hpp>
@@ -32,13 +32,13 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief An abstract base class for parametrized sets of basis functions.
  *
- *  EllipseBasis subclasses should be immutable.
+ *  ModelBasis subclasses should be immutable.
  */
-class EllipseBasis : private boost::noncopyable {
+class ModelBasis : private boost::noncopyable {
 public:
 
-    typedef boost::shared_ptr<EllipseBasis> Ptr;
-    typedef EllipseBasis ConvolvedBasis;
+    typedef boost::shared_ptr<ModelBasis> Ptr;
+    typedef ModelBasis ConvolvedBasis;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
@@ -58,13 +58,13 @@ public:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
-    virtual ~EllipseBasis() {}
+    virtual ~ModelBasis() {}
 
 protected:
 
-    explicit EllipseBasis(int size) : _size(size) {}
+    explicit ModelBasis(int size) : _size(size) {}
 
-    EllipseBasis(EllipseBasis const & other) : _size(other._size) {}
+    ModelBasis(ModelBasis const & other) : _size(other._size) {}
 
     virtual void _evaluate(
         lsst::ndarray::Array<double, 2, 1> const & matrix,
@@ -72,7 +72,7 @@ protected:
         lsst::afw::geom::Ellipse const & ellipse
     ) const = 0;
 
-    virtual EllipseBasis::Ptr _convolve(PTR(LocalPsf) const & psf) const = 0;
+    virtual ModelBasis::Ptr _convolve(PTR(LocalPsf) const & psf) const = 0;
 
 private:
 
@@ -82,4 +82,4 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_EllipseBasis
+#endif // !LSST_MEAS_MULTIFIT_ModelBasis

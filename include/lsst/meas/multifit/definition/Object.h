@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_DEFINITION_Object
 
 #include "lsst/meas/multifit/definition/parameters.h"
-#include "lsst/meas/multifit/EllipseBasis.h"
+#include "lsst/meas/multifit/ModelBasis.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
@@ -55,7 +55,7 @@ public:
 
     static Object makeGalaxy(
         ID id,
-        EllipseBasis::Ptr const & basis,
+        ModelBasis::Ptr const & basis,
         lsst::afw::geom::ellipses::Ellipse const & ellipse
     );        
 
@@ -65,7 +65,7 @@ public:
     RadiusComponent::Ptr radius;
     EllipticityComponent::Ptr ellipticity;
 
-    EllipseBasis::Ptr basis;
+    ModelBasis::Ptr basis;
     double radiusFactor;
     bool isVariable;
 

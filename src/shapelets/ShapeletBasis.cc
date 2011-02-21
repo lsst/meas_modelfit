@@ -21,15 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "lsst/meas/multifit/shapelets/ShapeletBasis.h"
-#include "lsst/meas/multifit/shapelets/ShapeletConvolvedBasis.h"
+#include "lsst/meas/multifit/shapelets/ShapeletModelBasis.h"
+#include "lsst/meas/multifit/shapelets/ConvolvedShapeletModelBasis.h"
 #include "lsst/ndarray/eigen.h"
 
 namespace mf = lsst::meas::multifit;
 namespace mfShapelets = lsst::meas::multifit::shapelets;
 namespace afwShapelets = lsst::afw::math::shapelets;
 
-void mfShapelets::ShapeletBasis::_evaluate(
+void mfShapelets::ShapeletModelBasis::_evaluate(
     lsst::ndarray::Array<double, 2, 1> const & matrix,
     PTR(Footprint) const & footprint,
     lsst::afw::geom::Ellipse const & ellipse
@@ -52,9 +52,9 @@ void mfShapelets::ShapeletBasis::_evaluate(
     }
 }
 
-mf::EllipseBasis::Ptr mfShapelets::ShapeletBasis::_convolve(
+mf::ModelBasis::Ptr mfShapelets::ShapeletModelBasis::_convolve(
     lsst::meas::multifit::LocalPsf::Ptr const & psf
 ) const {
     LocalPsf::Shapelet::ConstPtr shapeletPsf = psf->asShapelet(afwShapelets::HERMITE);
-    return boost::make_shared<ShapeletConvolvedBasis>(*this, *shapeletPsf);
+    return boost::make_shared<ConvolvedShapeletModelBasis>(*this, *shapeletPsf);
 }

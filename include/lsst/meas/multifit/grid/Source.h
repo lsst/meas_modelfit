@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_GRID_Source
 
 #include "lsst/afw/geom/AffineTransform.h"
-#include "lsst/meas/multifit/EllipseBasis.h"
+#include "lsst/meas/multifit/ModelBasis.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
@@ -44,7 +44,7 @@ public:
     Object const & object;
 
     afw::geom::AffineTransform transform;
-    EllipseBasis::Ptr basis;
+    ModelBasis::Ptr basis;
     afw::detection::LocalPsf::Ptr localPsf;
     mutable void * extra;
 

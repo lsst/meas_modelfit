@@ -1,9 +1,9 @@
-#include "lsst/meas/multifit/EllipseBasis.h"
+#include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-void EllipseBasis::evaluate(
+void ModelBasis::evaluate(
     lsst::ndarray::Array<double, 2, 1> const & matrix,
     PTR(Footprint) const & footprint,
     Ellipse const & ellipse
