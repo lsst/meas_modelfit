@@ -33,7 +33,7 @@ mfShapelets::ConvolvedShapeletModelBasis::ConvolvedShapeletModelBasis(
     ShapeletModelBasis const & basis,
     lsst::afw::math::shapelets::ShapeletFunction const & psf
 ) : ModelBasis(basis.getSize()),
-    _convolution(boost::make_shared<ShapeletConvolution>(basis.getOrder(), psf)),
+    _convolution(boost::make_shared<afwShapelets::detail::HermiteConvolution>(basis.getOrder(), psf)),
     _frontBasis(ShapeletModelBasis::make(_convolution->getRowOrder(), 1.0)),
     _scale(basis.getScale())
 {}
@@ -46,10 +46,10 @@ void mfShapelets::ConvolvedShapeletModelBasis::_evaluate(
     ndarray::Array<double,2,2> frontMatrix(
         ndarray::allocate(footprint->getArea(), _frontBasis->getSize())
     );
-    ndarray::Array<double,2,2> convolutionMatrix(ndarray::allocate(_convolution->getShape()));
     afw::geom::Ellipse frontEllipse(ellipse);
     frontEllipse.scale(_scale);
-    _convolution->evaluate(convolutionMatrix, frontEllipse.getCore());
+    ndarray::Array<afwShapelets::Pixel const,2,2> convolutionMatrix = 
+        _convolution->evaluate(frontEllipse.getCore());
     _frontBasis->evaluate(frontMatrix, footprint, frontEllipse);
     ndarray::viewAsEigen(matrix) = 
         ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix) / _scale;

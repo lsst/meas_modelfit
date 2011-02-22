@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_SHAPELETS_ConvolvedShapeletModelBasis
 
 #include "lsst/meas/multifit/shapelets/ShapeletModelBasis.h"
-#include "lsst/meas/multifit/shapelets/ShapeletConvolution.h"
+#include "lsst/afw/math/shapelets/detail/HermiteConvolution.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace shapelets {
 
@@ -65,7 +65,7 @@ protected:
 
 private:
 
-    ShapeletConvolution::Ptr _convolution;
+    lsst::afw::math::shapelets::detail::HermiteConvolution::Ptr _convolution;
     ShapeletModelBasis::Ptr _frontBasis;
     double _scale;
 };

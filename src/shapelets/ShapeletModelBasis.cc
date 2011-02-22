@@ -44,8 +44,7 @@ void mfShapelets::ShapeletModelBasis::_evaluate(
     for (; spanIter != spanEnd; ++spanIter) {
         afw::detection::Span const & span = **spanIter;
         for (int x = span.getX0(); x <= span.getX1(); ++x) {
-            shapeletEvaluator.target = *pixelIter;
-            shapeletEvaluator.fillEvaluation(transform(afw::geom::Point2D(x, span.getY())));
+            shapeletEvaluator.fillEvaluation(*pixelIter, transform(afw::geom::Point2D(x, span.getY())));
         }
     }
 }
