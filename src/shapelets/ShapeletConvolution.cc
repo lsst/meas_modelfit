@@ -226,7 +226,7 @@ void Binomial::reset(double a, double b) {
 class ShapeletConvolution::Impl {
 public:
 
-    Impl(int colOrder, afwShapelets::EllipticalShapeletFunction const & psf);
+    Impl(int colOrder, afwShapelets::ShapeletFunction const & psf);
 
     void evaluate(
         ndarray::Array<double,2,2> const & matrix, 
@@ -244,7 +244,7 @@ public:
 private:
     int _rowOrder;
     int _colOrder;
-    afwShapelets::EllipticalShapeletFunction _psf;
+    afwShapelets::ShapeletFunction _psf;
     TripleProductIntegral _tpi;
     Eigen::MatrixXd _monomialFwd;
     Eigen::MatrixXd _monomialInv;
@@ -254,7 +254,7 @@ private:
 
 
 mfShapelets::ShapeletConvolution::Impl::Impl(
-    int colOrder, afwShapelets::EllipticalShapeletFunction const & psf
+    int colOrder, afwShapelets::ShapeletFunction const & psf
 ) : 
     _rowOrder(colOrder + psf.getOrder()), _colOrder(colOrder), _psf(psf),
     _tpi(psf.getOrder(), _rowOrder, _colOrder),
@@ -417,7 +417,7 @@ void mfShapelets::ShapeletConvolution::evaluate(
 
 mfShapelets::ShapeletConvolution::ShapeletConvolution(
     int colOrder, 
-    lsst::afw::math::shapelets::EllipticalShapeletFunction const & psf
+    lsst::afw::math::shapelets::ShapeletFunction const & psf
 ) : _impl(new Impl(colOrder, psf)) {}
 
 mfShapelets::ShapeletConvolution::~ShapeletConvolution() {}

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008, 2009, 2010, 2011 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -47,12 +47,12 @@ protected:
     FRIEND_MAKE_SHARED_2(
         ConvolvedShapeletModelBasis,
         lsst::meas::multifit::shapelets::ShapeletModelBasis,
-        lsst::afw::math::shapelets::EllipticalShapeletFunction
+        lsst::afw::math::shapelets::ShapeletFunction
     );
 
     explicit ConvolvedShapeletModelBasis(
         ShapeletModelBasis const & basis,
-        lsst::afw::math::shapelets::EllipticalShapeletFunction const & psf
+        lsst::afw::math::shapelets::ShapeletFunction const & psf
     );
 
     virtual void _evaluate(

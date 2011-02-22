@@ -29,28 +29,30 @@ namespace mf = lsst::meas::multifit;
 namespace mfShapelets = lsst::meas::multifit::shapelets;
 namespace afwShapelets = lsst::afw::math::shapelets;
 
-mfShapelets::ConvolvedShapeletModelBasis::ConvolvedShapeletModelBasis(
-    ShapeletModelBasis const & basis,
-    lsst::afw::math::shapelets::EllipticalShapeletFunction const & psf
-) : ModelBasis(basis.getSize()),
-    _convolution(boost::make_shared<ShapeletConvolution>(basis.getOrder(), psf)),
-    _frontBasis(ShapeletModelBasis::make(_convolution->getRowOrder(), 1.0)),
-    _scale(basis.getScale())
-{}
-
-void mfShapelets::ConvolvedShapeletModelBasis::_evaluate(
-    lsst::ndarray::Array<double,2,1> const & matrix,
-    lsst::afw::detection::Footprint::Ptr const & footprint,
+void mfShapelets::ShapeletModelBasis::_evaluate(
+    lsst::ndarray::Array<double, 2, 1> const & matrix,
+    PTR(Footprint) const & footprint,
     lsst::afw::geom::Ellipse const & ellipse
 ) const {
-    ndarray::Array<double,2,2> frontMatrix(
-        ndarray::allocate(footprint->getArea(), _frontBasis->getSize())
-    );
-    ndarray::Array<double,2,2> convolutionMatrix(ndarray::allocate(_convolution->getShape()));
-    afw::geom::Ellipse frontEllipse(ellipse);
-    frontEllipse.scale(_scale);
-    _convolution->evaluate(convolutionMatrix, frontEllipse.getCore());
-    _frontBasis->evaluate(frontMatrix, footprint, frontEllipse);
-    ndarray::viewAsEigen(matrix) = 
-        ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix) / _scale;
+    afw::geom::Ellipse fullEllipse(ellipse);
+    fullEllipse.scale(_scale);
+    afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
+    afw::geom::AffineTransform transform = fullEllipse.getGridTransform();
+    mf::Footprint::SpanList::const_iterator const spanEnd = footprint->getSpans().end();
+    mf::Footprint::SpanList::const_iterator spanIter = footprint->getSpans().begin();
+    lsst::ndarray::Array<double, 2, 1>::Iterator pixelIter = matrix.begin();
+    for (; spanIter != spanEnd; ++spanIter) {
+        afw::detection::Span const & span = **spanIter;
+        for (int x = span.getX0(); x <= span.getX1(); ++x) {
+            shapeletEvaluator.target = *pixelIter;
+            shapeletEvaluator.fillEvaluation(transform(afw::geom::Point2D(x, span.getY())));
+        }
+    }
+}
+
+mf::ModelBasis::Ptr mfShapelets::ShapeletModelBasis::_convolve(
+    lsst::meas::multifit::LocalPsf::Ptr const & psf
+) const {
+    LocalPsf::Shapelet shapeletPsf = psf->asShapelet(afwShapelets::HERMITE);
+    return boost::make_shared<ConvolvedShapeletModelBasis>(*this, shapeletPsf);
 }
