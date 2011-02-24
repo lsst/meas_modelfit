@@ -38,23 +38,20 @@ class ModelBasis : private boost::noncopyable {
 public:
 
     typedef boost::shared_ptr<ModelBasis> Ptr;
-    typedef ModelBasis ConvolvedBasis;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
      *         parametrization.
      */
-    PTR(ConvolvedBasis) convolve(PTR(LocalPsf) const & psf) const {
-        return boost::static_pointer_cast<ConvolvedBasis>(_convolve(psf));
-    }
+    virtual ModelBasis::Ptr convolve(CONST_PTR(LocalPsf) const & psf) const;
 
     /// @brief Number of basis functions.
     int getSize() const { return _size; };
 
     /// @brief Evaluate the basis functions on the given footprint.
     void evaluate(
-        lsst::ndarray::Array<double, 2, 1> const & matrix,
-        PTR(Footprint) const & footprint,
+        lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
+        CONST_PTR(Footprint) const & footprint,
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
@@ -67,12 +64,10 @@ protected:
     ModelBasis(ModelBasis const & other) : _size(other._size) {}
 
     virtual void _evaluate(
-        lsst::ndarray::Array<double, 2, 1> const & matrix,
-        PTR(Footprint) const & footprint,
+        lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
+        CONST_PTR(Footprint) const & footprint,
         lsst::afw::geom::Ellipse const & ellipse
     ) const = 0;
-
-    virtual ModelBasis::Ptr _convolve(PTR(LocalPsf) const & psf) const = 0;
 
 private:
 

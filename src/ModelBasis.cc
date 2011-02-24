@@ -5,7 +5,7 @@ namespace lsst { namespace meas { namespace multifit {
 
 void ModelBasis::evaluate(
     lsst::ndarray::Array<double, 2, 1> const & matrix,
-    PTR(Footprint) const & footprint,
+    CONST_PTR(Footprint) const & footprint,
     Ellipse const & ellipse
 ) const {
     detail::checkSize(
@@ -18,6 +18,11 @@ void ModelBasis::evaluate(
         "Number of matrix rows (%d) does not match expected value (%d)."
     );
     _evaluate(matrix, footprint, ellipse);
+}
+
+ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
+    throw LSST_EXCEPT(lsst::pex::exceptions::LogicErrorException,
+                      "ModelBasis subclass does not support convolution.");
 }
 
 }}} // namespace lsst::meas::multifit

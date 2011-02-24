@@ -52,13 +52,15 @@ namespace detail {
 inline void checkSize(int actualSize, int expectedSize, char const * message) {
     if (actualSize != expectedSize) {
         throw LSST_EXCEPT(
-            lsst::pex::exceptions::RangeErrorException, 
+            lsst::pex::exceptions::LengthErrorException, 
             (boost::format(message) % actualSize % expectedSize).str()
         );
     }
 }
 
 } // namespace detail
+
+typedef double Pixel;
 
 typedef long long Timestamp;
 typedef int ID;
