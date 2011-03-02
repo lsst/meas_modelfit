@@ -1,0 +1,10 @@
+#<? cfg paf dictionary ?>
+#
+# 
+polyStyle: "standard"
+order: 2
+algorithm1: "PSF"
+radius1: -0.0
+# radii in pixels ... using 1.5" for ~0.187"/pix CFH MegaCam = 9pix
+algorithm2: "SINC"
+radius2: 9.0

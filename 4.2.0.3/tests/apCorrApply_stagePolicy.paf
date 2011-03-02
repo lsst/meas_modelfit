@@ -1,0 +1,10 @@
+#<? cfg paf dictionary ?>
+#
+# 
+inputKeys: {
+    sourceSet: "sources"
+    apCorr:    "apCorr"
+}
+
+
+

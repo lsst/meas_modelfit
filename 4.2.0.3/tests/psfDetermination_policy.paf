@@ -1,0 +1,7 @@
+#<? cfg paf ?>
+#
+# 
+selectionPolicy: @@meas_pipeline:tests/psfSelectRhl_policy.paf
+psfPolicy: @@meas_pipeline:tests/psfAlgRhl_policy.paf
+
+

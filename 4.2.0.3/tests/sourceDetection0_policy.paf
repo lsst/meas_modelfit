@@ -1,0 +1,35 @@
+#<? cfg paf policy ?>
+#
+# Stage policy for SourceDetectionStage
+
+inputKeys: {
+	exposure: "calibratedExposure0"
+}
+outputKeys: {
+	psf: "smoothingPsfModel"
+	positiveDetection: "positiveFootprintSet"
+	negativeDetection: "negativeFootprintSet"
+	backgroundSubtractedExposure: "backgroundSubtractedExposure"
+	background: "background"
+}
+
+backgroundPolicy: {
+    # how to interpolate the background values
+    algorithm:  "NATURAL_SPLINE" 
+    # how large regions of the sky should be used for each background point
+    binsize:    256
+}
+
+psfPolicy: {
+    algorithm: "DoubleGaussian"
+    width: 15
+    height: 15
+    #5/(2*sqrt(2*log(2)))
+    parameter: 2.12
+}
+detectionPolicy: {
+    minPixels:1 
+    thresholdValue: 3.0
+    thresholdType: "stdev"
+    thresholdPolarity: "positive"
+}

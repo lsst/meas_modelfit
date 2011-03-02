@@ -1,0 +1,76 @@
+#<?cfg paf dictionary ?>
+#
+# Dictionary for SourceClassificationStage policies
+#
+target: lsst.meas.pipeline.SourceClassificationStage
+
+definitions: {
+    sourceList0Key: {
+        type:        "string"
+        description: "the clipboard key of the second source list passed to the classification stage."
+        minOccurs:   0
+        maxOccurs:   1
+        default:     "sourceSet0"
+    }
+    sourceList1Key: {
+        type:        "string"
+    	description: "the clipboard key of the second source list passed to the classification stage."
+        minOccurs:   0 
+        maxOccurs:   1
+        default:     "sourceSet1"
+    }    	
+    classifier: {
+        type: "policy"
+        minOccurs: 0
+        maxOccurs: 64
+
+        dictionary: {
+            definitions: {
+                bits : {
+                    type: "int"
+                    description: "array of flag bit indexes computed by classifier"
+                    minOccurs: 1
+                    maxOccurs: 64
+                    min: 0
+                    max: 63
+                }
+                pythonClass: {
+                    type: "string"
+                    description: "Name of python class for implementing classification. Currently
+                                  this class must live in the lsst.meas.pipeline package."
+                    minOccurs: 1
+                    maxOccurs: 1
+                }
+                scope: {
+                    type: "string"
+                    description: "Determines which sources should be passed to the classifier"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    allowed:  {
+                       value: "first"
+                       description: "sources from the first source list are to be passed to the classifier"
+                    }
+                    allowed:  {
+                       value: "second"
+                       description: "sources from the second source list are to be passed to the classifier"
+                    }
+                    allowed:  {
+                       value: "both"
+                       description: "sources from both source lists are to be passed to the classifier"
+                    }
+                    allowed:  {
+                       value: "pairs"
+                       description: "pairs of sources from both source lists are to be passed to the
+                                     classifier (as Python tuples)"
+                    }
+                }
+                parameter: {
+                    type: "policy"
+                    #description: "classifier specific configuration parameters"
+                    minOccurs: 0
+                    maxOccurs: 1
+                }
+            }
+        }
+    }
+}

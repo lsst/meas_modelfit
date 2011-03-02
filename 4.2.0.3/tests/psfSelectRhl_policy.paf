@@ -1,0 +1,10 @@
+#<? cfg paf dictionary ?>
+#
+# 
+fluxLim: 1000.0
+clumpNSigma: 1.0
+kernelSize: 21
+borderWidth: 0
+sizeCellX: 256
+sizeCellY: 256
+

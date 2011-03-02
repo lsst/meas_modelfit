@@ -1,0 +1,31 @@
+#<? cfg paf dictionary ?>
+#
+# 
+target: lsst.meas.pipeline.ApertureCorrectionApplyStage
+
+definitions: {
+    #input clipboard keys
+    inputKeys: {
+        type: "policy"
+        dictionary: {
+            definitions: {
+		sourceSet: {
+                    type: "string"
+                    description: "specify clipboard key of input SourceSet"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "sources"
+                }
+	        apCorr: {
+                    type: "string"
+                    description: "specify clipboard key for output apCorr object"
+                    minOccurs: 1
+                    maxOccurs: 1
+		    default: "apCorr"
+                }
+            }
+        }
+    }
+
+}
+

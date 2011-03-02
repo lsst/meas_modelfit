@@ -1,0 +1,79 @@
+#<? cfg paf dictionary ?>
+#
+# 
+target: lsst.meas.pipeline.PsfDeterminationStage
+
+definitions: {
+    #input clipboard keys
+    inputKeys: {
+        type: "policy"
+        dictionary: {
+            definitions: {
+                exposure: {
+                    type: "string"
+                    description: "specify clipboard key of input Exposure"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "exposure"
+                }
+                sourceSet: {
+                    type: "string"
+                    description: "specify clipboard key of input SourceSet"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "sourceSet"
+                }
+            }
+        }
+    }
+
+    #output clipboard keys:
+    outputKeys: {
+        type: "policy"
+        dictionary: {
+            definitions: {
+                psf: {
+                    type: "string"
+                    description: "specify clipboard key for output PSF"
+                    minOccurs: 1
+                    maxOccurs: 1
+                }
+		cellSet: {
+                    type: "string"
+                    description: "specify the clipboard key for output psfCellSet"
+                    minOccurs: 1
+                    maxOccurs: 1                    
+                }
+                sourceSet: {
+                    type: "string"
+                    description: "specify the clipboard key for output psfSourceSet"
+                    minOccurs: 1
+                    maxOccurs: 1                    
+                }
+                sdqa: {
+                    type: "string"
+                    description: "specify the clipboard key for SDQA"
+                    minOccurs: 0
+                    maxOccurs: 1                    
+                }
+            }
+        }
+    }
+
+    # control the algorithm
+    parameters: {
+        type: "policy"
+        dictionary: {
+            definitions: {
+	        psfDeterminationPolicy: {
+                    type: "policy"
+		    dictionary: @@meas_algorithms:policy/PsfDeterminationDictionary.paf
+                    description: "Parameters to control PSF selection"
+                    minOccurs: 1
+                    maxOccurs: 1
+                }
+            }
+        }
+    }
+}
+

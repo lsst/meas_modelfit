@@ -1,0 +1,14 @@
+#<? cfg paf policy?>
+#
+# Stage policy for SourceMeasurementStage
+
+inputKeys: {
+    psf: "smoothingPsfModel"
+    positiveDetection: "positiveFootprintSet"
+    negativeDetection: "negativeFootprintSet"
+    exposure: "backgroundSubtractedExposure"
+}
+
+outputKeys: {
+    sources: "sources"
+}

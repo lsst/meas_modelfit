@@ -1,0 +1,41 @@
+#<?cfg paf dictionary ?>
+
+target: lsst.meas.pipeline.MakePersistableSourceVectorStage
+
+definitions: {
+    #input clipboard keys
+    inputKeys: {
+        type: "policy"
+        minOccurs: 1
+        maxOccurs: 1
+        dictionary: {
+            definitions: {
+                sourceSet: {
+                    type: "string"
+                    description: "clipboard key of the input psf"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "sourceSet"
+                }
+            }
+        }
+    }
+
+    #output clipboard keys:
+    outputKeys: {
+    	type: "policy"
+        minOccurs: 1
+        maxOccurs: 1
+    	dictionary: {
+            definitions: {
+                persistable: {
+                    type: "string"
+                    description: "clipboard key of the output PersistableSourceVector"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "persistable_sourceSet"
+                }
+            }
+        }		
+    }
+}

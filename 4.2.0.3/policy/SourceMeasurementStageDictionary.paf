@@ -1,0 +1,66 @@
+#<?cfg paf dictionary ?>
+#
+# This file should be moved back to meas/algorithms when #1035 is resolved
+#
+target: lsst.meas.pipeline.SourceMeasurementStage
+
+definitions: {
+    #input clipboard keys
+    inputKeys: {
+        type: "policy"
+        minOccurs: 1 
+        dictionary: {
+            definitions: {
+                psf: {
+                    type: "string"
+                    description: "clipboard key of the input psf"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "psf"
+                }
+                exposure : {
+                    type: "string"
+                    description: "clipboard key of the input exposure"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "exposure"
+                }
+                positiveDetection: {
+                    type: "string"
+                    description: "specify the clipboard key of the positive FootprintSet"
+                    maxOccurs: 1
+                    default: "positiveFootprintSet"
+                }
+                negativeDetection: {
+                    type: "string"
+                    description: "specify the clipboard key of the negative FootprintSet"
+                    maxOccurs: 1
+                    default: "negativeFootprintSet"
+                }
+            }
+        }
+    }
+
+    #output clipboard keys:
+    outputKeys: {
+    	type: "policy"
+    	dictionary: {
+            definitions: {
+                sources: {
+                    type: "string"
+                    description: "clipboard key of the output SourceSet"
+                    minOccurs: 1
+                    maxOccurs: 1
+                    default: "sourceSet"
+                }
+            }
+        }		
+    }
+
+    measureSources: {
+        type: "policy"
+        dictionary: @@meas_algorithms:policy/MeasureSourcesDictionary.paf     
+        description: "policy for configuring measurement algorithms"     
+        maxOccurs: 1
+    }
+}

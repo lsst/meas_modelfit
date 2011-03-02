@@ -1,0 +1,47 @@
+#<?cfg paf dictionary ?>
+target: lsst.meas.pipeline.ForcedPhotometryStage
+
+definitions: {
+	inputKeys: {
+		type: "policy"
+		description: "specify clipboard inputs"		
+        minOccurs: 1
+        dictionary: {
+            definitions: {
+                pointModel: {
+			        type: "string"
+			        description: "clipboard key of the input point-source Model"
+        			default: "multifitPointModel"
+			        maxOccurs: 1
+			    }
+                galaxyModel: {
+			        type: "string"
+			        description: "clipboard key of the input galaxy Model"
+        			default: "multifitGalaxyModel"
+			        maxOccurs: 1
+			    }
+                exposureStack: {
+			    	type: "string"
+    				description: "clipboard key of the input ExposureStack"
+    				default: "postageStampStack"
+        			maxOccurs: 1
+    			}
+    		}
+    	}
+	}
+	outputKeys: {
+        type: "policy"
+        description: "specify clipboard outputs"
+        minOccurs: 1
+        dictionary: {
+            definitions: {
+                sourceSet: {
+                	type: "string"
+                	description: "cliboard key of the output ForcedSource set"
+                	default: "forcedSourceSet"
+                    maxOccurs: 1
+                }
+            }
+        }
+    }
+}

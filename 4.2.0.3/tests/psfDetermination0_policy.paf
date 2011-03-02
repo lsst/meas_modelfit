@@ -1,0 +1,24 @@
+#<? cfg paf policy ?>
+#
+# Stage policy for PsfDetermination Stage
+
+data: {
+    exposureKey: "calibratedExposure0"
+    sourceSetKey: "sourceSet0"
+    outputPsfKey: "psfModel"
+    outputCellSetKey: "psfCellSet0"
+}
+
+fluxLim: 5.0e3
+sizeCellX: 512
+sizeCellY: 512
+nStarPerCell: 3
+kernelSize: 21
+nEigenComponents: 2
+spatialOrder: 0
+nStarPerCellSpatialFit: 5
+tolerance: 0.1
+reducedChi2ForPsfCandidates: 2.0
+nIterForPsf: 3
+
+sdqaKey: "psfDeterminationRatingSet"

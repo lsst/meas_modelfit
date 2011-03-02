@@ -1,0 +1,58 @@
+#<?cfg paf dictionary ?>
+target: lsst.meas.pipeline.MultifitStage
+
+definitions: {
+	inputKeys: {
+		type: "policy"
+		description: "specify clipboard inputs"		
+        minOccurs: 1
+        dictionary: {
+            definitions: {
+                pointModel: {
+			        type: "string"
+			        description: "clipboard key of the input point-source Model"
+        			default: "initialPointModel"
+			        minOccurs: 0
+			        maxOccurs: 1
+			    }
+                galaxyModel: {
+			        type: "string"
+			        description: "clipboard key of the input galaxy Model"
+        			default: "initialGalaxyModel"
+			        minOccurs: 0
+			        maxOccurs: 1
+			    }
+                exposureStack: {
+			    	type: "string"
+    				description: "clipboard key of the input ExposureStack"
+    				default: "postageStampStack"
+        			minOccurs: 0
+        			maxOccurs: 1
+    			}
+    		}
+    	}
+	}
+	outputKeys: {
+        type: "policy"
+        description: "specify clipboard outputs"
+        minOccurs: 1
+        dictionary: {
+            definitions: {
+                pointModel: {
+                	type: "string"
+                	description: "cliboard key of the output point-source Model"
+                	default: "multifitPointModel"
+                    minOccurs: 0
+                    maxOccurs: 1
+                }
+                galaxyModel: {
+                	type: "string"
+                	description: "cliboard key of the output galaxy Model"
+                	default: "multifitGalaxyModel"
+                    minOccurs: 0
+                    maxOccurs: 1
+                }
+            }
+        }
+    }
+}
