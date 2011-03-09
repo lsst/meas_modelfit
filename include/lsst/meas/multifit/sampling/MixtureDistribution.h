@@ -24,7 +24,9 @@
 #ifndef LSST_MEAS_MULTIFIT_SAMPLING_MixtureDistribution
 #define LSST_MEAS_MULTIFIT_SAMPLING_MixtureDistribution
 
-#include <lsst/ndarray.h>
+#include "lsst/ndarray.h"
+#include "lsst/meas/multifit/sampling/Table.h"
+
 #include <Eigen/Core>
 
 #include <boost/random/mersenne_twister.hpp>
@@ -70,15 +72,9 @@ public:
 
     ComponentList const & getComponents() const { return _components; }
 
-    void draw(
-        lsst::ndarray::Array<double,2,2> const & points,
-        RandomEngine & engine
-    ) const;
+    int getParameterSize() const { return _components.front().getMu().size(); }
 
-    void evaluate(
-        lsst::ndarray::Array<double,1,1> const & probability,
-        lsst::ndarray::Array<double const,2,2> const & points
-    ) const;
+    void draw(Table const & table, RandomEngine & engine) const;
 
 private:
     ComponentList _components;
