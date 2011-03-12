@@ -115,6 +115,7 @@ public:
      */
     ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
 
+    virtual ~CompoundShapeletModelBasis() {}
 protected:
 
     virtual void _evaluate(

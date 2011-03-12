@@ -24,15 +24,15 @@
 #ifndef LSST_MEAS_MULTIFIT_DEFINITION_Object
 #define LSST_MEAS_MULTIFIT_DEFINITION_Object
 
+
 #include "lsst/meas/multifit/definition/parameters.h"
 #include "lsst/meas/multifit/ModelBasis.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
-class InvalidDefinitionError : public std::invalid_argument {
-public:
-    InvalidDefinitionError(char const * msg) : std::invalid_argument(msg) {}
-};
+LSST_EXCEPTION_TYPE(InvalidDefinitionError,
+                    lsst::pex::exceptions::InvalidParameterException,
+                    lsst::meas::multifit::definition::InvalidDefinitionError);
 
 class Object {
 public:

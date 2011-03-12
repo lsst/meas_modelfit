@@ -49,9 +49,9 @@ public:
 
     int coefficientOffset;
     int coefficientCount;
-
+#ifndef SWIG
     SourceArray sources;
-
+#endif
     mutable void * extra;
 
     PositionComponent & getPosition() const {

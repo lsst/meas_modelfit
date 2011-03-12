@@ -29,16 +29,6 @@ Object Object::makeGalaxy(
     return r;
 }
 
-Filter * Filter::get(std::string const & name) {
-    typedef definition::Set<Filter,std::string,&Filter::name> Registry;
-    static Registry registry;
-    Registry::iterator i = registry.find(name);
-    if (i == registry.end()) {
-        i = registry.insert(registry.end(), Filter(name));
-    }
-    return &(*i);
-}
-
 } // namespace definition
 
 Definition::Definition(Definition const & other) :

@@ -63,9 +63,9 @@ public:
     typedef Value_ const & const_reference;
     typedef typename Internal::iterator const_iterator;
 
-    class iterator : 
-        public boost::iterator_adaptor< iterator, const_iterator, value_type, boost::use_default, reference>
-    {
+    class iterator : public boost::iterator_adaptor< 
+        iterator, const_iterator, value_type, boost::use_default, reference
+    > {
     public:
         iterator() : iterator::iterator_adaptor_() {}
         iterator(iterator const & other) : iterator::iterator_adaptor_(other) {}
@@ -74,13 +74,19 @@ public:
         
     private:
         friend class boost::iterator_core_access;
-        template <typename OtherValue_, typename OtherKey_, OtherKey_ const OtherValue_::*> friend class Set;
+        template <
+            typename OtherValue_, 
+            typename OtherKey_, 
+            OtherKey_ const OtherValue_::*
+        > friend class Set;
 
-        reference dereference() const { return const_cast<reference>(*this->base()); }
+        reference dereference() const { 
+            return const_cast<reference>(*this->base()); 
+        }
 
-        explicit iterator(const_iterator const & other) : iterator::iterator_adaptor_(other) {}
+        explicit iterator(const_iterator const & other) 
+            : iterator::iterator_adaptor_(other) {}
     };
-
     typedef typename Internal::pointer pointer;
     typedef typename Internal::difference_type difference_type;
     typedef typename Internal::size_type size_type;
@@ -88,7 +94,6 @@ public:
     typedef Key key_type;
 
     Set() : _internal() {}
-
     template <typename Iterator_>
     Set(Iterator_ first, Iterator_ last) : _internal(first, last) {}
 
@@ -105,7 +110,9 @@ public:
 
     size_type erase(key_type k) { return _internal.erase(k); }
     void erase(iterator i) { _internal.erase(i.base()); }
-    void erase(iterator i1, iterator i2) { _internal.erase(i1.base(), i2.base()); }
+    void erase(iterator i1, iterator i2) { 
+        _internal.erase(i1.base(), i2.base()); 
+    }
     void clear() { _internal.clear(); }
 
     iterator find(key_type k) { return iterator(_internal.find(k)); }
@@ -121,7 +128,9 @@ public:
     template <typename Iterator_>
     void insert(Iterator_ i1, Iterator_ i2) { _internal.insert(i1, i2); }
 
-    iterator insert(iterator i, const_reference v) { return iterator(_internal.insert(i.base(), v)); }
+    iterator insert(iterator i, const_reference v) { 
+        return iterator(_internal.insert(i.base(), v)); 
+    }
 
     const_reference operator[](key_type k) const { return *_get(k); }
     reference operator[](key_type k) { return const_cast<reference>(*_get(k)); }

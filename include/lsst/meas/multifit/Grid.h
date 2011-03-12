@@ -45,7 +45,7 @@ public:
     typedef grid::ComponentArray<grid::RadiusComponent> RadiusArray;
     typedef grid::ComponentArray<grid::EllipticityComponent> EllipticityArray;
 
-    typedef std::map< definition::Filter const *, int > FilterMap;
+    typedef std::map<FilterId, int > FilterMap;
 
     explicit Grid(Definition const & definition);
 
@@ -57,7 +57,6 @@ public:
     void writeParameters(double * paramIter) const;
 
     ~Grid() { _destroy(); }
-
     ObjectArray objects;
     FrameArray frames;
     SourceArray sources;
@@ -67,7 +66,7 @@ public:
     EllipticityArray ellipticities;
 
     FilterMap filters;
-
+    
     int filterCount;
     int coefficientCount;
     int pixelCount;

@@ -123,10 +123,9 @@ find(Array<T> const & array, ID const id) {
         }
     }
     if (iter1->id != id) {
-        throw std::invalid_argument(
-            boost::str(
-                boost::format("Object with ID %d not found.") % id
-            )
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            (boost::format("Object with ID %d not found.") % id).str()
         );
     }
     return *iter1;
@@ -141,18 +140,23 @@ Object::Object(definition::Object const & definition_, int offset, int frameCoun
     coefficientCount(1)
 {
     if (!position) {
-        throw definition::InvalidDefinitionError("All objects must have a position component.");
+        throw LSST_EXCEPT(
+            lsst::meas::multifit::definition::InvalidDefinitionError,
+            "All objects must have a position component."
+        );
     }
     if (basis) {
         coefficientCount = basis->getSize();
         if (!radius || !ellipticity) {
-            throw definition::InvalidDefinitionError(
+            throw LSST_EXCEPT(
+                lsst::meas::multifit::definition::InvalidDefinitionError,
                 "Objects with a basis must have a radius and ellipticity component."
             );
         }
     } else {
         if (radius || ellipticity) {
-            throw definition::InvalidDefinitionError(
+            throw LSST_EXCEPT(
+                lsst::meas::multifit::definition::InvalidDefinitionError,
                 "Objects without a basis cannot have a radius or ellipticity component."
             );
         }
@@ -284,7 +288,8 @@ Source::Source(
     }
     if (wcs) {
         if (!frame.wcs) {
-            throw definition::InvalidDefinitionError(
+            throw LSST_EXCEPT(
+                lsst::meas::multifit::definition::InvalidDefinitionError,
                 "If the definition WCS is set, all frames must have a WCS."
             );
         }
@@ -292,7 +297,8 @@ Source::Source(
         transform = frame.wcs->linearizeSkyToPixel(point)*wcs->linearizePixelToSky(point);
     } else {
         if (frame.wcs) {
-            throw definition::InvalidDefinitionError(
+            throw LSST_EXCEPT(
+                lsst::meas::multifit::definition::InvalidDefinitionError,
                 "If the definition WCS is not set, inividual frames may not have a WCS."
             );
         }
@@ -305,7 +311,8 @@ Source::Source(
         }
     } else {
         if (!frame.psf) {
-            throw definition::InvalidDefinitionError(
+            throw LSST_EXCEPT(
+                lsst::meas::multifit::definition::InvalidDefinitionError,
                 "All objects must have a basis if any frames do not have a PSF."
             );
         }
@@ -326,7 +333,7 @@ void Grid::_initialize(
         int frameCount = 0;
         for (FrameIterator i = frameBegin; i != frameEnd; ++i) {
             std::pair<FilterMap::iterator,bool> r = filters.insert(
-                std::make_pair(i->filter, filterCount)
+                std::make_pair(i->filterId, filterCount)
             );
             if (r.second) ++filterCount;
             grid::Frame * new_frame = new (frames._last++) grid::Frame(

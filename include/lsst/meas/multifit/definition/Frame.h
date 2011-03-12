@@ -29,66 +29,52 @@
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
-class Filter {
-public:
-
-    typedef boost::shared_ptr<Filter> Ptr;
-
-    static Filter * get(std::string const & name);
-
-    bool operator==(Filter const & other) const { return this == &other; }
-    bool operator!=(Filter const & other) const { return !(*this == other); }
-
-    std::string const name;
-
-private:
-    Filter(std::string const & name_) : name(name_) {}
-};
-
 class Frame {
 public:
     
     Frame(
         ID id_, 
         Footprint::Ptr const & footprint_,
-        ndarray::Array<double,1,1> const & data_,
-        ndarray::Array<double,1,1> const & weights_ = ndarray::Array<double,1,1>()
-    ) : id(id_), filter(), startTime(0), stopTime(0), wcs(), psf(),
+        ndarray::Array<Pixel,1,1> const & data_,
+        ndarray::Array<Pixel,1,1> const & weights_ = ndarray::Array<double,1,1>()
+    ) : id(id_), filterId(Filter::UNKNOWN), 
+        //calib(new Calib()), 
+        wcs(), psf(),
         footprint(footprint_), data(data_), weights(weights_)
     {}
 
     Frame(
         ID id_,
-        Filter const * filter_,
-        Timestamp startTime_,
-        Timestamp stopTime_,
+        FilterId filterId_,
+        //Calib::Ptr const & calib_,
         Wcs::Ptr const & wcs_,
         Psf::Ptr const & psf_,
         Footprint::Ptr const & footprint_,
-        ndarray::Array<double,1,1> const & data_,
-        ndarray::Array<double,1,1> const & weights_
-    ) : id(id_), filter(filter_), startTime(startTime_), stopTime(stopTime_), 
-        wcs(wcs_), psf(psf_), footprint(footprint_), data(data_), weights(weights_)
+        ndarray::Array<Pixel,1,1> const & data_,
+        ndarray::Array<Pixel,1,1> const & weights_
+    ) : id(id_), filterId(filterId_), 
+        //calib(calib_), 
+        wcs(wcs_), psf(psf_), footprint(footprint_), 
+        data(data_), weights(weights_)
     {}
 
     Frame(Frame const & other) :
-        id(other.id), filter(other.filter), startTime(other.startTime), stopTime(other.stopTime),
-        wcs(other.wcs), psf(other.psf), footprint(other.footprint), data(other.data), weights(other.weights)
+        id(other.id), filterId(other.filterId), 
+        //calib(other.calib),
+        wcs(other.wcs), psf(other.psf), footprint(other.footprint), 
+        data(other.data), weights(other.weights)
     {}
 
     ID const id;
     
-    Filter const * filter;
-
-    Timestamp startTime;
-    Timestamp stopTime;
-
+    FilterId filterId;
+    //Calib::Ptr calib;    
     Wcs::Ptr wcs;
     Psf::Ptr psf;
 
     Footprint::Ptr footprint;
-    ndarray::Array<double,1,1> data;
-    ndarray::Array<double,1,1> weights;
+    ndarray::Array<Pixel,1,1> data;
+    ndarray::Array<Pixel,1,1> weights;
 };
 
 }}}} // namespace lsst::meas::multifit::definition

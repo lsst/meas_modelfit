@@ -24,4 +24,13 @@
 #ifndef LSST_MULTIFIT
 #define LSST_MULTIFIT
 
+
+#include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/BaseEvaluator.h"
+#include "lsst/meas/multifit/Definition.h"
+#include "lsst/meas/multifit/Grid.h"
+#include "lsst/meas/multifit/ModelBasis.h"
+#include "lsst/meas/multifit/ShapeletModelBasis.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #endif

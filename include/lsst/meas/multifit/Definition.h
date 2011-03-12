@@ -32,8 +32,6 @@ namespace lsst { namespace meas { namespace multifit {
 
 class Definition {
 public:
-
-    typedef definition::Filter Filter;
     typedef definition::Frame Frame;
     typedef definition::Object Object;
 

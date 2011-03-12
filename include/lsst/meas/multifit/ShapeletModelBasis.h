@@ -73,7 +73,10 @@ private:
 
     FRIEND_MAKE_SHARED_2(ShapeletModelBasis, int, double);
 
-    ShapeletModelBasis(int order, double scale);
+    ShapeletModelBasis(int order, double scale) 
+        : ModelBasis(afw::math::shapelets::computeSize(order)),
+          _order(order), _scale(scale)
+    {}
 
     int _order;
     double _scale;

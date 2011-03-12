@@ -34,17 +34,24 @@ public:
 
     typedef boost::shared_ptr<Evaluator> Ptr;
 
-    Wcs::Ptr getWCS() const;
-
+    Wcs::Ptr getWCS() const {return _grid->wcs;}
+#ifndef SWIG
     Definition makeDefinition() const;
-    Definition makeDefinition(ndarray::Array<double const,1,1> const & parameters) const;
+    Definition makeDefinition(
+        ndarray::Array<double const,1,1> const & parameters
+    ) const;
     
-    //Interpreter makeInterpreter(std::string const & ellipseName) const {
-    //    return Interpreter(_grid, ellipseName);
-    //}
-
     static Ptr make(Definition const & definition);
-
+#endif
+    
+    static Ptr make(
+        boost::shared_ptr<afw::image::Exposure<double> > const & exposure,
+        boost::shared_ptr<afw::detection::Source> const & source,
+        bool isPointSource
+    ) {
+        //TODO::implement me!
+        return Ptr(); 
+    }
 protected:
 
     virtual void _evaluateModelMatrix(

@@ -26,10 +26,15 @@
 
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/afw/image/Wcs.h"
+#include "lsst/afw/image/Exposure.h"
+#include "lsst/afw/image/Calib.h"
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/detection/LocalPsf.h"
 #include "lsst/afw/detection/Footprint.h"
+#include "lsst/afw/detection/Source.h"
 #include "lsst/pex/exceptions.h"
+
+#ifndef SWIG
 
 #define FRIEND_MAKE_SHARED_1(T, A1)                                       \
     friend boost::shared_ptr<T> boost::make_shared<T,A1>(A1 const &)
@@ -44,6 +49,7 @@
     friend boost::shared_ptr<T> boost::make_shared<T,A1,A2,A3,A4>(      \
         A1 const &, A2 const &, A3 const &, A4 const &                  \
     )
+#endif
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -60,10 +66,10 @@ inline void checkSize(int actualSize, int expectedSize, char const * message) {
 
 } // namespace detail
 
-typedef double Pixel;
 
-typedef long long Timestamp;
-typedef int ID;
+
+typedef boost::int64_t ID;
+typedef int FilterId;
 
 enum ParameterType { POSITION, RADIUS, ELLIPTICITY };
 
@@ -72,15 +78,16 @@ typedef lsst::afw::geom::ellipses::LogShear Ellipticity;
 typedef lsst::afw::geom::ellipses::Separable<Ellipticity, Radius> EllipseCore;
 typedef lsst::afw::geom::ellipses::Ellipse Ellipse;
 
+typedef lsst::afw::image::Filter Filter;
+typedef lsst::afw::image::Calib Calib;
 typedef lsst::afw::image::Wcs Wcs;
 typedef lsst::afw::detection::Psf Psf;
 typedef lsst::afw::detection::LocalPsf LocalPsf;
 typedef lsst::afw::detection::Footprint Footprint;
 
-//TODO remove typedefs
-//typedef lsst::afw::detection::FootprintArray<double,1,1> FootprintVector;
-//typedef lsst::afw::detection::FootprintArray<double,2,1> FootprintMatrix;
 
+typedef LocalPsf::Pixel Pixel;
+typedef lsst::afw::image::Exposure<lsst::meas::multifit::Pixel> Exposure;
 
 }}} // namespace lsst::meas::multifit
 

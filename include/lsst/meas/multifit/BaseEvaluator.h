@@ -52,12 +52,12 @@ public:
     int getParameterSize() const { return _parameterSize; }
 
     /// @brief Data vector.
-    ndarray::Array<double const,1,1> getDataVector() const { return _dataVector; }
+    ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
 
     /// @brief Evaluate the matrix with the given parameters.
     void evaluateModelMatrix(
-        ndarray::Array<double,2,2> const & matrix,
-        ndarray::Array<double const,1,1> const & param
+        ndarray::Array<Pixel,2,2> const & matrix,
+        ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
     /**
@@ -66,11 +66,11 @@ public:
      *  The first dimension of the array is the parameter dimension.
      */
     void evaluateModelDerivative(
-        ndarray::Array<double,3,3> const & derivative,
-        ndarray::Array<double const,1,1> const & param
+        ndarray::Array<Pixel,3,3> const & derivative,
+        ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
-    void writeInitialParameters(ndarray::Array<double,1,1> const & param) const;
+    void writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const;
 
     virtual ~BaseEvaluator() {}
 
@@ -82,7 +82,7 @@ protected:
         _dataVector(ndarray::allocate(ndarray::makeVector(dataSize)))
     {}
 
-    BaseEvaluator(ndarray::Array<double,1,1> const & data, int coefficientSize, int parameterSize) :
+    BaseEvaluator(ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
         _dataVector(data)
@@ -95,20 +95,20 @@ protected:
     {}
 
     virtual void _evaluateModelMatrix(
-        ndarray::Array<double,2,2> const & matrix,
-        ndarray::Array<double const,1,1> const & param
+        ndarray::Array<Pixel,2,2> const & matrix,
+        ndarray::Array<Pixel const,1,1> const & param
     ) const = 0;
 
     virtual void _evaluateModelDerivative(
-        ndarray::Array<double,3,3> const & derivative,
-        ndarray::Array<double const,1,1> const & param
+        ndarray::Array<Pixel,3,3> const & derivative,
+        ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
-    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & param) const = 0;
+    virtual void _writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const = 0;
 
     int const _coefficientSize;
     int const _parameterSize;
-    ndarray::Array<double,1,1> _dataVector;
+    ndarray::Array<Pixel,1,1> _dataVector;
 
 private:
     void operator=(BaseEvaluator const &) {}
