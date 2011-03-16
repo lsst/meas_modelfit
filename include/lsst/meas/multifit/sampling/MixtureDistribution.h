@@ -46,11 +46,11 @@ public:
 
     double getNormalization() const { return _normalization; }
 
+    /// @brief Mean vector.
     Eigen::VectorXd const & getMu() const { return _mu; }
 
-    Eigen::Part<Eigen::MatrixXd,Eigen::LowerTriangular> const getSigma() const {
-        return _sigma.part<Eigen::LowerTriangular>();
-    }
+    /// @brief Lower triangular Cholesky factor of the covariance matrix.
+    Eigen::MatrixXd const & getSigma() const { return _sigma; }
 
 private:
 
@@ -75,6 +75,8 @@ public:
     int getParameterSize() const { return _components.front().getMu().size(); }
 
     void draw(Table const & table, RandomEngine & engine) const;
+
+    void update(ConstTable const & table);
 
 private:
     ComponentList _components;
