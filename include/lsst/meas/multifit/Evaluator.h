@@ -24,6 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_Evaluator
 #define LSST_MEAS_MULTIFIT_Evaluator
 
+#include "lsst/base.h"
 #include "lsst/meas/multifit/Grid.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 
@@ -43,15 +44,27 @@ public:
     
     static Ptr make(Definition const & definition);
 #endif
-    
+   
+    template<typename PixelT>
     static Ptr make(
-        boost::shared_ptr<afw::image::Exposure<double> > const & exposure,
-        boost::shared_ptr<afw::detection::Source> const & source,
-        bool isPointSource
-    ) {
-        //TODO::implement me!
-        return Ptr(); 
-    }
+        PTR(afw::image::Exposure<PixelT>) const & exposure,
+        Footprint::Ptr const & fp,
+        afw::geom::Point2D const & position,
+        bool isVariable=false,
+        bool fixPosition=true
+    );
+
+    template<typename PixelT>
+    static Ptr make(
+        PTR(afw::image::Exposure<PixelT>) const & exposure,
+        Footprint::Ptr const & fp,
+        afw::geom::ellipses::Ellipse const & ellipse,
+        bool fixEllipticity=true,
+        bool fixRadius=true,
+        bool fixPosition=true
+    );
+
+
 protected:
 
     virtual void _evaluateModelMatrix(

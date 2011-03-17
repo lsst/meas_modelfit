@@ -1,6 +1,60 @@
 #include "lsst/meas/multifit/Evaluator.h"
 #include "lsst/afw/detection/FootprintArray.h"
+#include "lsst/ndarray/eigen.h"
 #include <limits>
+
+namespace {
+
+template <typename PixelT>
+lsst::meas::multifit::definition::Frame makeFrame(
+    PTR(lsst::afw::image::Exposure<PixelT>) const & exposure,
+    lsst::meas::multifit::Footprint::Ptr const & fp
+) {
+    //TODO: determine what mask planes to consider when masking the footprint
+    typedef lsst::meas::multifit::Pixel Pixel;
+    typedef lsst::afw::image::MaskedImage<PixelT> MaskedImage;
+    typename MaskedImage::Mask::Pixel bitmask=~0x0;
+    lsst::meas::multifit::Footprint::Ptr maskedFp = 
+        lsst::afw::detection::footprintAndMask(
+            fp, exposure->getMaskedImage().getMask(), bitmask
+        );
+
+    //grab portion of exposure's MaskedImage that matches fp
+    lsst::afw::geom::BoxI bbox = maskedFp->getBBox();
+    MaskedImage mi(
+        exposure->getMaskedImage(), 
+        bbox,
+        lsst::afw::image::PARENT
+    );
+
+    //construct flatten version
+    lsst::ndarray::Array<Pixel, 1, 1> data = lsst::ndarray::allocate(
+        lsst::ndarray::makeVector(maskedFp->getArea())
+    );
+    lsst::ndarray::Array<Pixel, 1, 1> variance = lsst::ndarray::allocate(
+        lsst::ndarray::makeVector(maskedFp->getArea())
+    );
+    lsst::afw::detection::flattenArray(
+        *maskedFp, mi.getImage()->getArray(), data
+    );
+    lsst::afw::detection::flattenArray(
+        *maskedFp, mi.getVariance()->getArray(), variance
+    );
+    lsst::ndarray::EigenView<Pixel, 1, 1> weights = 
+        lsst::ndarray::viewAsEigen(variance).cwise().sqrt().inverse();
+    lsst::meas::multifit::definition::Frame frame(
+        0, 
+        exposure->getFilter().getId(), 
+        exposure->getWcs(), 
+        exposure->getPsf(), 
+        data, 
+        weights.getArray()
+    );
+    return frame;
+}
+
+} //end annonymous namespace
+
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -21,6 +75,43 @@ Definition Evaluator::makeDefinition(
 Evaluator::Ptr Evaluator::make(Definition const & definition) {
     boost::shared_ptr<Grid> grid = boost::make_shared<Grid>(definition);
     return boost::make_shared<Evaluator>(grid);
+}
+
+
+template<typename PixelT>
+Evaluator::Ptr Evaluator::make(
+    PTR(afw::image::Exposure<PixelT>) const & exposure,
+    Footprint::Ptr const & fp,
+    afw::geom::Point2D const & position,
+    bool isVariable, bool fixPosition
+) {    
+    //make a point source evaluator   
+    Definition psDefinition;
+    psDefinition.frames.insert(::makeFrame<PixelT>(exposure, fp));
+    definition::Object object = definition::Object::makeStar(0, position, isVariable);
+    object.position->active = !fixPosition;
+    psDefinition.objects.insert(object);
+    return make(psDefinition); 
+}
+
+template<typename PixelT>
+Evaluator::Ptr Evaluator::make(
+    PTR(afw::image::Exposure<PixelT>) const & exposure,
+    Footprint::Ptr const & fp,
+    afw::geom::ellipses::Ellipse const & ellipse,
+    bool fixEllipticity,
+    bool fixRadius,
+    bool fixPosition
+) {
+    //make a galaxy evaluator    
+    Definition sgDefinition;
+    sgDefinition.frames.insert(::makeFrame<PixelT>(exposure, fp));
+    definition::Object object = definition::Object::makeGalaxy(0, ModelBasis::Ptr(), ellipse);
+    object.ellipticity->active = !fixEllipticity;
+    object.radius->active = !fixRadius;
+    object.position->active = !fixPosition;
+    sgDefinition.objects.insert(object);
+    return make(sgDefinition); 
 }
 
 void Evaluator::_evaluateModelMatrix(
