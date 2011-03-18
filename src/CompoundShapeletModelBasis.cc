@@ -31,6 +31,8 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
+static int const SHAPELET_DEFAULT_ORDER = 8; // TODO: make this a policy value
+
 class ConvolvedCompoundShapeletModelBasis : public ModelBasis {
 public:
 
@@ -196,7 +198,30 @@ lsst::ndarray::Array<mf::Pixel,2,2> mf::detail::CompoundShapeletBase::_makeIdent
 }
 
 mf::ModelBasis::Ptr mf::CompoundShapeletModelBasis::convolve(LocalPsf::ConstPtr const & psf) const {
-    return convolve(*psf->asMultiShapelet(afwShapelets::HERMITE));
+    if (psf->hasNativeShapelet()) {
+        afwShapelets::MultiShapeletFunction s = psf->getNativeShapelet(afwShapelets::HERMITE);
+        s.shiftInPlace(-afw::geom::Extent2D(psf->getPoint()));
+        return convolve(s);
+    } else {
+        afwShapelets::ShapeletFunction s = 
+            psf->computeShapelet(afwShapelets::HERMITE, SHAPELET_DEFAULT_ORDER);
+        s.getEllipse().getCenter() -= afw::geom::Extent2D(psf->getPoint());
+        return convolve(s);
+    }
+}
+
+mf::ModelBasis::Ptr
+mf::CompoundShapeletModelBasis::convolve(afwShapelets::ShapeletFunction const & psf) const {
+    ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
+    convolvedElements.reserve(_elements.size());
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        convolvedElements.push_back(
+            ConvolvedCompoundShapeletModelBasis::Element(i->component->convolve(psf), i->forward)
+        );
+    }
+    return boost::make_shared<ConvolvedCompoundShapeletModelBasis>(
+        this->getSize(), boost::ref(convolvedElements)
+    );
 }
 
 mf::ModelBasis::Ptr

@@ -175,8 +175,8 @@ void Evaluator::_evaluateModelMatrix(
                 ];
                 source->localPsf->evaluatePointSource(
                     *source->frame.footprint, 
-                    source->transform(point),
-                    block
+                    block, 
+                    source->transform(point) - source->getReferencePoint()
                 );
                 source->frame.applyWeights(block);
             }            
@@ -253,7 +253,7 @@ void Evaluator::_evaluateModelDerivative(
                 }
                 ndarray::Array<double, 1, 1> fiducial = source->localPsf->evaluatePointSource(
                     *source->frame.footprint,
-                    source->transform(point)
+                    source->transform(point) - source->getReferencePoint()
                 );   
 
                 ndarray::Array<double,2,0> block = 
@@ -274,8 +274,8 @@ void Evaluator::_evaluateModelDerivative(
  
                     source->localPsf->evaluatePointSource(
                         *source->frame.footprint,
-                        source->transform(point),
-                        block[p.first]
+                        block[p.first],
+                        source->transform(point) - source->getReferencePoint()
                     );
                     block[p.first] -= fiducial;
                     block[p.first] /= p.second;
@@ -292,7 +292,7 @@ void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & param
 }
 
 Evaluator::Evaluator(boost::shared_ptr<Grid> const & grid) :
-    BaseEvaluator(grid->pixelCount, grid->coefficientCount, grid->parameterCount),
+    BaseEvaluator(grid->pixelCount, grid->coefficientCount, grid->parameterCount, -2*grid->sumLogWeights()),
     _grid(grid)
 {
     _initialize();

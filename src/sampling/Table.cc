@@ -45,7 +45,7 @@ Table Table::allocate(
 }
 
 void Table::clear() const {
-    this->proposal = 0.0;
+    this->importance = 0.0;
     this->target = 0.0;
     this->weight = 0.0;
     this->parameters = 0.0;
@@ -59,7 +59,7 @@ void Table::clear() const {
 
 void Table::computeWeights() const {
     weight = target;
-    weight /= proposal;
+    weight /= importance;
     _weightSum = ndarray::sum(weight);
 }
 

@@ -73,7 +73,7 @@ void MixtureDistribution::draw(Table const & table, RandomEngine & engine) const
 
         // Now evaluate the probability at that point.
         for (j = _components.begin(); j != _components.end(); ++j) {
-            record.proposal += evaluateGaussian(*j, record.parameters, workspace);
+            record.importance += evaluateGaussian(*j, record.parameters, workspace);
         }
     }
 }
@@ -88,7 +88,7 @@ void MixtureDistribution::update(ConstTable const & table) {
         double alpha = 0.0;
         for (int i = 0; i < table.getTableSize(); ++i) {
             ConstRecord record = table[i];
-            rho[i] = evaluateGaussian(*j, record.parameters, workspace) / record.proposal;
+            rho[i] = evaluateGaussian(*j, record.parameters, workspace) / record.importance;
             tau[i] = record.weight * rho[i] / table.getWeightSum();
             alpha += tau[i];
         }

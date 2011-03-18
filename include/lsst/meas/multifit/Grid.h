@@ -56,7 +56,10 @@ public:
 
     void writeParameters(double * paramIter) const;
 
+    double sumLogWeights() const;
+
     ~Grid() { _destroy(); }
+
     ObjectArray objects;
     FrameArray frames;
     SourceArray sources;

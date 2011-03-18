@@ -2,6 +2,7 @@
 #include "lsst/meas/multifit/constants.h"
 #include <boost/format.hpp>
 #include <limits>
+#include "lsst/ndarray/eigen.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -440,6 +441,14 @@ void Grid::writeParameters(double * paramIter) const {
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
         i->writeParameters(paramIter);
     }
+}
+
+double Grid::sumLogWeights() const {
+    double r = 0;
+    for (FrameArray::const_iterator i = frames.begin(); i != frames.end(); ++i) {
+        r += ndarray::viewAsEigen(i->weights).cwise().log().sum();
+    }
+    return r;
 }
 
 }}} // namespace lsst::meas::multifit

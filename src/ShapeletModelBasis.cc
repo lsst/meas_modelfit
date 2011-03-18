@@ -22,6 +22,7 @@
  */
 
 #include "lsst/meas/multifit/ShapeletModelBasis.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #include "lsst/afw/math/shapelets/detail/HermiteConvolution.h"
 #include "lsst/ndarray/eigen.h"
 
@@ -31,6 +32,8 @@ namespace afwShapelets = lsst::afw::math::shapelets;
 namespace lsst { namespace meas { namespace multifit {
 
 namespace { 
+
+static int const SHAPELET_DEFAULT_ORDER = 8; // TODO: make this a policy value
 
 class ConvolvedShapeletModelBasis : public ModelBasis {
 public:
@@ -61,7 +64,7 @@ protected:
         afw::geom::Ellipse frontEllipse(ellipse);
         frontEllipse.scale(_scale);
         ndarray::Array<afwShapelets::Pixel const,2,2> convolutionMatrix = 
-            _convolution->evaluate(frontEllipse.getCore());
+            _convolution->evaluate(frontEllipse);
         _frontBasis->evaluate(frontMatrix, footprint, frontEllipse);
         ndarray::viewAsEigen(matrix) = 
             ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix) / _scale;
@@ -101,11 +104,29 @@ void mf::ShapeletModelBasis::_evaluate(
 mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     CONST_PTR(LocalPsf) const & psf
 ) const {
-    return convolve(*psf->asShapelet(afwShapelets::HERMITE));
+    if (psf->hasNativeShapelet()) {
+        afwShapelets::MultiShapeletFunction s = psf->getNativeShapelet(afwShapelets::HERMITE);
+        s.shiftInPlace(-afw::geom::Extent2D(psf->getPoint()));
+        return convolve(s);
+    } else {
+        afwShapelets::ShapeletFunction s = 
+            psf->computeShapelet(afwShapelets::HERMITE, SHAPELET_DEFAULT_ORDER);
+        s.getEllipse().getCenter() -= afw::geom::Extent2D(psf->getPoint());
+        return convolve(s);
+    }
 }
 
 mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     afwShapelets::ShapeletFunction const & psf
 ) const {
     return boost::make_shared<ConvolvedShapeletModelBasis>(*this, psf);
+}
+
+mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
+    afwShapelets::MultiShapeletFunction const & psf
+) const {
+    CompoundShapeletModelBasis::ComponentVector components;
+    components.push_back(boost::make_shared<ShapeletModelBasis>(_order, _scale));
+    CompoundShapeletModelBasis::Ptr asCompound = CompoundShapeletBuilder(components).build();
+    return asCompound->convolve(psf);
 }

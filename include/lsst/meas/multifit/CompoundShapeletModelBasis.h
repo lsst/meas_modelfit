@@ -110,6 +110,12 @@ public:
     virtual ModelBasis::Ptr convolve(CONST_PTR(LocalPsf) const & psf) const;
 
     /**
+     *  @brief Convolve the basis with the given ShapeletFunction, returning a new basis with the same
+     *         parametrization.
+     */
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
+
+    /**
      *  @brief Convolve the basis with the given MultiShapeletFunction, returning a new basis with the same
      *         parametrization.
      */

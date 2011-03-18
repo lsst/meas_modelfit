@@ -25,6 +25,7 @@
 #define LSST_MEAS_MULTIFIT_BaseEvaluator
 
 #include "lsst/ndarray.h"
+#include "lsst/meas/multifit/constants.h"
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -51,10 +52,33 @@ public:
     /// @brief Number of parameters.
     int getParameterSize() const { return _parameterSize; }
 
-    /// @brief Data vector.
+    /**
+     *  @brief Return the sum of the log of the variance of all data points.
+     *
+     *  More precisely, if the variance for pixel @f$i@f$ is @f$\sigma_i^2@f$, this function
+     *  should return @f$ \sum_i \ln \sigma_i^2 @f$.
+     *
+     *  This can be used to transform the @f$\chi^2@f$ into the log likelihood, which can
+     *  be useful for certain Bayesian applications.
+     */
+    double getLogVarianceSum() const { return _logVarianceSum; }
+
+    /**
+     *  @brief Data vector.
+     *
+     *  If the data vector is weighted (divided by sigma) the evaluted model matrix should be as well.
+     */
     ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
 
-    /// @brief Evaluate the matrix with the given parameters.
+    /**
+     *  @brief Evaluate the matrix with the given parameters.
+     *
+     *  @param[out] matrix  An array to fill with shape (getDataSize(), getCoefficientSize()).
+     *  @param[in]  param   An array of parameters with size getParameterSize().
+     *
+     *  If the data vector is weighted, the output matrix should be as well (each row should be divided
+     *  by the corresponding pixel sigma value).
+     */
     void evaluateModelMatrix(
         ndarray::Array<Pixel,2,2> const & matrix,
         ndarray::Array<Pixel const,1,1> const & param
@@ -76,22 +100,28 @@ public:
 
 protected:
 
-    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize) :
+    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize, double logVarianceSum) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
-        _dataVector(ndarray::allocate(ndarray::makeVector(dataSize)))
+        _dataVector(ndarray::allocate(ndarray::makeVector(dataSize))),
+        _logVarianceSum(logVarianceSum)
     {}
 
-    BaseEvaluator(ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize) :
+    BaseEvaluator(
+        ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize, 
+        double logVarianceSum
+    ) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
-        _dataVector(data)
+        _dataVector(data),
+        _logVarianceSum(logVarianceSum)
     {}
 
     BaseEvaluator(BaseEvaluator const & other) :
         _coefficientSize(other._coefficientSize), 
         _parameterSize(other._parameterSize), 
-        _dataVector(other._dataVector)
+        _dataVector(other._dataVector),
+        _logVarianceSum(other._logVarianceSum)
     {}
 
     virtual void _evaluateModelMatrix(
@@ -109,6 +139,7 @@ protected:
     int const _coefficientSize;
     int const _parameterSize;
     ndarray::Array<Pixel,1,1> _dataVector;
+    double _logVarianceSum;
 
 private:
     void operator=(BaseEvaluator const &) {}

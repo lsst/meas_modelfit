@@ -40,6 +40,8 @@ public:
         CONST_PTR(afw::image::Wcs) const & wcs
     );
 
+    afw::geom::Point2D const getReferencePoint() const;
+
     Frame const & frame;
     Object const & object;
 

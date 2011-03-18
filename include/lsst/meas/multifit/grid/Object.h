@@ -100,6 +100,10 @@ public:
 
 };
 
+inline afw::geom::Point2D const Source::getReferencePoint() const {
+    return transform(object.position->getReference());
+}
+
 }}}} // namespace lsst::meas::multifit::grid
 
 #endif // !LSST_MEAS_MULTIFIT_GRID_Object

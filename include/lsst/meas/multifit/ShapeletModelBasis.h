@@ -50,6 +50,12 @@ public:
      *         parametrization.
      */
     ModelBasis::Ptr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
+
+    /**
+     *  @brief Convolve the basis with the given MultiShapeletFunction, returning a new basis with the same
+     *         parametrization.
+     */
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
     
     /// @brief Order of the shapelet expansion.
     int getOrder() const { return _order; };

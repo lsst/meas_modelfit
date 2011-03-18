@@ -54,7 +54,7 @@ struct RecordBase : private boost::noncopyable {
             scalar(scalar_), vector(vector_), matrix(matrix_) {}
     };
 
-    mutable T & proposal;
+    mutable T & importance;
     mutable T & target;
     mutable T & weight;
     ndarray::ArrayRef<T,1,1> const parameters;
@@ -63,12 +63,12 @@ struct RecordBase : private boost::noncopyable {
 protected:
 
     RecordBase(
-        T & proposal_, T & target_, T & weight_,
+        T & importance_, T & target_, T & weight_,
         lsst::ndarray::Array<T,1,1> const & parameters_,
         T & nestedScalar,
         lsst::ndarray::Array<T,1,1> const & nestedVector,
         lsst::ndarray::Array<T,2,2> const & nestedMatrix
-    ) : proposal(proposal_), target(target_), weight(weight_), parameters(parameters_),
+    ) : importance(importance_), target(target_), weight(weight_), parameters(parameters_),
         nested(nestedScalar, nestedVector, nestedMatrix)
     {}
 
@@ -89,13 +89,13 @@ struct TableBase : private boost::noncopyable {
         ) : scalar(scalar_), vector(vector_), matrix(matrix_) {}
     };
 
-    lsst::ndarray::ArrayRef<T,1,0> const proposal;
+    lsst::ndarray::ArrayRef<T,1,0> const importance;
     lsst::ndarray::ArrayRef<T,1,0> const target;
     lsst::ndarray::ArrayRef<T,1,0> const weight;
     lsst::ndarray::ArrayRef<T,2,1> const parameters;
     mutable Nested nested;
 
-    int getTableSize() const { return proposal.template getSize<0>(); }
+    int getTableSize() const { return importance.template getSize<0>(); }
 
     int getParameterSize() const { return parameters.template getSize<1>(); }
 
@@ -108,7 +108,7 @@ struct TableBase : private boost::noncopyable {
 protected:
 
     TableBase(
-        lsst::ndarray::Array<T,1,0> const & proposal_,
+        lsst::ndarray::Array<T,1,0> const & importance_,
         lsst::ndarray::Array<T,1,0> const & target_,
         lsst::ndarray::Array<T,1,0> const & weight_,
         lsst::ndarray::Array<T,2,1> const & parameters_,
@@ -116,7 +116,7 @@ protected:
         lsst::ndarray::Array<T,2,1> const & nestedVector,
         lsst::ndarray::Array<T,3,2> const & nestedMatrix,
         double weightSum, NestedSampleType nestedSampleType
-    ) : proposal(proposal_), target(target_), weight(weight_),
+    ) : importance(importance_), target(target_), weight(weight_),
         parameters(parameters_),
         nested(nestedScalar, nestedVector, nestedMatrix),
         _weightSum(weightSum), _nestedSampleType(nestedSampleType)
@@ -133,14 +133,14 @@ public:
 
     Record(Record const & other) :
         detail::RecordBase<double>(
-            other.proposal, other.target, other.weight, other.parameters,
+            other.importance, other.target, other.weight, other.parameters,
             other.nested.scalar, other.nested.vector.getArray(), other.nested.matrix.getArray()
         )
     {}
     
     Record(detail::TableBase<double> const & table, int n) :
         detail::RecordBase<double>(
-            table.proposal[n], table.target[n], table.weight[n], table.parameters[n],
+            table.importance[n], table.target[n], table.weight[n], table.parameters[n],
             table.nested.scalar[n], table.nested.vector[n], table.nested.matrix[n]
         )
     {}
@@ -152,28 +152,28 @@ public:
 
     ConstRecord(ConstRecord const & other) :
         detail::RecordBase<double const>(
-            other.proposal, other.target, other.weight, other.parameters,
+            other.importance, other.target, other.weight, other.parameters,
             other.nested.scalar, other.nested.vector.getArray(), other.nested.matrix.getArray()
         )
     {}
 
     ConstRecord(Record const & other) :
         detail::RecordBase<double const>(
-            other.proposal, other.target, other.weight, other.parameters,
+            other.importance, other.target, other.weight, other.parameters,
             other.nested.scalar, other.nested.vector.getArray(), other.nested.matrix.getArray()
         )
     {}
 
     ConstRecord(detail::TableBase<double> const & table, int n) :
         detail::RecordBase<double const>(
-            table.proposal[n], table.target[n], table.weight[n], table.parameters[n],
+            table.importance[n], table.target[n], table.weight[n], table.parameters[n],
             table.nested.scalar[n], table.nested.vector[n], table.nested.matrix[n]
         )
     {}
 
     ConstRecord(detail::TableBase<double const> const & table, int n) :
         detail::RecordBase<double const>(
-            table.proposal[n], table.target[n], table.weight[n], table.parameters[n],
+            table.importance[n], table.target[n], table.weight[n], table.parameters[n],
             table.nested.scalar[n], table.nested.vector[n], table.nested.matrix[n]
         )
     {}
@@ -185,7 +185,7 @@ public:
 
     Table(Table const & other) :
         detail::TableBase<double>(
-            other.proposal, other.target, other.weight, other.parameters,
+            other.importance, other.target, other.weight, other.parameters,
             other.nested.scalar, other.nested.vector, other.nested.matrix,
             other._weightSum, other._nestedSampleType
         )
@@ -205,7 +205,7 @@ public:
 private:
     
     Table(
-        lsst::ndarray::Array<double,1,0> const & proposal_,
+        lsst::ndarray::Array<double,1,0> const & importance_,
         lsst::ndarray::Array<double,1,0> const & target_,
         lsst::ndarray::Array<double,1,0> const & weight_,
         lsst::ndarray::Array<double,2,1> const & parameters_,
@@ -215,7 +215,7 @@ private:
         double weightSum, NestedSampleType nestedSampleType
     ) : 
         detail::TableBase<double>(
-            proposal_, target_, weight_, parameters_,
+            importance_, target_, weight_, parameters_,
             nestedScalar, nestedVector, nestedMatrix,
             weightSum, nestedSampleType
         )
@@ -228,7 +228,7 @@ public:
 
     ConstTable(ConstTable const & other) :
         detail::TableBase<double const>(
-            other.proposal, other.target, other.weight, other.parameters,
+            other.importance, other.target, other.weight, other.parameters,
             other.nested.scalar, other.nested.vector, other.nested.matrix,
             other._weightSum, other._nestedSampleType
         )
@@ -236,7 +236,7 @@ public:
 
     ConstTable(Table const & other) :
         detail::TableBase<double const>(
-            other.proposal, other.target, other.weight, other.parameters,
+            other.importance, other.target, other.weight, other.parameters,
             other.nested.scalar, other.nested.vector, other.nested.matrix,
             other.getWeightSum(), other.getNestedSampleType()
         )

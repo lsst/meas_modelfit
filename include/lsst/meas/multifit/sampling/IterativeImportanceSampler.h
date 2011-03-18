@@ -25,17 +25,18 @@
 #define LSST_MEAS_MULTIFIT_SAMPLING_IterativeImportanceSampler
 
 #include "lsst/meas/multifit/sampling/MixtureDistribution.h"
+#include "lsst/meas/multifit/BaseEvaluator.h"
 
-#include <vector>
+#include <list>
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace sampling {
 
 class IterativeImportanceSampler {
 public:
 
     int getIterationCount() const { return _samples.size(); }
 
-    Table const & getTable(int n) const { return _samples[n]; }
+    MixtureDistribution const & getImportance() const { return _importance; }
 
     BaseEvaluator::Ptr getEvaluator() const;
 
@@ -43,10 +44,11 @@ public:
 
 private:
     BaseEvaluator::Ptr _evaluator;
-    MixtureDistribution _proposal;
-    std::vector<Table> _samples;
+    MixtureDistribution::RandomEngine _randomEngine;
+    MixtureDistribution _importance;
+    std::list<Table> _samples;
 };
 
-}}} // namespace lsst::meas::multifit
+}}}} // namespace lsst::meas::multifit::sampling
 
 #endif // !LSST_MEAS_MULTIFIT_SAMPLING_IterativeImportanceSampler
