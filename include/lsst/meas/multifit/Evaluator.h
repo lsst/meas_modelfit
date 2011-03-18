@@ -59,6 +59,7 @@ public:
         PTR(afw::image::Exposure<PixelT>) const & exposure,
         Footprint::Ptr const & fp,
         afw::geom::ellipses::Ellipse const & ellipse,
+        ModelBasis::Ptr const & basis,
         bool fixEllipticity=true,
         bool fixRadius=true,
         bool fixPosition=true

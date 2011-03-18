@@ -1,7 +1,8 @@
 #include "lsst/meas/multifit/Evaluator.h"
-#include "lsst/afw/detection/FootprintArray.h"
+#include "lsst/afw/detection/FootprintArray.cc"
 #include "lsst/ndarray/eigen.h"
 #include <limits>
+#include <Eigen/Array>
 
 namespace {
 
@@ -35,23 +36,38 @@ lsst::meas::multifit::definition::Frame makeFrame(
         lsst::ndarray::makeVector(maskedFp->getArea())
     );
     lsst::afw::detection::flattenArray(
-        *maskedFp, mi.getImage()->getArray(), data
+        *maskedFp, mi.getImage()->getArray(), data, mi.getXY0()
     );
     lsst::afw::detection::flattenArray(
-        *maskedFp, mi.getVariance()->getArray(), variance
+        *maskedFp, mi.getVariance()->getArray(), variance, mi.getXY0()
     );
-    lsst::ndarray::EigenView<Pixel, 1, 1> weights = 
-        lsst::ndarray::viewAsEigen(variance).cwise().sqrt().inverse();
+    lsst::ndarray::EigenView<Pixel, 1, 1> weights(
+        lsst::ndarray::allocate(
+            lsst::ndarray::makeVector(maskedFp->getArea())
+        )
+    );
+    weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
+
     lsst::meas::multifit::definition::Frame frame(
         0, 
         exposure->getFilter().getId(), 
-        exposure->getWcs(), 
-        exposure->getPsf(), 
+        lsst::meas::multifit::Wcs::Ptr(), 
+        exposure->getPsf(),
+        maskedFp,
         data, 
         weights.getArray()
     );
     return frame;
 }
+
+template lsst::meas::multifit::definition::Frame makeFrame<float>(
+    PTR(lsst::afw::image::Exposure<float>) const & exposure,
+    lsst::meas::multifit::Footprint::Ptr const & fp
+);
+template lsst::meas::multifit::definition::Frame makeFrame<double>(
+    PTR(lsst::afw::image::Exposure<double>) const & exposure,
+    lsst::meas::multifit::Footprint::Ptr const & fp
+);
 
 } //end annonymous namespace
 
@@ -94,11 +110,25 @@ Evaluator::Ptr Evaluator::make(
     return make(psDefinition); 
 }
 
+template Evaluator::Ptr Evaluator::make<float>(
+    PTR(lsst::afw::image::Exposure<float>) const &,
+    lsst::meas::multifit::Footprint::Ptr const &,
+    afw::geom::Point2D const&,
+    bool, bool
+);
+template Evaluator::Ptr Evaluator::make<double>(
+    PTR(lsst::afw::image::Exposure<double>) const &,
+    lsst::meas::multifit::Footprint::Ptr const &,
+    afw::geom::Point2D const&,
+    bool, bool
+);
+
 template<typename PixelT>
 Evaluator::Ptr Evaluator::make(
     PTR(afw::image::Exposure<PixelT>) const & exposure,
     Footprint::Ptr const & fp,
     afw::geom::ellipses::Ellipse const & ellipse,
+    ModelBasis::Ptr const & basis,
     bool fixEllipticity,
     bool fixRadius,
     bool fixPosition
@@ -106,13 +136,30 @@ Evaluator::Ptr Evaluator::make(
     //make a galaxy evaluator    
     Definition sgDefinition;
     sgDefinition.frames.insert(::makeFrame<PixelT>(exposure, fp));
-    definition::Object object = definition::Object::makeGalaxy(0, ModelBasis::Ptr(), ellipse);
+    definition::Object object = definition::Object::makeGalaxy(
+        0, basis, ellipse
+    );
     object.ellipticity->active = !fixEllipticity;
     object.radius->active = !fixRadius;
     object.position->active = !fixPosition;
     sgDefinition.objects.insert(object);
     return make(sgDefinition); 
 }
+
+template Evaluator::Ptr Evaluator::make<float>(
+    PTR(lsst::afw::image::Exposure<float>) const &,
+    lsst::meas::multifit::Footprint::Ptr const &,
+    afw::geom::ellipses::Ellipse const &,
+    ModelBasis::Ptr const &,
+    bool, bool, bool
+);
+template Evaluator::Ptr Evaluator::make<double>(
+    PTR(lsst::afw::image::Exposure<double>) const &,
+    lsst::meas::multifit::Footprint::Ptr const &,
+    afw::geom::ellipses::Ellipse const &,
+    ModelBasis::Ptr const &,
+    bool, bool, bool
+);
 
 void Evaluator::_evaluateModelMatrix(
     ndarray::Array<double,2,2> const & matrix,
@@ -183,6 +230,7 @@ void Evaluator::_evaluateModelMatrix(
         }
     }
 }
+
 
 void Evaluator::_evaluateModelDerivative(
     ndarray::Array<double,3,3> const & derivative,

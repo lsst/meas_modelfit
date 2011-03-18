@@ -142,3 +142,5 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %include "lsst/meas/multifit/Evaluator.h"
 
+%template(make) lsst::meas::multifit::Evaluator::make<double>;
+%template(make) lsst::meas::multifit::Evaluator::make<float>;
