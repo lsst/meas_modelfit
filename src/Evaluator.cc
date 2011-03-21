@@ -1,4 +1,5 @@
 #include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/Grid.h"
 #include "lsst/afw/detection/FootprintArray.cc"
 #include "lsst/ndarray/eigen.h"
 #include <limits>
@@ -127,8 +128,8 @@ template<typename PixelT>
 Evaluator::Ptr Evaluator::make(
     PTR(afw::image::Exposure<PixelT>) const & exposure,
     Footprint::Ptr const & fp,
-    afw::geom::ellipses::Ellipse const & ellipse,
     ModelBasis::Ptr const & basis,
+    afw::geom::ellipses::Ellipse const & ellipse,
     bool fixEllipticity,
     bool fixRadius,
     bool fixPosition
@@ -149,15 +150,15 @@ Evaluator::Ptr Evaluator::make(
 template Evaluator::Ptr Evaluator::make<float>(
     PTR(lsst::afw::image::Exposure<float>) const &,
     lsst::meas::multifit::Footprint::Ptr const &,
-    afw::geom::ellipses::Ellipse const &,
     ModelBasis::Ptr const &,
+    afw::geom::ellipses::Ellipse const &,
     bool, bool, bool
 );
 template Evaluator::Ptr Evaluator::make<double>(
     PTR(lsst::afw::image::Exposure<double>) const &,
     lsst::meas::multifit::Footprint::Ptr const &,
-    afw::geom::ellipses::Ellipse const &,
     ModelBasis::Ptr const &,
+    afw::geom::ellipses::Ellipse const &,
     bool, bool, bool
 );
 

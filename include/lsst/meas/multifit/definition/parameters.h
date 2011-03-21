@@ -95,7 +95,7 @@ public:
     {}
 
     ParameterComponent(ParameterComponent const & other) :
-        Base(other._value),
+        Base(other),
         _reference(other._reference)
     {}
 
@@ -134,7 +134,8 @@ public:
 
     explicit ParameterComponent(Value const & value) : Base(value) {}
 
-    ParameterComponent(ParameterComponent const & other) : Base(other._value) {}
+    ParameterComponent(ParameterComponent const & other) 
+        : Base(other) {}
 
 protected:
 
@@ -161,7 +162,8 @@ public:
 
     explicit ParameterComponent(Value const & value) : Base(value) {}
 
-    ParameterComponent(ParameterComponent const & other) : Base(other._value) {}
+    ParameterComponent(ParameterComponent const & other) 
+        : Base(other) {}
 
 protected:
 

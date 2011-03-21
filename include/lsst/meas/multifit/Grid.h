@@ -36,6 +36,8 @@ namespace lsst { namespace meas { namespace multifit {
 
 class Grid {
 public:
+    typedef boost::shared_ptr<Grid> Ptr;
+    typedef boost::shared_ptr<const Grid> ConstPtr;
 
     typedef grid::Array<grid::Object> ObjectArray;
     typedef grid::Array<grid::Frame> FrameArray;

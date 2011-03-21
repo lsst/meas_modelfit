@@ -85,7 +85,6 @@ typedef lsst::afw::detection::Psf Psf;
 typedef lsst::afw::detection::LocalPsf LocalPsf;
 typedef lsst::afw::detection::Footprint Footprint;
 
-
 typedef LocalPsf::Pixel Pixel;
 typedef lsst::afw::image::Exposure<lsst::meas::multifit::Pixel> Exposure;
 

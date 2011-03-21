@@ -53,7 +53,7 @@ class EvaluatorTest(unittest.TestCase):
         exp.setPsf(psf)
         fp = afwDetection.Footprint(ellipse);
         basis = mf.ShapeletModelBasis.make(5, 1.0)
-        evaluator = mf.Evaluator.make(exp, fp, ellipse, basis, False, True, True)
+        evaluator = mf.Evaluator.make(exp, fp, basis, ellipse, False, True, True)
 
 def suite():
     utilsTests.init()
