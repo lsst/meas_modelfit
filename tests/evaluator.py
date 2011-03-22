@@ -41,6 +41,8 @@ class EvaluatorTest(unittest.TestCase):
         fp = afwDetection.Footprint(bbox)
         point = afwGeom.PointD(30.5, 55.8)
         evaluator = mf.Evaluator.make(exp, fp, point)
+        parameters = numpy.zeros(evaluator.getParameterSize(), dtype=float)
+        evaluator.writeInitialParameters(parameters)
 
     def testGalaxyConstruction(self):        
         axes = geomEllipses.Axes(30, 10, 0)
@@ -54,6 +56,8 @@ class EvaluatorTest(unittest.TestCase):
         fp = afwDetection.Footprint(ellipse);
         basis = mf.ShapeletModelBasis.make(5, 1.0)
         evaluator = mf.Evaluator.make(exp, fp, basis, ellipse, False, True, True)
+        parameters = numpy.zeros(evaluator.getParameterSize(), dtype=float)
+        evaluator.writeInitialParameters(parameters)
 
 def suite():
     utilsTests.init()

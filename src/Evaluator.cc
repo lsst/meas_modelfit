@@ -368,4 +368,20 @@ void Evaluator::_initialize() {
     }
 }
 
+afw::geom::ellipses::Ellipse Evaluator::extractEllipse(
+    ID id,
+    ndarray::Array<double const,1,1> const & parameters
+) const {
+    grid::Object const & object = grid::find(_grid->objects, id);
+    return object.makeEllipse(parameters.getData());
+}
+
+afw::geom::Point2D Evaluator::extractPoint(
+    ID id,
+    ndarray::Array<double const,1,1> const & parameters
+) const {
+    grid::Object const & object = grid::find(_grid->objects, id);
+    return object.makePoint(parameters.getData());
+}
+
 }}} // namespace lsst::meas::multifit

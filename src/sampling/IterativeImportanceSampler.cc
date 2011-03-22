@@ -6,6 +6,16 @@
 
 namespace lsst { namespace meas { namespace multifit { namespace sampling {
 
+double IterativeImportanceSampler::computeNormalizedPerplexity() const {
+    Eigen::VectorXd w = ndarray::viewAsEigen(_samples.back().weight) / _samples.back().getWeightSum();
+    return -(w.cwise() * w.cwise().log()).sum();
+}
+
+double IterativeImportanceSampler::computeEffectiveSampleSize() const {
+    return 1.0 / (ndarray::viewAsEigen(_samples.back().weight) 
+                  / _samples.back().getWeightSum()).cwise().square().sum();
+}
+
 void IterativeImportanceSampler::run(int size) {
     ndarray::Array<Pixel,2,2> modelArray =
         ndarray::allocate(_evaluator->getDataSize(), _evaluator->getCoefficientSize());
@@ -38,5 +48,17 @@ void IterativeImportanceSampler::run(int size) {
     table.computeWeights();
     _importance.update(table);
 }
+
+IterativeImportanceSampler::IterativeImportanceSampler(
+    BaseEvaluator::Ptr const & evaluator,
+    MixtureDistribution const & importance,
+    SampleList const & samples,
+    RandomEngine const & randomEngine
+) :
+    _evaluator(evaluator),
+    _randomEngine(randomEngine),
+    _importance(importance),
+    _samples(samples)
+{}
 
 }}}} // namespace lsst::meas::multifit::sampling

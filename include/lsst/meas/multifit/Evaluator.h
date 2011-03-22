@@ -48,7 +48,7 @@ public:
     
     static Ptr make(Definition const & definition);
 #endif
-   
+
     template<typename PixelT>
     static Ptr make(
         PTR(afw::image::Exposure<PixelT>) const & exposure,
@@ -69,6 +69,15 @@ public:
         bool fixPosition=true
     );
 
+    lsst::afw::geom::ellipses::Ellipse extractEllipse(
+        ID id,
+        lsst::ndarray::Array<double const,1,1> const & parameters
+    ) const;
+
+    lsst::afw::geom::Point2D extractPoint(
+        ID id,
+        lsst::ndarray::Array<double const,1,1> const & parameters
+    ) const;
 
 protected:
 

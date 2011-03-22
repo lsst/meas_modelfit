@@ -19,12 +19,4 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-import lsst.afw.geom.ellipses
-
-from multifitLib import *
-Ellipticity = lsst.afw.geom.ellipses.LogShear
-Radius = lsst.afw.geom.ellipses.TraceRadius
-EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
-CompoundShapeletBuilder.ComponentVector = ComponentVector
-
-from . import sampling
+from samplingLib import *

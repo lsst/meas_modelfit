@@ -34,19 +34,35 @@ namespace lsst { namespace meas { namespace multifit { namespace sampling {
 class IterativeImportanceSampler {
 public:
 
+    typedef std::list<Table> SampleList;
+    typedef MixtureDistribution::RandomEngine RandomEngine;
+
     int getIterationCount() const { return _samples.size(); }
+
+    SampleList const & getSamples() const { return _samples; }
 
     MixtureDistribution const & getImportance() const { return _importance; }
 
-    BaseEvaluator::Ptr getEvaluator() const;
+    BaseEvaluator::Ptr getEvaluator() const { return _evaluator; }
+
+    double computeNormalizedPerplexity() const;
+
+    double computeEffectiveSampleSize() const;
 
     void run(int size);
 
+    IterativeImportanceSampler(
+        BaseEvaluator::Ptr const & evaluator,
+        MixtureDistribution const & importance,
+        SampleList const & samples = SampleList(),
+        RandomEngine const & randomEngine = RandomEngine()
+    );
+
 private:
     BaseEvaluator::Ptr _evaluator;
-    MixtureDistribution::RandomEngine _randomEngine;
+    RandomEngine _randomEngine;
     MixtureDistribution _importance;
-    std::list<Table> _samples;
+    SampleList _samples;
 };
 
 }}}} // namespace lsst::meas::multifit::sampling

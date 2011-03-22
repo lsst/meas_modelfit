@@ -68,7 +68,7 @@ public:
      *
      *  If the data vector is weighted (divided by sigma) the evaluted model matrix should be as well.
      */
-    ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
+    lsst::ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
 
     /**
      *  @brief Evaluate the matrix with the given parameters.
@@ -80,8 +80,8 @@ public:
      *  by the corresponding pixel sigma value).
      */
     void evaluateModelMatrix(
-        ndarray::Array<Pixel,2,2> const & matrix,
-        ndarray::Array<Pixel const,1,1> const & param
+        lsst::ndarray::Array<Pixel,2,2> const & matrix,
+        lsst::ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
     /**
@@ -90,11 +90,11 @@ public:
      *  The first dimension of the array is the parameter dimension.
      */
     void evaluateModelDerivative(
-        ndarray::Array<Pixel,3,3> const & derivative,
-        ndarray::Array<Pixel const,1,1> const & param
+        lsst::ndarray::Array<Pixel,3,3> const & derivative,
+        lsst::ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
-    void writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const;
+    void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & param) const;
 
     virtual ~BaseEvaluator() {}
 

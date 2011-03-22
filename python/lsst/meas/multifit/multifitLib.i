@@ -112,8 +112,12 @@ def version(HeadURL = r"$HeadURL$"):
 /*****************************************************************************/
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 2, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 3, 3>);
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<double const, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<double, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<double, 2, 2>);
 
 %include "lsst/meas/multifit/constants.h"
 
