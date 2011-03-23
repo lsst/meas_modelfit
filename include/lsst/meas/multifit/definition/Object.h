@@ -50,13 +50,17 @@ public:
     static Object makeStar(
         ID id, 
         lsst::afw::geom::Point2D const & position, 
-        bool isVariable = false
+        bool isVariable = false,
+        bool isPositionActive=false
     );
 
     static Object makeGalaxy(
         ID id,
         ModelBasis::Ptr const & basis,
-        lsst::afw::geom::ellipses::Ellipse const & ellipse
+        lsst::afw::geom::ellipses::Ellipse const & ellipse,
+        bool isEllipticityActive=false,
+        bool isRadiusActive=false,
+        bool isPositionActive=false
     );        
 
     ID const id;

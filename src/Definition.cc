@@ -7,25 +7,35 @@ namespace definition {
 Object Object::makeStar(
     ID id, 
     lsst::afw::geom::Point2D const & position, 
-    bool isVariable
+    bool isVariable,
+    bool isPositionActive
 ) {
     Object r(id);
     r.position = boost::make_shared<PositionComponent>(position);
-    r.isVariable = isVariable;
+    r.position->active = isPositionActive;
+    r.isVariable = isVariable;    
     return r;
 }
 
 Object Object::makeGalaxy(
     ID id,
     ModelBasis::Ptr const & basis,
-    lsst::afw::geom::ellipses::Ellipse const & ellipse
+    lsst::afw::geom::ellipses::Ellipse const & ellipse,
+    bool isEllipticityActive,
+    bool isRadiusActive,
+    bool isPositionActive
 ) {
     Object r(id);
     EllipseCore core(ellipse.getCore());
     r.position = boost::make_shared<PositionComponent>(ellipse.getCenter());
+    r.position->active = isPositionActive;
     r.ellipticity = boost::make_shared<EllipticityComponent>(core.getEllipticity());
+    r.ellipticity->active = isEllipticityActive;
     r.radius = boost::make_shared<RadiusComponent>(core.getRadius());
+    r.radius->active = isRadiusActive;
     r.basis = basis;
+
+
     return r;
 }
 

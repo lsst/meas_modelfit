@@ -55,7 +55,7 @@ public:
         Footprint::Ptr const & fp,
         afw::geom::Point2D const & position,
         bool isVariable=false,
-        bool fixPosition=true
+        bool isPositionActive=false
     );
 
     template<typename PixelT>
@@ -64,9 +64,9 @@ public:
         Footprint::Ptr const & fp,
         ModelBasis::Ptr const & basis,
         afw::geom::ellipses::Ellipse const & ellipse,
-        bool fixEllipticity=true,
-        bool fixRadius=true,
-        bool fixPosition=true
+        bool isEllipticityActive=false,
+        bool isRadiusActive=false,
+        bool isPositionActive=false
     );
 
     lsst::afw::geom::ellipses::Ellipse extractEllipse(

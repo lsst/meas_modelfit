@@ -100,14 +100,17 @@ Evaluator::Ptr Evaluator::make(
     PTR(afw::image::Exposure<PixelT>) const & exposure,
     Footprint::Ptr const & fp,
     afw::geom::Point2D const & position,
-    bool isVariable, bool fixPosition
+    bool isVariable, 
+    bool isPositionActive
 ) {    
     //make a point source evaluator   
     Definition psDefinition;
     psDefinition.frames.insert(::makeFrame<PixelT>(exposure, fp));
-    definition::Object object = definition::Object::makeStar(0, position, isVariable);
-    object.position->active = !fixPosition;
-    psDefinition.objects.insert(object);
+
+    psDefinition.objects.insert(
+        definition::Object::makeStar(0, position, isVariable, isPositionActive)
+    );
+        
     return make(psDefinition); 
 }
 
@@ -130,20 +133,22 @@ Evaluator::Ptr Evaluator::make(
     Footprint::Ptr const & fp,
     ModelBasis::Ptr const & basis,
     afw::geom::ellipses::Ellipse const & ellipse,
-    bool fixEllipticity,
-    bool fixRadius,
-    bool fixPosition
+    bool isEllipticityActive,
+    bool isRadiusActive,
+    bool isPositionActive
 ) {
     //make a galaxy evaluator    
     Definition sgDefinition;
     sgDefinition.frames.insert(::makeFrame<PixelT>(exposure, fp));
-    definition::Object object = definition::Object::makeGalaxy(
-        0, basis, ellipse
+    sgDefinition.objects.insert(
+        definition::Object::makeGalaxy(
+            0, basis, ellipse,
+            isEllipticityActive,
+            isRadiusActive,
+            isPositionActive
+        )
     );
-    object.ellipticity->active = !fixEllipticity;
-    object.radius->active = !fixRadius;
-    object.position->active = !fixPosition;
-    sgDefinition.objects.insert(object);
+
     return make(sgDefinition); 
 }
 
