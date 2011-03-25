@@ -27,6 +27,7 @@
 #include "lsst/meas/multifit/ShapeletModelBasis.h"
 #include "lsst/ndarray/eigen.h"
 #include <vector>
+#include <string>
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -50,8 +51,8 @@ public:
 
 protected:
 
-    typedef ndarray::EigenView<Pixel,2,1> Matrix;
-    typedef ndarray::TransposedEigenView<Pixel,2,1> MatrixT;
+    typedef ndarray::EigenView<const Pixel,2,1> Matrix;
+    typedef ndarray::TransposedEigenView<const Pixel,2,1> MatrixT;
 
     struct Element {
         ShapeletModelBasis::Ptr component;
@@ -60,8 +61,8 @@ protected:
 
         Element(
             ShapeletModelBasis::Ptr const & component_, 
-            ndarray::Array<Pixel,2,1> const & fullForward,
-            ndarray::Array<Pixel,2,1> const & fullReverse,
+            ndarray::Array<const Pixel,2,1> const & fullForward,
+            ndarray::Array<const Pixel,2,1> const & fullReverse,
             int offset
         );
 
@@ -72,12 +73,11 @@ protected:
 
     CompoundShapeletBase(
         ComponentVector const & components,
-        ndarray::Array<Pixel,2,1> const & forward,
-        ndarray::Array<Pixel,2,1> const & reverse
+        ndarray::Array<const Pixel,2,1> const & forward,
+        ndarray::Array<const Pixel,2,1> const & reverse
     );
     
     explicit CompoundShapeletBase(ComponentVector const & components);
-    
     void _fillElements(ComponentVector const & components);
 
     void _resetElements();
@@ -87,8 +87,8 @@ protected:
     static ndarray::Array<Pixel,2,2> _makeIdentity(int size);
 
     ElementVector _elements;
-    ndarray::Array<Pixel,2,1> _forward;
-    ndarray::Array<Pixel,2,1> _reverse;
+    ndarray::Array<const Pixel,2,1> _forward;
+    ndarray::Array<const Pixel,2,1> _reverse;
 };
 
 } // namespace detail
@@ -120,6 +120,9 @@ public:
      *         parametrization.
      */
     ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
+
+    static Ptr load(std::string const & filename);
+    void save(std::string const & filename);
 
     virtual ~CompoundShapeletModelBasis() {}
 protected:
@@ -162,7 +165,6 @@ public:
     );
 
     CompoundShapeletModelBasis::Ptr build() const;
-
 };
 
 }}} // namespace lsst::meas::multifit

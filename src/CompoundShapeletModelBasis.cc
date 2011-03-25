@@ -23,8 +23,12 @@
 
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #include <Eigen/Cholesky>
+#include <fstream>
+#include "boost/serialization/binary_object.hpp"
+#include "boost/archive/text_iarchive.hpp"
+#include "boost/archive/text_oarchive.hpp"
 
-namespace mf = lsst::meas::multifit;
+
 namespace afwShapelets = lsst::afw::math::shapelets;
 
 namespace lsst { namespace meas { namespace multifit {
@@ -39,9 +43,9 @@ public:
     struct Element {
 
         ModelBasis::Ptr component;
-        ndarray::EigenView<Pixel,2,1> forward;
+        ndarray::EigenView<const Pixel,2,1> forward;
 
-        Element(ModelBasis::Ptr const & component_, ndarray::EigenView<Pixel,2,1> const & forward_) :
+        Element(ModelBasis::Ptr const & component_, ndarray::EigenView<const Pixel,2,1> const & forward_) :
             component(component_), forward(forward_)
         {}
 
@@ -83,10 +87,10 @@ private:
 
 } // anonymous
 
-}}} // namespace lsst::meas::multifit
+namespace detail {
 
-mf::detail::CompoundShapeletBase::ComponentVector
-mf::detail::CompoundShapeletBase::extractComponents() const {
+CompoundShapeletBase::ComponentVector 
+CompoundShapeletBase::extractComponents() const {
     ComponentVector result;
     result.reserve(_elements.size());
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
@@ -95,7 +99,7 @@ mf::detail::CompoundShapeletBase::extractComponents() const {
     return result;
 }
 
-Eigen::MatrixXd mf::detail::CompoundShapeletBase::computeInnerProductMatrix() const {
+Eigen::MatrixXd CompoundShapeletBase::computeInnerProductMatrix() const {
     Eigen::MatrixXd result = Eigen::MatrixXd::Zero(_forward.getSize<1>(), _forward.getSize<1>());
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
         for (ElementVector::const_iterator j = _elements.begin(); j != _elements.end(); ++j) {
@@ -110,10 +114,10 @@ Eigen::MatrixXd mf::detail::CompoundShapeletBase::computeInnerProductMatrix() co
     return result;
 }
 
-mf::detail::CompoundShapeletBase::Element::Element(
+CompoundShapeletBase::Element::Element(
     ShapeletModelBasis::Ptr const & component_, 
-    ndarray::Array<Pixel,2,1> const & fullForward,
-    ndarray::Array<Pixel,2,1> const & fullReverse,
+    ndarray::Array<const Pixel,2,1> const & fullForward,
+    ndarray::Array<const Pixel,2,1> const & fullReverse,
     int offset
 ) : 
     component(component_),
@@ -121,8 +125,8 @@ mf::detail::CompoundShapeletBase::Element::Element(
     reverse(fullReverse[ndarray::view(offset, offset + component->getSize())()])
 {}
 
-mf::detail::CompoundShapeletBase::Element & 
-mf::detail::CompoundShapeletBase::Element::operator=(Element const & other) {
+CompoundShapeletBase::Element & 
+CompoundShapeletBase::Element::operator=(Element const & other) {
     if (&other != this) {
         component = other.component;
         forward.setArray(other.forward.getArray());
@@ -131,7 +135,7 @@ mf::detail::CompoundShapeletBase::Element::operator=(Element const & other) {
     return *this;
 }
 
-mf::detail::CompoundShapeletBase::CompoundShapeletBase(ComponentVector const & components) :
+CompoundShapeletBase::CompoundShapeletBase(ComponentVector const & components) :
     _elements(),
     _forward(_makeIdentity(_computeSize(components))),
     _reverse(ndarray::copy(_forward))
@@ -139,31 +143,31 @@ mf::detail::CompoundShapeletBase::CompoundShapeletBase(ComponentVector const & c
     _fillElements(components);
 }
 
-mf::detail::CompoundShapeletBase::CompoundShapeletBase(
+CompoundShapeletBase::CompoundShapeletBase(
     ComponentVector const & components, 
-    ndarray::Array<Pixel,2,1> const & fullForward,
-    ndarray::Array<Pixel,2,1> const & fullReverse
+    ndarray::Array<const Pixel,2,1> const & fullForward,
+    ndarray::Array<const Pixel,2,1> const & fullReverse
 ) :
     _elements(),
     _forward(fullForward),
     _reverse(fullReverse)
 {
-    detail::checkSize(
+    checkSize(
         _computeSize(components), _forward.getSize<0>(),
         "Aggregate component shapelet basis size (%d) does not match forward mapping rows (%d)."
     );
-    detail::checkSize(
+    checkSize(
         _reverse.getSize<0>(), _forward.getSize<0>(),
         "Reverse mapping rows (%d) does not match forward mapping rows (%d)."
     );
-    detail::checkSize(
+    checkSize(
         _reverse.getSize<1>(), _forward.getSize<1>(),
         "Reverse mapping columns (%d) does not match forward mapping columns (%d)."
     );
     _fillElements(components);
 }
 
-void mf::detail::CompoundShapeletBase::_fillElements(ComponentVector const & components) {
+void CompoundShapeletBase::_fillElements(ComponentVector const & components) {
     _elements.reserve(components.size());
     ComponentVector::const_iterator i = components.begin();
     for (int offset = 0; i != components.end(); ++i) {
@@ -172,7 +176,7 @@ void mf::detail::CompoundShapeletBase::_fillElements(ComponentVector const & com
     }
 }
 
-void mf::detail::CompoundShapeletBase::_resetElements() {
+void CompoundShapeletBase::_resetElements() {
     ElementVector new_elements;
     new_elements.reserve(_elements.size());
     ElementVector::const_iterator i = _elements.begin();
@@ -183,7 +187,7 @@ void mf::detail::CompoundShapeletBase::_resetElements() {
     _elements.swap(new_elements);
 }
 
-int mf::detail::CompoundShapeletBase::_computeSize(ComponentVector const & components) {
+int CompoundShapeletBase::_computeSize(ComponentVector const & components) {
     int size = 0;
     for (ComponentVector::const_iterator i = components.begin(); i != components.end(); ++i) {
         size += (**i).getSize();
@@ -191,13 +195,18 @@ int mf::detail::CompoundShapeletBase::_computeSize(ComponentVector const & compo
     return size;
 }
 
-lsst::ndarray::Array<mf::Pixel,2,2> mf::detail::CompoundShapeletBase::_makeIdentity(int size) {
+ndarray::Array<Pixel,2,2> CompoundShapeletBase::_makeIdentity(int size) {
     ndarray::Array<Pixel,2,2> result(ndarray::allocate(size, size));
     ndarray::viewAsEigen(result).setIdentity();
     return result;
 }
 
-mf::ModelBasis::Ptr mf::CompoundShapeletModelBasis::convolve(LocalPsf::ConstPtr const & psf) const {
+} //namespace detail
+
+
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
+    LocalPsf::ConstPtr const & psf
+) const {
     if (psf->hasNativeShapelet()) {
         afwShapelets::MultiShapeletFunction s = psf->getNativeShapelet(afwShapelets::HERMITE);
         s.shiftInPlace(-afw::geom::Extent2D(psf->getPoint()));
@@ -210,8 +219,9 @@ mf::ModelBasis::Ptr mf::CompoundShapeletModelBasis::convolve(LocalPsf::ConstPtr 
     }
 }
 
-mf::ModelBasis::Ptr
-mf::CompoundShapeletModelBasis::convolve(afwShapelets::ShapeletFunction const & psf) const {
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
+    afwShapelets::ShapeletFunction const & psf
+) const {
     ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
     convolvedElements.reserve(_elements.size());
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
@@ -224,8 +234,9 @@ mf::CompoundShapeletModelBasis::convolve(afwShapelets::ShapeletFunction const & 
     );
 }
 
-mf::ModelBasis::Ptr
-mf::CompoundShapeletModelBasis::convolve(afwShapelets::MultiShapeletFunction const & psf) const {
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
+    afwShapelets::MultiShapeletFunction const & psf
+) const {
     ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
     convolvedElements.reserve(_elements.size() * psf.getElements().size());
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
@@ -243,10 +254,10 @@ mf::CompoundShapeletModelBasis::convolve(afwShapelets::MultiShapeletFunction con
     );
 }
 
-void mf::CompoundShapeletModelBasis::_evaluate(
-    lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
+void CompoundShapeletModelBasis::_evaluate(
+    ndarray::Array<Pixel, 2, 1> const & matrix,
     CONST_PTR(Footprint) const & footprint,
-    lsst::afw::geom::Ellipse const & ellipse
+    afw::geom::Ellipse const & ellipse
 ) const {
     matrix.deep() = 0.0;
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
@@ -256,24 +267,27 @@ void mf::CompoundShapeletModelBasis::_evaluate(
     }
 }
 
-mf::CompoundShapeletModelBasis::CompoundShapeletModelBasis(CompoundShapeletBuilder const & builder) :
-    mf::ModelBasis(builder.getSize()),
+CompoundShapeletModelBasis::CompoundShapeletModelBasis(
+    CompoundShapeletBuilder const & builder
+) : ModelBasis(builder.getSize()),
     detail::CompoundShapeletBase(builder)
 {}
 
-mf::CompoundShapeletBuilder::CompoundShapeletBuilder(ComponentVector const & components) :
+CompoundShapeletBuilder::CompoundShapeletBuilder(
+    ComponentVector const & components
+) :
     detail::CompoundShapeletBase(components)
 {}
 
-mf::CompoundShapeletBuilder::CompoundShapeletBuilder(
+CompoundShapeletBuilder::CompoundShapeletBuilder(
     ComponentVector const & components,
-    lsst::ndarray::Array<Pixel const,2,1> const & forward,
-    lsst::ndarray::Array<Pixel const,2,1> const & reverse
+    ndarray::Array<Pixel const,2,1> const & forward,
+    ndarray::Array<Pixel const,2,1> const & reverse
 ) : 
-    detail::CompoundShapeletBase(components) // FIXME
+    detail::CompoundShapeletBase(components, forward, reverse) 
 {}
 
-void mf::CompoundShapeletBuilder::orthogonalize() {
+void CompoundShapeletBuilder::orthogonalize() {
     Eigen::MatrixXd v = computeInnerProductMatrix();
     Eigen::LLT<Eigen::MatrixXd> cholesky(v);
     Eigen::MatrixXd m = Eigen::MatrixXd::Identity(v.rows(), v.cols());
@@ -287,16 +301,16 @@ void mf::CompoundShapeletBuilder::orthogonalize() {
     _resetElements();
 }
 
-void mf::CompoundShapeletBuilder::slice(int start, int stop) {
+void CompoundShapeletBuilder::slice(int start, int stop) {
     _forward = _forward[ndarray::view()(start, stop)];
     _reverse = _reverse[ndarray::view()(start, stop)];
     _resetElements();
 
 }
 
-void mf::CompoundShapeletBuilder::setMapping(
-    lsst::ndarray::Array<Pixel const,2,1> const & forward,
-    lsst::ndarray::Array<Pixel const,2,1> const & reverse
+void CompoundShapeletBuilder::setMapping(
+    ndarray::Array<Pixel const,2,1> const & forward,
+    ndarray::Array<Pixel const,2,1> const & reverse
 ) {
     detail::checkSize(
         _forward.getSize<0>(), forward.getSize<0>(),
@@ -315,6 +329,63 @@ void mf::CompoundShapeletBuilder::setMapping(
     _resetElements();
 }
 
-mf::CompoundShapeletModelBasis::Ptr mf::CompoundShapeletBuilder::build() const {
+CompoundShapeletModelBasis::Ptr CompoundShapeletBuilder::build() const {
     return boost::make_shared<CompoundShapeletModelBasis>(*this);
 }
+
+CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
+    std::string const & filename
+) {
+    std::ifstream ifs(filename.c_str());
+    boost::archive::text_iarchive ar(ifs);
+    
+    int nComponents;
+    ar >> nComponents;
+    ComponentVector components(nComponents);        
+    int order;
+    double scale;
+    for(int i =0; i < nComponents; ++i) {
+        ar >> order;
+        ar >> scale;
+        components[i] = multifit::ShapeletModelBasis::make(order, scale);            
+    }
+    int width, height;
+    ar >> height;
+    ar >> width;
+    int size = width*height;
+    ndarray::Array<Pixel, 2, 2> forward = ndarray::allocate(
+        ndarray::makeVector(height, width)
+    );
+    ar >> boost::serialization::make_binary_object(forward.getData(), size);
+    ndarray::Array<Pixel, 2, 2> reverse = ndarray::allocate(
+        ndarray::makeVector(height, width)
+    );
+    ar >> boost::serialization::make_binary_object(reverse.getData(), size);
+    
+    CompoundShapeletBuilder builder(components, forward, reverse);
+    return builder.build();
+}
+
+void CompoundShapeletModelBasis::save(std::string const & filename) {
+    std::ofstream ofs(filename.c_str());
+    boost::archive::text_oarchive ar(ofs);
+
+    int nElement = _elements.size();
+    ar << nElement;
+    for(int i; i < nElement; ++i) {
+        int order = _elements[i].component->getOrder();
+        double scale = _elements[i].component->getScale();
+        ar << order;
+        ar << scale;
+    }
+    int height = _forward.getSize<0>(), width = _forward.getSize<1>();
+    int size = width*height;
+    ndarray::Array<Pixel, 2, 2> forward = ndarray::copy(_forward);
+    ndarray::Array<Pixel, 2, 2> reverse = ndarray::copy(_reverse);
+    ar << height;
+    ar << width;
+    ar << boost::serialization::make_binary_object(forward.getData(), size);
+    ar << boost::serialization::make_binary_object(reverse.getData(), size);
+}
+
+}}} //end namespace lsst::meas::multifit
