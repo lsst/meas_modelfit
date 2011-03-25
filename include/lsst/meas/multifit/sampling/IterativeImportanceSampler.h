@@ -35,7 +35,6 @@ class IterativeImportanceSampler {
 public:
 
     typedef std::list<Table> SampleList;
-    typedef MixtureDistribution::RandomEngine RandomEngine;
 
     int getIterationCount() const { return _samples.size(); }
 
@@ -54,7 +53,6 @@ public:
     IterativeImportanceSampler(
         BaseEvaluator::Ptr const & evaluator,
         MixtureDistribution const & importance,
-        SampleList const & samples = SampleList(),
         RandomEngine const & randomEngine = RandomEngine()
     );
 

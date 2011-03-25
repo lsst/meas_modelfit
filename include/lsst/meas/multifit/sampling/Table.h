@@ -26,6 +26,7 @@
 
 #include "lsst/ndarray.h"
 #include "lsst/ndarray/eigen.h"
+#include "lsst/meas/multifit/constants.h"
 #include <boost/type_traits/is_convertible.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/noncopyable.hpp>

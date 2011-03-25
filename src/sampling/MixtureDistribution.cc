@@ -2,36 +2,144 @@
 #include "lsst/ndarray/eigen.h"
 #include "lsst/pex/exceptions.h"
 
+#include <boost/math/special_functions/gamma.hpp>
 #include <Eigen/Array>
 #include <Eigen/Cholesky>
-
-#include <boost/random/variate_generator.hpp>
-#include <boost/random/normal_distribution.hpp>
-#include <boost/random/uniform_real.hpp>
 
 namespace lsst { namespace meas { namespace multifit { namespace sampling {
 
 namespace {
 
 double evaluateGaussian(
-    MixtureComponent const & component,
+    Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma,
     ndarray::Array<double const,1,1> const & parameters, 
     Eigen::VectorXd & workspace
 ) {
-    static double const k = 0.5 * std::log(2.0 * M_PI);
-    workspace = ndarray::viewAsEigen(parameters) - component.getMu();
-    component.getSigma().part<Eigen::LowerTriangular>().solveTriangularInPlace(workspace);
-    return component.getNormalization() * std::exp(
-        -k
-        - workspace.size() 
+    workspace = ndarray::viewAsEigen(parameters) - mu;
+    sigma.part<Eigen::LowerTriangular>().solveTriangularInPlace(workspace);
+    return std::exp(
         - 0.5 * workspace.squaredNorm() 
-        - component.getSigma().diagonal().cwise().log().sum()
+        - sigma.diagonal().cwise().log().sum()
     );
+}
+
+void drawGaussian(
+    RandomEngine & engine,
+    Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma,
+    ndarray::Array<double,1,1> const & parameters,
+    Eigen::VectorXd & workspace
+) {
+    for (int n = 0; n < workspace.size(); ++n) {
+        workspace[n] = engine.drawNormal();
+    }
+    ndarray::viewAsEigen(parameters) = mu + sigma.part<Eigen::LowerTriangular>() * workspace;
+} 
+
+void updateGaussian(
+    ConstTable const & table, double constant, 
+    double & normalization, Eigen::VectorXd & mu, Eigen::MatrixXd & sigma
+) {
+    Eigen::VectorXd rho(table.getTableSize());
+    Eigen::VectorXd tau(table.getTableSize());
+    Eigen::VectorXd workspace(table.getParameterSize());
+    double alpha = 0.0;
+    for (int i = 0; i < table.getTableSize(); ++i) {
+        ConstRecord record = table[i];
+        rho[i] = normalization * constant
+            * evaluateGaussian(mu, sigma, record.parameters, workspace)
+            / record.importance;
+        tau[i] = record.weight * rho[i] / table.getWeightSum();
+        alpha += tau[i];
+    }
+    tau /= alpha;
+    mu.setZero();
+    for (int i = 0; i < table.getTableSize(); ++i) {
+        ConstRecord record = table[i];
+        mu += tau[i] * ndarray::viewAsEigen(record.parameters);
+    }
+    sigma.setZero();
+    for (int i = 0; i < table.getTableSize(); ++i) {
+        ConstRecord record = table[i];
+        workspace = ndarray::viewAsEigen(record.parameters) - mu;
+        sigma += tau[i] * workspace * workspace.transpose();
+    }
+    normalization = alpha;
+    Eigen::LLT<Eigen::MatrixXd> cholesky(sigma);
+    sigma = cholesky.matrixL();
+}
+
+double evaluateStudent(
+    int dof, Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma,
+    ndarray::Array<double const,1,1> const & parameters, 
+    Eigen::VectorXd & workspace
+) {
+    workspace = ndarray::viewAsEigen(parameters) - mu;
+    sigma.part<Eigen::LowerTriangular>().solveTriangularInPlace(workspace);
+    return std::exp(-sigma.diagonal().cwise().log().sum())
+        * std::pow(1.0 + workspace.squaredNorm() / dof, -0.5*(dof + workspace.size()));
+}
+
+void drawStudent(
+    RandomEngine & engine,
+    int dof, Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma,
+    ndarray::Array<double,1,1> const & parameters,
+    Eigen::VectorXd & workspace
+) {
+    for (int n = 0; n < workspace.size(); ++n) {
+        workspace[n] = engine.drawNormal();
+    }
+    ndarray::viewAsEigen(parameters) = mu 
+        + (sigma.part<Eigen::LowerTriangular>() * workspace)
+        * std::sqrt(0.5 * dof / boost::math::gamma_p_inv(0.5 * dof, engine.drawUniform()));
+}
+
+void updateStudent(
+    ConstTable const & table, int dof, double constant,
+    double & normalization, Eigen::VectorXd & mu, Eigen::MatrixXd & sigma
+) {
+    Eigen::VectorXd rho(table.getTableSize());
+    Eigen::VectorXd gamma(table.getTableSize());
+    Eigen::VectorXd tau(table.getTableSize());
+    Eigen::VectorXd workspace(table.getParameterSize());
+    double alpha = 0.0;
+    double beta = 0.0;
+    for (int i = 0; i < table.getTableSize(); ++i) {
+        ConstRecord record = table[i];
+        rho[i] = normalization * constant
+            * evaluateStudent(dof, mu, sigma, record.parameters, workspace) / record.importance;
+        gamma[i] = (dof + mu.size()) / (dof + workspace.squaredNorm());
+        tau[i] = record.weight * rho[i] / table.getWeightSum();
+        alpha += tau[i];
+        beta += tau[i] * gamma[i];
+    }
+    normalization = alpha;
+    mu.setZero();
+    for (int i = 0; i < table.getTableSize(); ++i) {
+        ConstRecord record = table[i];
+        mu += tau[i] * gamma[i] * ndarray::viewAsEigen(record.parameters) / beta;
+    }
+    sigma.setZero();
+    for (int i = 0; i < table.getTableSize(); ++i) {
+        ConstRecord record = table[i];
+        workspace = ndarray::viewAsEigen(record.parameters) - mu;
+        sigma += tau[i] * gamma[i] * workspace * workspace.transpose() / alpha;
+    }
+    Eigen::LLT<Eigen::MatrixXd> cholesky(sigma);
+    sigma = cholesky.matrixL();
 }
 
 } // anonymous
 
-MixtureDistribution::MixtureDistribution(ComponentList const & components) : _components(components) {
+MixtureDistribution::MixtureDistribution(ComponentList const & components, int dof) :
+    _dof(dof), _constant(0.0), _components(components)
+{
+    int const p = _components.back().getMu().size();
+    if (_dof < 0) {
+        _constant = std::pow(2.0 * M_PI, -p * 0.5);
+    } else {
+        _constant = boost::math::tgamma_ratio((_dof + p)*0.5, _dof*0.5)
+            * std::pow(_dof * M_PI, p * 0.5);
+    }
     double total = 0.0;
     for (ComponentList::iterator j = _components.begin(); j != _components.end(); ++j) {
         total += j->getNormalization();
@@ -48,20 +156,11 @@ void MixtureDistribution::draw(Table const & table, RandomEngine & engine) const
             "Number of parameters in table does not match number of parameters in distribution"
         );
     }
-    typedef boost::variate_generator< RandomEngine &, boost::uniform_real<double> > UniformGenerator;
-    typedef boost::variate_generator< RandomEngine &, boost::normal_distribution<double> > NormalGenerator;
-    UniformGenerator uniform(engine, boost::uniform_real<double>(0.0, 1.0));
-    NormalGenerator normal(engine, boost::normal_distribution<double>(0.0, 1.0));
     Eigen::VectorXd workspace(getParameterSize());
     table.clear();
     for (int i = 0; i < table.getTableSize(); ++i) {
         Record record = table[i];
-
-        // First draw the parameter point
-        for (int n = 0; n < workspace.size(); ++n) {
-            workspace[n] = normal();
-        }
-        double u = uniform();
+        double u = engine.drawUniform();
         double v = 0.0;
         ComponentList::const_iterator j = _components.begin();
         for (; j != _components.end(); ++j) {
@@ -69,46 +168,55 @@ void MixtureDistribution::draw(Table const & table, RandomEngine & engine) const
             if (v >= u) break;
         }
         if (j == _components.end()) --j; // only needed because of round-off error
-        ndarray::viewAsEigen(record.parameters) = j->getMu() + j->getSigma() * workspace;
-
+        if (_dof < 0) {
+            drawGaussian(engine, j->getMu(), j->getSigma(), record.parameters, workspace);
+        } else {
+            drawStudent(engine, _dof, j->getMu(), j->getSigma(), record.parameters, workspace);
+        }
         // Now evaluate the probability at that point.
         for (j = _components.begin(); j != _components.end(); ++j) {
-            record.importance += evaluateGaussian(*j, record.parameters, workspace);
+            double q;
+            if (_dof < 0) {
+                q = evaluateGaussian(j->getMu(), j->getSigma(), record.parameters, workspace);
+            } else {
+                q = evaluateStudent(_dof, j->getMu(), j->getSigma(), record.parameters, workspace);
+            }
+            record.importance += j->getNormalization() * _constant * q;
         }
     }
 }
 
 void MixtureDistribution::update(ConstTable const & table) {
-    Eigen::VectorXd rho(table.getTableSize());
-    Eigen::VectorXd tau(table.getTableSize());
-    Eigen::VectorXd mu(table.getParameterSize());
-    Eigen::MatrixXd sigma(table.getParameterSize(), table.getParameterSize());
-    Eigen::VectorXd workspace(table.getParameterSize());
     for (ComponentList::iterator j = _components.begin(); j != _components.end(); ++j) {
-        double alpha = 0.0;
-        for (int i = 0; i < table.getTableSize(); ++i) {
-            ConstRecord record = table[i];
-            rho[i] = evaluateGaussian(*j, record.parameters, workspace) / record.importance;
-            tau[i] = record.weight * rho[i] / table.getWeightSum();
-            alpha += tau[i];
+        if (_dof < 0) {
+            updateGaussian(table, _constant, j->_normalization, j->_mu, j->_sigma);
+        } else {
+            updateStudent(table, _dof, _constant, j->_normalization, j->_mu, j->_sigma);
         }
-        tau /= alpha;
-        mu.setZero();
-        for (int i = 0; i < table.getTableSize(); ++i) {
-            ConstRecord record = table[i];
-            mu += tau[i] * ndarray::viewAsEigen(record.parameters);
-        }
-        sigma.setZero();
-        for (int i = 0; i < table.getTableSize(); ++i) {
-            ConstRecord record = table[i];
-            workspace = ndarray::viewAsEigen(record.parameters) - mu;
-            sigma += tau[i] * workspace * workspace.transpose();
-        }
-        j->_normalization = alpha;
-        j->_mu = mu;
-        Eigen::LLT<Eigen::MatrixXd> cholesky(sigma);
-        j->_sigma = cholesky.matrixL();
     }
+}
+
+MixtureDistribution MixtureDistribution::scatter(
+    RandomEngine & engine,
+    int nComponents, double fraction, int dof,
+    lsst::ndarray::Array<double const,1,1> const & mean,
+    lsst::ndarray::Array<double const,2,2> const & covariance
+) {
+    MixtureDistribution::ComponentList components;
+    Eigen::LLT<Eigen::MatrixXd> cholesky(ndarray::viewAsEigen(covariance));
+    Eigen::VectorXd workspace(mean.getSize<0>());
+    Eigen::VectorXd mu = ndarray::viewAsEigen(mean);
+    Eigen::MatrixXd sigma = fraction * cholesky.matrixL();
+    ndarray::Array<double,1,1> parameters = ndarray::allocate(mean.getSize<0>());
+    for (int i = 0; i < nComponents; ++i) {
+        drawGaussian(engine, mu, sigma, parameters, workspace);
+        components.push_back(
+            MixtureComponent(
+                1.0 / nComponents, ndarray::viewAsEigen(parameters), fraction * cholesky.matrixL()
+            )
+        );
+    }
+    return MixtureDistribution(components, dof);
 }
 
 }}}} // namespace lsst::meas::multifit::sampling

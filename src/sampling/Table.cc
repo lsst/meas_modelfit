@@ -58,8 +58,10 @@ void Table::clear() const {
 }
 
 void Table::computeWeights() const {
-    weight = target;
-    weight /= importance;
+    for (int n = 0; n < getTableSize(); ++n) {
+        Record record = this->operator[](n);
+        record.weight = std::exp(-record.target - std::log(record.importance));
+    }
     _weightSum = ndarray::sum(weight);
 }
 

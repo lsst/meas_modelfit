@@ -37,11 +37,13 @@ Basic routines to talk to lsst::meas::multifit::sampling classes
 #pragma SWIG nowarn=362                 // operator=  ignored
 #pragma SWIG nowarn=401                 // nothin known about base class X
 %{
+#include <boost/random/mersenne_twister.hpp>
 #include "lsst/pex/exceptions.h"
 #include "lsst/pex/policy.h"
 #include "lsst/afw/image.h"
 #include "lsst/afw/detection.h"
 #include "lsst/afw/detection/LocalPsf.h"
+#include "lsst/meas/multifit/sampling/RandomEngine.h"
 #include "lsst/meas/multifit/sampling/Table.h"
 #include "lsst/meas/multifit/sampling/MixtureDistribution.h"
 #include "lsst/meas/multifit/sampling/IterativeImportanceSampler.h"
@@ -60,8 +62,9 @@ namespace lsst {
         namespace math {}
         namespace geom {}
     }
-namespace meas { namespace multifit { namespace sampling {} } }
-}
+namespace meas { namespace multifit { namespace sampling {
+}}} // namespace meas::multifit::sampling
+} // namespace lsst
 
 using namespace lsst;
  using namespace lsst::meas::multifit::sampling;
@@ -114,6 +117,12 @@ def version(HeadURL = r"$HeadURL$"):
 
 %declareNumPyConverters(Eigen::VectorXd);
 %declareNumPyConverters(Eigen::MatrixXd);
+
+%declareNumPyConverters(lsst::ndarray::Array<double,1,1>);
+%declareNumPyConverters(lsst::ndarray::Array<double,2,2>);
+
+%declareNumPyConverters(lsst::ndarray::Array<double const,1,1>);
+%declareNumPyConverters(lsst::ndarray::Array<double const,2,2>);
 
 /*****************************************************************************/
 
@@ -220,6 +229,8 @@ enum NestedSampleType {
  
 }}}} // lsst::meas::multifit::sampling
 
+%include "lsst/meas/multifit/sampling/RandomEngine.h"
+
 %ignore lsst::meas::multifit::sampling::MixtureDistribution::draw;
 %ignore lsst::meas::multifit::sampling::MixtureDistribution::update;
 
@@ -237,6 +248,9 @@ enum NestedSampleType {
     }
 
     PyObject * getLastSample() const {
+        if (self->getSamples().empty()) {
+            Py_RETURN_NONE;
+        }
         return returnTable(self->getSamples().back());
     }
 

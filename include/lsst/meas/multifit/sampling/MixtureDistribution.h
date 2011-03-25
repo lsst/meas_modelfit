@@ -26,10 +26,9 @@
 
 #include "lsst/ndarray.h"
 #include "lsst/meas/multifit/sampling/Table.h"
+#include "lsst/meas/multifit/sampling/RandomEngine.h"
 
 #include <Eigen/Core>
-
-#include <boost/random/mersenne_twister.hpp>
 
 #include <vector>
 
@@ -64,11 +63,10 @@ private:
 class MixtureDistribution {
 public:
 
-    typedef boost::mt19937 RandomEngine;
     typedef MixtureComponent Component;
     typedef std::vector<Component> ComponentList;
 
-    explicit MixtureDistribution(ComponentList const & components);
+    explicit MixtureDistribution(ComponentList const & components, int dof=-1);
 
     ComponentList const & getComponents() const { return _components; }
 
@@ -78,7 +76,27 @@ public:
 
     void update(ConstTable const & table);
 
+    /**
+     *  @brief Create a mixture distribution from a single parameter vector and covariance matrix.
+     *
+     *  The components of the returned mixture will be drawn a Gaussian defined by the given
+     *  mean and the covariance scaled by the given fraction.
+     *
+     *  @param[in[ nComponents      Number of components in the mixture.
+     *  @param[in] fraction         Fraction of covariance to scatter mean values with.
+     *  @param[in] mean             Mean vector.
+     *  @param[in] covariance       Covariance matrix.
+     */
+    static MixtureDistribution scatter(
+        RandomEngine & engine,
+        int nComponents, double fraction, int dof,
+        lsst::ndarray::Array<double const,1,1> const & mean,
+        lsst::ndarray::Array<double const,2,2> const & covariance
+    );
+
 private:
+    int _dof;
+    double _constant;
     ComponentList _components;
 };
 

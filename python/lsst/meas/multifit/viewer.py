@@ -58,10 +58,11 @@ class ViewerBase(object):
     def update(self, parameters, coefficients=None):
         self.parameters[:] = parameters
         self.evaluator.evaluateModelMatrix(self.modelMatrix, self.parameters)
+        r = None
         if coefficients is not None:
             self.coefficients[:] = coefficients
         else:
-            self.solve()
+            r = self.solve()
         self.modelVector = numpy.dot(self.modelMatrix, self.coefficients)
         self.residualVector = self.dataVector - self.modelVector
         lsst.afw.detection.expandArray(
@@ -70,10 +71,12 @@ class ViewerBase(object):
         lsst.afw.detection.expandArray(
             self.footprint, self.residualVector, self.residualImage.getArray(), self.bbox.getMin()
             )
+        return r
 
     def solve(self):
         x, residues, rank, sv = numpy.linalg.lstsq(self.modelMatrix, self.evaluator.getDataVector())
         self.coefficients[:] = x
+        return 0.5 * residues[0] + 0.5 * numpy.log(sv.sum())
 
     def plot(self, fignum=None):
         dbox = lsst.afw.geom.Box2D(self.bbox)
@@ -123,8 +126,9 @@ class StarViewer(ViewerBase):
         return StarViewer(evaluator, footprint)
 
     def update(self, parameters, coefficients=None):
-        ViewerBase.update(self, parameters, coefficients)
+        r = ViewerBase.update(self, parameters, coefficients)
         self.point = self.evaluator.extractPoint(0, self.parameters)
+        return r
 
     def plotGeometry(self):
         pyplot.plot([self.point.getX()], [self.point.getY()], 'kx')
@@ -132,8 +136,38 @@ class StarViewer(ViewerBase):
 class GalaxyViewer(ViewerBase):
 
     def update(self, parameters, coefficients=None):
-        ViewerBase.update(self, parameters, coefficients)
+        r = ViewerBase.update(self, parameters, coefficients)
         self.ellipse = self.evaluator.extractEllipse(0, self.parameters)
+        return r
 
     def plotGeometry(self):
         self.ellipse.plot(fill=False)
+
+def makeGaussianEllipse(component, i, j):
+    mu = component.getMu()
+    sigma = component.getSigma()
+    covariance = numpy.dot(sigma, sigma.transpose())
+    print covariance
+    return lsst.afw.geom.ellipses.Ellipse(
+        lsst.afw.geom.ellipses.Quadrupole(float(covariance[j,j]), float(covariance[i,i]), 
+                                          float(covariance[i,j])),
+        lsst.afw.geom.Point2D(float(mu[j]), float(mu[i]))
+        )
+
+def plotSamples(table, importance):
+    nParameters = table["parameters"].shape[1]
+    mid = lambda x: 0.5*(x[:-1] + x[1:])
+    for i in range(nParameters):
+        for j in range(i + 1):
+            pyplot.subplot(nParameters, nParameters, i * nParameters + j + 1)
+            if i == j:
+                h, e = numpy.histogram(table["parameters"][:,i], bins=20, weights=table["weight"], new=True)
+                pyplot.plot(mid(e), h)
+            else:
+                h, xe, ye = numpy.histogram2d(table["parameters"][:,j], table["parameters"][:,i],
+                                              bins=10, weights=table["weight"])
+                pyplot.pcolor(xe, ye, h)
+                #pyplot.plot(table["parameters"][:,j], table["parameters"][:,i], 'k,')
+                for component in importance.getComponents():
+                    ellipse = makeGaussianEllipse(component, i, j)
+                    ellipse.plot(fill=False)
