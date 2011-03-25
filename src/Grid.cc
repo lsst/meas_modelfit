@@ -433,13 +433,19 @@ Definition Grid::makeDefinition() const {
 
 void Grid::writeParameters(double * paramIter) const {
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        i->writeParameters(paramIter);
+        if (i->active) {
+            i->writeParameters(paramIter);
+        }
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        i->writeParameters(paramIter);
+        if (i->active) {
+            i->writeParameters(paramIter);
+        }
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        i->writeParameters(paramIter);
+        if (i->active) {
+            i->writeParameters(paramIter);
+        }
     }
 }
 
