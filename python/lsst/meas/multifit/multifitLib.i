@@ -111,10 +111,13 @@ def version(HeadURL = r"$HeadURL$"):
 
 /*****************************************************************************/
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 2, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 2>);
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 3, 3>);
-%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 3, 3>);
 %declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<double const, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<double, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<double, 2, 2>);
@@ -135,6 +138,28 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 %include "lsst/meas/multifit/ShapeletModelBasis.h"
 %include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 
+%extend lsst::meas::multifit::CompoundShapeletModelBasis {
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getForward() const {
+        return self->getForward();
+    }
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getReverse() const {
+        return self->getReverse();
+    }
+    lsst::meas::multifit::CompoundShapeletModelBasis::ComponentVector _extractComponents() const {
+        return self->extractComponents();
+    }
+    %pythoncode %{
+        def getForward(self):
+            return self._getForward()
+
+        def getReverse(self):
+            return self._getReverse()
+
+        def extractComponents(self):
+            return self._extractComponents()
+    %}
+
+};
 %template(ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
 
 SWIG_SHARED_PTR(BaseEvaluatorPtr, lsst::meas::multifit::BaseEvaluator);
