@@ -37,6 +37,10 @@ def main(xr, yr, sn=20.0):
     for iy, y in enumerate(yr):
         for ix, x in enumerate(xr):
             parameters = numpy.array([x, y], dtype=float)
-            grid[iy, ix] = numpy.exp(-viewer.update(parameters))
+            grid[iy, ix] = viewer.update(parameters)
     return grid
             
+def student(self, x, dof, mu, sigma_inv):
+    y = numpy.dot(sigma_inv, x - mu)
+    z = numpy.sum(y**2, axis=1)
+    return (1 + z / dof)**(-0.5*(dof + mu.size))

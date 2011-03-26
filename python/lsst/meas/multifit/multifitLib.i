@@ -138,6 +138,8 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 %include "lsst/meas/multifit/ShapeletModelBasis.h"
 %include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 
+%template(CompoundShapelet_ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
+
 %extend lsst::meas::multifit::CompoundShapeletModelBasis {
     lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getForward() const {
         return self->getForward();
@@ -160,7 +162,6 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
     %}
 
 };
-%template(ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
 
 SWIG_SHARED_PTR(BaseEvaluatorPtr, lsst::meas::multifit::BaseEvaluator);
 

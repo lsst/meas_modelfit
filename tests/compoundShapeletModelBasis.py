@@ -34,7 +34,7 @@ import os, sys
 
 class CompoundShapeletModelBasisTest(unittest.TestCase):
     def testIO(self):
-        components = mf.ComponentVector()
+        components = mf.CompoundShapeletBuilder.ComponentVector()
         for i in range(5):
             components.push_back(mf.ShapeletModelBasis.make(i))
 

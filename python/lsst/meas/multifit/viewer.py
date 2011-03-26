@@ -76,7 +76,7 @@ class ViewerBase(object):
     def solve(self):
         x, residues, rank, sv = numpy.linalg.lstsq(self.modelMatrix, self.evaluator.getDataVector())
         self.coefficients[:] = x
-        return 0.5 * residues[0] + 0.5 * numpy.log(sv.sum())
+        return 0.5 * residues[0] + numpy.log(sv).sum()
 
     def plot(self, fignum=None):
         dbox = lsst.afw.geom.Box2D(self.bbox)
@@ -122,7 +122,7 @@ class StarViewer(ViewerBase):
             += numpy.random.normal(scale=sigma, size=(bbox.getHeight(), bbox.getWidth()))
         exposure.getMaskedImage().getVariance().getArray()[:,:] = sigma
         exposure.setPsf(psf)
-        evaluator = lsst.meas.multifit.Evaluator.make(exposure, footprint, point, False, False)
+        evaluator = lsst.meas.multifit.Evaluator.make(exposure, footprint, point, False, True)
         return StarViewer(evaluator, footprint)
 
     def update(self, parameters, coefficients=None):

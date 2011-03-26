@@ -21,10 +21,20 @@
 #
 import lsst.afw.geom.ellipses
 
-from multifitLib import *
+from multifitLib import (
+    BaseEvaluator,
+    Evaluator,
+    ModelBasis,
+    ShapeletModelBasis,
+    CompoundShapeletModelBasis,
+    CompoundShapeletBuilder,
+    )
+import multifitLib
+
 Ellipticity = lsst.afw.geom.ellipses.LogShear
 Radius = lsst.afw.geom.ellipses.TraceRadius
 EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
-CompoundShapeletBuilder.ComponentVector = ComponentVector
+CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
+CompoundShapeletModelBasis.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
 
 from . import sampling
