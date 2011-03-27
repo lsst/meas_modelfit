@@ -40,10 +40,10 @@ class CompoundShapeletModelBasisTest(unittest.TestCase):
 
         builder =  mf.CompoundShapeletBuilder(components)     
         forward = numpy.zeros_like(builder.getForward())
-        reverse = numpy.zeros_like(builder.getForward())
+        reverse = numpy.zeros_like(builder.getReverse())
+        print forward.shape, reverse.shape
         i = 0
         shape=forward.shape
-        print >>sys.stderr, shape
         area = shape[0]*shape[1]
         for r in range(shape[0]):
             for c in range(shape[1]):
@@ -52,13 +52,13 @@ class CompoundShapeletModelBasisTest(unittest.TestCase):
                 i+=1
         builder.setMapping(forward, reverse)
         saver = builder.build()
-        print >>sys.stderr, saver
         f = saver.getForward()
         filename = os.path.join("tests", "compound_shapelet.boost")
         saver.save(filename)
 
         loader = mf.CompoundShapeletModelBasis.load(filename)
-        print >>sys.stderr, loader
+        print >>sys.stderr, saver.getForward()
+        print >>sys.stderr, loader.getForward()
         self.assertEqual(loader.getSize(), saver.getSize())
         loadComponents = loader.extractComponents()
 
@@ -75,7 +75,7 @@ class CompoundShapeletModelBasisTest(unittest.TestCase):
                 self.assertAlmostEqual(loadReverse[r,c], reverse[r,c])
                 self.assertAlmostEqual(loadForward[r,c], forward[r,c])
 
-        os.remove(filename)
+        #os.remove(filename)
 
 
 
