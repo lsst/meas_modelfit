@@ -135,6 +135,44 @@ class StarViewer(ViewerBase):
         
 class GalaxyViewer(ViewerBase):
 
+    @staticmethod
+    def makeExample(basis=None, ellipse=None, coefficients=None, sn=10.0, 
+                    isEllipticityActive=False, isRadiusActive=False, isPositionActive=False
+                    ):
+        if basis is None:
+            basis = lsst.meas.multifit.loadBasis("ed+00:0000")
+        if ellipse is None:
+            ellipse = lsst.afw.geom.ellipses.Ellipse(
+                lsst.afw.geom.ellipses.Axes(10.0, 8.0, 0.25),
+                lsst.afw.geom.Point2D(0.0, 0.0)
+                )
+        if coefficients is None:
+            coefficients = numpy.zeros(basis.getSize(), dtype=float)
+            coefficients[0] = 1.0
+        bounds = lsst.afw.geom.ellipses.Ellipse(ellipse)
+        bounds.scale(4)
+        footprint = lsst.afw.detection.Footprint(bounds);
+        bbox = footprint.getBBox()
+        psf = lsst.afw.detection.createPsf("DoubleGaussian", 19, 19, 2.0, 1.0)
+        localPsf = psf.getLocalPsf(ellipse.getCenter())
+        matrix = numpy.zeros((footprint.getArea(), basis.getSize()), dtype=float)
+        convolvedBasis = basis.convolve(localPsf)
+        convolvedBasis.evaluate(matrix, footprint, ellipse)
+        vector = numpy.dot(matrix, coefficients)
+        signal = vector.max()
+        sigma = signal / sn
+        exposure = lsst.afw.image.ExposureD(bbox)
+        lsst.afw.detection.expandArray(
+            footprint, vector, exposure.getMaskedImage().getImage().getArray(), bbox.getMin()
+            )
+        exposure.getMaskedImage().getImage().getArray()[:,:] \
+            += numpy.random.normal(scale=sigma, size=(bbox.getHeight(), bbox.getWidth()))
+        exposure.getMaskedImage().getVariance().getArray()[:,:] = sigma
+        exposure.setPsf(psf)
+        evaluator = lsst.meas.multifit.Evaluator.make(exposure, footprint, basis, ellipse, 
+                                                      isEllipticityActive, isRadiusActive, isPositionActive)
+        return GalaxyViewer(evaluator, footprint)
+
     def update(self, parameters, coefficients=None):
         r = ViewerBase.update(self, parameters, coefficients)
         self.ellipse = self.evaluator.extractEllipse(0, self.parameters)
@@ -161,11 +199,11 @@ def plotSamples(table, importance):
         for j in range(i + 1):
             pyplot.subplot(nParameters, nParameters, i * nParameters + j + 1)
             if i == j:
-                h, e = numpy.histogram(table["parameters"][:,i], bins=20, weights=table["weight"], new=True)
+                h, e = numpy.histogram(table["parameters"][:,i], bins=50, weights=table["weight"], new=True)
                 pyplot.plot(mid(e), h)
             else:
                 h, xe, ye = numpy.histogram2d(table["parameters"][:,j], table["parameters"][:,i],
-                                              bins=10, weights=table["weight"])
+                                              bins=25, weights=table["weight"])
                 pyplot.pcolor(xe, ye, h)
                 #pyplot.plot(table["parameters"][:,j], table["parameters"][:,i], 'k,')
                 for component in importance.getComponents():

@@ -267,7 +267,7 @@ Frame::Frame(definition::Frame const & definition_, int offset, int filterIndex_
 
 void Frame::applyWeights(ndarray::Array<double,2,1> const & matrix) const {
     if (!weights.empty()) {
-        matrix.transpose() *= weights;
+        matrix.deep() *= weights;
     }
 }
 

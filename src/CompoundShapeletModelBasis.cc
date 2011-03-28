@@ -356,11 +356,11 @@ CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
     ndarray::Array<Pixel, 2, 2> forward = ndarray::allocate(
         ndarray::makeVector(height, width)
     );
-    ar >> boost::serialization::make_binary_object(forward.getData(), size);
+    ar >> boost::serialization::make_array(forward.getData(), size);
     ndarray::Array<Pixel, 2, 2> reverse = ndarray::allocate(
         ndarray::makeVector(height, width)
     );
-    ar >> boost::serialization::make_binary_object(reverse.getData(), size);
+    ar >> boost::serialization::make_array(reverse.getData(), size);
     
     CompoundShapeletBuilder builder(components, forward, reverse);
     return builder.build();
@@ -384,8 +384,8 @@ void CompoundShapeletModelBasis::save(std::string const & filename) {
     ndarray::Array<Pixel, 2, 2> reverse = ndarray::copy(_reverse);
     ar << height;
     ar << width;
-    ar << boost::serialization::make_binary_object(forward.getData(), size);
-    ar << boost::serialization::make_binary_object(reverse.getData(), size);
+    ar << boost::serialization::make_array(forward.getData(), size);
+    ar << boost::serialization::make_array(reverse.getData(), size);
 }
 
 }}} //end namespace lsst::meas::multifit

@@ -30,6 +30,10 @@ from multifitLib import (
     CompoundShapeletBuilder,
     )
 import multifitLib
+import os
+import eups
+
+from . import sampling
 
 Ellipticity = lsst.afw.geom.ellipses.LogShear
 Radius = lsst.afw.geom.ellipses.TraceRadius
@@ -37,4 +41,6 @@ EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
 CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
 CompoundShapeletModelBasis.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
 
-from . import sampling
+def loadBasis(name):
+    path = os.path.join(eups.productDir("meas_multifit"), "data", "%s.boost" % name)
+    return CompoundShapeletModelBasis.load(path)

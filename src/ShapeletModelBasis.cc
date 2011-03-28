@@ -95,7 +95,7 @@ void mf::ShapeletModelBasis::_evaluate(
     lsst::ndarray::Array<double, 2, 1>::Iterator pixelIter = matrix.begin();
     for (; spanIter != spanEnd; ++spanIter) {
         afw::detection::Span const & span = **spanIter;
-        for (int x = span.getX0(); x <= span.getX1(); ++x) {
+        for (int x = span.getX0(); x <= span.getX1(); ++x, ++pixelIter) {
             shapeletEvaluator.fillEvaluation(*pixelIter, transform(afw::geom::Point2D(x, span.getY())));
         }
     }

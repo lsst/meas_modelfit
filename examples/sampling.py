@@ -31,14 +31,15 @@ import lsst.meas.multifit.sampling
 import numpy
 from matplotlib import pyplot
 
-def main(sn=20.0, size=10000):
-    viewer = lsst.meas.multifit.viewer.StarViewer.makeExample(sn=sn)
+def main(viewer, size=10000):
     engine = lsst.meas.multifit.sampling.RandomEngine()
     mean = viewer.parameters.copy()
     sigma = numpy.identity(mean.size, dtype=float)
-    sigma *= 6.0
+    sigma[0,0] = 3.0
+    sigma[1,1] = 0.3
+    sigma[2,2] = 0.3
     importance = lsst.meas.multifit.sampling.MixtureDistribution(
-        [lsst.meas.multifit.sampling.MixtureComponent(1.0, mean, sigma)], 2,
+        [lsst.meas.multifit.sampling.MixtureComponent(1.0, mean, sigma)], -1,
         )
     sampler = lsst.meas.multifit.sampling.IterativeImportanceSampler(
         viewer.evaluator, importance, engine

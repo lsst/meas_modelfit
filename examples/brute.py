@@ -31,16 +31,43 @@ import lsst.meas.multifit.sampling
 import numpy
 from matplotlib import pyplot
 
-def main(xr, yr, sn=20.0):
-    viewer = lsst.meas.multifit.viewer.StarViewer.makeExample(sn=sn)
-    grid = numpy.zeros(yr.shape + xr.shape, dtype=float)
-    for iy, y in enumerate(yr):
-        for ix, x in enumerate(xr):
-            parameters = numpy.array([x, y], dtype=float)
-            grid[iy, ix] = viewer.update(parameters)
-    return grid
-            
-def student(self, x, dof, mu, sigma_inv):
-    y = numpy.dot(sigma_inv, x - mu)
-    z = numpy.sum(y**2, axis=1)
-    return (1 + z / dof)**(-0.5*(dof + mu.size))
+def makeGrid(viewer, ranges):
+    assert(len(ranges) == viewer.evaluator.getParameterSize())
+    nParameters = len(ranges)
+    grid = numpy.zeros(tuple(len(r) for r in ranges), dtype=float)
+    parameters = numpy.zeros(nParameters, dtype=float)
+    index = [0] * nParameters
+    def recurse(i):
+        if i == nParameters:
+            grid[tuple(index)] = viewer.update(parameters)
+        else:
+            for j, v in enumerate(ranges[i]):
+                index[i] = j
+                parameters[i] = v
+                recurse(i + 1)
+    recurse(0)
+    return numpy.exp(-grid)
+
+def marginalize(grid, i, j):
+    mgrid = grid
+    lshape = list(grid.shape)
+    for k in range(len(lshape)):
+        if k != i and k != j:
+            lshape[k] = 1
+            mgrid = mgrid.sum(axis=k).reshape(*lshape)
+    return mgrid.squeeze()
+
+def plot(grid, viewer, ranges):
+    nParameters = len(ranges)
+    mid = lambda x: 0.5*(x[:-1] + x[1:])
+    for i in range(nParameters):
+        for j in range(i + 1):
+            pyplot.subplot(nParameters, nParameters, i * nParameters + j + 1)
+            mgrid = marginalize(grid, i, j)
+            if i == j:
+                pyplot.plot(ranges[i], mgrid)
+                pyplot.xlim(ranges[i][0], ranges[i][-1])
+            else:
+                pyplot.contourf(ranges[j], ranges[i], mgrid.transpose())
+                pyplot.xlim(ranges[j][0], ranges[j][-1])
+                pyplot.ylim(ranges[i][0], ranges[i][-1])
