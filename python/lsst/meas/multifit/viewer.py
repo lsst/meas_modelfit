@@ -192,20 +192,43 @@ def makeGaussianEllipse(component, i, j):
         lsst.afw.geom.Point2D(float(mu[j]), float(mu[i]))
         )
 
-def plotSamples(table, importance):
+def plotSamples(table, importance, old_importance=None):
     nParameters = table["parameters"].shape[1]
     mid = lambda x: 0.5*(x[:-1] + x[1:])
     for i in range(nParameters):
-        for j in range(i + 1):
+        for j in range(nParameters):
             pyplot.subplot(nParameters, nParameters, i * nParameters + j + 1)
+            xmin = table["parameters"][:,j].min()
+            xmax = table["parameters"][:,j].max()
             if i == j:
                 h, e = numpy.histogram(table["parameters"][:,i], bins=50, weights=table["weight"], new=True)
                 pyplot.plot(mid(e), h)
             else:
-                h, xe, ye = numpy.histogram2d(table["parameters"][:,j], table["parameters"][:,i],
-                                              bins=25, weights=table["weight"])
-                pyplot.pcolor(xe, ye, h)
-                #pyplot.plot(table["parameters"][:,j], table["parameters"][:,i], 'k,')
-                for component in importance.getComponents():
-                    ellipse = makeGaussianEllipse(component, i, j)
-                    ellipse.plot(fill=False)
+                ymin = table["parameters"][:,i].min()
+                ymax = table["parameters"][:,i].max()
+                if i > j:
+                    h, xe, ye = numpy.histogram2d(table["parameters"][:,j], table["parameters"][:,i],
+                                                  bins=25, weights=table["weight"])
+                    pyplot.imshow(h.transpose(), origin='lower', extent=(xe[0], xe[-1], ye[0], ye[-1]))
+                    pyplot.axis("tight")
+                    #pyplot.contour(mid(xe), mid(ye), h)
+                    for component in importance.getComponents():
+                        ellipse = makeGaussianEllipse(component, i, j)
+                        ellipse.plot(fill=False)
+                    if old_importance is not None:
+                        for component in old_importance.getComponents():
+                            ellipse = makeGaussianEllipse(component, i, j)
+                            ellipse.plot(fill=False, edgecolor="g")
+                else:
+                    pyplot.plot(table["parameters"][:,j], table["parameters"][:,i], "k,")
+                    pyplot.scatter(table["parameters"][:,j], table["parameters"][:,i],
+                                   100 * table['weight'] / table["weight"].sum(), alpha=0.5)
+                    for component in importance.getComponents():
+                        ellipse = makeGaussianEllipse(component, i, j)
+                        ellipse.plot(fill=False)
+                    if old_importance is not None:
+                        for component in old_importance.getComponents():
+                            ellipse = makeGaussianEllipse(component, i, j)
+                            ellipse.plot(fill=False, edgecolor="g")
+                pyplot.ylim(ymin, ymax)
+            pyplot.xlim(xmin, xmax)

@@ -42,6 +42,8 @@ public:
 
     MixtureDistribution const & getImportance() const { return _importance; }
 
+    MixtureDistribution const & getPreviousImportance() const { return _previousImportance; }
+
     BaseEvaluator::Ptr getEvaluator() const { return _evaluator; }
 
     double computeNormalizedPerplexity() const;
@@ -60,6 +62,7 @@ private:
     BaseEvaluator::Ptr _evaluator;
     RandomEngine _randomEngine;
     MixtureDistribution _importance;
+    MixtureDistribution _previousImportance;
     SampleList _samples;
 };
 

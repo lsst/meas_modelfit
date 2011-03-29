@@ -233,7 +233,8 @@ enum NestedSampleType {
 
 %ignore lsst::meas::multifit::sampling::MixtureDistribution::draw;
 %ignore lsst::meas::multifit::sampling::MixtureDistribution::update;
-
+%copyctor lsst::meas::multifit::sampling::MixtureDistribution;
+%copyctor lsst::meas::multifit::sampling::MixtureComponent;
 %std_nodefconst_type(lsst::meas::multifit::sampling::MixtureComponent);
 %template(MixtureComponentList) std::vector<lsst::meas::multifit::sampling::MixtureComponent>;
 

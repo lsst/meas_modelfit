@@ -31,7 +31,7 @@ import lsst.meas.multifit.sampling
 import numpy
 from matplotlib import pyplot
 
-def main(viewer, size=10000):
+def makeSampler(viewer):
     engine = lsst.meas.multifit.sampling.RandomEngine()
     mean = viewer.parameters.copy()
     sigma = numpy.identity(mean.size, dtype=float)
@@ -44,5 +44,4 @@ def main(viewer, size=10000):
     sampler = lsst.meas.multifit.sampling.IterativeImportanceSampler(
         viewer.evaluator, importance, engine
         )
-    sampler.run(size)
     return sampler

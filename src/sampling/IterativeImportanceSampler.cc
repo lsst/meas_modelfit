@@ -5,6 +5,8 @@
 #include <Eigen/SVD>
 #include <Eigen/Cholesky>
 
+#define USE_CHOLESKY
+
 namespace lsst { namespace meas { namespace multifit { namespace sampling {
 
 double IterativeImportanceSampler::computeNormalizedPerplexity() const {
@@ -63,6 +65,7 @@ void IterativeImportanceSampler::run(int size) {
         record.target = record.nested.scalar + q; // - sumCoeffLn2Pi;
     }
     table.computeWeights();
+    _previousImportance = _importance;
     _importance.update(table);
 }
 
@@ -73,7 +76,8 @@ IterativeImportanceSampler::IterativeImportanceSampler(
 ) :
     _evaluator(evaluator),
     _randomEngine(randomEngine),
-    _importance(importance)
+    _importance(importance),
+    _previousImportance(importance)
 {}
 
 }}}} // namespace lsst::meas::multifit::sampling
