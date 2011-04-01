@@ -35,7 +35,7 @@ import eups
 
 from . import sampling
 
-Ellipticity = lsst.afw.geom.ellipses.LogShear
+Ellipticity = lsst.afw.geom.ellipses.ConformalShear
 Radius = lsst.afw.geom.ellipses.TraceRadius
 EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
 CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
