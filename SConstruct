@@ -49,7 +49,7 @@ for d in (
     "lib",
     "python/lsst/meas/multifit",
     "python/lsst/meas/multifit/sampling",
-    "examples",
+    #"examples",
     "tests",
     "doc",
 ):  
