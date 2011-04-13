@@ -42,7 +42,7 @@ namespace geom = lsst::afw::geom;
 namespace detection = lsst::afw::detection;
 namespace image = lsst::afw::image;
 namespace multifit = lsst::meas::multifit;
-
+namespace ndarray =lsst::ndarray;
 
 void checkEvaluator(
     multifit::Evaluator const & eval,
@@ -99,8 +99,12 @@ BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
     multifit::Evaluator::Ptr eval = multifit::Evaluator::make(exp, fp, point);
     checkEvaluator(*eval, *fp, 1, 0, 1.0, 0.5);
 
+
+
     eval = multifit::Evaluator::make(exp, fp, point, false, true);
     checkEvaluator(*eval, *fp, 1, 2, 1.0, 0.5);
+    ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterSize());
+    eval->writeInitialParameters(parameters);
 }
 
 BOOST_AUTO_TEST_CASE(GalaxySourceConstruction) {
