@@ -1,0 +1,13 @@
+# -*- python -*-
+import re
+Import("env")
+
+pkg = env["eups_product"]
+env.CheckSwig("python", ilang="c++", 
+            includedProducts="utils daf_base daf_data daf_persistence pex_logging pex_policy pex_exceptions security afw ndarray meas_multifit")
+env.LoadableModuleIncomplete("_multifitLib", Split("multifitLib.i"), 
+                             SWIGFLAGS=env['SWIGFLAGS'] + " -DIMPORT_FUNCTION_I",
+                             CCFLAGS=re.sub("-Wall", "", " ".join(env['CCFLAGS'])),
+                             LIBS=env.getlibs(pkg))
+
+
