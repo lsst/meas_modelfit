@@ -20,17 +20,34 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_MULTIFIT
-#define LSST_MULTIFIT
 
+#ifndef LSST_MEAS_MULTIFIT_GRID_Frame
+#define LSST_MEAS_MULTIFIT_GRID_Frame
 
-#include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/Evaluator.h"
-#include "lsst/meas/multifit/BaseEvaluator.h"
-#include "lsst/meas/multifit/Definition.h"
-#include "lsst/meas/multifit/Grid.h"
-#include "lsst/meas/multifit/ModelBasis.h"
-#include "lsst/meas/multifit/ShapeletModelBasis.h"
-#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
-#endif
+#include "lsst/meas/multifit/definition/Frame.h"
+#include "lsst/meas/multifit/grid/Source.h"
+
+namespace lsst { namespace meas { namespace multifit { namespace grid {
+
+class Frame : public definition::Frame {
+public:
+
+    Frame(definition::Frame const & definition_, int offset, int filterIndex, int frameIndex);
+
+    int pixelOffset;
+    int pixelCount;
+
+    int filterIndex;
+    int frameIndex;
+
+    mutable void * extra;
+
+    void applyWeights(ndarray::Array<double,2,1> const & matrix) const;
+
+    void applyWeights(ndarray::Array<double,1,0> const & vector) const;
+
+};
+
+}}}} // namespace lsst::meas::multifit::grid
+
+#endif // !LSST_MEAS_MULTIFIT_GRID_Frame

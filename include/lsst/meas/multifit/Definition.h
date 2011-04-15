@@ -20,17 +20,36 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_MULTIFIT
-#define LSST_MULTIFIT
 
+#ifndef LSST_MEAS_MULTIFIT_Definition
+#define LSST_MEAS_MULTIFIT_Definition
 
-#include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/Evaluator.h"
-#include "lsst/meas/multifit/BaseEvaluator.h"
-#include "lsst/meas/multifit/Definition.h"
-#include "lsst/meas/multifit/Grid.h"
-#include "lsst/meas/multifit/ModelBasis.h"
-#include "lsst/meas/multifit/ShapeletModelBasis.h"
-#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
-#endif
+#include "lsst/meas/multifit/definition/Frame.h"
+#include "lsst/meas/multifit/definition/Object.h"
+#include "lsst/meas/multifit/definition/Set.h"
+
+namespace lsst { namespace meas { namespace multifit {
+
+class Definition {
+public:
+    typedef definition::Frame Frame;
+    typedef definition::Object Object;
+
+    typedef definition::Set<Frame,ID,&Frame::id> FrameSet;
+    typedef definition::Set<Object,ID,&Object::id> ObjectSet; 
+
+    Definition() {}
+
+    explicit Definition(Wcs::Ptr const & wcs_) : wcs(wcs_) {}
+
+    Definition(Definition const & other);
+
+    FrameSet frames;
+    ObjectSet objects;
+
+    Wcs::Ptr wcs;
+};
+
+}}} // namespace lsst::meas::multifit
+
+#endif // !LSST_MEAS_MULTIFIT_Definition

@@ -15,4 +15,4 @@ tests.run("*.cc")
 
 for target in tests.run("*.py"):
      env.Depends(target,
-        "../python/lsst/daf/base/_baseLib%s" % (env['LDMODULESUFFIX']))
+        "../python/lsst/meas/multifit/_multifitLib%s" % (env['LDMODULESUFFIX']))

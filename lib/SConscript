@@ -5,10 +5,8 @@ import os
 
 pkg = env["eups_product"]
 
-cFiles = ['../src/levmar/Axb.c', '../src/levmar/lm.c', '../src/levmar/misc.c']
-
 env.SharedLibrary(
     pkg,
-    glob.glob("../src/*.cc") + glob.glob("../src/*/*.cc") + cFiles,
+    glob.glob("../src/*.cc") + glob.glob("../src/*/*.cc"),
     LIBS=filter(lambda p: p != pkg, env.getlibs(pkg)),
 )

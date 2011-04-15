@@ -19,28 +19,4 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-import lsst.afw.geom.ellipses
-
-from multifitLib import (
-    BaseEvaluator,
-    Evaluator,
-    ModelBasis,
-    ShapeletModelBasis,
-    CompoundShapeletModelBasis,
-    CompoundShapeletBuilder,
-    )
-import multifitLib
-import os
-import eups
-
-from . import sampling
-
-Ellipticity = lsst.afw.geom.ellipses.ConformalShear
-Radius = lsst.afw.geom.ellipses.TraceRadius
-EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
-CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
-CompoundShapeletModelBasis.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
-
-def loadBasis(name):
-    path = os.path.join(eups.productDir("meas_multifit"), "data", "%s.boost" % name)
-    return CompoundShapeletModelBasis.load(path)
+from samplingLib import *

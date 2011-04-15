@@ -20,17 +20,38 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_MULTIFIT
-#define LSST_MULTIFIT
 
+#ifndef LSST_MEAS_MULTIFIT_GRID_Source
+#define LSST_MEAS_MULTIFIT_GRID_Source
 
-#include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/Evaluator.h"
-#include "lsst/meas/multifit/BaseEvaluator.h"
-#include "lsst/meas/multifit/Definition.h"
-#include "lsst/meas/multifit/Grid.h"
+#include "lsst/afw/geom/AffineTransform.h"
 #include "lsst/meas/multifit/ModelBasis.h"
-#include "lsst/meas/multifit/ShapeletModelBasis.h"
-#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
-#endif
+
+namespace lsst { namespace meas { namespace multifit { namespace grid {
+
+class Frame;
+class Object;
+
+class Source {
+public:
+
+    Source(
+        Frame const & frame, Object const & object, 
+        CONST_PTR(afw::image::Wcs) const & wcs
+    );
+
+    afw::geom::Point2D const getReferencePoint() const;
+
+    Frame const & frame;
+    Object const & object;
+
+    afw::geom::AffineTransform transform;
+    ModelBasis::Ptr basis;
+    afw::detection::LocalPsf::Ptr localPsf;
+    mutable void * extra;
+
+};
+
+}}}} // namespace lsst::meas::multifit::grid
+
+#endif // !LSST_MEAS_MULTIFIT_GRID_sources
