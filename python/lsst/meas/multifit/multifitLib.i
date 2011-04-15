@@ -134,13 +134,22 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 %nodefaultctor lsst::meas::multifit::ShapeletModelBasis;
 %nodefaultctor lsst::meas::multifit::CompoundShapeletModelBasis;
 
-%include "lsst/meas/multifit/ModelBasis.h"
-%include "lsst/meas/multifit/ShapeletModelBasis.h"
-%include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
-
-%template(CompoundShapelet_ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
 
 %extend lsst::meas::multifit::CompoundShapeletModelBasis {
+    %feature("shadow") _getForward %{
+        def getForward(self):
+            return $action(self)
+    %}
+    %feature("shadow") _getReverse %{
+        def getReverse(self):
+            return $action(self)
+    %}
+    %feature("shadow") _extractComponents %{
+        def extractComponents(self):
+            return $action(self)
+    %}
+
+
     lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getForward() const {
         return self->getForward();
     }
@@ -150,18 +159,17 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
     lsst::meas::multifit::CompoundShapeletModelBasis::ComponentVector _extractComponents() const {
         return self->extractComponents();
     }
-    %pythoncode %{
-        def getForward(self):
-            return self._getForward()
-
-        def getReverse(self):
-            return self._getReverse()
-
-        def extractComponents(self):
-            return self._extractComponents()
-    %}
-
 };
+
+%include "lsst/meas/multifit/ModelBasis.h"
+%include "lsst/meas/multifit/ShapeletModelBasis.h"
+%include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
+
+%template(CompoundShapelet_ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
+
+
+
+
 
 SWIG_SHARED_PTR(BaseEvaluatorPtr, lsst::meas::multifit::BaseEvaluator);
 
