@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008, 2009, 2010, 2011 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,14 +24,13 @@
 #ifndef LSST_MULTIFIT
 #define LSST_MULTIFIT
 
-#undef NDEBUG
-#define DEBUG
 
-#include "lsst/meas/multifit/Model.h"
-#include "lsst/meas/multifit/ModelProjection.h"
-#include "lsst/meas/multifit/ModelFactory.h"
-#include "lsst/meas/multifit/ModelEvaluator.h"
-#include "lsst/meas/multifit/SingleLinearParameterFitter.h"
-
-
+#include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/BaseEvaluator.h"
+#include "lsst/meas/multifit/Definition.h"
+#include "lsst/meas/multifit/Grid.h"
+#include "lsst/meas/multifit/ModelBasis.h"
+#include "lsst/meas/multifit/ShapeletModelBasis.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #endif

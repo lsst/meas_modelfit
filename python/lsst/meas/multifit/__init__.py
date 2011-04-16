@@ -1,6 +1,6 @@
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2008, 2009, 2010, 2011 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,5 +19,28 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+import lsst.afw.geom.ellipses
 
-from multifitLib import *
+from multifitLib import (
+    BaseEvaluator,
+    Evaluator,
+    ModelBasis,
+    ShapeletModelBasis,
+    CompoundShapeletModelBasis,
+    CompoundShapeletBuilder,
+    )
+import multifitLib
+import os
+import eups
+
+from . import sampling
+
+Ellipticity = lsst.afw.geom.ellipses.ConformalShear
+Radius = lsst.afw.geom.ellipses.TraceRadius
+EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
+CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
+CompoundShapeletModelBasis.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
+
+def loadBasis(name):
+    path = os.path.join(eups.productDir("meas_multifit"), "data", "%s.boost" % name)
+    return CompoundShapeletModelBasis.load(path)

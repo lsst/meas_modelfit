@@ -37,67 +37,39 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=362                 // operator=  ignored
 #pragma SWIG nowarn=401                 // nothin known about base class X
 %{
-// these sholdn't be necessary, but SWIG fails if they aren't there.
-#include "Eigen/Core"
-#include "boost/shared_ptr.hpp"
-#include "lsst/afw/detection/Footprint.h"
-#include "lsst/afw/detection/Psf.h"
-#include "lsst/afw/detection/Shape.h"
-#include "lsst/afw/detection/Photometry.h"
-#include "lsst/meas/multifit/core.h"
-#include "lsst/meas/multifit/footprintUtils.h"
-#include "lsst/meas/multifit/WindowedFootprint.h"
-#include "lsst/meas/multifit/Model.h"
-#include "lsst/meas/multifit/ModelProjection.h"
-#include "lsst/meas/multifit/ModelEvaluator.h"
-#include "lsst/meas/multifit/SourceMeasurement.h"
-#include "lsst/meas/multifit/SersicCache.h"
-#include "lsst/meas/multifit/components/Astrometry.h"
-#include "lsst/meas/multifit/components/MorphologyProjection.h"
-#include "lsst/meas/multifit/components/Morphology.h"
-#include "lsst/meas/multifit/components/FixedNonlinearMorphology.h"
-#include "lsst/meas/multifit/components/FixedAstrometry.h"
-#include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
-#include "lsst/meas/multifit/components/PointSourceMorphology.h"
-#include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
-#include "lsst/meas/multifit/components/SersicMorphology.h"
-#include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
-#include "lsst/meas/multifit/components/ExponentialMorphology.h"
-#include "lsst/meas/multifit/components/ExponentialMorphologyProjection.h"
-#include "lsst/meas/multifit/ComponentModel.h"
-#include "lsst/meas/multifit/ComponentModelProjection.h"
-#include "lsst/meas/multifit/FourierModelProjection.h"
-#include "lsst/meas/multifit/SingleLinearParameterFitter.h"
-#include "lsst/meas/multifit/MinuitFitter.h"
-#include "lsst/meas/multifit/LevMarFitter.h"
-#include "lsst/meas/multifit/ModelFactory.h"
-#include "lsst/meas/multifit/ModifiedSersic.h"
-#define NDARRAY_PYTHON_MAIN
-#include "ndarray/python.hpp"
-#include "ndarray/python/eigen.hpp"
+#include "lsst/afw/detection.h"
+#include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/BaseEvaluator.h"
+#include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/ModelBasis.h"
+#include "lsst/meas/multifit/ShapeletModelBasis.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
+#define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
+#include "numpy/arrayobject.h"
+#include "lsst/ndarray/python.h"
+#include "lsst/ndarray/python/eigen.h"
 %}
 
 %inline %{
-namespace boost { }
-namespace lsst { namespace meas { namespace multifit { namespace components {} } } }    
-%}
-
-%ignore boost::noncopyable;
-namespace boost {
-    class noncopyable {};
+namespace boost {}
+namespace lsst { 
+    namespace afw {
+        namespace image {}
+        namespace detection {}
+        namespace math {}
+        namespace geom {}
+    }
+    namespace meas { namespace multifit {} }
 }
 
-%include "std_list.i"
-%include "ndarray.i"
-
-%{
-#include "lsst/afw/numpyTypemaps.h"
+using namespace lsst;
+using namespace lsst::meas::multifit;
 %}
+
+/******************************************************************************/
 %init %{
     import_array();
 %}
-/******************************************************************************/
-
 
 %include "lsst/p_lsstSwig.i"
 %include "lsst/base.h"
@@ -108,7 +80,7 @@ namespace boost {
 %pythoncode %{
 import lsst.utils
 
-def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/trunk/python/lsst/meas/multifit/multifitLib.i $"):
+def version(HeadURL = r"$HeadURL$"):
     """Return a version given a HeadURL string. If a different version is setup, return that too"""
 
     version_svn = lsst.utils.guessSvnVersion(HeadURL)
@@ -129,246 +101,84 @@ def version(HeadURL = r"$HeadURL: svn+ssh://svn.lsstcorp.org/DMS/meas/multifit/t
         return "%s (setup: %s)" % (version_svn, version_eups)
 %}
 
-
-
-%import "lsst/daf/base/baseLib.i"
+%include "lsst/ndarray/ndarray.i"
 %import "lsst/afw/geom/geomLib.i"
-%import "lsst/afw/image/imageLib.i"
+%import "lsst/afw/geom/ellipses/ellipsesLib.i"
 %import "lsst/afw/detection/detectionLib.i"
 %import "lsst/afw/math/mathLib.i"
-%import "lsst/afw/coord/coordLib.i"
+%import "lsst/afw/math/shapelets/shapeletsLib.i"
+%import "lsst/afw/image/imageLib.i"
 
-%include "lsst/afw/image/lsstImageTypes.i"     // Image/Mask types and typedefs
+/*****************************************************************************/
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 2, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 3, 3>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 3, 3>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<double const, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<double, 1, 1>);
+%declareNumPyConverters(lsst::ndarray::Array<double, 2, 2>);
 
-%include "lsst/meas/multifit/core.h"
-%include "lsst/meas/multifit/ModifiedSersic.h"
+%include "lsst/meas/multifit/constants.h"
+
+SWIG_SHARED_PTR(ModelBasisPtr, lsst::meas::multifit::ModelBasis);
+SWIG_SHARED_PTR_DERIVED(ShapeletModelBasisPtr, lsst::meas::multifit::ModelBasis,
+        lsst::meas::multifit::ShapeletModelBasis);
+SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::ModelBasis,
+        lsst::meas::multifit::CompoundShapeletModelBasis);
+
+%nodefaultctor lsst::meas::multifit::ModelBasis;
+%nodefaultctor lsst::meas::multifit::ShapeletModelBasis;
+%nodefaultctor lsst::meas::multifit::CompoundShapeletModelBasis;
 
 
+%extend lsst::meas::multifit::CompoundShapeletModelBasis {
+    %feature("shadow") _getForward %{
+        def getForward(self):
+            return $action(self)
+    %}
+    %feature("shadow") _getReverse %{
+        def getReverse(self):
+            return $action(self)
+    %}
+    %feature("shadow") _extractComponents %{
+        def extractComponents(self):
+            return $action(self)
+    %}
 
-%define %downcast(BaseType, DerivedType...)
-   %extend DerivedType {
-       static boost::shared_ptr<DerivedType > swigConvert(
-           boost::shared_ptr<BaseType> const & ptr
-       ) {
-           return boost::dynamic_pointer_cast<DerivedType >(ptr);
-       }
-   }
-%enddef 
 
-
-%template(ExposureListF) std::list<lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
-%template(ExposureListD) std::list<lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
-%template(MaskedImageListF) std::list<lsst::afw::image::MaskedImage<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
-%template(MaskedImageListD) std::list<lsst::afw::image::MaskedImage<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> >;
-%template(PsfList) std::list<lsst::afw::detection::Psf::ConstPtr>;
-%template(TransformList) std::list<lsst::afw::geom::AffineTransform>;
-
-%extend lsst::afw::image::Exposure<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> {
-    %pythoncode {
-        def makeList(self): 
-            return ExposureListF()
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getForward() const {
+        return self->getForward();
     }
-}
-%extend lsst::afw::image::Exposure<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> {
-    %pythoncode {
-        def makeList(self):
-            return ExposureListD()
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getReverse() const {
+        return self->getReverse();
     }
-}
-
-%declareArray(double, 2, 0);
-%declareArray(double, 1, 1);
-%declareArray(double const, 1, 1);
-
-%declareArray(lsst::meas::multifit::Pixel const, 1, 1);
-%declareArray(lsst::meas::multifit::Pixel const, 2, 1);
-%declareArray(lsst::meas::multifit::Pixel, 1, 1);
-%declareArray(lsst::meas::multifit::Pixel, 2, 1);
-%declareEigenMatrix(lsst::meas::multifit::ParameterVector);
-%declareEigenMatrix(Eigen::Matrix<lsst::meas::multifit::Pixel, Eigen::Dynamic, 1>);
-%declareEigenMatrix(Eigen::Matrix<lsst::meas::multifit::Pixel, Eigen::Dynamic, Eigen::Dynamic>);
-
-%include "lsst/meas/multifit/footprintUtils.h"
-%template(compressImageF) lsst::meas::multifit::compressImage<float, 
-    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
-%template(compressImageD) lsst::meas::multifit::compressImage<double, 
-    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
-%template(expandImageF) lsst::meas::multifit::expandImage<float, 
-    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
-%template(expandImageD) lsst::meas::multifit::expandImage<double, 
-    lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>;
-
-SWIG_SHARED_PTR(WindowedFootprintPtr, lsst::meas::multifit::WindowedFootprint)
-%include "lsst/meas/multifit/WindowedFootprint.h"
-%extend lsst::meas::multifit::WindowedFootprint {
-    %template(compress) compress<double, double, 0>; 
-
-    %template(expand) expand<double, double, 0>; 
+    lsst::meas::multifit::CompoundShapeletModelBasis::ComponentVector _extractComponents() const {
+        return self->extractComponents();
+    }
 };
 
-SWIG_SHARED_PTR(InterpolationFunctionPtr, lsst::meas::multifit::InterpolationFunction)
-SWIG_SHARED_PTR(SersicCachePtr, lsst::meas::multifit::SersicCache)
-%nodefaultctor lsst::meas::multifit::SersicCache;
-%include "lsst/meas/multifit/SersicCache.h"
+%include "lsst/meas/multifit/ModelBasis.h"
+%include "lsst/meas/multifit/ShapeletModelBasis.h"
+%include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
+
+%template(CompoundShapelet_ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
 
 
-SWIG_SHARED_PTR_DERIVED(PsPhotometryPtr, lsst::afw::detection::Photometry, lsst::meas::multifit::PointSourceModelPhotometry)
-SWIG_SHARED_PTR_DERIVED(SgPhotometryPtr, lsst::afw::detection::Photometry, lsst::meas::multifit::SmallGalaxyModelPhotometry)
-
-%include "lsst/meas/multifit/SourceMeasurement.h"
-
-SWIG_SHARED_PTR(ModelPtr, lsst::meas::multifit::Model);
-%include "lsst/meas/multifit/Model.h"
-
-SWIG_SHARED_PTR(ModelProjectionPtr, lsst::meas::multifit::ModelProjection)
-%include "lsst/meas/multifit/ModelProjection.h"
-%extend lsst::meas::multifit::ModelProjection {
-    %returnArray(computeModelImage, lsst::meas::multifit::Pixel const, 1, 1);
-    %returnArray(computeLinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
-    %returnArray(computeNonlinearParameterDerivative, lsst::meas::multifit::Pixel const, 2, 1);
-};
-
-SWIG_SHARED_PTR(AstrometryPtr, lsst::meas::multifit::components::Astrometry);
-SWIG_SHARED_PTR(MorphologyPtr, lsst::meas::multifit::components::Morphology);
-SWIG_SHARED_PTR_DERIVED(FixedAstrometryPtr, lsst::meas::multifit::components::Astrometry,
-    lsst::meas::multifit::components::FixedAstrometry);
-SWIG_SHARED_PTR_DERIVED(FixedNonlinearMorphologyPtr, lsst::meas::multifit::components::Morphology,
-    lsst::meas::multifit::components::FixedNonlinearMorphology);    
-SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyPtr, lsst::meas::multifit::components::Morphology,
-    lsst::meas::multifit::components::PointSourceMorphology);   
-SWIG_SHARED_PTR_DERIVED(SersicMorphologyPtr, lsst::meas::multifit::components::Morphology,
-    lsst::meas::multifit::components::SersicMorphology);    
-SWIG_SHARED_PTR_DERIVED(ExponentialMorphologyPtr, lsst::meas::multifit::components::Morphology,
-    lsst::meas::multifit::components::ExponentialMorphology);    
-SWIG_SHARED_PTR(MorphologyProjectionPtr, lsst::meas::multifit::components::MorphologyProjection);
-SWIG_SHARED_PTR_DERIVED(FourierMorphologyProjectionPtr,
-    lsst::meas::multifit::components::MorphologyProjection,
-    lsst::meas::multifit::components::FourierMorphologyProjection);
-SWIG_SHARED_PTR_DERIVED(PointSourceMorphologyProjectionPtr,
-    lsst::meas::multifit::components::FourierMorphologyProjection,
-    lsst::meas::multifit::components::PointSourceMorphologyProjection);
-SWIG_SHARED_PTR_DERIVED(SersicMorphologyProjectionPtr,
-    lsst::meas::multifit::components::FourierMorphologyProjection,
-    lsst::meas::multifit::components::SersicMorphologyProjection);
-SWIG_SHARED_PTR_DERIVED(ExponentialMorphologyProjectionPtr,
-    lsst::meas::multifit::components::FourierMorphologyProjection,
-    lsst::meas::multifit::components::ExponentialMorphologyProjection);
-%ignore lsst::meas::multifit::components::PointSourceMorphology::create;
-%ignore lsst::meas::multifit::components::SersicMorphology::create;
-%ignore lsst::meas::multifit::components::ExponentialMorphology::create;
-%ignore lsst::meas::multifit::components::FixedNonlinearMorphology::create;
-
-%include "lsst/meas/multifit/components/Astrometry.h"
-%include "lsst/meas/multifit/components/MorphologyProjection.h"
-%include "lsst/meas/multifit/components/Morphology.h"
-%include "lsst/meas/multifit/components/PointSourceMorphology.h"
-%include "lsst/meas/multifit/components/SersicMorphology.h"
-%include "lsst/meas/multifit/components/ExponentialMorphology.h"
-%include "lsst/meas/multifit/components/FourierMorphologyProjection.h"
-%include "lsst/meas/multifit/components/PointSourceMorphologyProjection.h"
-%include "lsst/meas/multifit/components/SersicMorphologyProjection.h"
-%include "lsst/meas/multifit/components/ExponentialMorphologyProjection.h"
-
-%include "lsst/meas/multifit/components/FixedAstrometry.h"
-%include "lsst/meas/multifit/components/FixedNonlinearMorphology.h"
-
-%inline %{
-  
-    boost::shared_ptr<lsst::meas::multifit::components::PointSourceMorphology> createPointSourceMorphology(
-        lsst::meas::multifit::Parameter flux
-    ) {
-        return lsst::meas::multifit::components::PointSourceMorphology::create(flux);
-    }
-    
-    boost::shared_ptr<lsst::meas::multifit::components::SersicMorphology> createSersicMorphology(
-        lsst::meas::multifit::Parameter flux,
-        lsst::afw::geom::ellipses::Core const & ellipse,
-        lsst::meas::multifit::Parameter sersicIndex
-    ) {
-        return lsst::meas::multifit::components::SersicMorphology::create(
-            flux, ellipse, sersicIndex
-        );
-    }
-    
-    boost::shared_ptr<lsst::meas::multifit::components::ExponentialMorphology> createExponentialMorphology(
-        lsst::meas::multifit::Parameter flux,
-        lsst::afw::geom::ellipses::Core const & ellipse
-    ) {
-        return lsst::meas::multifit::components::ExponentialMorphology::create(flux, ellipse);
-    }
-
-    boost::shared_ptr<lsst::meas::multifit::components::FixedNonlinearMorphology> createFixedNonlinearMorphology(
-        lsst::meas::multifit::components::Morphology const & base
-    ) {
-        return lsst::meas::multifit::components::FixedNonlinearMorphology::create(base);
-    }
-    
-    boost::shared_ptr<lsst::meas::multifit::Model> createSersicModel(
-        lsst::meas::multifit::Parameter flux, 
-        lsst::afw::geom::Point2D const & centroid,
-        lsst::afw::geom::ellipses::Core const & ellipse,
-        lsst::meas::multifit::Parameter sersicIndex
-    ) {
-        return lsst::meas::multifit::ModelFactory::createSersicModel(
-            flux, centroid, ellipse, sersicIndex
-        );
-    }
-
-    boost::shared_ptr<lsst::meas::multifit::Model> createExponentialModel(
-        lsst::meas::multifit::Parameter flux, 
-        lsst::afw::geom::Point2D const & centroid,
-        lsst::afw::geom::ellipses::Core const & ellipse
-    ) {
-        return lsst::meas::multifit::ModelFactory::createExponentialModel(
-            flux, centroid, ellipse
-        );
-    }
-
-    boost::shared_ptr<lsst::meas::multifit::Model> createPointSourceModel(
-        lsst::meas::multifit::Parameter flux, 
-        lsst::afw::geom::Point2D const & centroid
-    ) {
-        return lsst::meas::multifit::ModelFactory::createPointSourceModel(
-            flux, centroid
-        );
-    }
-%}
-
-SWIG_SHARED_PTR_DERIVED(ComponentModelPtr, lsst::meas::multifit::Model,     
-    lsst::meas::multifit::ComponentModel);
-%include "lsst/meas/multifit/ComponentModel.h"
-
-%downcast(lsst::meas::multifit::Model, lsst::meas::multifit::ComponentModel);
-
-SWIG_SHARED_PTR_DERIVED(ComponentModelProjectionPtr, lsst::meas::multifit::ModelProjection,
-    lsst::meas::multifit::ComponentModelProjection);
-SWIG_SHARED_PTR_DERIVED(FourierModelProjectionPtr, lsst::meas::multifit::ComponentModelProjection,
-    lsst::meas::multifit::FourierModelProjection);
-%include "lsst/meas/multifit/ComponentModelProjection.h"    
-%include "lsst/meas/multifit/FourierModelProjection.h"
-
-%downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::FourierModelProjection);
-%downcast(lsst::meas::multifit::ModelProjection, lsst::meas::multifit::ComponentModelProjection);
-%downcast(lsst::meas::multifit::ComponentModelProjection, lsst::meas::multifit::FourierModelProjection);
-
-SWIG_SHARED_PTR(ModelEvaluatorPtr, lsst::meas::multifit::ModelEvaluator);
-%nodefaultctor lsst::meas::multifit::ModelEvaluator;
-%include "lsst/meas/multifit/ModelEvaluator.h"
-%extend lsst::meas::multifit::ModelEvaluator {
-    %returnArray(getDataVector, lsst::meas::multifit::Pixel const, 1, 1);
-    
-    %template(setData) setData<
-        lsst::afw::image::MaskedImage<double, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
-    >; 
-    %template(setData) setData<
-        lsst::afw::image::MaskedImage<float, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel> 
-    >;
-};
-
-SWIG_SHARED_PTR(SimpleResultPtr, lsst::meas::multifit::SimpleFitResult);
-%include "lsst/meas/multifit/SingleLinearParameterFitter.h"
 
 
-%include "lsst/meas/multifit/MinuitFitter.h"
 
-%include "lsst/meas/multifit/LevMarFitter.h"
+SWIG_SHARED_PTR(BaseEvaluatorPtr, lsst::meas::multifit::BaseEvaluator);
+
+%include "lsst/meas/multifit/BaseEvaluator.h"
+
+SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator, 
+        lsst::meas::multifit::Evaluator);
+
+%include "lsst/meas/multifit/Evaluator.h"
+
+%template(make) lsst::meas::multifit::Evaluator::make<double>;
+%template(make) lsst::meas::multifit::Evaluator::make<float>;

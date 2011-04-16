@@ -28,31 +28,12 @@ env.Help("""
 LSST Multifit Implementation.
 """)
 
-# Explicit build for m4-generated headers, since SCons doesn't do dependency
-# checking on those.
-env.Append(M4FLAGS=["-I%s" % os.path.join(os.path.abspath('.'),'m4')])
-generated = ["include/ndarray/Array.hpp",
-             "include/ndarray/operators.hpp",
-             "include/ndarray/Vector.hpp",
-             "include/ndarray/fft/FFTWTraits.hpp",
-             ]
-headers = [env.M4(filename, "%s.m4" % filename) for filename in generated]
-env.Depends(headers, Glob("#m4/*.m4"))
-
-if True:
-    #
-    # Workaround SConsUtils failure to find numpy .h files. Fixed in sconsUtils >= 3.3.2
-    #
-    import numpy
-    env.Append(CCFLAGS = ["-I", numpy.get_include()])
-#
-
 #
 # Libraries needed to link libraries/executables
 #
 env.libs["meas_multifit"] += env.getlibs("boost wcslib cfitsio minuit2 gsl utils " +
         "daf_base daf_data daf_persistence pex_exceptions pex_logging pex_policy " +
-        "security fftw3 afw")
+        "security fftw3 afw ndarray")
 
 if True:
     #
@@ -67,7 +48,8 @@ for d in (
     ".",
     "lib",
     "python/lsst/meas/multifit",
-    "examples",
+    "python/lsst/meas/multifit/sampling",
+    #"examples",
     "tests",
     "doc",
 ):  
@@ -90,6 +72,7 @@ Alias("install", [
     env.Install(env['prefix'], "policy"),
     env.Install(env['prefix'], "examples"),
     env.Install(env['prefix'], "tests"),
+    env.Install(env['prefix'], "src"),
     env.InstallAs(os.path.join(env['prefix'], "doc", "doxygen"),
             os.path.join("doc", "htmlDir")),
     env.InstallEups(os.path.join(env['prefix'], "ups")),
