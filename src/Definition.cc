@@ -39,6 +39,15 @@ Object Object::makeGalaxy(
     return r;
 }
 
+void Object::requireEllipse() const {
+    if (!radius || !ellipticity) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            (boost::format("Object %d lacks an ellipticity and/or radius component.") % id).str()
+        );
+    }
+}
+
 } // namespace definition
 
 Definition::Definition(Definition const & other) :

@@ -167,10 +167,11 @@ template Evaluator::Ptr Evaluator::make<double>(
     bool, bool, bool
 );
 
-void Evaluator::_evaluateModelMatrix(
+bool Evaluator::_evaluateModelMatrix(
     ndarray::Array<double,2,2> const & matrix,
     ndarray::Array<double const,1,1> const & param
 ) const {
+    if (_grid->isInBounds(param.begin())) return false;
     matrix.deep() = 0.0;
     for (
         Grid::ObjectArray::const_iterator object = _grid->objects.begin();
@@ -235,13 +236,15 @@ void Evaluator::_evaluateModelMatrix(
             }            
         }
     }
+    return true;
 }
 
 
-void Evaluator::_evaluateModelDerivative(
+bool Evaluator::_evaluateModelDerivative(
     ndarray::Array<double,3,3> const & derivative,
     ndarray::Array<double const,1,1> const & param
 ) const {
+    if (_grid->isInBounds(param.begin())) return false;
     derivative.deep() = 0.0;
     for (
         Grid::ObjectArray::const_iterator object = _grid->objects.begin();
@@ -339,6 +342,7 @@ void Evaluator::_evaluateModelDerivative(
             }
         }
     }
+    return true;
 }
 
 void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & param) const {

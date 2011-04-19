@@ -175,6 +175,30 @@ lsst::afw::geom::Point2D Object::makePoint(double const * paramIter) const {
     return result;
 }
 
+void Object::readPoint(double * paramIter, lsst::afw::geom::Point2D const & point) const {
+    if (position->active) {
+        double * p = paramIter + getPosition().offset;
+        p[0] = point.getX() - position->getReference().getX();
+        p[1] = point.getY() - position->getReference().getY();
+    }
+}
+
+Eigen::Matrix2d Object::extractPointMatrix(Eigen::MatrixXd const & matrix) const {
+    Eigen::Matrix2d r;
+    if (position->active) {
+        r = matrix.block<2,2>(getPosition().offset, getPosition().offset);
+    } else {
+        r.setZero();
+    }
+    return r;
+}
+
+void Object::insertPointMatrix(Eigen::MatrixXd & full, Eigen::Matrix2d const & block) const {
+    if (position->active) {
+        full.block<2,2>(getPosition().offset, getPosition().offset) = block;
+    }
+}
+
 std::pair<int,double> Object::perturbPoint(lsst::afw::geom::Point2D & point, int n) const {
     if (!position->active) return std::pair<int,double>(-1, 0.0);
     double parameter = point[n] - position->getReference()[n];
@@ -184,6 +208,7 @@ std::pair<int,double> Object::perturbPoint(lsst::afw::geom::Point2D & point, int
 }
 
 lsst::afw::geom::ellipses::Ellipse Object::makeEllipse(double const * paramIter) const {
+    requireEllipse();
     lsst::afw::geom::Ellipse result(
         EllipseCore(
             ellipticity->getValue(),
@@ -206,6 +231,74 @@ lsst::afw::geom::ellipses::Ellipse Object::makeEllipse(double const * paramIter)
     }
     result.getCore().scale(radiusFactor);
     return result;
+}
+
+void Object::readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse const & ellipse) const {
+    requireEllipse();
+    readPoint(paramIter, ellipse.getCenter());
+    EllipseCore core(ellipse.getCore());
+    core.scale(1.0 / radiusFactor);
+    if (ellipticity->active) {
+        double * p = paramIter + getEllipticity().offset;
+        p[0] = core.getEllipticity().getE1();
+        p[1] = core.getEllipticity().getE2();
+    }
+    if (radius->active) {
+        double * p = paramIter + getRadius().offset;
+        p[0] = core.getRadius();
+    }
+}
+
+Eigen::Matrix5d Object::extractEllipseMatrix(Eigen::MatrixXd const & matrix) const {
+    requireEllipse();
+    Eigen::Matrix5d r = Eigen::Matrix5d::Zero();
+    if (position->active) {
+        r.block<2,2>(3,3) = matrix.block<2,2>(getPosition().offset, getPosition().offset);
+    }
+    if (ellipticity->active) {
+        r.block<2,2>(0,0) = matrix.block<2,2>(getEllipticity().offset, getEllipticity().offset);
+    }
+    if (radius->active) {
+        r(2, 2) = matrix(getRadius().offset, getRadius().offset);    
+    }
+    if (position->active && ellipticity->active) {
+        r.block<2,2>(3,0) = matrix.block<2,2>(getPosition().offset, getEllipticity().offset);
+        r.block<2,2>(0,3) = matrix.block<2,2>(getEllipticity().offset, getPosition().offset);
+    }
+    if (position->active && radius->active) {
+        r.block<2,1>(3,2) = matrix.block<2,1>(getPosition().offset, getRadius().offset);
+        r.block<1,2>(2,3) = matrix.block<1,2>(getRadius().offset, getPosition().offset);
+    }
+    if (ellipticity->active && radius->active) {
+        r.block<2,1>(0,2) = matrix.block<2,1>(getEllipticity().offset, getRadius().offset);
+        r.block<1,2>(2,0) = matrix.block<1,2>(getRadius().offset, getEllipticity().offset);
+    }
+    return r;
+}
+
+void Object::insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const & block) const {
+    requireEllipse();
+    if (position->active) {
+        full.block<2,2>(getPosition().offset, getPosition().offset) = block.block<2,2>(3,3);
+    }
+    if (ellipticity->active) {
+        full.block<2,2>(getEllipticity().offset, getEllipticity().offset) = block.block<2,2>(0,0);
+    }
+    if (radius->active) {
+        full(getRadius().offset, getRadius().offset) = block(2, 2);
+    }
+    if (position->active && ellipticity->active) {
+        full.block<2,2>(getPosition().offset, getEllipticity().offset) = block.block<2,2>(3,0);
+        full.block<2,2>(getEllipticity().offset, getPosition().offset) = block.block<2,2>(0,3);
+    }
+    if (position->active && radius->active) {
+        full.block<2,1>(getPosition().offset, getRadius().offset) = block.block<2,1>(3,2);
+        full.block<1,2>(getRadius().offset, getPosition().offset) = block.block<1,2>(2,3);
+    }
+    if (ellipticity->active && radius->active) {
+        full.block<2,1>(getEllipticity().offset, getRadius().offset) = block.block<2,1>(0,2);
+        full.block<1,2>(getRadius().offset, getEllipticity().offset) = block.block<1,2>(2,0);
+    }
 }
 
 std::pair<int,double> Object::perturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n) const {
@@ -455,6 +548,24 @@ double Grid::sumLogWeights() const {
         r += ndarray::viewAsEigen(i->weights).cwise().log().sum();
     }
     return r;
+}
+
+bool Grid::isInBounds(double const * paramIter) const {
+    for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
+        if (i->active) {
+            if (!i->isInBounds(paramIter)) return false;
+        }
+    }
+    for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
+        if (i->active) {
+            if (!i->isInBounds(paramIter)) return false;
+        }
+    }
+    for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
+        if (i->active) {
+            if (!i->isInBounds(paramIter)) return false;
+        }
+    }
 }
 
 }}} // namespace lsst::meas::multifit

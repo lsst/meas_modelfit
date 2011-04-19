@@ -78,8 +78,11 @@ public:
      *
      *  If the data vector is weighted, the output matrix should be as well (each row should be divided
      *  by the corresponding pixel sigma value).
+     *
+     *  @return true if the parameter vector is valid (i.e. within bounds of the problem) and the
+     *          matrix has been filled.
      */
-    void evaluateModelMatrix(
+    bool evaluateModelMatrix(
         lsst::ndarray::Array<Pixel,2,2> const & matrix,
         lsst::ndarray::Array<Pixel const,1,1> const & param
     ) const;
@@ -88,8 +91,11 @@ public:
      *  @brief Evaluate the derivative of the matrix with respect to the parameters.
      *
      *  The first dimension of the array is the parameter dimension.
+     *
+     *  @return true if the parameter vector is valid (i.e. within bounds of the problem) and the
+     *          derivative array has been filled.
      */
-    void evaluateModelDerivative(
+    bool evaluateModelDerivative(
         lsst::ndarray::Array<Pixel,3,3> const & derivative,
         lsst::ndarray::Array<Pixel const,1,1> const & param
     ) const;
@@ -124,12 +130,12 @@ protected:
         _logVarianceSum(other._logVarianceSum)
     {}
 
-    virtual void _evaluateModelMatrix(
+    virtual bool _evaluateModelMatrix(
         ndarray::Array<Pixel,2,2> const & matrix,
         ndarray::Array<Pixel const,1,1> const & param
     ) const = 0;
 
-    virtual void _evaluateModelDerivative(
+    virtual bool _evaluateModelDerivative(
         ndarray::Array<Pixel,3,3> const & derivative,
         ndarray::Array<Pixel const,1,1> const & param
     ) const;

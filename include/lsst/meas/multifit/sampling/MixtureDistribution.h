@@ -26,7 +26,7 @@
 
 #include "lsst/ndarray.h"
 #include "lsst/meas/multifit/sampling/Table.h"
-#include "lsst/meas/multifit/sampling/RandomEngine.h"
+#include "lsst/meas/multifit/RandomEngine.h"
 
 #include <Eigen/Core>
 

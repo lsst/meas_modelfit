@@ -1,6 +1,6 @@
-#include "lsst/meas/multifit/sampling/RandomEngine.h"
+#include "lsst/meas/multifit/RandomEngine.h"
 
-namespace lsst { namespace meas { namespace multifit { namespace sampling {
+namespace lsst { namespace meas { namespace multifit {
 
 RandomEngine::RandomEngine() :
     _engine(),
@@ -21,4 +21,4 @@ RandomEngine & RandomEngine::operator=(RandomEngine const & other) {
     return *this;
 }
 
-}}}} // namespace lsst::meas::multifit::sampling
+}}} // namespace lsst::meas::multifit

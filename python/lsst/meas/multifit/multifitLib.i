@@ -39,6 +39,7 @@ Basic routines to talk to lsst::meas::multifit classes
 %{
 #include "lsst/afw/detection.h"
 #include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/RandomEngine.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 #include "lsst/meas/multifit/Evaluator.h"
 #include "lsst/meas/multifit/ModelBasis.h"
@@ -182,3 +183,5 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %template(make) lsst::meas::multifit::Evaluator::make<double>;
 %template(make) lsst::meas::multifit::Evaluator::make<float>;
+
+%include "lsst/meas/multifit/RandomEngine.h"

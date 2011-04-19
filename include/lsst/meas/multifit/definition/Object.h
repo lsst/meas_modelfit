@@ -63,6 +63,9 @@ public:
         bool isPositionActive=false
     );        
 
+    /// @brief Throw an exception (LogicErrorException) if the object lacks a radius or ellipticity.
+    void requireEllipse() const;
+
     ID const id;
 
     PositionComponent::Ptr position;

@@ -89,20 +89,24 @@ class ParameterComponent<POSITION>
     typedef ParameterComponentBase<ParameterComponent<POSITION>,lsst::afw::geom::Extent2D,2> Base;
 public:
 
-    explicit ParameterComponent(lsst::afw::geom::Point2D const & reference, Value const & value = Value()) :
-        Base(value),
-        _reference(reference)
+    explicit ParameterComponent(
+        lsst::afw::geom::Point2D const & reference, Value const & value = Value(),
+        double bound = std::numeric_limits<double>::infinity()
+    ) :
+        Base(value), _reference(reference), _bound(bound)
     {}
 
     ParameterComponent(ParameterComponent const & other) :
-        Base(other),
-        _reference(other._reference)
+        Base(other), _reference(other._reference), _bound(other._bound)
     {}
 
     lsst::afw::geom::Point2D const getPosition() const { return _reference + _value; }
 
     lsst::afw::geom::Point2D const & getReference() const { return _reference; }
-    
+
+    /// @brief Upper bound on RMS offset from reference position.
+    double getBound() const { return _bound; }
+
 protected:
 
     template <ParameterType E> friend class grid::ParameterComponent;
@@ -118,6 +122,7 @@ protected:
     }
 
     lsst::afw::geom::Point2D _reference;
+    double _bound;
 };
 
 typedef ParameterComponent<POSITION> PositionComponent;
@@ -132,10 +137,20 @@ class ParameterComponent<RADIUS>
     typedef ParameterComponentBase<ParameterComponent<RADIUS>,Radius,1> Base;
 public:
 
-    explicit ParameterComponent(Value const & value) : Base(value) {}
+    explicit ParameterComponent(
+        Value const & value,
+        double lowerBound = 0.0,
+        double upperBound = std::numeric_limits<double>::infinity()
+    ) : Base(value), _lowerBound(lowerBound), _upperBound(upperBound) {}
 
     ParameterComponent(ParameterComponent const & other) 
-        : Base(other) {}
+        : Base(other), _lowerBound(other._lowerBound), _upperBound(other._upperBound) {}
+
+    /// @brief Lower bound on radius.
+    double getLowerBound() const { return _lowerBound; }
+
+    /// @brief Upper bound on radius.
+    double getUpperBound() const { return _upperBound; }
 
 protected:
 
@@ -145,6 +160,8 @@ protected:
 
     void _readParameters(double const * paramIter) { _value = paramIter[0]; }
 
+    double _lowerBound;
+    double _upperBound;
 };
 
 typedef ParameterComponent<RADIUS> RadiusComponent;
@@ -160,10 +177,16 @@ class ParameterComponent<ELLIPTICITY>
     typedef ParameterComponentBase<ParameterComponent<ELLIPTICITY>, Ellipticity,2> Base;
 public:
 
-    explicit ParameterComponent(Value const & value) : Base(value) {}
+    explicit ParameterComponent(
+        Value const & value,
+        double bound = std::numeric_limits<double>::infinity()
+    ) : Base(value), _bound(bound) {}
 
     ParameterComponent(ParameterComponent const & other) 
-        : Base(other) {}
+        : Base(other), _bound(other._bound) {}
+    
+    /// @brief Upper bound on the ellipticity magnitude
+    double getBound() const { return _bound; }
 
 protected:
 
@@ -178,6 +201,8 @@ protected:
         _value.setE1(paramIter[0]);
         _value.setE2(paramIter[1]);
     }
+
+    double _bound;
 };
 
 typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;

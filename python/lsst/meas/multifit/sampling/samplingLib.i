@@ -43,7 +43,6 @@ Basic routines to talk to lsst::meas::multifit::sampling classes
 #include "lsst/afw/image.h"
 #include "lsst/afw/detection.h"
 #include "lsst/afw/detection/LocalPsf.h"
-#include "lsst/meas/multifit/sampling/RandomEngine.h"
 #include "lsst/meas/multifit/sampling/Table.h"
 #include "lsst/meas/multifit/sampling/MixtureDistribution.h"
 #include "lsst/meas/multifit/sampling/IterativeImportanceSampler.h"
@@ -228,8 +227,6 @@ enum NestedSampleType {
 };
  
 }}}} // lsst::meas::multifit::sampling
-
-%include "lsst/meas/multifit/sampling/RandomEngine.h"
 
 %ignore lsst::meas::multifit::sampling::MixtureDistribution::draw;
 %ignore lsst::meas::multifit::sampling::MixtureDistribution::update;

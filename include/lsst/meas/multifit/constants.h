@@ -51,6 +51,12 @@
     )
 #endif
 
+namespace Eigen {
+
+typedef Eigen::Matrix<double,5,5> Matrix5d;
+
+} // namespace Eigen
+
 namespace lsst { namespace meas { namespace multifit {
 
 namespace detail {
@@ -73,10 +79,18 @@ typedef int FilterId;
 
 enum ParameterType { POSITION, RADIUS, ELLIPTICITY };
 
+/**
+ *  These set the what parameters are used to define an ellipse through the package,
+ *  but they can't just be changed here: the implementations of the ParameterComponent,
+ *  grid::Object, and SimpleDistribution assume the types here in setting bounds and
+ *  converting between parameter vectors and covariance matrices and ellipses.
+ */
+///@{
 typedef lsst::afw::geom::ellipses::TraceRadius Radius;
 typedef lsst::afw::geom::ellipses::ConformalShear Ellipticity;
 typedef lsst::afw::geom::ellipses::Separable<Ellipticity, Radius> EllipseCore;
 typedef lsst::afw::geom::ellipses::Ellipse Ellipse;
+///@}
 
 typedef lsst::afw::image::Filter Filter;
 typedef lsst::afw::image::Calib Calib;

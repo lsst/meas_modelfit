@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_SAMPLING_RandomEngine
-#define LSST_MEAS_MULTIFIT_SAMPLING_RandomEngine
+#ifndef LSST_MEAS_MULTIFIT_RandomEngine
+#define LSST_MEAS_MULTIFIT_RandomEngine
 
 #include "lsst/ndarray.h"
 #include <boost/random/mersenne_twister.hpp>
@@ -30,7 +30,7 @@
 #include <boost/random/normal_distribution.hpp>
 #include <boost/random/uniform_real.hpp>
 
-namespace lsst { namespace meas { namespace multifit { namespace sampling {
+namespace lsst { namespace meas { namespace multifit {
 
 class RandomEngine {
 public:
@@ -57,6 +57,6 @@ private:
 
 
 
-}}}} // namespace lsst::meas::multifit::sampling
+}}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_SAMPLING_RandomEngine
+#endif // !LSST_MEAS_MULTIFIT_RandomEngine

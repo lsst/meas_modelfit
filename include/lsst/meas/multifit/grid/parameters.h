@@ -49,7 +49,17 @@ public:
 
     int const offset;
 
-    void writeParameters(double * parameters) const { this->_writeParameters(parameters + offset); }
+    void writeParameters(double * parameters) const {
+        assert(this->active);
+        this->_writeParameters(parameters + offset);
+    }
+
+    bool isInBounds(double const * parameters) const {
+        assert(this->active);
+        double a = parameters[offset]; a *= a;
+        double b = parameters[offset+1]; b *= b;
+        return std::sqrt(a + b) <= this->getBound();
+    }
 
     typename Base::Ptr makeDefinition() const { return this->copy(); }
 
@@ -76,6 +86,11 @@ public:
     std::set<definition::EllipticityComponent::Ptr> associatedEllipticities;
 
     void writeParameters(double * parameters) const { this->_writeParameters(parameters + offset); }
+
+    bool isInBounds(double const * parameters) const {
+        assert(this->active);
+        return parameters[offset] <= this->getUpperBound() && parameters[offset] >= this->getLowerBound();
+    }
 
     Base::Ptr makeDefinition() const { return this->copy(); }
 

@@ -60,6 +60,8 @@ public:
 
     double sumLogWeights() const;
 
+    bool isInBounds(double const * paramIter) const;
+
     ~Grid() { _destroy(); }
 
     ObjectArray objects;

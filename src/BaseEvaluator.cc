@@ -5,7 +5,7 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-void BaseEvaluator::evaluateModelMatrix(
+bool BaseEvaluator::evaluateModelMatrix(
     ndarray::Array<double,2,2> const & matrix,
     ndarray::Array<double const,1,1> const & param
 ) const {
@@ -21,10 +21,10 @@ void BaseEvaluator::evaluateModelMatrix(
         param.getSize<0>(), getParameterSize(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    _evaluateModelMatrix(matrix, param);
+    return _evaluateModelMatrix(matrix, param);
 }
 
-void BaseEvaluator::evaluateModelDerivative(
+bool BaseEvaluator::evaluateModelDerivative(
     ndarray::Array<double,3,3> const & derivative,
     ndarray::Array<double const,1,1> const & param
 ) const {
@@ -44,10 +44,10 @@ void BaseEvaluator::evaluateModelDerivative(
         param.getSize<0>(), getParameterSize(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    _evaluateModelDerivative(derivative, param);
+    return _evaluateModelDerivative(derivative, param);
 }
 
-void BaseEvaluator::_evaluateModelDerivative(
+bool BaseEvaluator::_evaluateModelDerivative(
     ndarray::Array<double,3,3> const & derivative,
     ndarray::Array<double const,1,1> const & param
 ) const {
@@ -60,15 +60,16 @@ void BaseEvaluator::_evaluateModelDerivative(
             ndarray::makeVector(getDataSize(), getCoefficientSize())
         )
     );
-    _evaluateModelMatrix(fiducial, param);
+    if (!_evaluateModelMatrix(fiducial, param)) return false;
     ndarray::Array<double, 1, 1> parameters(ndarray::copy(param));
     for (int n = 0; n < _parameterSize; ++n) {
         parameters[n] += epsilon;
-        _evaluateModelMatrix(derivative[n], parameters);
+        if (!_evaluateModelMatrix(derivative[n], parameters)) return false;
         derivative[n] -= fiducial;
         derivative[n] /= epsilon;
         parameters[n] -= epsilon;
-    }    
+    }
+    return true;
 }
 
 void BaseEvaluator::writeInitialParameters(
