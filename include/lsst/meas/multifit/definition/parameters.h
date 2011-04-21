@@ -36,44 +36,6 @@ template <ParameterType E> class ParameterComponent;
 
 namespace definition {
 
-/**
- *  @brief A base class for parameter management classes.
- *
- *  ParameterComponents can be shared by multiple objects, tying
- *  those parameters together (such as the bulge and disk of a galaxy,
- *  for instance).
- *
- *  A ParameterComponent is 'active' if its parameters are allowed
- *  to vary in an optimization procedure; it should maintain enough
- *  state to be able to compute its products (which are 
- *  subclass-dependent) even when inactive.
- */
-template <typename Derived, typename Value_, int size_>
-class ParameterComponentBase {
-public:
-
-    typedef boost::shared_ptr<Derived> Ptr;
-    typedef Value_ Value;
-
-    static int const SIZE = size_;
-
-    bool active;
-
-    Value const & getValue() const { return _value; }
-
-    Ptr copy() const { return boost::make_shared<Derived>(static_cast<Derived const &>(*this)); }
-
-protected:
-
-    explicit ParameterComponentBase(Value const & value) : 
-        active(true), _value(value) {}
-
-    ParameterComponentBase(ParameterComponentBase const & other) :
-        active(other.active), _value(other._value) {}
-
-    Value _value;
-};
-
 template <ParameterType P> class ParameterComponent;
 
 /**
@@ -83,24 +45,41 @@ template <ParameterType P> class ParameterComponent;
  *  position.
  */
 template <>
-class ParameterComponent<POSITION>
-    : public ParameterComponentBase<ParameterComponent<POSITION>,lsst::afw::geom::Extent2D,2>
-{
-    typedef ParameterComponentBase<ParameterComponent<POSITION>,lsst::afw::geom::Extent2D,2> Base;
+class ParameterComponent<POSITION> {
 public:
+    
+    typedef boost::shared_ptr< ParameterComponent<POSITION> > Ptr;
+    typedef boost::shared_ptr< ParameterComponent<POSITION> const > ConstPtr;
+
+    typedef lsst::afw::geom::Extent2D Value;
+    static int const SIZE = 2;
 
     explicit ParameterComponent(lsst::afw::geom::Point2D const & reference, Value const & value = Value()) :
-        Base(value),
-        _reference(reference)
+        active(true), _value(value), _reference(reference)
     {}
 
     ParameterComponent(ParameterComponent const & other) :
-        Base(other),
-        _reference(other._reference)
+        active(other.active), _value(other._value), _reference(other._reference)
     {}
 
+    /// @brief True if the position is allowed to vary during fitting.
+    bool active;
+
+    /**
+     *  @brief Initial value of the parameter.
+     *
+     *  For position, this is generally zero because the parameters are the offsets from the reference
+     *  position.
+     */
+    Value const & getValue() const { return _value; }
+
+    /// @brief Deep-copy.  Not clone() because it's not virtual, and doesn't need to be.
+    Ptr copy() const { return boost::make_shared< ParameterComponent<POSITION> >(*this); }
+
+    /// @brief Return the initial value of the position.
     lsst::afw::geom::Point2D const getPosition() const { return _reference + _value; }
 
+    /// @brief Return the reference posiion.x
     lsst::afw::geom::Point2D const & getReference() const { return _reference; }
     
 protected:
@@ -117,25 +96,39 @@ protected:
         _value.setY(paramIter[1]); 
     }
 
+    Value _value;
     lsst::afw::geom::Point2D _reference;
 };
 
 typedef ParameterComponent<POSITION> PositionComponent;
 
+std::ostream & operator<<(std::ostream & os, PositionComponent const & component);
+
 /**
  *  @brief A radius parameter.
  */
 template<>
-class ParameterComponent<RADIUS> 
-    : public ParameterComponentBase<ParameterComponent<RADIUS>,Radius,1>
-{
-    typedef ParameterComponentBase<ParameterComponent<RADIUS>,Radius,1> Base;
+class ParameterComponent<RADIUS> {
 public:
 
-    explicit ParameterComponent(Value const & value) : Base(value) {}
+    typedef boost::shared_ptr< ParameterComponent<RADIUS> > Ptr;
+    typedef boost::shared_ptr< ParameterComponent<RADIUS> const > ConstPtr;
 
-    ParameterComponent(ParameterComponent const & other) 
-        : Base(other) {}
+    typedef Radius Value;
+    static int const SIZE = 1;
+
+    explicit ParameterComponent(Value const & value) : active(true), _value(value) {}
+
+    ParameterComponent(ParameterComponent const & other) : active(other.active), _value(other._value) {}
+
+    /// @brief True if the radius is allowed to vary during fitting.
+    bool active;
+
+    /// @brief Initial value of the parameter.
+    Value const & getValue() const { return _value; }
+
+    /// @brief Deep-copy.  Not clone() because it's not virtual, and doesn't need to be.
+    Ptr copy() const { return boost::make_shared< ParameterComponent<RADIUS> >(*this); }
 
 protected:
 
@@ -145,25 +138,38 @@ protected:
 
     void _readParameters(double const * paramIter) { _value = paramIter[0]; }
 
+    Value _value;
 };
 
 typedef ParameterComponent<RADIUS> RadiusComponent;
 
+std::ostream & operator<<(std::ostream & os, RadiusComponent const & component);
 
 /**
  *  @brief A pair of ellipticity parameters.
  */
 template <>
-class ParameterComponent<ELLIPTICITY>
-    : public ParameterComponentBase<ParameterComponent<ELLIPTICITY>,Ellipticity,2> 
-{
-    typedef ParameterComponentBase<ParameterComponent<ELLIPTICITY>, Ellipticity,2> Base;
+class ParameterComponent<ELLIPTICITY> {
 public:
 
-    explicit ParameterComponent(Value const & value) : Base(value) {}
+    typedef boost::shared_ptr< ParameterComponent<ELLIPTICITY> > Ptr;
+    typedef boost::shared_ptr< ParameterComponent<ELLIPTICITY> const > ConstPtr;
 
-    ParameterComponent(ParameterComponent const & other) 
-        : Base(other) {}
+    typedef Ellipticity Value;
+    static int const SIZE = 2;
+
+    explicit ParameterComponent(Value const & value) : active(true), _value(value) {}
+
+    ParameterComponent(ParameterComponent const & other) : active(other.active), _value(other._value) {}
+
+    /// @brief True if the ellipticity is allowed to vary during fitting.
+    bool active;
+
+    /// @brief Initial value of the parameter.
+    Value const & getValue() const { return _value; }
+
+    /// @brief Deep-copy.  Not clone() because it's not virtual, and doesn't need to be.
+    Ptr copy() const { return boost::make_shared< ParameterComponent<ELLIPTICITY> >(*this); }
 
 protected:
 
@@ -178,9 +184,13 @@ protected:
         _value.setE1(paramIter[0]);
         _value.setE2(paramIter[1]);
     }
+
+    Value _value;
 };
 
 typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
+
+std::ostream & operator<<(std::ostream & os, EllipticityComponent const & component);
 
 }}}} // namespace lsst::meas::multifit::definition
 

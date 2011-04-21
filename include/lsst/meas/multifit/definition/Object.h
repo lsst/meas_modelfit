@@ -61,19 +61,22 @@ public:
         bool isEllipticityActive=false,
         bool isRadiusActive=false,
         bool isPositionActive=false
-    );        
+    );
 
     ID const id;
 
-    PositionComponent::Ptr position;
-    RadiusComponent::Ptr radius;
-    EllipticityComponent::Ptr ellipticity;
+    // can't use typedefs here because SWIG is stupid
+    boost::shared_ptr< ParameterComponent<POSITION> > position;
+    boost::shared_ptr< ParameterComponent<RADIUS> > radius;
+    boost::shared_ptr< ParameterComponent<ELLIPTICITY> > ellipticity;
 
     ModelBasis::Ptr basis;
     double radiusFactor;
     bool isVariable;
 
 };
+
+std::ostream & operator<<(std::ostream & os, Object const & obj);
 
 }}}} // namespace lsst::meas::multifit::definition
 

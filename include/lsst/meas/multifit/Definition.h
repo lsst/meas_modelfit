@@ -35,8 +35,8 @@ public:
     typedef definition::Frame Frame;
     typedef definition::Object Object;
 
-    typedef definition::Set<Frame,ID,&Frame::id> FrameSet;
-    typedef definition::Set<Object,ID,&Object::id> ObjectSet; 
+    typedef definition::Set<Frame> FrameSet;
+    typedef definition::Set<Object> ObjectSet; 
 
     Definition() {}
 

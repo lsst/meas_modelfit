@@ -35,73 +35,59 @@
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
 /**
- *  A set/map hybrid that sorts based a member of the container value_type.
- *
- *  This is mostly just a thin wrapper around a Boost.MultiIndex
- *  container that const_casts references to be mutable (since the
- *  key part is still const).
+ *  A never-const shared_ptr-based set/map hybrid that sorts based the id member of Value.
  */
-template <typename Value_, typename Key_, Key_ const Value_::*Member_>
+template <typename Value_>
 class Set {
-
-    typedef Key_ Key;
-    typedef Value_ Value;
-
-    typedef boost::multi_index_container<
-        Value,
-        boost::multi_index::indexed_by<
-            boost::multi_index::ordered_unique<
-                boost::multi_index::member< Value, Key const, Member_>
-                >
-            >
-        > Internal;
-
+    typedef std::map< ID, boost::shared_ptr<Value_> > Internal;
+    typedef std::pair< ID, boost::shared_ptr<Value_> > Pair;
 public:
 
-    typedef typename Internal::value_type value_type;
-    typedef Value_ & reference;
-    typedef Value_ const & const_reference;
-    typedef typename Internal::iterator const_iterator;
+    typedef ID Key;
+    typedef Value_ Value;
+    typedef boost::shared_ptr<Value_> Pointer;
 
-    class iterator : public boost::iterator_adaptor< 
-        iterator, const_iterator, value_type, boost::use_default, reference
+    class Iterator : public boost::iterator_adaptor< 
+        Iterator, typename Internal::const_iterator, Value, boost::use_default, Value &
     > {
+        typedef typename Iterator::iterator_adaptor_ Adaptor;
     public:
-        iterator() : iterator::iterator_adaptor_() {}
-        iterator(iterator const & other) : iterator::iterator_adaptor_(other) {}
+        Iterator() : Adaptor() {}
 
-        operator const_iterator() const { return this->base(); }
-        
+        Iterator(Iterator const & other) : Adaptor(other.base()) {}
+
+        operator Pointer() const { return this->base()->second; }
+
     private:
-        friend class boost::iterator_core_access;
-        template <
-            typename OtherValue_, 
-            typename OtherKey_, 
-            OtherKey_ const OtherValue_::*
-        > friend class Set;
 
-        reference dereference() const { 
-            return const_cast<reference>(*this->base()); 
+        friend class boost::iterator_core_access;
+
+        template <typename OtherValue_> friend class Set;
+
+        Value & dereference() const { 
+            return *this->base()->second;
         }
 
-        explicit iterator(const_iterator const & other) 
-            : iterator::iterator_adaptor_(other) {}
+        Iterator(typename Internal::const_iterator const & adapted) : Adaptor(adapted) {}
     };
-    typedef typename Internal::pointer pointer;
+
+    typedef Key key_type;
+    typedef Value value_type;
+    typedef Value & reference;
+    typedef Value const & const_reference;
+    typedef Iterator iterator;
+    typedef Iterator const_iterator;
+    typedef Pointer pointer;
     typedef typename Internal::difference_type difference_type;
     typedef typename Internal::size_type size_type;
 
-    typedef Key key_type;
-
     Set() : _internal() {}
+
     template <typename Iterator_>
-    Set(Iterator_ first, Iterator_ last) : _internal(first, last) {}
+    Set(Iterator_ iter, Iterator_ last) : _internal() { insert(iter, last); }
 
-    iterator begin() { return iterator(_internal.begin()); }
-    iterator end() { return iterator(_internal.end()); }
-
-    const_iterator begin() const { return _internal.begin(); }
-    const_iterator end() const { return _internal.end(); }
+    iterator begin() const { return iterator(_internal.begin()); }
+    iterator end() const { return iterator(_internal.end()); }
 
     size_type size() const { return _internal.size(); }
     size_type max_size() const { return _internal.max_size(); }
@@ -115,34 +101,46 @@ public:
     }
     void clear() { _internal.clear(); }
 
-    iterator find(key_type k) { return iterator(_internal.find(k)); }
-    const_iterator find(key_type k) const { return _internal.find(k); }
+    iterator find(key_type k) const { return iterator(_internal.find(k)); }
 
     size_type count(key_type k) const { return _internal.count(k); }
 
     std::pair<iterator,bool> insert(const_reference v) {
-        std::pair<const_iterator,bool> r = _internal.insert(v);
+        std::pair<typename Internal::iterator,bool> r = _internal.insert(Pair(v.id, Pointer(new Value(v))));
         return std::pair<iterator,bool>(iterator(r.first), r.second);
     }
 
-    template <typename Iterator_>
-    void insert(Iterator_ i1, Iterator_ i2) { _internal.insert(i1, i2); }
-
-    iterator insert(iterator i, const_reference v) { 
-        return iterator(_internal.insert(i.base(), v)); 
+    std::pair<iterator,bool> insert(pointer v) {
+        std::pair<typename Internal::iterator,bool> r = _internal.insert(Pair(v->id, v));
+        return std::pair<iterator,bool>(iterator(r.first), r.second);
     }
 
-    const_reference operator[](key_type k) const { return *_get(k); }
-    reference operator[](key_type k) { return const_cast<reference>(*_get(k)); }
+    iterator insert(iterator i, const_reference v) { 
+        return iterator(_internal.insert(i.base(), Pair(v.id, Pointer(new Value(v))))); 
+    }
+
+    iterator insert(iterator i, pointer v) { 
+        return iterator(_internal.insert(i.base(), Pair(v->id, v))); 
+    }
+
+    template <typename Iterator_>
+    void insert(Iterator_ iter, Iterator_ last) {
+        while (iter != last) {
+            insert(*iter);
+            ++iter;
+        }
+    }
+
+    reference operator[](key_type k) const { return *_get(k); }
 
 private:
 
-    const_iterator _get(key_type k) const {
-        const_iterator i = _internal.find(k);
+    iterator _get(key_type k) const {
+        typename Internal::const_iterator i = _internal.find(k);
         if (i == _internal.end()) throw std::invalid_argument(
             boost::str(boost::format("Key %d not found in Set.") % k)
         );
-        return i;
+        return iterator(i);
     }
 
     Internal _internal;

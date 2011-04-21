@@ -39,6 +39,55 @@ Object Object::makeGalaxy(
     return r;
 }
 
+std::ostream & operator<<(std::ostream & os, PositionComponent const & component) {
+    os << "< Position [" << component.getReference() << " + " << component.getValue() << "] ";
+    if (component.active)
+        os << "(active)";
+    else
+        os << "(inactive)";
+    return os << " @ " << (&component) << " >";
+}
+
+std::ostream & operator<<(std::ostream & os, RadiusComponent const & component) {
+    os << "< Radius [" << component.getValue() << "] ";
+    if (component.active)
+        os << "(active)";
+    else
+        os << "(inactive)";
+    return os << " @ " << (&component) << " >";
+}
+
+std::ostream & operator<<(std::ostream & os, EllipticityComponent const & component) {
+    os << "< Ellipticity [" << component.getValue().getComplex() << "] ";
+    if (component.active)
+        os << "(active)";
+    else
+        os << "(inactive)";
+    return os << " @ " << (&component) << " >";
+}
+
+std::ostream & operator<<(std::ostream & os, Object const & obj) {
+    os << "< Object " << obj.id;
+    if (obj.isVariable)
+        os << " (variable)";
+    else
+        os << " (nonvariable)";
+    os << " @ " << (&obj) << ">:\n";
+    if (obj.position) os << "    " << (*obj.position) << "\n";
+    if (obj.radius) os << "    " << (*obj.radius) << " x " << obj.radiusFactor << "\n";
+    if (obj.ellipticity) os << "    " << (*obj.ellipticity) << "\n";
+    return os;
+}
+
+std::ostream & operator<<(std::ostream & os, Frame const & frame) {
+    std::string filterName("undefined");
+    try {
+        filterName = lsst::afw::image::Filter(frame.filterId).getName();
+    } catch (lsst::pex::exceptions::NotFoundException &) {}
+    os << "< Frame " << frame.id << " (" << filterName << ")";
+    return os << " @ " << (&frame) << " >\n";
+}
+
 } // namespace definition
 
 Definition::Definition(Definition const & other) :

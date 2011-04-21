@@ -35,8 +35,8 @@ public:
     Frame(
         ID id_, 
         Footprint::Ptr const & footprint_,
-        ndarray::Array<Pixel,1,1> const & data_,
-        ndarray::Array<Pixel,1,1> const & weights_ = ndarray::Array<double,1,1>()
+        lsst::ndarray::Array<Pixel,1,1> const & data_,
+        lsst::ndarray::Array<Pixel,1,1> const & weights_ = lsst::ndarray::Array<Pixel,1,1>()
     ) : id(id_), filterId(Filter::UNKNOWN), 
         //calib(new Calib()), 
         wcs(), psf(),
@@ -50,8 +50,8 @@ public:
         Wcs::Ptr const & wcs_,
         Psf::Ptr const & psf_,
         Footprint::Ptr const & footprint_,
-        ndarray::Array<Pixel,1,1> const & data_,
-        ndarray::Array<Pixel,1,1> const & weights_
+        lsst::ndarray::Array<Pixel,1,1> const & data_,
+        lsst::ndarray::Array<Pixel,1,1> const & weights_
     ) : id(id_), filterId(filterId_), 
         //calib(calib_), 
         wcs(wcs_), psf(psf_), footprint(footprint_), 
@@ -73,9 +73,11 @@ public:
     Psf::Ptr psf;
 
     Footprint::Ptr footprint;
-    ndarray::Array<Pixel,1,1> data;
-    ndarray::Array<Pixel,1,1> weights;
+    lsst::ndarray::Array<Pixel,1,1> data;
+    lsst::ndarray::Array<Pixel,1,1> weights;
 };
+
+std::ostream & operator<<(std::ostream & os, Frame const & frame);
 
 }}}} // namespace lsst::meas::multifit::definition
 
