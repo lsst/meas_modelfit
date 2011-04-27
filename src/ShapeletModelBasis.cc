@@ -73,7 +73,7 @@ protected:
 private:
 
     afwShapelets::detail::HermiteConvolution::Ptr _convolution;
-    ShapeletModelBasis::Ptr _frontBasis;
+    ShapeletModelBasis::ConstPtr _frontBasis;
     double _scale;
 };
 
@@ -101,7 +101,7 @@ void mf::ShapeletModelBasis::_evaluate(
     }
 }
 
-mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
+mf::ModelBasis::ConstPtr mf::ShapeletModelBasis::convolve(
     CONST_PTR(LocalPsf) const & psf
 ) const {
     if (psf->hasNativeShapelet()) {
@@ -116,17 +116,17 @@ mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     }
 }
 
-mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
+mf::ModelBasis::ConstPtr mf::ShapeletModelBasis::convolve(
     afwShapelets::ShapeletFunction const & psf
 ) const {
     return boost::make_shared<ConvolvedShapeletModelBasis>(*this, psf);
 }
 
-mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
+mf::ModelBasis::ConstPtr mf::ShapeletModelBasis::convolve(
     afwShapelets::MultiShapeletFunction const & psf
 ) const {
     CompoundShapeletModelBasis::ComponentVector components;
     components.push_back(boost::make_shared<ShapeletModelBasis>(_order, _scale));
-    CompoundShapeletModelBasis::Ptr asCompound = CompoundShapeletBuilder(components).build();
+    CompoundShapeletModelBasis::ConstPtr asCompound = CompoundShapeletBuilder(components).build();
     return asCompound->convolve(psf);
 }

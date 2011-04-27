@@ -28,7 +28,7 @@
 #include "lsst/meas/multifit/definition/Object.h"
 #include "lsst/meas/multifit/definition/Set.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace definition {
 
 class Definition {
 public:
@@ -40,15 +40,42 @@ public:
 
     Definition() {}
 
-    explicit Definition(Wcs::Ptr const & wcs_) : wcs(wcs_) {}
+    explicit Definition(Wcs::Ptr const & wcs) : _wcs(wcs) {}
 
     Definition(Definition const & other);
 
     FrameSet frames;
     ObjectSet objects;
 
-    Wcs::Ptr wcs;
+    Wcs::Ptr getWcs() const { return _wcs; }
+
+    template<typename PixelT>
+    static Definition make(
+        afw::image::Exposure<PixelT> const & exposure,
+        Footprint::Ptr const & fp,
+        afw::geom::Point2D const & position,
+        bool isVariable=false,
+        bool isPositionActive=false
+    );
+
+    template<typename PixelT>
+    static Definition make(
+        afw::image::Exposure<PixelT> const & exposure,
+        Footprint::Ptr const & fp,
+        ModelBasis::ConstPtr const & basis,
+        afw::geom::ellipses::Ellipse const & ellipse,
+        bool isEllipticityActive=false,
+        bool isRadiusActive=false,
+        bool isPositionActive=false
+    );
+
+private:
+    Wcs::Ptr _wcs;
 };
+
+} // namespace definition
+
+typedef definition::Definition Definition;
 
 }}} // namespace lsst::meas::multifit
 

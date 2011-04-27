@@ -49,6 +49,15 @@
     friend boost::shared_ptr<T> boost::make_shared<T,A1,A2,A3,A4>(      \
         A1 const &, A2 const &, A3 const &, A4 const &                  \
     )
+
+#define FRIEND_MULTIFIT_GRID_INTERNALS                                  \
+    template <ParameterType F> friend class lsst::meas::multifit::grid::ParameterComponent; \
+    friend class lsst::meas::multifit::grid::Grid;                      \
+    friend class lsst::meas::multifit::grid::Object;                    \
+    friend class lsst::meas::multifit::grid::Frame;                     \
+    friend class lsst::meas::multifit::grid::Source;                    \
+    friend class lsst::meas::multifit::grid::Initializer
+
 #endif
 
 namespace lsst { namespace meas { namespace multifit {
@@ -71,7 +80,7 @@ inline void checkSize(int actualSize, int expectedSize, char const * message) {
 typedef boost::int64_t ID;
 typedef int FilterId;
 
-enum ParameterType { POSITION, RADIUS, ELLIPTICITY };
+enum ParameterType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
 
 typedef lsst::afw::geom::ellipses::TraceRadius Radius;
 typedef lsst::afw::geom::ellipses::ConformalShear Ellipticity;
@@ -87,6 +96,30 @@ typedef lsst::afw::detection::Footprint Footprint;
 
 typedef LocalPsf::Pixel Pixel;
 typedef lsst::afw::image::Exposure<lsst::meas::multifit::Pixel> Exposure;
+
+LSST_EXCEPTION_TYPE(InvalidDefinitionError,
+                    lsst::pex::exceptions::InvalidParameterException,
+                    lsst::meas::multifit::InvalidDefinitionError);
+
+namespace definition {
+
+template <ParameterType E> class ParameterComponent;
+class Object;
+class Frame;
+class Definition;
+
+} // namespace definition
+
+namespace grid {
+
+template <ParameterType E> class ParameterComponent;
+class Object;
+class Frame;
+class Source;
+class Grid;
+class Initializer;
+
+} // namespace definition
 
 }}} // namespace lsst::meas::multifit
 

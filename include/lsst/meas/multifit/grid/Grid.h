@@ -27,40 +27,40 @@
 #include "lsst/meas/multifit/grid/Frame.h"
 #include "lsst/meas/multifit/grid/Object.h"
 #include "lsst/meas/multifit/grid/Array.h"
-#include "lsst/meas/multifit/Definition.h"
+#include "lsst/meas/multifit/definition/Definition.h"
 
 #include <boost/scoped_array.hpp>
 #include <map>
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 class Grid {
 public:
-    typedef boost::shared_ptr<Grid> Ptr;
     typedef boost::shared_ptr<const Grid> ConstPtr;
 
-    typedef grid::Array<grid::Object> ObjectArray;
-    typedef grid::Array<grid::Frame> FrameArray;
-    typedef grid::Array<grid::Source> SourceArray;
+    typedef grid::Object Object;
+    typedef grid::Frame Frame;
+    typedef grid::Source Source;
 
-    typedef grid::ComponentArray<grid::PositionComponent> PositionArray;
-    typedef grid::ComponentArray<grid::RadiusComponent> RadiusArray;
-    typedef grid::ComponentArray<grid::EllipticityComponent> EllipticityArray;
+    typedef grid::Array<Object> ObjectArray;
+    typedef grid::Array<Frame> FrameArray;
+    typedef grid::Array<Source> SourceArray;
 
-    typedef std::map<FilterId, int > FilterMap;
-
-    explicit Grid(Definition const & definition);
-
-    Grid(Grid const & other);
+    typedef grid::ComponentArray<POSITION> PositionArray;
+    typedef grid::ComponentArray<RADIUS> RadiusArray;
+    typedef grid::ComponentArray<ELLIPTICITY> EllipticityArray;
 
     Definition makeDefinition() const;
+
     Definition makeDefinition(double const * paramIter) const;
 
     void writeParameters(double * paramIter) const;
 
     double sumLogWeights() const;
 
-    ~Grid() { _destroy(); }
+    int const getFilterIndex(FilterId filterId) const;
+
+    ~Grid();
 
     ObjectArray objects;
     FrameArray frames;
@@ -69,17 +69,25 @@ public:
     PositionArray positions;
     RadiusArray radii;
     EllipticityArray ellipticities;
-
-    FilterMap filters;
     
-    int filterCount;
-    int coefficientCount;
-    int pixelCount;
-    int parameterCount;
+    int const getFilterCount() const { return _filterCount; }
+    int const getCoefficientCount() const { return _coefficientCount; }
+    int const getPixelCount() const { return _pixelCount; }
+    int const getParameterCount() const { return _parameterCount; }
 
-    Wcs::Ptr wcs;
+    CONST_PTR(Wcs) const getWcs() const { return _wcs; }
+
+    static ConstPtr make(Definition const & definition) {
+        return ConstPtr(new Grid(definition));
+    }
 
 private:
+
+    friend class Initializer;
+
+    typedef std::map<FilterId, int > FilterMap;
+
+    explicit Grid(Definition const & definition);
 
     void _destroy();
 
@@ -89,11 +97,21 @@ private:
         FrameIterator const & frameBegin, FrameIterator const & frameEnd
     );
 
+    int _filterCount;
+    int _coefficientCount;
+    int _pixelCount;
+    int _parameterCount;
+
     boost::scoped_array<char> _objectData;
     boost::scoped_array<char> _frameData;
     boost::scoped_array<char> _sourceData;
-
+    CONST_PTR(Wcs) _wcs;
+    FilterMap _filters;
 };
+
+} // namespace grid
+
+typedef grid::Grid Grid;
 
 }}} // namespace lsst::meas::multifit
 

@@ -27,11 +27,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
 
-namespace lsst { namespace meas { namespace multifit { 
-
-class Grid;
-
-namespace grid {
+namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 template <typename T>
 class Array : private boost::noncopyable {
@@ -57,7 +53,7 @@ public:
 
 private:
 
-    friend class multifit::Grid;
+    friend class Initializer;
 
     explicit Array(pointer first, pointer last) :
         _first(first), _last(last) {}

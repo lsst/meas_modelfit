@@ -45,11 +45,20 @@ public:
     Frame const & frame;
     Object const & object;
 
-    afw::geom::AffineTransform transform;
-    ModelBasis::Ptr basis;
-    afw::detection::LocalPsf::Ptr localPsf;
-    mutable void * extra;
+    int const getCoefficientOffset() const;
 
+    int const getCoefficientCount() const;
+
+    afw::geom::AffineTransform const & getTransform() const { return _transform; }
+
+    ModelBasis::ConstPtr const getBasis() const { return _basis; }
+
+    afw::detection::LocalPsf::Ptr const getLocalPsf() const { return _localPsf; }
+
+private:
+    afw::geom::AffineTransform _transform;
+    ModelBasis::ConstPtr _basis;
+    afw::detection::LocalPsf::Ptr _localPsf;
 };
 
 }}}} // namespace lsst::meas::multifit::grid

@@ -31,59 +31,24 @@
 #include <set>
 #include <Eigen/Core>
 
-namespace lsst { namespace meas { namespace multifit {
-
-class Grid;
-
-namespace grid {
+namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 template <ParameterType E>
-class ParameterComponent : public definition::ParameterComponent<E> {
+class ParameterComponent : public detail::ParameterComponentBase<E>, private boost::noncopyable {
 public:
-
-    typedef definition::ParameterComponent<E> Base;
-
-    ParameterComponent(Base const & definition, int offset_) : Base(definition), offset(offset_) {}
-
-    ParameterComponent(ParameterComponent const & other) : Base(other), offset(other.offset) {}
+    
+    // No Ptr typedef to make it clear that this class is strictly immutable.
+    typedef boost::shared_ptr< ParameterComponent<E> const > ConstPtr;
+    typedef typename detail::ParameterComponentTraits<E>::Value Value;
 
     int const offset;
 
-    void writeParameters(double * parameters) const { this->_writeParameters(parameters + offset); }
+private:
 
-    typename Base::Ptr makeDefinition() const { return this->copy(); }
+    friend class Initializer;
 
-    typename Base::Ptr makeDefinition(double const * parameters) {
-        typename Base::Ptr result = this->copy();
-        result->_readParameters(parameters + offset);
-        return result;
-    }
-
-};
-
-template <>
-class ParameterComponent<RADIUS> : public definition::RadiusComponent {
-public:
-
-    typedef definition::RadiusComponent Base;
-
-    ParameterComponent(Base const & definition, int offset_) : Base(definition), offset(offset_) {}
-
-    ParameterComponent(ParameterComponent const & other) : Base(other), offset(other.offset) {}
-
-    int const offset;
-
-    std::set<definition::EllipticityComponent::Ptr> associatedEllipticities;
-
-    void writeParameters(double * parameters) const { this->_writeParameters(parameters + offset); }
-
-    Base::Ptr makeDefinition() const { return this->copy(); }
-
-    Base::Ptr makeDefinition(double const * parameters) {
-        Base::Ptr result = this->copy();
-        result->_readParameters(parameters + offset);
-        return result;
-    }
+    ParameterComponent(definition::ParameterComponent<E> const & definition, int offset_) : 
+        detail::ParameterComponentBase<E>(definition), offset(offset_) {}
 
 };
 
@@ -91,21 +56,21 @@ typedef ParameterComponent<POSITION> PositionComponent;
 typedef ParameterComponent<RADIUS> RadiusComponent;
 typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
 
-template <typename T>
+template <ParameterType E>
 class ComponentArray {
-    typedef boost::shared_ptr<T> Ptr;
+    typedef typename ParameterComponent<E>::ConstPtr Ptr;
     typedef std::vector<Ptr> PtrVec;
     typedef typename PtrVec::const_iterator PtrIter;
 public:
 
-    typedef T value_type;
-    typedef T * pointer;
-    typedef T & reference;
-    typedef T const & const_reference;
+    typedef ParameterComponent<E> value_type;
+    typedef Ptr pointer;
+    typedef value_type const & reference;
+    typedef reference const_reference;
     typedef std::ptrdiff_t difference_type;
     typedef std::size_t size_type;
-    typedef boost::indirect_iterator<PtrIter> iterator;
-    typedef boost::indirect_iterator<PtrIter,T const> const_iterator;
+    typedef boost::indirect_iterator<PtrIter,value_type const> iterator;
+    typedef iterator const_iterator;
 
     ComponentArray() : _ptrVec() {}
 
@@ -118,11 +83,14 @@ public:
 
 private:
 
-    friend class multifit::Grid;
+    friend class Initializer;
 
     PtrVec _ptrVec;
 
 };
+
+template <ParameterType E>
+std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
 
 }}}} // namespace lsst::meas::multifit::grid
 

@@ -20,7 +20,7 @@ void ModelBasis::evaluate(
     _evaluate(matrix, footprint, ellipse);
 }
 
-ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
+ModelBasis::ConstPtr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
     throw LSST_EXCEPT(lsst::pex::exceptions::LogicErrorException,
                       "ModelBasis subclass does not support convolution.");
 }

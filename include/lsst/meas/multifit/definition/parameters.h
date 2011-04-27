@@ -30,167 +30,159 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-namespace grid {
-template <ParameterType E> class ParameterComponent;
-} // namespace grid
+namespace detail {
 
-namespace definition {
+template <ParameterType E> struct ParameterComponentTraits;
 
-template <ParameterType P> class ParameterComponent;
-
-/**
- *  @brief Parameters representing a position.
- *
- *  A position is represented as an offset from a reference point, which is stored within the
- *  position.
- */
 template <>
-class ParameterComponent<POSITION> {
-public:
-    
-    typedef boost::shared_ptr< ParameterComponent<POSITION> > Ptr;
-    typedef boost::shared_ptr< ParameterComponent<POSITION> const > ConstPtr;
+struct ParameterComponentTraits<POSITION> {
 
-    typedef lsst::afw::geom::Extent2D Value;
+    typedef lsst::afw::geom::Point2D Value;
     static int const SIZE = 2;
 
-    explicit ParameterComponent(lsst::afw::geom::Point2D const & reference, Value const & value = Value()) :
-        active(true), _value(value), _reference(reference)
-    {}
-
-    ParameterComponent(ParameterComponent const & other) :
-        active(other.active), _value(other._value), _reference(other._reference)
-    {}
-
-    /// @brief True if the position is allowed to vary during fitting.
-    bool active;
-
-    /**
-     *  @brief Initial value of the parameter.
-     *
-     *  For position, this is generally zero because the parameters are the offsets from the reference
-     *  position.
-     */
-    Value const & getValue() const { return _value; }
-
-    /// @brief Deep-copy.  Not clone() because it's not virtual, and doesn't need to be.
-    Ptr copy() const { return boost::make_shared< ParameterComponent<POSITION> >(*this); }
-
-    /// @brief Return the initial value of the position.
-    lsst::afw::geom::Point2D const getPosition() const { return _reference + _value; }
-
-    /// @brief Return the reference posiion.x
-    lsst::afw::geom::Point2D const & getReference() const { return _reference; }
-    
-protected:
-
-    template <ParameterType E> friend class grid::ParameterComponent;
-
-    void _writeParameters(double * paramIter) const {
-        paramIter[0] = _value.getX();
-        paramIter[1] = _value.getY();
+    static void readParameters(double const * paramIter, Value & value) {
+        value[0] += paramIter[0];
+        value[1] += paramIter[1];
     }
-
-    void _readParameters(double const * paramIter) {
-        _value.setX(paramIter[0]);
-        _value.setY(paramIter[1]); 
+    static void writeParameters(double * paramIter, Value const & value) {
+        paramIter[0] = 0.0;
+        paramIter[1] = 0.0;
     }
-
-    Value _value;
-    lsst::afw::geom::Point2D _reference;
+    static void printValue(std::ostream & os, Value const & value) { os << value; }
 };
 
-typedef ParameterComponent<POSITION> PositionComponent;
-
-std::ostream & operator<<(std::ostream & os, PositionComponent const & component);
-
-/**
- *  @brief A radius parameter.
- */
-template<>
-class ParameterComponent<RADIUS> {
-public:
-
-    typedef boost::shared_ptr< ParameterComponent<RADIUS> > Ptr;
-    typedef boost::shared_ptr< ParameterComponent<RADIUS> const > ConstPtr;
+template <>
+struct ParameterComponentTraits<RADIUS> {
 
     typedef Radius Value;
     static int const SIZE = 1;
 
-    explicit ParameterComponent(Value const & value) : active(true), _value(value) {}
+    static void readParameters(double const * paramIter, Value & value) {
+        value = paramIter[0];
+    }
+    static void writeParameters(double * paramIter, Value const & value) {
+        paramIter[0] = value;
+    }
+    static void printValue(std::ostream & os, Value const & value) { os << (double)value; }
 
-    ParameterComponent(ParameterComponent const & other) : active(other.active), _value(other._value) {}
-
-    /// @brief True if the radius is allowed to vary during fitting.
-    bool active;
-
-    /// @brief Initial value of the parameter.
-    Value const & getValue() const { return _value; }
-
-    /// @brief Deep-copy.  Not clone() because it's not virtual, and doesn't need to be.
-    Ptr copy() const { return boost::make_shared< ParameterComponent<RADIUS> >(*this); }
-
-protected:
-
-    template <ParameterType E> friend class grid::ParameterComponent;
-
-    void _writeParameters(double * paramIter) const { paramIter[0] = _value; }
-
-    void _readParameters(double const * paramIter) { _value = paramIter[0]; }
-
-    Value _value;
 };
 
-typedef ParameterComponent<RADIUS> RadiusComponent;
-
-std::ostream & operator<<(std::ostream & os, RadiusComponent const & component);
-
-/**
- *  @brief A pair of ellipticity parameters.
- */
 template <>
-class ParameterComponent<ELLIPTICITY> {
-public:
-
-    typedef boost::shared_ptr< ParameterComponent<ELLIPTICITY> > Ptr;
-    typedef boost::shared_ptr< ParameterComponent<ELLIPTICITY> const > ConstPtr;
+struct ParameterComponentTraits<ELLIPTICITY> {
 
     typedef Ellipticity Value;
     static int const SIZE = 2;
 
-    explicit ParameterComponent(Value const & value) : active(true), _value(value) {}
+    static void readParameters(double const * paramIter, Value & value) {
+        value.setE1(paramIter[0]);
+        value.setE2(paramIter[1]);
+    }
+    static void writeParameters(double * paramIter, Value const & value) {
+        paramIter[0] = value.getE1();
+        paramIter[1] = value.getE2();
+    }
+    static void printValue(std::ostream & os, Value const & value) { os << value.getComplex(); }
 
-    ParameterComponent(ParameterComponent const & other) : active(other.active), _value(other._value) {}
+};
 
-    /// @brief True if the ellipticity is allowed to vary during fitting.
-    bool active;
+template <ParameterType E>
+class ParameterComponentBase {
+public:
 
-    /// @brief Initial value of the parameter.
+    typedef typename detail::ParameterComponentTraits<E>::Value Value;
+    static int const SIZE = detail::ParameterComponentTraits<E>::SIZE;
+
+    /**
+     *  @brief True if the position is allowed to vary during fitting.
+     */
+    bool const isActive() const { return _active; }
+
+    /**
+     *  @brief Return the value of the ParameterComponent.
+     *
+     *  For most parameters, this is the same as the values in the initial parameter vector.
+     *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
+     */
     Value const & getValue() const { return _value; }
-
-    /// @brief Deep-copy.  Not clone() because it's not virtual, and doesn't need to be.
-    Ptr copy() const { return boost::make_shared< ParameterComponent<ELLIPTICITY> >(*this); }
 
 protected:
 
-    template <ParameterType E> friend class grid::ParameterComponent;
+    explicit ParameterComponentBase(Value const & value, bool active) :
+        _active(active), _value(value)
+    {}
 
-    void _writeParameters(double * paramIter) const {
-        paramIter[0] = _value.getE1();
-        paramIter[1] = _value.getE2();
-    }
+    ParameterComponentBase(ParameterComponentBase const & other) :
+        _active(other._active), _value(other._value)
+    {}
 
-    void _readParameters(double const * paramIter) {
-        _value.setE1(paramIter[0]);
-        _value.setE2(paramIter[1]);
-    }
-
+    bool _active;
     Value _value;
 };
 
+} // namespace detail
+
+namespace definition {
+
+template <ParameterType E>
+class ParameterComponent : public detail::ParameterComponentBase<E> {
+public:
+    
+    typedef boost::shared_ptr< ParameterComponent<E> > Ptr;
+    typedef boost::shared_ptr< ParameterComponent<E> const > ConstPtr;
+    typedef typename detail::ParameterComponentTraits<E>::Value Value;
+
+    /**
+     *  @brief True if the position is allowed to vary during fitting.
+     *
+     *  In Python, this is additionally wrapped as a property 'component.active',
+     *  because the syntax 'component.getActive() = ' is illegal.
+     */
+    bool & isActive() { return this->_active; }
+    using detail::ParameterComponentBase<E>::isActive;
+    
+    /**
+     *  @brief Return and/or set the value of the ParameterComponent.
+     *
+     *  For most parameters, this is the same as the values in the initial parameter vector.
+     *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
+     *
+     *  In Python, this is additionally wrapped as a property 'component.value',
+     *  because the syntax 'component.getValue() = ' is illegal.
+     */
+    Value & getValue() { return this->_value; }
+    using detail::ParameterComponentBase<E>::getValue;
+
+    /**
+     *  @brief Deep-copy.
+     *
+     *  @note Not called clone() because it's not virtual, and it doesn't need to be.
+     */
+    Ptr copy() const { return Ptr(new ParameterComponent(*this)); }
+
+    /**
+     *  @brief Create a new ParameterComponent.
+     *
+     *  Constructors are private to ensure we only get shared_ptrs to these things.
+     */
+    static Ptr make(Value const & value, bool active=true) {
+        return Ptr(new ParameterComponent(value, active));
+    }
+
+private:
+
+    ParameterComponent(ParameterComponent const & other) : detail::ParameterComponentBase<E>(*this) {}
+
+    explicit ParameterComponent(Value const & value, bool active) : 
+        detail::ParameterComponentBase<E>(value, active) {}
+
+};
+
+typedef ParameterComponent<POSITION> PositionComponent;
+typedef ParameterComponent<RADIUS> RadiusComponent;
 typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
 
-std::ostream & operator<<(std::ostream & os, EllipticityComponent const & component);
+template <ParameterType E>
+std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
 
 }}}} // namespace lsst::meas::multifit::definition
 

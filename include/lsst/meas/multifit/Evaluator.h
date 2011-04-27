@@ -25,59 +25,23 @@
 #define LSST_MEAS_MULTIFIT_Evaluator
 
 #include "lsst/base.h"
-#include "lsst/meas/multifit/Grid.h"
+#include "lsst/meas/multifit/grid/Grid.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 
 namespace lsst { namespace meas { namespace multifit {
-
-class Grid;
 
 class Evaluator : public BaseEvaluator {
 public:
 
     typedef boost::shared_ptr<Evaluator> Ptr;
 
-    Wcs::Ptr getWCS() const {return _grid->wcs;}
 #ifndef SWIG
-    Grid::ConstPtr getGrid() const {return _grid;}
-
-    Definition makeDefinition() const;
-    Definition makeDefinition(
-        ndarray::Array<double const,1,1> const & parameters
-    ) const;
+    Grid::ConstPtr getGrid() const { return _grid; }
     
-    static Ptr make(Definition const & definition);
+    static Ptr make(Grid::ConstPtr const & grid) {
+        return boost::make_shared<Evaluator>(grid);
+    }
 #endif
-
-    template<typename PixelT>
-    static Ptr make(
-        PTR(afw::image::Exposure<PixelT>) const & exposure,
-        Footprint::Ptr const & fp,
-        afw::geom::Point2D const & position,
-        bool isVariable=false,
-        bool isPositionActive=false
-    );
-
-    template<typename PixelT>
-    static Ptr make(
-        PTR(afw::image::Exposure<PixelT>) const & exposure,
-        Footprint::Ptr const & fp,
-        ModelBasis::Ptr const & basis,
-        afw::geom::ellipses::Ellipse const & ellipse,
-        bool isEllipticityActive=false,
-        bool isRadiusActive=false,
-        bool isPositionActive=false
-    );
-
-    lsst::afw::geom::ellipses::Ellipse extractEllipse(
-        ID id,
-        lsst::ndarray::Array<double const,1,1> const & parameters
-    ) const;
-
-    lsst::afw::geom::Point2D extractPoint(
-        ID id,
-        lsst::ndarray::Array<double const,1,1> const & parameters
-    ) const;
 
 protected:
 
@@ -95,15 +59,15 @@ protected:
 
 private:
     
-    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid>);
+    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid const>);
 
-    explicit Evaluator(Grid::Ptr const & grid);
+    explicit Evaluator(Grid::ConstPtr const & grid);
 
     Evaluator(Evaluator const & other);
     
     void _initialize();
 
-    Grid::Ptr _grid;
+    Grid::ConstPtr _grid;
 };
 
 }}} // namespace lsst::meas::multifit

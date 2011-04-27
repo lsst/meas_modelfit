@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE(GalaxySourceConstruction) {
     detection::Psf::Ptr psf = detection::createPsf("DoubleGaussian", 19, 19, 2.0, 1.0);
     exp->setPsf(psf);
     multifit::Footprint::Ptr fp(new multifit::Footprint(ellipse));
-    multifit::ModelBasis::Ptr basis = multifit::ShapeletModelBasis::make(5);
+    multifit::ModelBasis::ConstPtr basis = multifit::ShapeletModelBasis::make(5);
 
     multifit::Evaluator::Ptr eval = multifit::Evaluator::make(exp, fp, basis, ellipse);
     checkEvaluator(*eval, *fp, basis->getSize(), 0, 1.0, 0.5);
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
     );
     nFrame++;
 
-    multifit::ModelBasis::Ptr basis = multifit::ShapeletModelBasis::make(5);
+    multifit::ModelBasis::ConstPtr basis = multifit::ShapeletModelBasis::make(5);
 
     int nObject =0;
     int nParameters = 0;

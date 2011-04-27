@@ -37,13 +37,14 @@ namespace lsst { namespace meas { namespace multifit {
 class ModelBasis : private boost::noncopyable {
 public:
 
-    typedef boost::shared_ptr<ModelBasis> Ptr;
+    // ModelBasis is immutable, so there's no Ptr typedef, just ConstPtr.
+    typedef boost::shared_ptr<ModelBasis const> ConstPtr;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
      *         parametrization.
      */
-    virtual ModelBasis::Ptr convolve(CONST_PTR(LocalPsf) const & psf) const;
+    virtual ModelBasis::ConstPtr convolve(CONST_PTR(LocalPsf) const & psf) const;
 
     /// @brief Number of basis functions.
     int getSize() const { return _size; };
