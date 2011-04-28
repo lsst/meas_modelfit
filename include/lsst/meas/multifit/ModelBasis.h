@@ -37,6 +37,7 @@ namespace lsst { namespace meas { namespace multifit {
 class ModelBasis : private boost::noncopyable {
 public:
 
+    // ModelBasis is immutable, so there's no ConstPtr typedef, just Ptr.
     typedef boost::shared_ptr<ModelBasis> Ptr;
 
     /**

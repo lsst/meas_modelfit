@@ -28,27 +28,56 @@
 #include "lsst/meas/multifit/definition/Object.h"
 #include "lsst/meas/multifit/definition/Set.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace definition {
 
 class Definition {
 public:
     typedef definition::Frame Frame;
     typedef definition::Object Object;
 
-    typedef definition::Set<Frame,ID,&Frame::id> FrameSet;
-    typedef definition::Set<Object,ID,&Object::id> ObjectSet; 
+    typedef definition::Set<Frame> FrameSet;
+    typedef definition::Set<Object> ObjectSet; 
 
     Definition() {}
 
-    explicit Definition(Wcs::Ptr const & wcs_) : wcs(wcs_) {}
+    explicit Definition(Wcs::Ptr const & wcs) : _wcs(wcs) {}
 
     Definition(Definition const & other);
 
     FrameSet frames;
     ObjectSet objects;
 
-    Wcs::Ptr wcs;
+    Wcs::Ptr getWcs() const { return _wcs; }
+
+    template<typename PixelT>
+    static Definition make(
+        afw::image::Exposure<PixelT> const & exposure,
+        Footprint::Ptr const & fp,
+        afw::geom::Point2D const & position,
+        bool isVariable=false,
+        bool isPositionActive=false,
+        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
+    );
+
+    template<typename PixelT>
+    static Definition make(
+        afw::image::Exposure<PixelT> const & exposure,
+        Footprint::Ptr const & fp,
+        ModelBasis::Ptr const & basis,
+        afw::geom::ellipses::Ellipse const & ellipse,
+        bool isEllipticityActive=false,
+        bool isRadiusActive=false,
+        bool isPositionActive=false,
+        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
+    );
+
+private:
+    Wcs::Ptr _wcs;
 };
+
+} // namespace definition
+
+typedef definition::Definition Definition;
 
 }}} // namespace lsst::meas::multifit
 

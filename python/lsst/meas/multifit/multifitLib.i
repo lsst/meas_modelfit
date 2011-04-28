@@ -167,10 +167,6 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 
 %template(CompoundShapelet_ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
 
-
-
-
-
 SWIG_SHARED_PTR(BaseEvaluatorPtr, lsst::meas::multifit::BaseEvaluator);
 
 %include "lsst/meas/multifit/BaseEvaluator.h"
@@ -180,5 +176,4 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %include "lsst/meas/multifit/Evaluator.h"
 
-%template(make) lsst::meas::multifit::Evaluator::make<double>;
-%template(make) lsst::meas::multifit::Evaluator::make<float>;
+%include "definition.i"

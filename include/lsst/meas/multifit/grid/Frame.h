@@ -29,23 +29,30 @@
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
-class Frame : public definition::Frame {
+class Frame : public detail::FrameBase, private boost::noncopyable {
 public:
 
-    Frame(definition::Frame const & definition_, int offset, int filterIndex, int frameIndex);
+    int const getPixelOffset() const { return _pixelOffset; }
+    int const getPixelCount() const { return _pixelCount; }
 
-    int pixelOffset;
-    int pixelCount;
-
-    int filterIndex;
-    int frameIndex;
-
-    mutable void * extra;
+    int const getFilterIndex() const { return _filterIndex; }
+    int const getFrameIndex() const { return _frameIndex; }
 
     void applyWeights(ndarray::Array<double,2,1> const & matrix) const;
 
     void applyWeights(ndarray::Array<double,1,0> const & vector) const;
 
+private:
+
+    friend class Initializer;
+
+    Frame(definition::Frame const & def, int pixelOffset, int filterIndex, int frameIndex);
+
+    int _pixelOffset;
+    int _pixelCount;
+
+    int _filterIndex;
+    int _frameIndex;
 };
 
 }}}} // namespace lsst::meas::multifit::grid

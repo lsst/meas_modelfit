@@ -30,157 +30,168 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-namespace grid {
-template <ParameterType E> class ParameterComponent;
-} // namespace grid
+namespace detail {
 
-namespace definition {
+template <ParameterType E> struct ParameterComponentTraits;
 
-/**
- *  @brief A base class for parameter management classes.
- *
- *  ParameterComponents can be shared by multiple objects, tying
- *  those parameters together (such as the bulge and disk of a galaxy,
- *  for instance).
- *
- *  A ParameterComponent is 'active' if its parameters are allowed
- *  to vary in an optimization procedure; it should maintain enough
- *  state to be able to compute its products (which are 
- *  subclass-dependent) even when inactive.
- */
-template <typename Derived, typename Value_, int size_>
+template <>
+struct ParameterComponentTraits<POSITION> {
+
+    typedef lsst::afw::geom::Point2D Value;
+    static int const SIZE = 2;
+
+    static void readParameters(double const * paramIter, Value & value) {
+        value[0] += paramIter[0];
+        value[1] += paramIter[1];
+    }
+    static void writeParameters(double * paramIter, Value const & value) {
+        paramIter[0] = 0.0;
+        paramIter[1] = 0.0;
+    }
+    static void printValue(std::ostream & os, Value const & value) { os << value; }
+};
+
+template <>
+struct ParameterComponentTraits<RADIUS> {
+
+    typedef Radius Value;
+    static int const SIZE = 1;
+
+    static void readParameters(double const * paramIter, Value & value) {
+        value = paramIter[0];
+    }
+    static void writeParameters(double * paramIter, Value const & value) {
+        paramIter[0] = value;
+    }
+    static void printValue(std::ostream & os, Value const & value) { os << (double)value; }
+
+};
+
+template <>
+struct ParameterComponentTraits<ELLIPTICITY> {
+
+    typedef Ellipticity Value;
+    static int const SIZE = 2;
+
+    static void readParameters(double const * paramIter, Value & value) {
+        value.setE1(paramIter[0]);
+        value.setE2(paramIter[1]);
+    }
+    static void writeParameters(double * paramIter, Value const & value) {
+        paramIter[0] = value.getE1();
+        paramIter[1] = value.getE2();
+    }
+    static void printValue(std::ostream & os, Value const & value) { os << value.getComplex(); }
+
+};
+
+template <ParameterType E>
 class ParameterComponentBase {
 public:
 
-    typedef boost::shared_ptr<Derived> Ptr;
-    typedef Value_ Value;
+    typedef typename detail::ParameterComponentTraits<E>::Value Value;
+    static int const SIZE = detail::ParameterComponentTraits<E>::SIZE;
 
-    static int const SIZE = size_;
+    /**
+     *  @brief True if the position is allowed to vary during fitting.
+     */
+    bool const isActive() const { return _active; }
 
-    bool active;
-
+    /**
+     *  @brief Return the value of the ParameterComponent.
+     *
+     *  For most parameters, this is the same as the values in the initial parameter vector.
+     *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
+     */
     Value const & getValue() const { return _value; }
-
-    Ptr copy() const { return boost::make_shared<Derived>(static_cast<Derived const &>(*this)); }
 
 protected:
 
-    explicit ParameterComponentBase(Value const & value) : 
-        active(true), _value(value) {}
+    explicit ParameterComponentBase(Value const & value, bool active) :
+        _active(active), _value(value)
+    {}
 
     ParameterComponentBase(ParameterComponentBase const & other) :
-        active(other.active), _value(other._value) {}
+        _active(other._active), _value(other._value)
+    {}
 
+    bool _active;
     Value _value;
 };
 
-template <ParameterType P> class ParameterComponent;
+} // namespace detail
 
-/**
- *  @brief Parameters representing a position.
- *
- *  A position is represented as an offset from a reference point, which is stored within the
- *  position.
- */
-template <>
-class ParameterComponent<POSITION>
-    : public ParameterComponentBase<ParameterComponent<POSITION>,lsst::afw::geom::Extent2D,2>
-{
-    typedef ParameterComponentBase<ParameterComponent<POSITION>,lsst::afw::geom::Extent2D,2> Base;
+namespace definition {
+
+template <ParameterType E>
+class ParameterComponent : public detail::ParameterComponentBase<E> {
 public:
-
-    explicit ParameterComponent(lsst::afw::geom::Point2D const & reference, Value const & value = Value()) :
-        Base(value),
-        _reference(reference)
-    {}
-
-    ParameterComponent(ParameterComponent const & other) :
-        Base(other),
-        _reference(other._reference)
-    {}
-
-    lsst::afw::geom::Point2D const getPosition() const { return _reference + _value; }
-
-    lsst::afw::geom::Point2D const & getReference() const { return _reference; }
     
-protected:
+    typedef boost::shared_ptr< ParameterComponent<E> > Ptr;
+    typedef boost::shared_ptr< ParameterComponent<E> const > ConstPtr;
+    typedef typename detail::ParameterComponentTraits<E>::Value Value;
 
-    template <ParameterType E> friend class grid::ParameterComponent;
+#ifndef SWIG // these are wrapped explicitly; SWIG is confused by the typedefs and "bool &"
 
-    void _writeParameters(double * paramIter) const {
-        paramIter[0] = _value.getX();
-        paramIter[1] = _value.getY();
+    //@{
+    /**
+     *  @brief True if the position is allowed to vary during fitting.
+     */
+    bool & isActive() { return this->_active; }
+    void setActive(bool active) { this->_active = active; }
+    //@}
+    
+    //@{
+    /**
+     *  @brief Return and/or set the value of the ParameterComponent.
+     *
+     *  For most parameters, this is the same as the values in the initial parameter vector.
+     *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
+     *
+     *  In Python, this is additionally wrapped as a property 'component.value',
+     *  because the syntax 'component.getValue() = ' is illegal.
+     */
+    Value & getValue() { return this->_value; }
+    void setValue(Value const & value) { this->_value = value; }
+    //@}
+
+    // Use const accessors from base class.
+    using detail::ParameterComponentBase<E>::getValue;
+    using detail::ParameterComponentBase<E>::isActive;
+
+    /**
+     *  @brief Deep-copy.
+     *
+     *  @note Not called clone() because it's not virtual, and it doesn't need to be.
+     */
+    Ptr copy() const { return Ptr(new ParameterComponent(*this)); }
+
+    /**
+     *  @brief Create a new ParameterComponent.
+     *
+     *  Constructors are private to ensure we only get shared_ptrs to these things.
+     */
+    static Ptr make(Value const & value, bool active=true) {
+        return Ptr(new ParameterComponent(value, active));
     }
 
-    void _readParameters(double const * paramIter) {
-        _value.setX(paramIter[0]);
-        _value.setY(paramIter[1]); 
-    }
+#endif
 
-    lsst::afw::geom::Point2D _reference;
+private:
+
+    ParameterComponent(ParameterComponent const & other) : detail::ParameterComponentBase<E>(*this) {}
+
+    explicit ParameterComponent(Value const & value, bool active) : 
+        detail::ParameterComponentBase<E>(value, active) {}
+
 };
 
 typedef ParameterComponent<POSITION> PositionComponent;
-
-/**
- *  @brief A radius parameter.
- */
-template<>
-class ParameterComponent<RADIUS> 
-    : public ParameterComponentBase<ParameterComponent<RADIUS>,Radius,1>
-{
-    typedef ParameterComponentBase<ParameterComponent<RADIUS>,Radius,1> Base;
-public:
-
-    explicit ParameterComponent(Value const & value) : Base(value) {}
-
-    ParameterComponent(ParameterComponent const & other) 
-        : Base(other) {}
-
-protected:
-
-    template <ParameterType E> friend class grid::ParameterComponent;
-
-    void _writeParameters(double * paramIter) const { paramIter[0] = _value; }
-
-    void _readParameters(double const * paramIter) { _value = paramIter[0]; }
-
-};
-
 typedef ParameterComponent<RADIUS> RadiusComponent;
-
-
-/**
- *  @brief A pair of ellipticity parameters.
- */
-template <>
-class ParameterComponent<ELLIPTICITY>
-    : public ParameterComponentBase<ParameterComponent<ELLIPTICITY>,Ellipticity,2> 
-{
-    typedef ParameterComponentBase<ParameterComponent<ELLIPTICITY>, Ellipticity,2> Base;
-public:
-
-    explicit ParameterComponent(Value const & value) : Base(value) {}
-
-    ParameterComponent(ParameterComponent const & other) 
-        : Base(other) {}
-
-protected:
-
-    template <ParameterType E> friend class grid::ParameterComponent;
-
-    void _writeParameters(double * paramIter) const {
-        paramIter[0] = _value.getE1();
-        paramIter[1] = _value.getE2();
-    }
-
-    void _readParameters(double const * paramIter) {
-        _value.setE1(paramIter[0]);
-        _value.setE2(paramIter[1]);
-    }
-};
-
 typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
+
+template <ParameterType E>
+std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
 
 }}}} // namespace lsst::meas::multifit::definition
 
