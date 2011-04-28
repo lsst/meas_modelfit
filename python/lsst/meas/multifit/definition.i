@@ -224,3 +224,6 @@ lsst::meas::multifit::definition::Set<lsst::meas::multifit::definition::NAME>;
 //-------------------------------------- Definition -----------------------------------------
 
 %include "lsst/meas/multifit/definition/Definition.h"
+
+%template(make) lsst::meas::multifit::definition::Definition::make<float>;
+%template(make) lsst::meas::multifit::definition::Definition::make<double>;

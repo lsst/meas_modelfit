@@ -115,11 +115,19 @@ public:
 
     Frame(Frame const & other) : detail::FrameBase(other, false) {}
 
+    /**
+     *  @brief Construct a frame from an exposure and footprint.
+     *
+     *  Masked pixels will be removed from the footprint using
+     *  afw::detection::footprintAndMask with the given bitmask.
+     *  The default value is to remove any masked pixels.
+     */
     template <typename PixelT>
     static Frame make(
         ID const id,
         lsst::afw::image::Exposure<PixelT> const & exposure,
-        Footprint::Ptr const & footprint
+        Footprint::Ptr const & footprint,
+        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
     );
     
 #ifndef SWIG

@@ -55,7 +55,8 @@ public:
         Footprint::Ptr const & fp,
         afw::geom::Point2D const & position,
         bool isVariable=false,
-        bool isPositionActive=false
+        bool isPositionActive=false,
+        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
     );
 
     template<typename PixelT>
@@ -66,7 +67,8 @@ public:
         afw::geom::ellipses::Ellipse const & ellipse,
         bool isEllipticityActive=false,
         bool isRadiusActive=false,
-        bool isPositionActive=false
+        bool isPositionActive=false,
+        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
     );
 
 private:

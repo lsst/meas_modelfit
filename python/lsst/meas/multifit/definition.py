@@ -5,6 +5,7 @@ from .multifitLib import definition_Object as Object
 from .multifitLib import definition_ObjectSet as ObjectSet
 from .multifitLib import definition_Frame as Frame
 from .multifitLib import definition_FrameSet as FrameSet
+from .multifitLib import Definition
 
 from . import multifitLib
 
