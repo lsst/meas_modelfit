@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_BaseInterpreter
 #define LSST_MEAS_MULTIFIT_BaseInterpreter
 
-#include "lsst/meas/multifit/Grid.h"
+#include "lsst/meas/multifit/grid/Grid.h"
 #include "lsst/meas/multifit/BaseDistribution.h"
  
 namespace lsst { namespace meas { namespace multifit {

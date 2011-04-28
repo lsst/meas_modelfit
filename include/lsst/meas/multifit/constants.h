@@ -72,12 +72,10 @@ inline void checkSize(int actualSize, int expectedSize, char const * message) {
 
 } // namespace detail
 
-
-
 typedef boost::int64_t ID;
 typedef int FilterId;
 
-enum ParameterType { POSITION, RADIUS, ELLIPTICITY };
+enum ParameterType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
 
 /**
  *  These set the what parameters are used to define an ellipse through the package,
@@ -86,6 +84,7 @@ enum ParameterType { POSITION, RADIUS, ELLIPTICITY };
  *  converting between parameter vectors and covariance matrices and ellipses.
  */
 ///@{
+typedef lsst::afw::geom::Point2D Position;
 typedef lsst::afw::geom::ellipses::TraceRadius Radius;
 typedef lsst::afw::geom::ellipses::ConformalShear Ellipticity;
 typedef lsst::afw::geom::ellipses::Separable<Ellipticity, Radius> EllipseCore;
@@ -101,6 +100,30 @@ typedef lsst::afw::detection::Footprint Footprint;
 
 typedef LocalPsf::Pixel Pixel;
 typedef lsst::afw::image::Exposure<lsst::meas::multifit::Pixel> Exposure;
+
+LSST_EXCEPTION_TYPE(InvalidDefinitionError,
+                    lsst::pex::exceptions::InvalidParameterException,
+                    lsst::meas::multifit::InvalidDefinitionError);
+
+namespace definition {
+
+template <ParameterType E> class ParameterComponent;
+class Object;
+class Frame;
+class Definition;
+
+} // namespace definition
+
+namespace grid {
+
+template <ParameterType E> class ParameterComponent;
+class Object;
+class Frame;
+class Source;
+class Grid;
+class Initializer;
+
+} // namespace definition
 
 }}} // namespace lsst::meas::multifit
 

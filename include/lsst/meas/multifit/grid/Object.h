@@ -29,43 +29,53 @@
 #include "lsst/meas/multifit/grid/parameters.h"
 #include "lsst/meas/multifit/grid/Array.h"
 #include "lsst/meas/multifit/grid/Source.h"
+#include "lsst/meas/multifit/grid/Frame.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
-class Object : public definition::Object {
+/**
+ *  @brief An immutable and expanded version of definition::Object used in a multifit Grid.
+ */
+class Object : public detail::ObjectBase, private boost::noncopyable {
 public:
 
     typedef Array<Source> SourceArray;
+    
+    // We can show all the internals except the parameter components because users will only ever 
+    // see const Objects, but we can't let them have non-const pointers to the parameter components.
+    // We'd also like to cast the components to their grid versions.
 
-    Object(definition::Object const & definition_, int offset, int frameCount, int filterCount);
-
-    Object(Object const & other) :
-        definition::Object(other),
-        coefficientOffset(other.coefficientOffset),
-        coefficientCount(other.coefficientCount),
-        sources(),
-        extra(0)
-    {}
-
-    int coefficientOffset;
-    int coefficientCount;
-#ifndef SWIG
     SourceArray sources;
-#endif
-    mutable void * extra;
 
-    PositionComponent & getPosition() const {
-        return static_cast<PositionComponent &>(*this->position);
+    /// @brief The number of coefficients for this object per Frame.
+    int const getSourceCoefficientCount() const {
+        return getBasis() ? getBasis()->getSize() : 1;
     }
 
-    RadiusComponent & getRadius() const {
-        return static_cast<RadiusComponent &>(*this->radius);
-    }
+    /// @brief The offset of this object's coefficients in the grid's full coefficient array.
+    int const getCoefficientOffset() const { return _coefficientOffset; }
 
-    EllipticityComponent & getEllipticity() const {
-        return static_cast<EllipticityComponent &>(*this->ellipticity);
-    }
+    /// @brief The total number of coefficients for this object.
+    int const getCoefficientCount() const { return _coefficientCount; }
 
+    //@{
+    /// @brief Return the parameter components.
+    PositionComponent::Ptr const getPosition() const { return _position; }
+    RadiusComponent::Ptr const getRadius() const { return _radius; }
+    EllipticityComponent::Ptr const getEllipticity() const { return _ellipticity; }
+
+    template <ParameterType E>
+    typename ParameterComponent<E>::Ptr const getComponent() const {
+        typename ParameterComponent<E>::Ptr const * p;
+        getComponentImpl(p);
+        return *p;
+    }
+    //@}
+
+    /// @brief Throw an exception (LogicErrorException) if the object lacks a radius or ellipticity.
+    void requireEllipse() const;
+
+#ifndef SWIG
     /// @brief Construct the point corresponding to this object from a parameter vector.
     lsst::afw::geom::Point2D makePoint(double const * paramIter) const;
 
@@ -143,11 +153,39 @@ public:
      *  Unperturb a point by changing the nth position parameter.
      */
     void unperturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n, double perturbation) const;
+#endif
 
+private:
+
+    friend class grid::Initializer;
+
+    Object(definition::Object const & def, int coefficientOffset, int filterCount, int frameCount);
+
+    void validate() const;
+
+    void getComponentImpl(PositionComponent::Ptr const * & p) const { p = &_position; }
+    void getComponentImpl(RadiusComponent::Ptr const * & p) const { p = &_radius; }
+    void getComponentImpl(EllipticityComponent::Ptr const * & p) const { p = &_ellipticity; }
+
+    int _coefficientOffset;
+    int _coefficientCount;
+    PositionComponent::Ptr _position;
+    RadiusComponent::Ptr _radius;
+    EllipticityComponent::Ptr _ellipticity;
 };
 
 inline afw::geom::Point2D const Source::getReferencePoint() const {
-    return transform(object.position->getReference());
+    return _transform(object.getPosition()->getValue());
+}
+
+inline int const Source::getCoefficientOffset() const {
+    return object.getCoefficientOffset()
+        + object.getSourceCoefficientCount()
+        * (object.isVariable() ? frame.getFrameIndex() : frame.getFilterIndex());
+}
+
+inline int const Source::getCoefficientCount() const {
+    return object.getSourceCoefficientCount();
 }
 
 }}}} // namespace lsst::meas::multifit::grid
