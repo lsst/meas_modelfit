@@ -62,7 +62,7 @@ public:
     static Definition make(
         afw::image::Exposure<PixelT> const & exposure,
         Footprint::Ptr const & fp,
-        ModelBasis::ConstPtr const & basis,
+        ModelBasis::Ptr const & basis,
         afw::geom::ellipses::Ellipse const & ellipse,
         bool isEllipticityActive=false,
         bool isRadiusActive=false,

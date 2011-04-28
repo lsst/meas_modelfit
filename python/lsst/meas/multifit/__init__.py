@@ -37,6 +37,7 @@ import eups
 
 from . import sampling
 
+Position = lsst.afw.geom.Point2D
 Ellipticity = lsst.afw.geom.ellipses.ConformalShear
 Radius = lsst.afw.geom.ellipses.TraceRadius
 EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];

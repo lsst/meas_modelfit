@@ -37,25 +37,25 @@ namespace lsst { namespace meas { namespace multifit {
 class ShapeletModelBasis : public ModelBasis {
 public:
 
-    typedef boost::shared_ptr<ShapeletModelBasis> ConstPtr;
+    typedef boost::shared_ptr<ShapeletModelBasis> Ptr;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
      *         parametrization.
      */
-    virtual ModelBasis::ConstPtr convolve(CONST_PTR(LocalPsf) const & psf) const;
+    virtual ModelBasis::Ptr convolve(CONST_PTR(LocalPsf) const & psf) const;
 
     /**
      *  @brief Convolve the basis with the given ShapeletFunction, returning a new basis with the same
      *         parametrization.
      */
-    ModelBasis::ConstPtr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
 
     /**
      *  @brief Convolve the basis with the given MultiShapeletFunction, returning a new basis with the same
      *         parametrization.
      */
-    ModelBasis::ConstPtr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
     
     /// @brief Order of the shapelet expansion.
     int getOrder() const { return _order; };
@@ -63,7 +63,7 @@ public:
     /// @brief Order of the shapelet expansion.
     double getScale() const { return _scale; };
 
-    static ConstPtr make(int order, double scale=1.0) {
+    static Ptr make(int order, double scale=1.0) {
         return boost::make_shared<ShapeletModelBasis>(order, scale);
     }
 

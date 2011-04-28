@@ -36,7 +36,7 @@ namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 class Grid {
 public:
-    typedef boost::shared_ptr<const Grid> ConstPtr;
+    typedef boost::shared_ptr<Grid> Ptr;
 
     typedef grid::Object Object;
     typedef grid::Frame Frame;
@@ -77,8 +77,8 @@ public:
 
     CONST_PTR(Wcs) const getWcs() const { return _wcs; }
 
-    static ConstPtr make(Definition const & definition) {
-        return ConstPtr(new Grid(definition));
+    static Ptr make(Definition const & definition) {
+        return Ptr(new Grid(definition));
     }
 
 private:

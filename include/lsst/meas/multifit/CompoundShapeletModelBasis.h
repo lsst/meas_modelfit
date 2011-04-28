@@ -36,7 +36,7 @@ namespace detail {
 class CompoundShapeletBase {
 public:
 
-    typedef std::vector<ShapeletModelBasis::ConstPtr> ComponentVector;
+    typedef std::vector<ShapeletModelBasis::Ptr> ComponentVector;
     
     ComponentVector extractComponents() const;
 
@@ -55,12 +55,12 @@ protected:
     typedef ndarray::TransposedEigenView<const Pixel,2,1> MatrixT;
 
     struct Element {
-        ShapeletModelBasis::ConstPtr component;
+        ShapeletModelBasis::Ptr component;
         Matrix forward;
         MatrixT reverse;
 
         Element(
-            ShapeletModelBasis::ConstPtr const & component_, 
+            ShapeletModelBasis::Ptr const & component_, 
             ndarray::Array<const Pixel,2,1> const & fullForward,
             ndarray::Array<const Pixel,2,1> const & fullReverse,
             int offset
@@ -101,27 +101,27 @@ class CompoundShapeletBuilder;
 class CompoundShapeletModelBasis : public ModelBasis, public detail::CompoundShapeletBase {
 public:
 
-    typedef boost::shared_ptr<CompoundShapeletModelBasis> ConstPtr;
+    typedef boost::shared_ptr<CompoundShapeletModelBasis> Ptr;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
      *         parametrization.
      */
-    virtual ModelBasis::ConstPtr convolve(CONST_PTR(LocalPsf) const & psf) const;
+    virtual ModelBasis::Ptr convolve(CONST_PTR(LocalPsf) const & psf) const;
 
     /**
      *  @brief Convolve the basis with the given ShapeletFunction, returning a new basis with the same
      *         parametrization.
      */
-    ModelBasis::ConstPtr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
 
     /**
      *  @brief Convolve the basis with the given MultiShapeletFunction, returning a new basis with the same
      *         parametrization.
      */
-    ModelBasis::ConstPtr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
 
-    static ConstPtr load(std::string const & filename);
+    static Ptr load(std::string const & filename);
     void save(std::string const & filename);
 
     virtual ~CompoundShapeletModelBasis() {}
@@ -164,7 +164,7 @@ public:
         lsst::ndarray::Array<Pixel const,2,1> const & reverse
     );
 
-    CompoundShapeletModelBasis::ConstPtr build() const;
+    CompoundShapeletModelBasis::Ptr build() const;
 };
 
 }}} // namespace lsst::meas::multifit

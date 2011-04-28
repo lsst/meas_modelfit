@@ -37,6 +37,8 @@ public:
 
     ID const id;
 
+#ifndef SWIG
+
     /// @brief Return the Frame's filter ID.
     FilterId const getFilterId() const { return _filterId; }
 
@@ -49,11 +51,13 @@ public:
     /// @brief Return the footprint that defines the pixel region of interest.
     CONST_PTR(Footprint) const getFootprint() const { return _footprint; }
 
-    /// @Brief Return the 1-d data array (with size matching the footprint area).
+    /// @brief Return the 1-d data array (with size matching the footprint area).
     lsst::ndarray::Array<Pixel const,1,1> const getData() const { return _data; }
 
-    /// @Brief Return the 1-d pixel weight array (with size matching the footprint area).
+    /// @brief Return the 1-d pixel weight array (with size matching the footprint area).
     lsst::ndarray::Array<Pixel const,1,1> const getWeights() const { return _weights; }
+
+#endif
 
 protected:
     
@@ -112,8 +116,14 @@ public:
     Frame(Frame const & other) : detail::FrameBase(other, false) {}
 
     template <typename PixelT>
-    static Frame make(lsst::afw::image::Exposure<PixelT> const & exposure, Footprint::Ptr const & footprint);
+    static Frame make(
+        ID const id,
+        lsst::afw::image::Exposure<PixelT> const & exposure,
+        Footprint::Ptr const & footprint
+    );
     
+#ifndef SWIG
+
     /// @brief Return and/or set the Frame's filter ID.
     FilterId & getFilterId() { return _filterId; }
     using detail::FrameBase::getFilterId;
@@ -130,13 +140,30 @@ public:
     Footprint::Ptr & getFootprint() { return _footprint; }
     using detail::FrameBase::getFootprint;
 
-    /// @Brief Return and/or set the 1-d data array (with size matching the footprint area).
+    /// @brief Return and/or set the 1-d data array (with size matching the footprint area).
     lsst::ndarray::Array<Pixel,1,1> & getData() { return _data; }
     using detail::FrameBase::getData;
 
-    /// @Brief Return and/or set the 1-d pixel weight array (with size matching the footprint area).
+    /// @brief Return and/or set the 1-d pixel weight array (with size matching the footprint area).
     lsst::ndarray::Array<Pixel,1,1> & getWeights() { return _weights; }
     using detail::FrameBase::getWeights;
+
+#endif
+
+    //@{
+    /**
+     *  @brief Attribute setters.
+     *
+     *  These are unnecessary in C++ because the non-const getters return by reference,
+     *  but are included here because they're the only way to set thing in Python.
+     */
+    void setFilterId(FilterId filterId) { _filterId = filterId; }
+    void setWcs(Wcs::Ptr const & wcs) { _wcs = wcs; }
+    void setPsf(Psf::Ptr const & psf) { _psf = psf; }
+    void setFootprint(Footprint::Ptr const & footprint) { _footprint = footprint; }
+    void setData(lsst::ndarray::Array<Pixel,1,1> const & data) { _data = data; }
+    void setWeights(lsst::ndarray::Array<Pixel,1,1> const & weights) { _weights = weights; }
+    //@}
 
 private:
     friend class grid::Initializer;

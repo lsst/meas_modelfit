@@ -39,7 +39,7 @@ public:
     ID const id;
 
     /// @brief Return the basis used for extended objects.
-    ModelBasis::ConstPtr const getBasis() const { return _basis; }
+    ModelBasis::Ptr const getBasis() const { return _basis; }
 
     /// @brief Return the ratio of the actual radius of this object to the radius parameter.
     double const getRadiusFactor() const { return _radiusFactor; }
@@ -56,7 +56,7 @@ protected:
         ID id_, 
         double radiusFactor,
         bool variable,
-        ModelBasis::ConstPtr const & basis = ModelBasis::ConstPtr()
+        ModelBasis::Ptr const & basis = ModelBasis::Ptr()
     ) : id(id_), _radiusFactor(radiusFactor), _variable(variable), _basis(basis) {}
 
     ObjectBase(ObjectBase const & other) : 
@@ -65,7 +65,7 @@ protected:
 
     double _radiusFactor;
     bool _variable;
-    ModelBasis::ConstPtr _basis;
+    ModelBasis::Ptr _basis;
 };
 
 } // namespace detail
@@ -105,7 +105,7 @@ public:
 
     static Object makeGalaxy(
         ID id,
-        ModelBasis::ConstPtr const & basis,
+        ModelBasis::Ptr const & basis,
         lsst::afw::geom::ellipses::Ellipse const & ellipse,
         bool isEllipticityActive=false,
         bool isRadiusActive=false,
@@ -116,6 +116,7 @@ public:
     /**
      *  @brief Return and/or set the parameter components.
      */
+#ifndef SWIG
     PositionComponent::Ptr & getPosition() { return _position; }
     RadiusComponent::Ptr & getRadius() { return _radius; }
     EllipticityComponent::Ptr & getEllipticity() { return _ellipticity; }
@@ -140,7 +141,7 @@ public:
     //@}
 
     /// @brief Return and/or set the basis used for extended objects.
-    ModelBasis::ConstPtr & getBasis() { return _basis; }
+    ModelBasis::Ptr & getBasis() { return _basis; }
 
     /// @brief Return and/or set the ratio of the actual radius of this object to the radius parameter.
     double & getRadiusFactor() { return _radiusFactor; }
@@ -151,9 +152,23 @@ public:
      */
     bool & isVariable() { return _variable; };
 
+#endif
+
     using detail::ObjectBase::getBasis;
     using detail::ObjectBase::getRadiusFactor;
     using detail::ObjectBase::isVariable;
+
+    //@{
+    /**
+     *  @brief Setters for basis, radius factor and variability.
+     *
+     *  These aren't necessary in C++ because the non-const getters return references, but they might
+     *  be expected, and they're the only way to do things from Python.
+     */
+    void setBasis(ModelBasis::Ptr const & basis) { _basis = basis; }
+    void setRadiusFactor(double factor) { _radiusFactor = factor; }
+    void setVariable(bool variable) { _variable = variable; }
+    //@}
 
 private:
 

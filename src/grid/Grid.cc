@@ -24,7 +24,7 @@ public:
         Grid const & input, Definition & output, double const * paramIter
     ) {
         typedef boost::shared_ptr< definition::ParameterComponent<E> > DPtr;
-        typedef boost::shared_ptr< grid::ParameterComponent<E> const > GPtr;
+        typedef boost::shared_ptr< grid::ParameterComponent<E> > GPtr;
         typedef std::map<GPtr,DPtr> Map;
         Map unique;
         Grid::ObjectArray::const_iterator gi = input.objects.begin();
@@ -52,7 +52,7 @@ public:
         Definition const & input, Grid & output, Container & container
     ) {
         typedef boost::shared_ptr< definition::ParameterComponent<E> > DPtr;
-        typedef boost::shared_ptr< grid::ParameterComponent<E> const > GPtr;
+        typedef boost::shared_ptr< grid::ParameterComponent<E> > GPtr;
         typedef std::map<DPtr,GPtr> Map;
         Map unique;
         Definition::ObjectSet::const_iterator di = input.objects.begin();
@@ -123,19 +123,27 @@ public:
                     *i, output._coefficientCount, frameCount, output._filterCount
                 );
                 output._coefficientCount += newObject->getCoefficientCount();
-                newObject->sources._first = output.sources._last;
+            }
+            transferComponents<POSITION>(input, output, output.positions);
+            transferComponents<RADIUS>(input, output, output.radii);
+            transferComponents<ELLIPTICITY>(input, output, output.ellipticities);
+            for (
+                grid::Object * i = output.objects._first; 
+                i != output.objects._last;
+                ++i
+            ) {
+                i->validate();
+                i->sources._first = output.sources._last;
                 for (
                     Grid::FrameArray::const_iterator j = output.frames.begin();
                     j != output.frames.end();
                     ++j
                 ) {
-                    new (output.sources._last++) grid::Source(*j, *newObject, output.getWcs());
+                    new (output.sources._last++) grid::Source(*j, *i, output.getWcs());
                 }
-                newObject->sources._last = output.sources._last;
+                i->sources._last = output.sources._last;
             }
-            transferComponents<POSITION>(input, output, output.positions);
-            transferComponents<RADIUS>(input, output, output.radii);
-            transferComponents<ELLIPTICITY>(input, output, output.ellipticities);
+            
         } catch (...) {
             destroyGrid(output);
             throw;
@@ -256,8 +264,9 @@ Grid::Grid(Definition const & definition) :
     _objectData(new char[sizeof(grid::Object) * definition.objects.size()]),
     _frameData(new char[sizeof(grid::Frame) * definition.frames.size()]),
     _sourceData(new char[sizeof(grid::Source) * definition.frames.size() * definition.objects.size()]),
-    _wcs(definition.getWcs()->clone())
+    _wcs()
 {
+    if (definition.getWcs()) _wcs = definition.getWcs()->clone();
     Initializer::initializeGrid(definition, *this);
 }
 

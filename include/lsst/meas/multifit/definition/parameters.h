@@ -131,15 +131,17 @@ public:
     typedef boost::shared_ptr< ParameterComponent<E> const > ConstPtr;
     typedef typename detail::ParameterComponentTraits<E>::Value Value;
 
+#ifndef SWIG // these are wrapped explicitly; SWIG is confused by the typedefs and "bool &"
+
+    //@{
     /**
      *  @brief True if the position is allowed to vary during fitting.
-     *
-     *  In Python, this is additionally wrapped as a property 'component.active',
-     *  because the syntax 'component.getActive() = ' is illegal.
      */
     bool & isActive() { return this->_active; }
-    using detail::ParameterComponentBase<E>::isActive;
+    void setActive(bool active) { this->_active = active; }
+    //@}
     
+    //@{
     /**
      *  @brief Return and/or set the value of the ParameterComponent.
      *
@@ -150,7 +152,12 @@ public:
      *  because the syntax 'component.getValue() = ' is illegal.
      */
     Value & getValue() { return this->_value; }
+    void setValue(Value const & value) { this->_value = value; }
+    //@}
+
+    // Use const accessors from base class.
     using detail::ParameterComponentBase<E>::getValue;
+    using detail::ParameterComponentBase<E>::isActive;
 
     /**
      *  @brief Deep-copy.
@@ -167,6 +174,8 @@ public:
     static Ptr make(Value const & value, bool active=true) {
         return Ptr(new ParameterComponent(value, active));
     }
+
+#endif
 
 private:
 

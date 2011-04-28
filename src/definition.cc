@@ -53,7 +53,7 @@ Object Object::makeStar(
 
 Object Object::makeGalaxy(
     ID id,
-    ModelBasis::ConstPtr const & basis,
+    ModelBasis::Ptr const & basis,
     lsst::afw::geom::ellipses::Ellipse const & ellipse,
     bool isEllipticityActive,
     bool isRadiusActive,
@@ -79,6 +79,7 @@ std::ostream & operator<<(std::ostream & os, Object const & obj) {
 
 template <typename PixelT>
 Frame Frame::make(
+    ID const id,
     lsst::afw::image::Exposure<PixelT> const & exposure,
     Footprint::Ptr const & fp
 ) {
@@ -120,7 +121,7 @@ Frame Frame::make(
     weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
 
     Frame frame(
-        0, 
+        id, 
         exposure.getFilter().getId(), 
         Wcs::Ptr(), 
         boost::const_pointer_cast<afw::detection::Psf>(exposure.getPsf()), // or should we clone?
@@ -132,8 +133,8 @@ Frame Frame::make(
     return frame;
 }
 
-template Frame Frame::make<float>(lsst::afw::image::Exposure<float> const &, Footprint::Ptr const &);
-template Frame Frame::make<double>(lsst::afw::image::Exposure<double> const &, Footprint::Ptr const &);
+template Frame Frame::make<float>(ID const, lsst::afw::image::Exposure<float> const &, Footprint::Ptr const &);
+template Frame Frame::make<double>(ID const, lsst::afw::image::Exposure<double> const &, Footprint::Ptr const &);
 
 std::ostream & operator<<(std::ostream & os, Frame const & frame) {
     std::string filterName("undefined");
@@ -157,7 +158,7 @@ Definition Definition::make(
 ) {    
     //make a point source definition   
     Definition psDefinition;
-    psDefinition.frames.insert(Frame::make<PixelT>(exposure, fp));
+    psDefinition.frames.insert(Frame::make<PixelT>(0, exposure, fp));
     psDefinition.objects.insert(
         definition::Object::makeStar(0, position, isVariable, isPositionActive)
     );
@@ -181,7 +182,7 @@ template <typename PixelT>
 Definition Definition::make(
     afw::image::Exposure<PixelT> const & exposure,
     Footprint::Ptr const & fp,
-    ModelBasis::ConstPtr const & basis,
+    ModelBasis::Ptr const & basis,
     afw::geom::ellipses::Ellipse const & ellipse,
     bool isEllipticityActive,
     bool isRadiusActive,
@@ -189,7 +190,7 @@ Definition Definition::make(
 ) {
     //make a single-galaxy definition    
     Definition sgDefinition;
-    sgDefinition.frames.insert(Frame::make<PixelT>(exposure, fp));
+    sgDefinition.frames.insert(Frame::make<PixelT>(0, exposure, fp));
     sgDefinition.objects.insert(
         definition::Object::makeGalaxy(
             0, basis, ellipse,
@@ -204,14 +205,14 @@ Definition Definition::make(
 template Definition Definition::make<float>(
     lsst::afw::image::Exposure<float> const &,
     lsst::meas::multifit::Footprint::Ptr const &,
-    ModelBasis::ConstPtr const &,
+    ModelBasis::Ptr const &,
     afw::geom::ellipses::Ellipse const &,
     bool, bool, bool
 );
 template Definition Definition::make<double>(
     lsst::afw::image::Exposure<double> const &,
     lsst::meas::multifit::Footprint::Ptr const &,
-    ModelBasis::ConstPtr const &,
+    ModelBasis::Ptr const &,
     afw::geom::ellipses::Ellipse const &,
     bool, bool, bool
 );

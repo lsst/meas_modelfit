@@ -57,24 +57,50 @@
 #include "lsst/meas/multifit/definition/parameters.h"
 %}
 
-SWIG_SHARED_PTR(definition_PositionComponentPtr, lsst::meas::multifit::definition::ParameterComponent<POSITION>);
-SWIG_SHARED_PTR(definition_RadiusComponentPtr, lsst::meas::multifit::definition::ParameterComponent<RADIUS>);
-SWIG_SHARED_PTR(definition_EllipticityComponentPtr, lsst::meas::multifit::definition::ParameterComponent<ELLIPTICITY>);
-%AddStreamRepr(lsst::meas::multifit::definition::ParameterComponent<POSITION>)
-%AddStreamRepr(lsst::meas::multifit::definition::ParameterComponent<RADIUS>)
-%AddStreamRepr(lsst::meas::multifit::definition::ParameterComponent<ELLIPTICITY>)
+SWIG_SHARED_PTR(definition_PositionComponentPtr, lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::POSITION>);
+SWIG_SHARED_PTR(definition_RadiusComponentPtr, lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::RADIUS>);
+SWIG_SHARED_PTR(definition_EllipticityComponentPtr, lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::ELLIPTICITY>);
 
-%include "lsst/meas/multifit/definition/parameters.h"
-
-%define %ParameterComponent_POSTINCLUDE(NAME, ENUM)
-%template(definition_##NAME##Component)
-lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::ENUM>;
-%PointerEQ(lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::ENUM>)
+%define %AddComponentAccessors(TITLE, LOWER, UPPER)
 %enddef
 
-%ParameterComponent_POSTINCLUDE(Position, POSITION);
-%ParameterComponent_POSTINCLUDE(Radius, RADIUS);
-%ParameterComponent_POSTINCLUDE(Ellipticity, ELLIPTICITY);
+%define %DeclareParameterComponent(TITLE, LOWER, UPPER)
+%template(definition_##TITLE##Component)
+lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>;
+%PointerEQ(lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>)
+%AddStreamRepr(lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>)
+%extend lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER> {
+    static boost::shared_ptr< 
+        lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER >
+    > make(lsst::meas::multifit::TITLE const & value, bool active=true) {
+        return lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER >::make(
+            value, active
+        );
+    }
+    lsst::meas::multifit::TITLE & getValue() {
+        return self->getValue();
+    }
+    void setValue(lsst::meas::multifit::TITLE const & value) {
+        self->getValue() = value;
+    }
+    bool isActive() {
+        return self->isActive();
+    }
+    void setActive(bool active) {
+        self->isActive() = active;
+    }
+}
+%extend lsst::meas::multifit::definition::Object {
+    boost::shared_ptr< lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER > > get ## TITLE() {
+        return self->get##TITLE();
+    }
+    void set ## TITLE(boost::shared_ptr< lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER > > value) {
+        self->get ## TITLE() = value;
+    }
+}
+%enddef
+
+%include "lsst/meas/multifit/definition/parameters.h"
 
 //------------------------------------- Object ---------------------------------------
 
@@ -82,11 +108,16 @@ lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::ENUM>
 #include "lsst/meas/multifit/definition/Object.h"
 %}
 
-SWIG_SHARED_PTR(definition_ObjectPtr, lsst::meas::multifit::definition::Object);
+SWIG_SHARED_PTR(detail_ObjectBasePtr, lsst::meas::multifit::detail::ObjectBase);
+SWIG_SHARED_PTR_DERIVED(definition_ObjectPtr, lsst::meas::multifit::detail::ObjectBase, lsst::meas::multifit::definition::Object);
 
 %rename(definition_Object) lsst::meas::multifit::definition::Object;
 
 %include "lsst/meas/multifit/definition/Object.h"
+
+%DeclareParameterComponent(Position, position, POSITION);
+%DeclareParameterComponent(Radius, radius, RADIUS);
+%DeclareParameterComponent(Ellipticity, ellipticity, ELLIPTICITY);
 
 %PointerEQ(lsst::meas::multifit::definition::Object)
 %AddStreamRepr(lsst::meas::multifit::definition::Object)
@@ -97,7 +128,8 @@ SWIG_SHARED_PTR(definition_ObjectPtr, lsst::meas::multifit::definition::Object);
 #include "lsst/meas/multifit/definition/Frame.h"
 %}
 
-SWIG_SHARED_PTR(definition_FramePtr, lsst::meas::multifit::definition::Frame);
+SWIG_SHARED_PTR(detail_FrameBasePtr, lsst::meas::multifit::detail::FrameBase);
+SWIG_SHARED_PTR_DERIVED(definition_FramePtr, lsst::meas::multifit::detail::FrameBase, lsst::meas::multifit::definition::Frame);
 
 %rename(definition_Frame) lsst::meas::multifit::definition::Frame;
 
@@ -105,6 +137,19 @@ SWIG_SHARED_PTR(definition_FramePtr, lsst::meas::multifit::definition::Frame);
 
 %PointerEQ(lsst::meas::multifit::definition::Frame)
 %AddStreamRepr(lsst::meas::multifit::definition::Frame)
+
+%extend lsst::meas::multifit::definition::Frame {
+    lsst::meas::multifit::FilterId getFilterId() { return self->getFilterId(); }
+    lsst::meas::multifit::Wcs::Ptr getWcs() { return self->getWcs(); }
+    lsst::meas::multifit::Psf::Ptr getPsf() { return self->getPsf(); }
+    lsst::meas::multifit::Footprint::Ptr getFootprint() { return self->getFootprint(); }
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel,1,1> getData() { return self->getData(); }
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel,1,1> getWeights() { return self->getWeights(); }
+}
+
+%template(make) lsst::meas::multifit::definition::Frame::make<float>;
+%template(make) lsst::meas::multifit::definition::Frame::make<double>;
+
 
 //-------------------------------------- Set -----------------------------------------
 
@@ -178,4 +223,4 @@ lsst::meas::multifit::definition::Set<lsst::meas::multifit::definition::NAME>;
 
 //-------------------------------------- Definition -----------------------------------------
 
-%include "lsst/meas/multifit/Definition.h"
+%include "lsst/meas/multifit/definition/Definition.h"

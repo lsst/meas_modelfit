@@ -60,13 +60,13 @@ public:
 
     //@{
     /// @brief Return the parameter components.
-    PositionComponent::ConstPtr const getPosition() const { return _position; }
-    RadiusComponent::ConstPtr const getRadius() const { return _radius; }
-    EllipticityComponent::ConstPtr const getEllipticity() const { return _ellipticity; }
+    PositionComponent::Ptr const getPosition() const { return _position; }
+    RadiusComponent::Ptr const getRadius() const { return _radius; }
+    EllipticityComponent::Ptr const getEllipticity() const { return _ellipticity; }
 
     template <ParameterType E>
-    typename ParameterComponent<E>::ConstPtr const getComponent() const {
-        typename ParameterComponent<E>::ConstPtr const * p;
+    typename ParameterComponent<E>::Ptr const getComponent() const {
+        typename ParameterComponent<E>::Ptr const * p;
         getComponentImpl(p);
         return *p;
     }
@@ -112,15 +112,17 @@ private:
 
     Object(definition::Object const & def, int coefficientOffset, int filterCount, int frameCount);
 
-    void getComponentImpl(PositionComponent::ConstPtr const * & p) const { p = &_position; }
-    void getComponentImpl(RadiusComponent::ConstPtr const * & p) const { p = &_radius; }
-    void getComponentImpl(EllipticityComponent::ConstPtr const * & p) const { p = &_ellipticity; }
+    void validate() const;
+
+    void getComponentImpl(PositionComponent::Ptr const * & p) const { p = &_position; }
+    void getComponentImpl(RadiusComponent::Ptr const * & p) const { p = &_radius; }
+    void getComponentImpl(EllipticityComponent::Ptr const * & p) const { p = &_ellipticity; }
 
     int _coefficientOffset;
     int _coefficientCount;
-    PositionComponent::ConstPtr _position;
-    RadiusComponent::ConstPtr _radius;
-    EllipticityComponent::ConstPtr _ellipticity;
+    PositionComponent::Ptr _position;
+    RadiusComponent::Ptr _radius;
+    EllipticityComponent::Ptr _ellipticity;
 };
 
 inline afw::geom::Point2D const Source::getReferencePoint() const {

@@ -51,13 +51,13 @@ public:
 
     afw::geom::AffineTransform const & getTransform() const { return _transform; }
 
-    ModelBasis::ConstPtr const getBasis() const { return _basis; }
+    ModelBasis::Ptr const getBasis() const { return _basis; }
 
     afw::detection::LocalPsf::Ptr const getLocalPsf() const { return _localPsf; }
 
 private:
     afw::geom::AffineTransform _transform;
-    ModelBasis::ConstPtr _basis;
+    ModelBasis::Ptr _basis;
     afw::detection::LocalPsf::Ptr _localPsf;
 };
 

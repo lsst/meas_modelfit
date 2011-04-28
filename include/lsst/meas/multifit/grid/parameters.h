@@ -37,8 +37,8 @@ template <ParameterType E>
 class ParameterComponent : public detail::ParameterComponentBase<E>, private boost::noncopyable {
 public:
     
-    // No Ptr typedef to make it clear that this class is strictly immutable.
-    typedef boost::shared_ptr< ParameterComponent<E> const > ConstPtr;
+    // No ConstPtr typedef to make it clear that this class is strictly immutable.
+    typedef boost::shared_ptr< ParameterComponent<E> > Ptr;
     typedef typename detail::ParameterComponentTraits<E>::Value Value;
 
     int const offset;
@@ -58,7 +58,7 @@ typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
 
 template <ParameterType E>
 class ComponentArray {
-    typedef typename ParameterComponent<E>::ConstPtr Ptr;
+    typedef typename ParameterComponent<E>::Ptr Ptr;
     typedef std::vector<Ptr> PtrVec;
     typedef typename PtrVec::const_iterator PtrIter;
 public:
@@ -69,7 +69,7 @@ public:
     typedef reference const_reference;
     typedef std::ptrdiff_t difference_type;
     typedef std::size_t size_type;
-    typedef boost::indirect_iterator<PtrIter,value_type const> iterator;
+    typedef boost::indirect_iterator<PtrIter> iterator;
     typedef iterator const_iterator;
 
     ComponentArray() : _ptrVec() {}

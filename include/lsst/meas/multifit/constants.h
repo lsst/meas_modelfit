@@ -82,6 +82,7 @@ typedef int FilterId;
 
 enum ParameterType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
 
+typedef lsst::afw::geom::Point2D Position;
 typedef lsst::afw::geom::ellipses::TraceRadius Radius;
 typedef lsst::afw::geom::ellipses::ConformalShear Ellipticity;
 typedef lsst::afw::geom::ellipses::Separable<Ellipticity, Radius> EllipseCore;

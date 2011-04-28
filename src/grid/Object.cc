@@ -22,6 +22,17 @@ Object::Object(definition::Object const & def, int coefficientOffset, int frameC
     _coefficientOffset(coefficientOffset),
     _coefficientCount(1)
 {
+    if (getBasis()) {
+        _coefficientCount = getBasis()->getSize();
+    }
+    if (isVariable()) {
+        _coefficientCount *= frameCount;
+    } else {
+        _coefficientCount *= filterCount;
+    }
+}
+
+void Object::validate() const {
     if (!getPosition()) {
         throw LSST_EXCEPT(
             lsst::meas::multifit::InvalidDefinitionError,
@@ -29,7 +40,6 @@ Object::Object(definition::Object const & def, int coefficientOffset, int frameC
         );
     }
     if (getBasis()) {
-        _coefficientCount = getBasis()->getSize();
         if (!getRadius() || !getEllipticity()) {
             throw LSST_EXCEPT(
                 lsst::meas::multifit::InvalidDefinitionError,
@@ -44,11 +54,6 @@ Object::Object(definition::Object const & def, int coefficientOffset, int frameC
             );
         }
     }
-    if (isVariable()) {
-        _coefficientCount *= frameCount;
-    } else {
-        _coefficientCount *= filterCount;
-}
 }
 
 lsst::afw::geom::Point2D Object::makePoint(double const * paramIter) const {

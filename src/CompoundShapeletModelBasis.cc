@@ -42,10 +42,10 @@ public:
 
     struct Element {
 
-        ModelBasis::ConstPtr component;
+        ModelBasis::Ptr component;
         ndarray::EigenView<const Pixel,2,1> forward;
 
-        Element(ModelBasis::ConstPtr const & component_, ndarray::EigenView<const Pixel,2,1> const & forward_) :
+        Element(ModelBasis::Ptr const & component_, ndarray::EigenView<const Pixel,2,1> const & forward_) :
             component(component_), forward(forward_)
         {}
 
@@ -115,7 +115,7 @@ Eigen::MatrixXd CompoundShapeletBase::computeInnerProductMatrix() const {
 }
 
 CompoundShapeletBase::Element::Element(
-    ShapeletModelBasis::ConstPtr const & component_, 
+    ShapeletModelBasis::Ptr const & component_, 
     ndarray::Array<const Pixel,2,1> const & fullForward,
     ndarray::Array<const Pixel,2,1> const & fullReverse,
     int offset
@@ -204,7 +204,7 @@ ndarray::Array<Pixel,2,2> CompoundShapeletBase::_makeIdentity(int size) {
 } //namespace detail
 
 
-ModelBasis::ConstPtr CompoundShapeletModelBasis::convolve(
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
     LocalPsf::ConstPtr const & psf
 ) const {
     if (psf->hasNativeShapelet()) {
@@ -219,7 +219,7 @@ ModelBasis::ConstPtr CompoundShapeletModelBasis::convolve(
     }
 }
 
-ModelBasis::ConstPtr CompoundShapeletModelBasis::convolve(
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
     afwShapelets::ShapeletFunction const & psf
 ) const {
     ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
@@ -234,7 +234,7 @@ ModelBasis::ConstPtr CompoundShapeletModelBasis::convolve(
     );
 }
 
-ModelBasis::ConstPtr CompoundShapeletModelBasis::convolve(
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
     afwShapelets::MultiShapeletFunction const & psf
 ) const {
     ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
@@ -329,11 +329,11 @@ void CompoundShapeletBuilder::setMapping(
     _resetElements();
 }
 
-CompoundShapeletModelBasis::ConstPtr CompoundShapeletBuilder::build() const {
+CompoundShapeletModelBasis::Ptr CompoundShapeletBuilder::build() const {
     return boost::make_shared<CompoundShapeletModelBasis>(*this);
 }
 
-CompoundShapeletModelBasis::ConstPtr CompoundShapeletModelBasis::load(
+CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
     std::string const & filename
 ) {
     std::ifstream ifs(filename.c_str());

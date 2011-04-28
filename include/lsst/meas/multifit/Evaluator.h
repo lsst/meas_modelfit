@@ -36,9 +36,9 @@ public:
     typedef boost::shared_ptr<Evaluator> Ptr;
 
 #ifndef SWIG
-    Grid::ConstPtr getGrid() const { return _grid; }
+    Grid::Ptr getGrid() const { return _grid; }
     
-    static Ptr make(Grid::ConstPtr const & grid) {
+    static Ptr make(Grid::Ptr const & grid) {
         return boost::make_shared<Evaluator>(grid);
     }
 #endif
@@ -59,15 +59,15 @@ protected:
 
 private:
     
-    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid const>);
+    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid>);
 
-    explicit Evaluator(Grid::ConstPtr const & grid);
+    explicit Evaluator(Grid::Ptr const & grid);
 
     Evaluator(Evaluator const & other);
     
     void _initialize();
 
-    Grid::ConstPtr _grid;
+    Grid::Ptr _grid;
 };
 
 }}} // namespace lsst::meas::multifit
