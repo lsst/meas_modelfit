@@ -56,7 +56,7 @@ public:
     virtual double evaluate(double const * parameters) const;
 
     /// @brief Construct a Standard Normal StudentDistribution with mu=0 and sigma=I.
-    explicit StudentDistribution(int size, int dof);
+    explicit StudentDistribution(int dimensionality, int dof);
 
     /// @brief Construct a StudentDistribution with the given mu, sigma, and degrees of freedom.
     StudentDistribution(Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma, int dof);
@@ -68,8 +68,8 @@ public:
     StudentDistribution & operator=(StudentDistribution const & other);
 
     virtual void updateFromSamples(
-        Eigen::MatrixXd const & parameters,
-        Eigen::VectorXd const & weights
+        lsst::ndarray::Array<double const,2,1> const & parameters,
+        lsst::ndarray::Array<double const,1,1> const & weights
     );
 
 protected:

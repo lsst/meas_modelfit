@@ -44,7 +44,7 @@ public:
     virtual double evaluate(double const * parameters) const;
 
     /// @brief Construct a Standard Normal GaussianDistribution with mu=0 and sigma=I.
-    explicit GaussianDistribution(int size);
+    explicit GaussianDistribution(int dimensionality);
 
     /// @brief Construct a GaussianDistribution with the given mu and sigma.
     GaussianDistribution(Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma);
@@ -56,8 +56,8 @@ public:
     GaussianDistribution & operator=(GaussianDistribution const & other);
 
     virtual void updateFromSamples(
-        Eigen::MatrixXd const & parameters,
-        Eigen::VectorXd const & weights
+        lsst::ndarray::Array<double const,2,1> const & parameters,
+        lsst::ndarray::Array<double const,1,1> const & weights
     );
 
 protected:

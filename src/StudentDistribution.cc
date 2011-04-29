@@ -1,6 +1,7 @@
 #include "lsst/meas/multifit/StudentDistribution.h"
 #include <Eigen/Cholesky>
 #include <Eigen/Array>
+#include "lsst/ndarray/eigen.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -10,21 +11,21 @@ void StudentDistribution::draw(Random & engine, double * parameters) const {
         _workspace[n] = engine.gaussian();
     }
     // u is drawn from chi^2_\nu distribution
-    Eigen::VectorXd::Map(parameters, getSize()) 
+    Eigen::VectorXd::Map(parameters, getDimensionality()) 
         = getMu() 
         + ((_dof - 2.0) / engine.chisq(_dof)) * _cached->factor.part<Eigen::LowerTriangular>() * _workspace;
 }
 
 double StudentDistribution::evaluate(double const * parameters) const {
     ensureCached();
-    _workspace = Eigen::VectorXd::Map(parameters, getSize()) - getMu();
+    _workspace = Eigen::VectorXd::Map(parameters, getDimensionality()) - getMu();
     _cached->factor.part<Eigen::LowerTriangular>().solveTriangularInPlace(_workspace);
     return _cached->normalization * 
-        std::pow(1.0 + _workspace.squaredNorm() / (_dof - 2.0), 0.5 * (_dof + getSize()));
+        std::pow(1.0 + _workspace.squaredNorm() / (_dof - 2.0), 0.5 * (_dof + getDimensionality()));
 }
 
-StudentDistribution::StudentDistribution(int size, int dof) : 
-    SimpleDistribution(size), _dof(dof), _workspace(getSize())
+StudentDistribution::StudentDistribution(int dimensionality, int dof) : 
+    SimpleDistribution(dimensionality), _dof(dof), _workspace(getDimensionality())
 {
     if (_dof <= 2) {
         throw LSST_EXCEPT(
@@ -63,18 +64,20 @@ StudentDistribution & StudentDistribution::operator=(StudentDistribution const &
 }
 
 void StudentDistribution::updateFromSamples(
-    Eigen::MatrixXd const & parameters,
-    Eigen::VectorXd const & weights
+    ndarray::Array<double const,2,1> const & parameters,
+    ndarray::Array<double const,1,1> const & weights
 ) {
     ensureCached();
-    Eigen::MatrixXd dx = parameters.transpose() - _mu * Eigen::RowVectorXd::Ones(weights.size());
+    ndarray::EigenView<double const,2,1> p(parameters);
+    ndarray::EigenView<double const,1,1> w(weights);
+    Eigen::MatrixXd dx = p.transpose() - _mu * Eigen::RowVectorXd::Ones(w.size());
     _cached->factor.part<Eigen::LowerTriangular>().solveTriangularInPlace(dx);
-    Eigen::VectorXd wgamma = weights.cwise()
+    Eigen::VectorXd wgamma = w.cwise()
         * (dx.cwise().square().colwise().sum().transpose().cwise() + (_dof - 2.0)).cwise().inverse()
         * static_cast<double>(_dof + _mu.size());
-    _mu = (parameters.transpose() * wgamma).lazy();
+    _mu = (p.transpose() * wgamma).lazy();
     _mu /= wgamma.sum();
-    dx = parameters.transpose() - _mu * Eigen::RowVectorXd::Ones(weights.size());
+    dx = p.transpose() - _mu * Eigen::RowVectorXd::Ones(weights.size());
     _sigma.part<Eigen::SelfAdjoint>() = dx * wgamma.asDiagonal() * dx.transpose();
     invalidate();
 }
@@ -88,8 +91,8 @@ void StudentDistribution::ensureCached() const {
         _cached = boost::make_shared<Cached>();
         Eigen::LLT<Eigen::MatrixXd> llt(_sigma);
         _cached->factor = llt.matrixL();
-        _cached->normalization = boost::math::tgamma_ratio((_dof + getSize()) * 0.5, _dof * 0.5)
-            * std::pow((_dof - 2.0) * M_PI, getSize() * 0.5)
+        _cached->normalization = boost::math::tgamma_ratio((_dof + getDimensionality()) * 0.5, _dof * 0.5)
+            * std::pow((_dof - 2.0) * M_PI, getDimensionality() * 0.5)
             * std::exp(-_cached->factor.diagonal().cwise().log().sum());
     }
 }

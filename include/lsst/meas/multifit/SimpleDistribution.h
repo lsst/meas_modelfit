@@ -31,7 +31,7 @@ namespace lsst { namespace meas { namespace multifit {
 class SimpleInterpreter;
 
 /**
- *  @brief Intermediate base class for Grid-based Distributions defined by a location (mu) vector
+ *  @brief Intermediate base class for istributions defined by a location (mu) vector
  *         and symmetric positive-definite covariance (sigma) matrix.
  *
  *  SimpleDistributions do not support nesting.
@@ -65,7 +65,7 @@ public:
 protected:
 
     /// @brief Construct a SimpleDistribution with no grid with mu=0 and sigma=I.
-    explicit SimpleDistribution(int size) : BaseDistribution(size) {}
+    explicit SimpleDistribution(int dimensionality) : BaseDistribution(dimensionality) {}
 
     /// @brief Copy constructor.
     SimpleDistribution(SimpleDistribution const & other) : BaseDistribution(other) {}

@@ -151,15 +151,6 @@ void Object::readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse 
 Eigen::Matrix5d Object::extractEllipseMatrix(Eigen::MatrixXd const & matrix) const {
     requireEllipse();
     Eigen::Matrix5d r = Eigen::Matrix5d::Zero();
-    if (getPosition()->isActive()) {
-        r.block<2,2>(3,3) = matrix.block<2,2>(getPosition()->offset, getPosition()->offset);
-    }
-    if (getEllipticity()->isActive()) {
-        r.block<2,2>(0,0) = matrix.block<2,2>(getEllipticity()->offset, getEllipticity()->offset);
-    }
-    if (getRadius()->isActive()) {
-        r(2, 2) = matrix(getRadius()->offset, getRadius()->offset);    
-    }
     if (getPosition()->isActive() && getEllipticity()->isActive()) {
         r.block<2,2>(3,0) = matrix.block<2,2>(getPosition()->offset, getEllipticity()->offset);
         r.block<2,2>(0,3) = matrix.block<2,2>(getEllipticity()->offset, getPosition()->offset);
@@ -172,11 +163,23 @@ Eigen::Matrix5d Object::extractEllipseMatrix(Eigen::MatrixXd const & matrix) con
         r.block<2,1>(0,2) = matrix.block<2,1>(getEllipticity()->offset, getRadius()->offset);
         r.block<1,2>(2,0) = matrix.block<1,2>(getRadius()->offset, getEllipticity()->offset);
     }
+    if (getPosition()->isActive()) {
+        r.block<2,2>(3,3) = matrix.block<2,2>(getPosition()->offset, getPosition()->offset);
+    }
+    if (getEllipticity()->isActive()) {
+        r.block<2,2>(0,0) = matrix.block<2,2>(getEllipticity()->offset, getEllipticity()->offset);
+    }
+    if (getRadius()->isActive()) {
+        r(2, 2) = matrix(getRadius()->offset, getRadius()->offset);
+        r.row(2) *= getRadiusFactor();
+        r.col(2) *= getRadiusFactor();
+    }
     return r;
 }
 
 void Object::insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const & block) const {
     requireEllipse();
+    double rf = getRadiusFactor();
     if (getPosition()->isActive()) {
         full.block<2,2>(getPosition()->offset, getPosition()->offset) = block.block<2,2>(3,3);
     }
@@ -184,19 +187,19 @@ void Object::insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const &
         full.block<2,2>(getEllipticity()->offset, getEllipticity()->offset) = block.block<2,2>(0,0);
     }
     if (getRadius()->isActive()) {
-        full(getRadius()->offset, getRadius()->offset) = block(2, 2);
+        full(getRadius()->offset, getRadius()->offset) = block(2, 2) / (rf * rf);
     }
     if (getPosition()->isActive() && getEllipticity()->isActive()) {
         full.block<2,2>(getPosition()->offset, getEllipticity()->offset) = block.block<2,2>(3,0);
         full.block<2,2>(getEllipticity()->offset, getPosition()->offset) = block.block<2,2>(0,3);
     }
     if (getPosition()->isActive() && getRadius()->isActive()) {
-        full.block<2,1>(getPosition()->offset, getRadius()->offset) = block.block<2,1>(3,2);
-        full.block<1,2>(getRadius()->offset, getPosition()->offset) = block.block<1,2>(2,3);
+        full.block<2,1>(getPosition()->offset, getRadius()->offset) = block.block<2,1>(3,2) / rf;
+        full.block<1,2>(getRadius()->offset, getPosition()->offset) = block.block<1,2>(2,3) / rf;
     }
     if (getEllipticity()->isActive() && getRadius()->isActive()) {
-        full.block<2,1>(getEllipticity()->offset, getRadius()->offset) = block.block<2,1>(0,2);
-        full.block<1,2>(getRadius()->offset, getEllipticity()->offset) = block.block<1,2>(2,0);
+        full.block<2,1>(getEllipticity()->offset, getRadius()->offset) = block.block<2,1>(0,2) / rf;
+        full.block<1,2>(getRadius()->offset, getEllipticity()->offset) = block.block<1,2>(2,0) / rf;
     }
 }
 

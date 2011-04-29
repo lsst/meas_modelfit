@@ -46,7 +46,7 @@ public:
     Ptr clone() const { return _clone(); }
 
     /// @brief Return the dimensionality of the distribution.
-    int getSize() const { return _size; }
+    int getDimensionality() const { return _dimensionality; }
 
     ///@{
     /// @brief Draw a parameter vector from the distribution.
@@ -131,8 +131,8 @@ public:
      *  weights vector, while the number of columns matches the dimensionality of the distribution.
      */
     virtual void updateFromSamples(
-        Eigen::MatrixXd const & parameters,
-        Eigen::VectorXd const & weights
+        lsst::ndarray::Array<double const,2,1> const & parameters,
+        lsst::ndarray::Array<double const,1,1> const & weights
     ) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
@@ -153,14 +153,14 @@ protected:
         );
     }
 
-    BaseDistribution(int size) : _size(size) {}
+    BaseDistribution(int dimensionality) : _dimensionality(dimensionality) {}
 
-    BaseDistribution(BaseDistribution const & other) : _size(other._size) {}
+    BaseDistribution(BaseDistribution const & other) : _dimensionality(other._dimensionality) {}
 
-    void operator=(BaseDistribution const & other) { _size = other._size; }
+    void operator=(BaseDistribution const & other) { _dimensionality = other._dimensionality; }
 
 private:
-    int _size;
+    int _dimensionality;
 };
 
 }}} // namespace lsst::meas::multifit
