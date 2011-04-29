@@ -4,15 +4,15 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-void StudentDistribution::draw(RandomEngine & engine, double * parameters) const {
+void StudentDistribution::draw(Random & engine, double * parameters) const {
     ensureCached();
     for (int n = 0; n < _workspace.size(); ++n) {
-        _workspace[n] = engine.drawNormal();
+        _workspace[n] = engine.gaussian();
     }
     // u is drawn from chi^2_\nu distribution
-    double u = 2.0 * boost::math::gamma_p_inv(0.5 * _dof, engine.drawUniform());
     Eigen::VectorXd::Map(parameters, getSize()) 
-        = getMu() + ((_dof - 2.0) / u) * _cached->factor.part<Eigen::LowerTriangular>() * _workspace;
+        = getMu() 
+        + ((_dof - 2.0) / engine.chisq(_dof)) * _cached->factor.part<Eigen::LowerTriangular>() * _workspace;
 }
 
 double StudentDistribution::evaluate(double const * parameters) const {
@@ -66,9 +66,16 @@ void StudentDistribution::updateFromSamples(
     Eigen::MatrixXd const & parameters,
     Eigen::VectorXd const & weights
 ) {
-    _mu = (parameters.transpose() * weights).lazy();
-    Eigen::MatrixXd dx = parameters - Eigen::VectorXd::Ones(weights.size()) * getMu().transpose();
-    _sigma.part<Eigen::SelfAdjoint>() = dx.transpose() * weights.asDiagonal() * dx;
+    ensureCached();
+    Eigen::MatrixXd dx = parameters.transpose() - _mu * Eigen::RowVectorXd::Ones(weights.size());
+    _cached->factor.part<Eigen::LowerTriangular>().solveTriangularInPlace(dx);
+    Eigen::VectorXd wgamma = weights.cwise()
+        * (dx.cwise().square().colwise().sum().transpose().cwise() + (_dof - 2.0)).cwise().inverse()
+        * static_cast<double>(_dof + _mu.size());
+    _mu = (parameters.transpose() * wgamma).lazy();
+    _mu /= wgamma.sum();
+    dx = parameters.transpose() - _mu * Eigen::RowVectorXd::Ones(weights.size());
+    _sigma.part<Eigen::SelfAdjoint>() = dx * wgamma.asDiagonal() * dx.transpose();
     invalidate();
 }
 

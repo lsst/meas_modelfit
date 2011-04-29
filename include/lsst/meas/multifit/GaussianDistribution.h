@@ -39,7 +39,7 @@ public:
 
     Ptr clone() const { return boost::static_pointer_cast<GaussianDistribution>(_clone()); }
 
-    virtual void draw(RandomEngine & engine, double * parameters) const;
+    virtual void draw(Random & engine, double * parameters) const;
 
     virtual double evaluate(double const * parameters) const;
 

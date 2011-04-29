@@ -24,13 +24,13 @@ double evaluateGaussian(
 }
 
 void drawGaussian(
-    RandomEngine & engine,
+    Random & engine,
     Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma,
     ndarray::Array<double,1,1> const & parameters,
     Eigen::VectorXd & workspace
 ) {
     for (int n = 0; n < workspace.size(); ++n) {
-        workspace[n] = engine.drawNormal();
+        workspace[n] = engine.gaussian();
     }
     ndarray::viewAsEigen(parameters) = mu + sigma.part<Eigen::LowerTriangular>() * workspace;
 } 
@@ -80,17 +80,17 @@ double evaluateStudent(
 }
 
 void drawStudent(
-    RandomEngine & engine,
+    Random & engine,
     int dof, Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma,
     ndarray::Array<double,1,1> const & parameters,
     Eigen::VectorXd & workspace
 ) {
     for (int n = 0; n < workspace.size(); ++n) {
-        workspace[n] = engine.drawNormal();
+        workspace[n] = engine.gaussian();
     }
     ndarray::viewAsEigen(parameters) = mu 
         + (sigma.part<Eigen::LowerTriangular>() * workspace)
-        * std::sqrt(0.5 * dof / boost::math::gamma_p_inv(0.5 * dof, engine.drawUniform()));
+        * std::sqrt(0.5 * dof / boost::math::gamma_p_inv(0.5 * dof, engine.uniform()));
 }
 
 void updateStudent(
@@ -149,7 +149,7 @@ MixtureDistribution::MixtureDistribution(ComponentList const & components, int d
     }
 }
 
-void MixtureDistribution::draw(Table const & table, RandomEngine & engine) const {
+void MixtureDistribution::draw(Table const & table, Random & engine) const {
     if (table.getParameterSize() != getParameterSize()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LengthErrorException,
@@ -160,7 +160,7 @@ void MixtureDistribution::draw(Table const & table, RandomEngine & engine) const
     table.clear();
     for (int i = 0; i < table.getTableSize(); ++i) {
         Record record = table[i];
-        double u = engine.drawUniform();
+        double u = engine.uniform();
         double v = 0.0;
         ComponentList::const_iterator j = _components.begin();
         for (; j != _components.end(); ++j) {
@@ -197,7 +197,7 @@ void MixtureDistribution::update(ConstTable const & table) {
 }
 
 MixtureDistribution MixtureDistribution::scatter(
-    RandomEngine & engine,
+    Random & engine,
     int nComponents, double fraction, int dof,
     lsst::ndarray::Array<double const,1,1> const & mean,
     lsst::ndarray::Array<double const,2,2> const & covariance

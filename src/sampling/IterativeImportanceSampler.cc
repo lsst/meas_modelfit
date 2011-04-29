@@ -34,7 +34,7 @@ void IterativeImportanceSampler::run(int size) {
     Eigen::SVD<Eigen::MatrixXd> svd;
 #endif
     Table const & table = _samples.back();
-    _importance.draw(table, _randomEngine);
+    _importance.draw(table, _random);
     //double sumDataLn2Pi = 0.5 * _evaluator->getDataSize() * std::log(2.0 * M_PI);
     //double sumCoeffLn2Pi = 0.5 * _evaluator->getCoefficientSize() * std::log(2.0 * M_PI);
     for (int n = 0; n < size; ++n) {
@@ -72,10 +72,10 @@ void IterativeImportanceSampler::run(int size) {
 IterativeImportanceSampler::IterativeImportanceSampler(
     BaseEvaluator::Ptr const & evaluator,
     MixtureDistribution const & importance,
-    RandomEngine const & randomEngine
+    Random const & random
 ) :
     _evaluator(evaluator),
-    _randomEngine(randomEngine),
+    _random(random),
     _importance(importance),
     _previousImportance(importance)
 {}

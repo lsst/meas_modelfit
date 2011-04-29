@@ -4,10 +4,10 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-void GaussianDistribution::draw(RandomEngine & engine, double * parameters) const {
+void GaussianDistribution::draw(Random & engine, double * parameters) const {
     ensureCached();
     for (int n = 0; n < _workspace.size(); ++n) {
-        _workspace[n] = engine.drawNormal();
+        _workspace[n] = engine.gaussian();
     }
     Eigen::VectorXd::Map(parameters, getSize()) = getMu() 
         + _cached->factor.part<Eigen::LowerTriangular>() * _workspace;

@@ -27,7 +27,6 @@
 #include "lsst/ndarray.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/RandomEngine.h"
 #include <Eigen/Core>
 
 namespace lsst { namespace meas { namespace multifit {
@@ -51,11 +50,11 @@ public:
 
     ///@{
     /// @brief Draw a parameter vector from the distribution.
-    virtual void draw(RandomEngine & engine, double * parameters) const = 0;
-    void draw(RandomEngine & engine, lsst::ndarray::Array<double,1,1> const & parameters) const {
+    virtual void draw(Random & engine, double * parameters) const = 0;
+    void draw(Random & engine, lsst::ndarray::Array<double,1,1> const & parameters) const {
         draw(engine, parameters.begin());
     }
-    void draw(RandomEngine & engine, Eigen::VectorXd & parameters) const {
+    void draw(Random & engine, Eigen::VectorXd & parameters) const {
         draw(engine, parameters.data());
     }
     ///@}

@@ -28,6 +28,7 @@
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/image/Calib.h"
+#include "lsst/afw/math/Random.h"
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/detection/LocalPsf.h"
 #include "lsst/afw/detection/Footprint.h"
@@ -78,7 +79,7 @@ typedef int FilterId;
 enum ParameterType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
 
 /**
- *  These set the what parameters are used to define an ellipse through the package,
+ *  These set the what parameters are used to define an ellipse throughout the package,
  *  but they can't just be changed here: the implementations of the ParameterComponent,
  *  grid::Object, and SimpleDistribution assume the types here in setting bounds and
  *  converting between parameter vectors and covariance matrices and ellipses.
@@ -90,6 +91,8 @@ typedef lsst::afw::geom::ellipses::ConformalShear Ellipticity;
 typedef lsst::afw::geom::ellipses::Separable<Ellipticity, Radius> EllipseCore;
 typedef lsst::afw::geom::ellipses::Ellipse Ellipse;
 ///@}
+
+typedef lsst::afw::math::Random Random;
 
 typedef lsst::afw::image::Filter Filter;
 typedef lsst::afw::image::Calib Calib;

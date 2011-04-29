@@ -26,7 +26,6 @@
 
 #include "lsst/ndarray.h"
 #include "lsst/meas/multifit/sampling/Table.h"
-#include "lsst/meas/multifit/RandomEngine.h"
 
 #include <Eigen/Core>
 
@@ -72,7 +71,7 @@ public:
 
     int getParameterSize() const { return _components.front().getMu().size(); }
 
-    void draw(Table const & table, RandomEngine & engine) const;
+    void draw(Table const & table, Random & engine) const;
 
     void update(ConstTable const & table);
 
@@ -88,7 +87,7 @@ public:
      *  @param[in] covariance       Covariance matrix.
      */
     static MixtureDistribution scatter(
-        RandomEngine & engine,
+        Random & engine,
         int nComponents, double fraction, int dof,
         lsst::ndarray::Array<double const,1,1> const & mean,
         lsst::ndarray::Array<double const,2,2> const & covariance

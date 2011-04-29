@@ -55,12 +55,12 @@ public:
     IterativeImportanceSampler(
         BaseEvaluator::Ptr const & evaluator,
         MixtureDistribution const & importance,
-        RandomEngine const & randomEngine = RandomEngine()
+        Random const & random = Random()
     );
 
 private:
     BaseEvaluator::Ptr _evaluator;
-    RandomEngine _randomEngine;
+    Random _random;
     MixtureDistribution _importance;
     MixtureDistribution _previousImportance;
     SampleList _samples;
