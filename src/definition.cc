@@ -87,10 +87,8 @@ Frame Frame::make(
     typedef Pixel Pixel;
     typedef lsst::afw::image::MaskedImage<PixelT> MaskedImage;
     
-    Footprint::Ptr maskedFp = 
-        lsst::afw::detection::footprintAndMask(
-            fp, exposure.getMaskedImage().getMask(), bitmask
-        );
+    Footprint::Ptr maskedFp(new Footprint(*fp));
+    fp->intersectMask(*exposure.getMaskedImage().getMask(), bitmask);
 
     //grab portion of exposure's MaskedImage that matches fp
     lsst::afw::geom::BoxI bbox = maskedFp->getBBox();
