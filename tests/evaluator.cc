@@ -86,6 +86,7 @@ void checkEvaluator(
     BOOST_CHECK_EQUAL(&eval.getGrid()->sources.begin()->frame, eval.getGrid()->frames.begin());
 
 }
+
 BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
     geom::BoxI bbox = geom::BoxI(geom::PointI(25, 40), geom::ExtentI(10, 30));
     image::Exposure<float>::Ptr exp(new image::Exposure<float>(bbox));
