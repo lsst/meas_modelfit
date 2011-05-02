@@ -44,12 +44,12 @@ void SimpleInterpreter::insertEllipseSigma(ID id, Eigen::Matrix5d const & sigma)
     obj.insertEllipseMatrix(getSigmaRef(), sigma);
 }
 
-void ParameterSimpleInterpreter::ensureCompatibility() {
-    if (_grid->getParameterCount() != _target->getSize()) {
+void NestedSimpleInterpreter::ensureCompatibility() {
+    if (_grid->getParameterCount() != _target->getDimensionality()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
-            (boost::format("Grid parameter size (%d) does not match distribution size (%d).")
-             % _grid->getParameterCount() % _target->getSize()).str()
+            (boost::format("Grid parameter size (%d) does not match distribution dimensionality (%d).")
+             % _grid->getParameterCount() % _target->getDimensionality()).str()
         );
     }
 }

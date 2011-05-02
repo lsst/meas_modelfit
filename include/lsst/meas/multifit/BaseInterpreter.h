@@ -79,6 +79,8 @@ public:
 
 protected:
     
+    explicit BaseInterpreter(Grid::Ptr const & grid) : _grid(grid) {}
+
     virtual BaseDistribution::Ptr _getTarget() = 0;
     virtual BaseDistribution::ConstPtr _getTarget() const = 0;
 
@@ -97,6 +99,10 @@ public:
 
     // TODO
 
+protected:
+
+    explicit UnifiedInterpreter(Grid::Ptr const & grid) : BaseInterpreter(grid) {}
+
 };
 
 /**
@@ -111,6 +117,10 @@ public:
     typedef boost::shared_ptr<NestedInterpreter const> ConstPtr;
 
     // TODO
+
+protected:
+
+    explicit NestedInterpreter(Grid::Ptr const & grid) : BaseInterpreter(grid) {}
 
 };
 

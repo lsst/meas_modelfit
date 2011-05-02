@@ -166,7 +166,7 @@ private:
     NestedSimpleInterpreter(
         Grid::Ptr const & grid,
         SimpleDistribution::Ptr const & target
-    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target) {
+    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target), NestedInterpreter(grid) {
         ensureCompatibility();
     }
 
@@ -174,7 +174,7 @@ private:
     NestedSimpleInterpreter(
         Grid::Ptr const & grid,
         SimpleDistribution::ConstPtr const & target
-    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target) {
+    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target), NestedInterpreter(grid) {
         ensureCompatibility();
     }
 
