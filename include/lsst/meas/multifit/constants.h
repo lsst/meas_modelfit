@@ -108,6 +108,10 @@ LSST_EXCEPTION_TYPE(InvalidDefinitionError,
                     lsst::pex::exceptions::InvalidParameterException,
                     lsst::meas::multifit::InvalidDefinitionError);
 
+LSST_EXCEPTION_TYPE(DerivativeNotImplementedError,
+                    lsst::pex::exceptions::LogicErrorException,
+                    lsst::meas::multifit::DerivativeNotImplementedError);
+
 namespace definition {
 
 template <ParameterType E> class ParameterComponent;

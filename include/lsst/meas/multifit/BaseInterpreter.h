@@ -44,7 +44,7 @@ namespace lsst { namespace meas { namespace multifit {
  *  are noncopyable, this allows interpreter constness to apply to their held distribution even though
  *  the distribution is shared.
  *
- *  Many of the virtual subclasses of BaseInterpreter don't actually do anything yet; they're largely
+ *  The virtual subclasses of BaseInterpreter don't actually do anything yet; they're largely
  *  placeholders.  And because we'd like to preserve the diamond inheritance structure for all
  *  leaf-class interpeters, some of them will remain empty even if others do define an interface.
  */
@@ -59,6 +59,9 @@ public:
 
     /// @brief Return the distribution being interpreted (const).
     BaseDistribution::ConstPtr getTarget() const { return _getTarget(); }
+
+    /// @brief Return the multifit grid.
+    Grid::Ptr getGrid() const { return _grid; }
 
     /// @brief Return the mean position of the object with the given ID.
     virtual lsst::afw::geom::Point2D computePointMean(ID id) const = 0;
@@ -79,18 +82,7 @@ protected:
     virtual BaseDistribution::Ptr _getTarget() = 0;
     virtual BaseDistribution::ConstPtr _getTarget() const = 0;
 
-};
-
-/**
- *  @brief The distribution models the grid parameters only, with grid 
- *         coefficients marginalized out or fixed.
- */
-class ParameterInterpreter : public virtual BaseInterpreter {
-public:
-
-    typedef boost::shared_ptr<ParameterInterpreter> Ptr;
-    typedef boost::shared_ptr<ParameterInterpreter const> ConstPtr;
-
+    Grid::Ptr _grid;
 };
 
 /**

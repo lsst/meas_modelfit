@@ -117,15 +117,15 @@ public:
 protected:
 
     explicit SimpleInterpreter(
-        boost::shared_ptr<Grid> const & grid, SimpleDistribution::Ptr const & target
+        Grid::Ptr const & grid, SimpleDistribution::Ptr const & target
     ) :
-        _grid(grid), _target(target) {}
+        BaseInterpreter(grid), _target(target) {}
 
     explicit SimpleInterpreter(
-        boost::shared_ptr<Grid> const & grid, 
+        Grid::Ptr const & grid, 
         SimpleDistribution::ConstPtr const & target
     ) :
-        _grid(grid), _target(boost::const_pointer_cast<SimpleDistribution>(target)) {}
+        BaseInterpreter(grid), _target(boost::const_pointer_cast<SimpleDistribution>(target)) {}
 
     virtual BaseDistribution::Ptr _getTarget() { return _target; }
     virtual BaseDistribution::ConstPtr _getTarget() const { return _target; }
@@ -138,44 +138,43 @@ protected:
 
     void invalidateTarget() { _target->invalidate(); }
 
-    boost::shared_ptr<Grid> _grid;
     SimpleDistribution::Ptr _target;
 };
 
 /**
- *  @brief ParameterInterpreter for SimpleDistribution.
+ *  @brief NestedInterpreter for SimpleDistribution.
  */
-class ParameterSimpleInterpreter : public SimpleInterpreter, public ParameterInterpreter {
+class NestedSimpleInterpreter : public SimpleInterpreter, public NestedInterpreter {
 public:
 
-    typedef boost::shared_ptr<ParameterSimpleInterpreter> Ptr;
-    typedef boost::shared_ptr<ParameterSimpleInterpreter const> ConstPtr;
+    typedef boost::shared_ptr<NestedSimpleInterpreter> Ptr;
+    typedef boost::shared_ptr<NestedSimpleInterpreter const> ConstPtr;
 
     /// @brief Construct a mutable interpreter.
-    static Ptr make(SimpleDistribution::Ptr const & target, boost::shared_ptr<Grid> const & grid) {
-        return Ptr(new ParameterSimpleInterpreter(grid, target));
+    static Ptr make(SimpleDistribution::Ptr const & target, Grid::Ptr const & grid) {
+        return Ptr(new NestedSimpleInterpreter(grid, target));
     }
 
     /// @brief Construct a const interpreter.
-    static ConstPtr make(SimpleDistribution::ConstPtr const & target, boost::shared_ptr<Grid> const & grid) {
-        return ConstPtr(new ParameterSimpleInterpreter(grid, target));
+    static ConstPtr make(SimpleDistribution::ConstPtr const & target, Grid::Ptr const & grid) {
+        return ConstPtr(new NestedSimpleInterpreter(grid, target));
     }
 
 private:
 
     /// @brief Construct from a multifit grid and mutable SimpleDistribution pointer.
-    ParameterSimpleInterpreter(
-        boost::shared_ptr<Grid> const & grid,
+    NestedSimpleInterpreter(
+        Grid::Ptr const & grid,
         SimpleDistribution::Ptr const & target
-    ) : SimpleInterpreter(grid, target) {
+    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target) {
         ensureCompatibility();
     }
 
     /// @brief Construct from a multifit grid and const SimpleDistribution pointer.
-    ParameterSimpleInterpreter(
-        boost::shared_ptr<Grid> const & grid,
+    NestedSimpleInterpreter(
+        Grid::Ptr const & grid,
         SimpleDistribution::ConstPtr const & target
-    ) : SimpleInterpreter(grid, target) {
+    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target) {
         ensureCompatibility();
     }
 
