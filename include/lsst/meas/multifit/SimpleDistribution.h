@@ -33,8 +33,6 @@ class SimpleInterpreter;
 /**
  *  @brief Intermediate base class for istributions defined by a location (mu) vector
  *         and symmetric positive-definite covariance (sigma) matrix.
- *
- *  SimpleDistributions do not support nesting.
  */
 class SimpleDistribution : public BaseDistribution {
 public:

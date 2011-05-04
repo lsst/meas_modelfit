@@ -82,6 +82,7 @@ private:
 
     void ensureCached() const;
 
+#ifndef SWIG
     struct Cached {
         double normalization;
         Eigen::MatrixXd factor; // lower-triangular Cholesky factor of sigma.
@@ -90,6 +91,7 @@ private:
     int _dof;
     mutable boost::shared_ptr<Cached> _cached;
     mutable Eigen::VectorXd _workspace;
+#endif
 };
 
 }}} // namespace lsst::meas::multifit

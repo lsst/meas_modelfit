@@ -43,6 +43,26 @@ public:
 
     virtual double evaluate(double const * parameters) const;
 
+    virtual int getNestedDimensionality() const;
+
+    bool isNestedIndependent() const { return !_nestedConditional; }
+
+    Ptr evaluateNested(double const * parameters) const {
+        return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters));
+    }
+    Ptr evaluateNested(lsst::ndarray::Array<double,1,1> const & parameters) const {
+        return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters.getData()));
+    }
+    Ptr evaluateNested(Eigen::VectorXd const & parameters) const {
+        return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters.data()));
+    }
+
+    /// @brief Convert a unified P(x,y) distribution into a nested P(x)P(y|x) distribution in-place.
+    void convertUnifiedToNested(int nx);
+
+    /// @brief Convert a nested P(x)P(y|x) distribution into a unified P(x,y) distribution in-place.
+    void convertNestedToUnified();
+
     /// @brief Construct a Standard Normal GaussianDistribution with mu=0 and sigma=I.
     explicit GaussianDistribution(int dimensionality);
 
@@ -66,17 +86,24 @@ protected:
 
     virtual void invalidate() { _cached.reset(); }
 
+    virtual BaseDistribution::Ptr _evaluateNested(double const * parameters) const;
+
+    virtual void _updateNested(BaseDistribution & nested, double const * parameters) const;
+
 private:
 
     void ensureCached() const;
 
+#ifndef SWIG
     struct Cached {
         double normalization;
         Eigen::MatrixXd factor; // lower-triangular Cholesky factor of sigma.
     };
-
     mutable boost::shared_ptr<Cached> _cached;
     mutable Eigen::VectorXd _workspace;
+#endif
+    Ptr _nested;
+    boost::shared_ptr<Eigen::MatrixXd> _nestedConditional;
 };
 
 }}} // namespace lsst::meas::multifit

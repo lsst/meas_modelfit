@@ -1,8 +1,14 @@
 #include "lsst/meas/multifit/SampleTable.h"
 #include "lsst/pex/exceptions.h"
-#include <boost/format.hpp>
+#include "boost/format.hpp"
 
 namespace lsst { namespace meas { namespace multifit {
+
+SampleTable::SampleTable(int capacity, int dimensionality) :
+    _size(0),
+    _parameters(ndarray::allocate(capacity, dimensionality)),
+    _weights(ndarray::allocate(capacity))
+{}
 
 SampleTable::SampleTable(SampleTable const & other) :
     _size(other._size),
@@ -11,17 +17,14 @@ SampleTable::SampleTable(SampleTable const & other) :
     _weights(other._weights)
 {}
 
-SampleTable::Editor & SampleTable::_edit() {
-    if (!_editor) {
-        _editor = makeEditor();
-    } else if (!_editor.unique()) {
-        copyForEdit(getCapacity());
-        _editor = makeEditor();
-    }
-    return *_editor;
-}
+SampleTable::SampleTable(SampleTable const & other, int start, int stop) :
+    _size(other._size),
+    _editor(other._editor),
+    _parameters(other._parameters[ndarray::view(start, stop)]),
+    _weights(other._weights[ndarray::view(start, stop)])
+{}
 
-SampleTable::Editor & SampleTable::_reserve(int capacity) {
+SampleTable::Editor & SampleTable::_edit(int capacity) {
     if (!_editor) {
         _editor = makeEditor();
     } else if (!_editor.unique()) {
@@ -41,24 +44,8 @@ void SampleTable::copyForEdit(int capacity) {
              % capacity % _size).str()
         );
     }
-    lsst::ndarray::Array<double,2,2> newParameters(ndarray::allocate(capacity, getDimensionality()));
-    lsst::ndarray::Array<double,1,1> newWeights(ndarray::allocate(capacity));
-    newParameters[ndarray::view(0, _size)] = getParameters();
-    newWeights[ndarray::view(0, _size)] = getWeights();
-    _parameters = newParameters;
-    _weights = newWeights;
-}
-
-void SampleTableEditor::_append(ndarray::Array<double const,1,1> const & parameters, double weight) {
-    if (_table->getSize() >= _table->getCapacity()) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LengthErrorException,
-            "Table is at capacity; cannot append additional records."
-        );
-    }
-    _table->_parameters[_table->_size] = parameters;
-    _table->_weights[_table->_size] = weight;
-    ++_table->_size;
+    copyArrayForEdit(_parameters, capacity);
+    copyArrayForEdit(_weights, capacity); 
 }
 
 }}} // namespace lsst::meas::multifit

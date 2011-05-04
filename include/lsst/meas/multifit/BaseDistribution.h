@@ -48,6 +48,12 @@ public:
     /// @brief Return the dimensionality of the distribution.
     int getDimensionality() const { return _dimensionality; }
 
+    /// @brief Return the dimensionality of the nested distribution.
+    virtual int getNestedDimensionality() const { return 0; }
+
+    /// @brief Return true if the nested distribution does not depend on the parameters.
+    virtual bool isNestedIndependent() const { return false; }
+
     ///@{
     /// @brief Draw a parameter vector from the distribution.
     virtual void draw(Random & engine, double * parameters) const = 0;
@@ -159,7 +165,6 @@ protected:
 
     void operator=(BaseDistribution const & other) { _dimensionality = other._dimensionality; }
 
-private:
     int _dimensionality;
 };
 

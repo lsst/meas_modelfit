@@ -30,15 +30,8 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-class SampleTableEditor;
-
 /**
  *  A base class for tables of weighted samples of points in parameter space.
- *
- *  While one cannot append to the base SampleTable class, leaf classes will generally provide
- *  an append method that adds additional records.  The whole table is allocated in advance, however,
- *  and (unlike std::vector) one cannot append additional rows when the table is at capacity
- *  unless reserve() is called explicitly.
  */
 class SampleTable {
 public:
@@ -46,10 +39,8 @@ public:
     typedef boost::shared_ptr<SampleTable> Ptr;
     typedef boost::shared_ptr<SampleTable const> ConstPtr;
 
-    typedef SampleTableEditor Editor;
-
     /**
-     *  @brief The immutable (samples)x(parameters) matrix of parameter values.
+     *  @brief The (samples)x(parameters) matrix of parameter values.
      */
     lsst::ndarray::Array<double const,2,2> getParameters() const {
         return _parameters[ndarray::view(0, _size)];
@@ -79,49 +70,67 @@ public:
      */
     Ptr clone() const { return _clone(); }
 
-    /**
-     *  @brief Set the capacity of the table by reallocating all arrays and return an Editor.
-     *
-     *  The capacity may not be less than the current size.
-     *
-     *  Subclasses should reimplement, calling _reserve() and casting the returned reference
-     *  to the appropriate subclass of Editor.
-     */
-    Editor & reserve(int capacity) { return _reserve(capacity); }
-
-    /**
-     *  @brief Return an interface class that allows changes to be made to the table.
-     *
-     *  Subclasses should reimplement, calling _edit() and casting the returned reference
-     *  to the appropriate subclass of Editor.
-     */
-    Editor & edit() { return _edit(); }
-
     virtual ~SampleTable() {}
 
 protected:
 
-    friend class SampleTableEditor;
+#ifndef SWIG
+    /**
+     *  @brief A separate interface class for mutating operations on SampleTable.
+     *
+     *  All mutating operations on a subclass SampleTable should be defined as members of
+     *  a subclass of Editor.  Editor instances should only be available to users as
+     *  references, and should only be constructed by SampleTable::makeEditor.
+     */
+    class Editor : private boost::noncopyable {
+    public:
 
+        typedef boost::shared_ptr<Editor> Ptr;
+
+        virtual ~Editor() {}
+    
+    protected:
+
+        explicit Editor(SampleTable * table) : _table(table) {}
+
+        lsst::ndarray::Array<double,1,1> getWeights() {
+            return getTable()._weights;
+        }
+
+        lsst::ndarray::Array<double,2,2> getParameters() {
+            return getTable()._parameters;
+        }
+
+        int & getSize() { return getTable()._size; }
+
+        SampleTable & getTable() { return *_table; }
+
+    private:
+        SampleTable * _table;
+    };
+#endif
+
+    /// @brief Construct with given capacity and dimensionality.
+    SampleTable(int capacity, int dimensionality);
+
+    /// @brief Copy constructor.
     SampleTable(SampleTable const & other);
 
+    /// @brief Subset copy constructor.
+    SampleTable(SampleTable const & other, int start, int stop);
+
     /**
-     *  @Brief Implementation for edit(); moved here so subclasses can cast the public return value.
+     *  @brief Invoke copy-on-write.
      *
      *  The copy-on-write mechanism works by checking the _editor data member.  If it is empty (as
      *  it will be for a newly-constructed, non-copied table) makeEditor() is called to construct
-     *  a new Editor.  If it is unique, the existing Editor is returned.  If it is non-unique,
-     *  copyForEdit() is called and a new editor is constructed with makeEditor().
+     *  a new Editor.  If it is unique, the existing Editor is returned.  If it is non-unique
+     *  or the given capacity is not equal to the current capacity, copyForEdit() is called and
+     *  a new editor is constructed with makeEditor().
      */
-    Editor & _edit();
+    Editor & _edit(int capacity);
 
-    /**
-     *  @Brief Implementation for reserve(); moved here so subclasses can cast the public return value.
-     *
-     *  _reserve() operates mostly like _edit, but if the capacity is not equal to the current capacity
-     *  it will call copyForEdit() with the new capacity even if the editor is unique.
-     */
-    Editor & _reserve(int capacity);
+    Editor & _edit() { return _edit(getCapacity()); }
 
     /**
      *  @brief Clone the table.
@@ -132,64 +141,40 @@ protected:
     virtual Ptr _clone() const = 0;
     
     /**
-     *  @brief Called by _edit() when _editor is not unique.
+     *  @brief Called by _edit() and _reserve() when _editor is not unique.
      *
-     *  @param[in] capacity    Full size of for new arrays to be allocated.
+     *  @param[in] capacity    Full size for new arrays to be allocated.
      *
      *  This should deep-copy all data members in-place.
-     *  Subclasses should call the base class implementation, which reallocates
-     *  the parameter and weight arrays and throws InvalidParameterException if the
-     *  capacity is smaller than the current size.
+     *  Subclasses should call their immediate base class implementation.
+     *  This implementation reallocates the parameter and weight arrays and throws
+     *  InvalidParameterException if the capacity is smaller than the current size.
      */
     virtual void copyForEdit(int capacity);
 
     /**
      *  @brief Construct a new Editor object that modifies this.
      */
-    virtual boost::shared_ptr<Editor> makeEditor() = 0;
+    virtual Editor::Ptr makeEditor() = 0;
+
+    /// @brief Helper function to aid in implementing copyForEdit.
+    template <typename T, int N, int C>
+    void copyArrayForEdit(ndarray::Array<T,N,C> & array, int capacity) const {
+        ndarray::Array<T,N,C> newArray(
+            ndarray::allocate(ndarray::concatenate(capacity, array.getShape().template first<N-1>()))
+        );
+        newArray[ndarray::view(0, _size)] = array[ndarray::view(0, _size)];
+        array = newArray;
+    }
 
 private:
 
     void operator=(SampleTable const &) {} // disabled
 
     int _size;
-    boost::shared_ptr<Editor> _editor;
+    Editor::Ptr _editor;
     lsst::ndarray::Array<double,2,2> _parameters;
     lsst::ndarray::Array<double,1,1> _weights;
-};
-
-/**
- *  @brief A separate interface class for mutating operations on SampleTable.
- *
- *  All mutating operations on a subclass SampleTable should be defined as members of
- *  a subclass of Editor.  Editor instances should only be available to users as
- *  references, and should only be constructed by SampleTable::makeEditor.
- *
- *  @todo This should really be an inner class, but SWIG hates those.
- */
-class SampleTableEditor : private boost::noncopyable {
-public:
-
-    lsst::ndarray::Array<double,1,1> getWeights() {
-        return _table->_weights[ndarray::view(0, _table->_size)];
-    }
-
-    virtual ~SampleTableEditor() {}
-    
-protected:
-
-    explicit SampleTableEditor(SampleTable * table) : _table(table) {}
-
-    /**
-     *  @brief Append a vector of parameters with associated weights.
-     *
-     *  Intended to be used by subclasses that implement a public append() method.
-     *  Throws LengthErrorException if the capacity of the table is equal to its size.
-     */
-    void _append(ndarray::Array<double const,1,1> const & parameters, double weight);
-
-private:
-    SampleTable * _table;
 };
 
 }}} // namespace lsst::meas::multifit
