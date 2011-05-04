@@ -32,6 +32,15 @@ class Evaluation : private boost::noncopyable {
 public:
 
     Evaluation(
+        BaseEvaluator::Ptr const & evaluator
+    );
+
+    Evaluation(
+        BaseEvaluator::Ptr const & evaluator,
+        BaseDistribution const & prior
+    );
+
+    Evaluation(
         BaseEvaluator::Ptr const & evaluator,
         lsst::ndarray::Array<double const,1,1> const & parameters
     );
@@ -55,7 +64,19 @@ public:
 
     void update(lsst::ndarray::Array<double const,1,1> const & parameters);
     void update(Eigen::VectorXd const & parameters);
+    
+    void update(
+        lsst::ndarray::Array<double const,1,1> const & parameters, 
+        lsst::ndarray::Array<double const,1,1> const & coefficients
+    );
+    void update(
+        Eigen::VectorXd const & parameters,
+        Eigen::VectorXd const & coefficients
+    );
 
+    void setCoefficients(lsst::ndarray::Array<double const,1,1> const & coefficients);
+    void setCoefficients(Eigen::VectorXd const & coefficients);
+    
     BaseEvaluator::Ptr getEvaluator() const { return _evaluator; }
 
     BaseDistribution::ConstPtr getPrior() const { return _prior; }
