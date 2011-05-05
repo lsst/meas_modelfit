@@ -3,6 +3,7 @@
 
 #include <Eigen/Core>
 #include <cfloat>
+#include "lsst/ndarray/eigen.h"
 
 
 namespace lsst {
@@ -63,14 +64,13 @@ GuassianDistribution GaussNewtonOptimizer::solve(
     int const maxIter, 
     double const tau, 
     bool retryWithSvd
-
-) {
+)
+{
     int nCoeff = evaluator->getCoefficientSize();
     int nParam = evaluator->getParameterSize();
     Eigen::VectorXd unified(nCoeff + nParam);
     Eigen::VectorXd residual(evaluator->getDataSize());
  
-    _evaluation = Evaluation(evaluator);
     unified << ndarray::viewAsEigen(_evaluation.getParameters()),
                ndarray::viewAsEigen(_evaluation.getCoefficients());
 

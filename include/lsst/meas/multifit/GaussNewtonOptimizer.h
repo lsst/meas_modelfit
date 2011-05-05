@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_GaussNewtonOptimizer
 #define LSST_MEAS_MULTIFIT_GaussNewtonOptimizer
 
-#include "lsst/meas/multifit/BaseEvaluator.h"
+#include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/meas/multifit/SimpleInterpreter.h"
 #include "lsst/meas/multifit/GaussianDistribution.h"
 
@@ -37,7 +37,7 @@ public:
     GaussNewtonOptimizer(){}
 
     GaussianDistribution::Ptr solve(
-        BaseEvaluator::ConstPtr const & evaluator,
+        BaseEvaluator::Ptr const & evaluator,
         double const fTol=1.e-8, double const gTol=1.e-8, 
         double const minStep=1.e-8, 
         int const maxIter=200, 
@@ -47,7 +47,7 @@ public:
 
     
     ndarray::Array<const double, 1, 1> getParameters() const;
-    ndarray::Array<const double, 1, 1> getCoefficients() const
+    ndarray::Array<const double, 1, 1> getCoefficients() const;
     
 
 private:
@@ -58,7 +58,4 @@ private:
 
 }}} //end namespace lsst::meas::multifit
 
-};
-
-
-#endif //end #ifndef LSST_MEAS_MULTIFIT_UnifiedNLSolver
+#endif //end #ifndef LSST_MEAS_MULTIFIT_GaussNewtonOptimizer

@@ -48,8 +48,9 @@ protected:
         ndarray::Array<double const,1,1> const & param
     ) const;
 
-    virtual bool _evaluateModelDerivative(
-        ndarray::Array<double,3,3> const & matrix,
+    virtual bool _evaluateModelMatrixDerivative(
+        ndarray::Array<double,3,3> const & modelMatrixDerivative,
+        ndarray::Array<double const,2,2> const & modelMatrix,
         ndarray::Array<double const,1,1> const & param
     ) const;
 

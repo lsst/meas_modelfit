@@ -40,6 +40,12 @@ public:
     typedef boost::shared_ptr<SimpleDistribution> Ptr;
     typedef boost::shared_ptr<SimpleDistribution const> ConstPtr;
 
+    /// @brief Bit definitions for BaseDistribution::getNestedDependency.
+    enum {
+        MU_DEPENDENT    = 0x1,
+        SIGMA_DEPENDENT = 0x2
+    };
+
     Ptr clone() const { return boost::static_pointer_cast<SimpleDistribution>(_clone()); }
 
     /// @brief Compute the mean of the distribution.

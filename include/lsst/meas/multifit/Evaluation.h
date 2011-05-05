@@ -25,6 +25,7 @@
 #define LSST_MEAS_MULTIFIT_Evaluation
 
 #include "lsst/meas/multifit/BaseEvaluator.h"
+#include "lsst/meas/multifit/GaussianDistribution.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -77,6 +78,8 @@ public:
     void setCoefficients(lsst::ndarray::Array<double const,1,1> const & coefficients);
     void setCoefficients(Eigen::VectorXd const & coefficients);
     
+    void solveCoefficients();
+
     BaseEvaluator::Ptr getEvaluator() const { return _evaluator; }
 
     BaseDistribution::ConstPtr getPrior() const { return _prior; }
@@ -84,75 +87,72 @@ public:
     lsst::ndarray::Array<double const,1,1> getParameters() const { return _parameters; }
 
     lsst::ndarray::Array<double const,2,2> getModelMatrix() const {
-        ensure(HAS_MODEL_MATRIX);
+        ensureModelMatrix();
         return _modelMatrix;
     }
 
     lsst::ndarray::Array<double const,3,3> getModelMatrixDerivative() const {
-        ensure(HAS_MODEL_MATRIX_DERIVATIVE);
-        return _modelMatrix;
+        ensureModelMatrixDerivative();
+        return _modelMatrixDerivative;
     }
 
     lsst::ndarray::Array<double const,1,1> getCoefficients() const {
-        ensure(HAS_COEFFICIENTS);
+        ensureCoefficients();
         return _coefficients;
     }
 
     lsst::ndarray::Array<double const,1,1> getResiduals() const {
-        ensure(HAS_RESIDUALS);
+        ensureResiduals();
         return _residuals;
     }
 
     lsst::ndarray::Array<double const,2,2> getResidualsJacobian() const {
-        ensure(HAS_RESIDUALS_JACOBIAN);
+        ensureResidualsJacobian();
         return _residualsJacobian;
     }
 
     lsst::ndarray::Array<double const,2,2> getCoefficientFisherMatrix() const {
-        ensure(HAS_COEFFICIENT_FISHER_MATRIX);
+        ensureCoefficientFisherMatrix();
         return _coefficientFisherMatrix;
     }
 
     lsst::ndarray::Array<double const,2,2> getCoefficientFisherFactor() const {
-        ensure(HAS_COEFFICIENT_FISHER_FACTOR);
+        ensureCoefficientFisherFactor();
         return _coefficientFisherFactor;
     }
 
     double getLogPosterior() const {
-        ensure(HAS_LOG_POSTERIOR);
+        ensureLogPosterior();
         return _logPosterior;
     }
 
-    double getMarginalLogPosterior() const {
-        ensure(HAS_MARGINAL_LOG_POSTERIOR);
-        return _marginalLogPosterior;
-    }
-        
 private:
 
+#ifndef SWIG
     class LinearSolver;
+    class CholeskySolver;
+    // TODO: a QR solver for when we don't have a prior on the coefficients.  
+    // But Eigen 2's QR solver doesn't have what we need.
+#endif
 
-    enum StatusFlags {
-        HAS_MODEL_MATRIX               = 1 <<  0,
-        HAS_MODEL_MATRIX_DERIVATIVE    = 1 <<  1,
-        HAS_COEFFICIENTS               = 1 <<  2,
-        HAS_ACTIVE_SOLVER              = 1 <<  3,
-        HAS_RESIDUALS                  = 1 <<  4,
-        HAS_RESIDUALS_JACOBIAN         = 1 <<  5,
-        HAS_LOG_POSTERIOR              = 1 <<  6,
-        HAS_MARGINAL_LOG_POSTERIOR     = 1 <<  7
-    };
+    void ensureModelMatrix() const;
+    void ensureModelMatrixDerivative() const;
+    void ensureCoefficients() const;
+    void ensureResiduals() const;
+    void ensureResidualsJacobian() const;
+    void ensureCoefficientFisherMatrix() const;
+    void ensureCoefficientFisherFactor() const;
+    void ensureLogPosterior() const;
 
-    void ensure(int status) const;
+    void initialize();
+    void updateNestedPrior();
 
-    void checkSizes() const;
-
-    int _status;
+    mutable int _status;
     BaseEvaluator::Ptr _evaluator;
     BaseDistribution::ConstPtr _prior;
+    GaussianDistribution::Ptr _nestedPrior;
     boost::scoped_ptr<LinearSolver> _solver;
-    double _logPosterior;
-    double _marginalLogPosterior;
+    mutable double _logPosterior;
     ndarray::Array<double,1,1> _parameters;
     mutable ndarray::Array<double,2,2> _modelMatrix;
     mutable ndarray::Array<double,3,3> _modelMatrixDerivative;

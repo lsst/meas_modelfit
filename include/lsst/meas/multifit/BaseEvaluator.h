@@ -31,6 +31,8 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+class Evaluation;
+
 /**
  *  @brief An abstract base class that combines a data vector and model(s),
  *         organizing the model as a parameterized matrix multiplied by a vector
@@ -92,12 +94,15 @@ public:
      *
      *  The first dimension of the array is the parameter dimension.
      *
+     *  The model matrix is guaranteed to be the result of _evaluateModelMatrix with the same
+     *  parameter vector.
+     *
      *  @return true if the parameter vector is valid (i.e. within bounds of the problem) and the
      *          derivative array has been filled.
      */
-    bool evaluateModelDerivative(
-        lsst::ndarray::Array<Pixel,3,3> const & derivative,
-        lsst::ndarray::Array<Pixel const,1,1> const & param
+    virtual bool evaluateModelMatrixDerivative(
+        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
+        ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
     void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & param) const;
@@ -105,6 +110,8 @@ public:
     virtual ~BaseEvaluator() {}
 
 protected:
+
+    friend class Evaluation;
 
     BaseEvaluator(int dataSize, int coefficientSize, int parameterSize, double logVarianceSum) :
         _coefficientSize(coefficientSize),
@@ -135,8 +142,9 @@ protected:
         ndarray::Array<Pixel const,1,1> const & param
     ) const = 0;
 
-    virtual bool _evaluateModelDerivative(
-        ndarray::Array<Pixel,3,3> const & derivative,
+    virtual bool _evaluateModelMatrixDerivative(
+        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
+        ndarray::Array<Pixel const,2,2> const & modelMatrix,
         ndarray::Array<Pixel const,1,1> const & param
     ) const;
 

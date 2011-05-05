@@ -45,7 +45,7 @@ public:
 
     virtual int getNestedDimensionality() const;
 
-    bool isNestedIndependent() const { return !_nestedConditional; }
+    virtual DependencyFlags getNestedDependency() const { return (_nestedConditional) ? MU_DEPENDENT : 0; }
 
     Ptr evaluateNested(double const * parameters) const {
         return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters));

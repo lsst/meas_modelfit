@@ -37,6 +37,8 @@ public:
     typedef boost::shared_ptr<BaseDistribution> Ptr;
     typedef boost::shared_ptr<BaseDistribution const> ConstPtr;
 
+    typedef int DependencyFlags;
+
     /**
      *  @brief Deep-copy the distribution.
      *
@@ -47,12 +49,6 @@ public:
 
     /// @brief Return the dimensionality of the distribution.
     int getDimensionality() const { return _dimensionality; }
-
-    /// @brief Return the dimensionality of the nested distribution.
-    virtual int getNestedDimensionality() const { return 0; }
-
-    /// @brief Return true if the nested distribution does not depend on the parameters.
-    virtual bool isNestedIndependent() const { return false; }
 
     ///@{
     /// @brief Draw a parameter vector from the distribution.
@@ -75,6 +71,20 @@ public:
         return evaluate(parameters.data());
     }
     ///@}
+
+    /// @brief Return the dimensionality of the nested distribution.
+    virtual int getNestedDimensionality() const { return 0; }
+
+    /**
+     *  @brief Return a set of bitflags that defined how the nested conditional distribution
+     *         depends on the parameters of the outer distribution.
+     *
+     *  A return value of zero indicates that the nested distribution is completely independent,
+     *  making calls to updateNested() completely unnecessary.  The meaning of any nonzero
+     *  value is specific to the type of the nested dependency, which may have additional methods
+     *  to interpret the flags.
+     */
+    virtual DependencyFlags getNestedDependency() const { return 0; }
 
     ///@{
     /**
