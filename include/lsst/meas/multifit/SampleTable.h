@@ -93,11 +93,11 @@ protected:
 
         explicit Editor(SampleTable * table) : _table(table) {}
 
-        lsst::ndarray::Array<double,1,1> getWeights() {
+        lsst::ndarray::Array<double,1,1> const & getWeights() {
             return getTable()._weights;
         }
 
-        lsst::ndarray::Array<double,2,2> getParameters() {
+        lsst::ndarray::Array<double,2,2> const & getParameters() {
             return getTable()._parameters;
         }
 

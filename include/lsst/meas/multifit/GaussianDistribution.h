@@ -63,6 +63,9 @@ public:
     /// @brief Convert a nested P(x)P(y|x) distribution into a unified P(x,y) distribution in-place.
     void convertNestedToUnified();
 
+    /// @brief Return the normalization constant @f$|2\pi\Sigma|^{-1/2}@f$.
+    double getNormalization() const { ensureCached(); return _cached->normalization; }
+
     /// @brief Construct a Standard Normal GaussianDistribution with mu=0 and sigma=I.
     explicit GaussianDistribution(int dimensionality);
 

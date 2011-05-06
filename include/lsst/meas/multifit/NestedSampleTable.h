@@ -90,15 +90,15 @@ protected:
 
         explicit Editor(NestedSampleTable * table) : SampleTable::Editor(table) {}
 
-        lsst::ndarray::Array<double,1,1> getNestedAmplitudes() {
+        lsst::ndarray::Array<double,1,1> const & getNestedAmplitudes() {
             return getTable()._nestedAmplitudes;
         }
 
-        lsst::ndarray::Array<double,2,2> getNestedMeans() {
+        lsst::ndarray::Array<double,2,2> const & getNestedMeans() {
             return getTable()._nestedMeans;
         }
 
-        lsst::ndarray::Array<double,3,3> getNestedMatrices() {
+        lsst::ndarray::Array<double,3,3> const & getNestedMatrices() {
             return getTable()._nestedMatrices;
         }
 

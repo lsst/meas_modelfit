@@ -64,7 +64,7 @@ public:
     ///@{
     ///  @brief Evaluate the distribution at the given parameters.
     virtual double evaluate(double const * parameters) const = 0;
-    double evaluate(lsst::ndarray::Array<double,1,1> const & parameters) const {
+    double evaluate(lsst::ndarray::Array<double const,1,1> const & parameters) const {
         return evaluate(parameters.begin());
     }
     double evaluate(Eigen::VectorXd const & parameters) const {

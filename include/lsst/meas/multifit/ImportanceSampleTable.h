@@ -26,7 +26,7 @@
 
 #include "lsst/meas/multifit/NestedSampleTable.h"
 #include "lsst/meas/multifit/BaseDistribution.h"
-#include "lsst/meas/multifit/BaseEvaluator.h"
+#include "lsst/meas/multifit/Evaluation.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -73,10 +73,10 @@ public:
 #endif
 
     /**
-     *  @brief The unnormalized value of the target distribution at the sample points.
+     *  @brief The Evaluation "objective value" at each sample point.
      */
-    lsst::ndarray::Array<double const,1,1> getTarget() const {
-        return _target[ndarray::view(0, getSize())];
+    lsst::ndarray::Array<double const,1,1> getObjective() const {
+        return _objective[ndarray::view(0, getSize())];
     }
 
     /**
@@ -114,12 +114,17 @@ public:
      */
     void reserve(int capacity) { _edit(capacity); }
 
+    //@{
     /**
      *  @brief Add an iteration of standard importance sampling using the given distribution.
      */
-    void run(int size, BaseEvaluator const & evaluator, Random & random, 
-             BaseDistribution const & distribution);
-    
+    void run(int size, Random & random, BaseDistribution const & importance, 
+             BaseEvaluator::Ptr const & evaluator);
+    void run(int size, Random & random, BaseDistribution const & importance, 
+             BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior);
+    //@}
+
+    //@{
     /**
      *  @brief Run an adaptive importance sampling algorithm, using an updated version
      *         of the last iteration's distribution.
@@ -133,11 +138,15 @@ public:
      *
      *  While the user can use a different evaluator for different iterations, they should
      *  generate similar likelihoods (up to the normization) for the procedure to be robust.
-     *  The AIS algorithm must be used when the evaluator is changed.
+     *  The AIS algorithm must be used for the first iteration after the evaluator is changed.
      *
      *  In all cases, only the last iteration can be considered a fair sample.
      */
-    void run(int size, BaseEvaluator const & evaluator, Random & random, AlgorithmEnum algorithm);
+    void run(int size, Random & random, AlgorithmEnum algorithm,
+             BaseEvaluator::Ptr const & evaluator);
+    void run(int size, Random & random, AlgorithmEnum algorithm, 
+             BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior);
+    //@}
 
     /// @brief Construct with zero size and finite capacity.
     explicit ImportanceSampleTable(
@@ -152,19 +161,18 @@ protected:
 #ifndef SWIG
     class Editor : public NestedSampleTable::Editor {
     public:
-        void run(int size, BaseEvaluator const & evaluator, Random & random, 
-                 BaseDistribution const & distribution);
-        void run(int size, BaseEvaluator const & evaluator, Random & random, AlgorithmEnum algorithm);
+        void run(int size, Random & random, BaseDistribution const & importance, Evaluation & evaluator);
+        void run(int size, Random & random, AlgorithmEnum algorithm, Evaluation & evaluator);
 
         explicit Editor(ImportanceSampleTable * table) : NestedSampleTable::Editor(table) {}
 
     protected:
 
-        lsst::ndarray::Array<double,1,1> getTarget() {
-            return getTable()._target;
+        lsst::ndarray::Array<double,1,1> const & getObjective() {
+            return getTable()._objective;
         }
 
-        lsst::ndarray::Array<double,1,1> getImportance() {
+        lsst::ndarray::Array<double,1,1> const & getImportance() {
             return getTable()._importance;
         }
 
@@ -184,7 +192,7 @@ protected:
 
 private:
     std::vector<Iteration> _iterations;
-    lsst::ndarray::Array<double,1,1> _target;
+    lsst::ndarray::Array<double,1,1> _objective;
     lsst::ndarray::Array<double,1,1> _importance;
 };
 

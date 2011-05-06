@@ -13,17 +13,39 @@ ImportanceSampleTable ImportanceSampleTable::makeLastIterationTable() const {
 }
 
 void ImportanceSampleTable::run(
-    int size, BaseEvaluator const & evaluator, Random & random, BaseDistribution const & distribution
+    int size, Random & random, BaseDistribution const & importance,
+    BaseEvaluator::Ptr const & evaluator
 ) {
+    Evaluation evaluation(evaluator);
     Editor & editor = static_cast<Editor&>(_edit());
-    editor.run(size, evaluator, random, distribution);
+    editor.run(size, random, importance, evaluation);
 }
 
 void ImportanceSampleTable::run(
-    int size, BaseEvaluator const & evaluator, Random & random, AlgorithmEnum algorithm
+    int size, Random & random, BaseDistribution const & importance,
+    BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior
 ) {
+    Evaluation evaluation(evaluator, prior);
     Editor & editor = static_cast<Editor&>(_edit());
-    editor.run(size, evaluator, random, algorithm);
+    editor.run(size, random, importance, evaluation);
+}
+
+void ImportanceSampleTable::run(
+    int size, Random & random, AlgorithmEnum algorithm,
+    BaseEvaluator::Ptr const & evaluator
+) {
+    Evaluation evaluation(evaluator);
+    Editor & editor = static_cast<Editor&>(_edit());
+    editor.run(size, random, algorithm, evaluation);
+}
+
+void ImportanceSampleTable::run(
+    int size, Random & random, AlgorithmEnum algorithm,
+    BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior
+) {
+    Evaluation evaluation(evaluator, prior);
+    Editor & editor = static_cast<Editor&>(_edit());
+    editor.run(size, random, algorithm, evaluation);
 }
 
 ImportanceSampleTable::ImportanceSampleTable(
@@ -31,14 +53,14 @@ ImportanceSampleTable::ImportanceSampleTable(
 ) :
     NestedSampleTable(capacity, dimensionality, nestedDimensionality, nestedMatrixType),
     _iterations(),
-    _target(ndarray::allocate(capacity)),
+    _objective(ndarray::allocate(capacity)),
     _importance(ndarray::allocate(capacity))  
 {}
 
 ImportanceSampleTable::ImportanceSampleTable(ImportanceSampleTable const & other) :
     NestedSampleTable(other),
     _iterations(other._iterations),
-    _target(other._target),
+    _objective(other._objective),
     _importance(other._importance)
 {}
 
@@ -47,7 +69,7 @@ ImportanceSampleTable::ImportanceSampleTable(
 ) :
     NestedSampleTable(other, iteration.start, iteration.stop),
     _iterations(),
-    _target(other._target[ndarray::view(iteration.start, iteration.stop)]),
+    _objective(other._objective[ndarray::view(iteration.start, iteration.stop)]),
     _importance(other._importance[ndarray::view(iteration.start, iteration.stop)])
 {
     _iterations.push_back(Iteration(0, iteration.stop - iteration.start, iteration.distribution));
@@ -59,7 +81,7 @@ SampleTable::Ptr ImportanceSampleTable::_clone() const {
 
 void ImportanceSampleTable::copyForEdit(int capacity) {
     NestedSampleTable::copyForEdit(capacity);
-    copyArrayForEdit(_target, capacity);
+    copyArrayForEdit(_objective, capacity);
     copyArrayForEdit(_importance, capacity);
 }
 
@@ -68,9 +90,9 @@ SampleTable::Editor::Ptr ImportanceSampleTable::makeEditor() {
 }
 
 void ImportanceSampleTable::Editor::run(
-    int size, BaseEvaluator const & evaluator, Random & random, BaseDistribution const & distribution
+    int size, Random & random, BaseDistribution const & importance, Evaluation & evaluation
 ) {
-    Iteration iteration(getSize(), size + getSize(), distribution.clone());
+    Iteration iteration(getSize(), size + getSize(), importance.clone());
     if (iteration.stop > getTable().getCapacity()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LengthErrorException,
@@ -80,9 +102,43 @@ void ImportanceSampleTable::Editor::run(
     }
     for (int n = iteration.start; n != iteration.stop; ++n) {
         iteration.distribution->draw(random, getParameters()[n]);
-        getWeights()[n] = iteration.distribution->evaluate(getParameters()[n]);
+        evaluation.update(getParameters()[n]);
+        getImportance()[n] = iteration.distribution->evaluate(evaluation.getParameters());
+        // TODO
     }
-    // TODO
+    getSize() = iteration.stop;
+}
+
+void ImportanceSampleTable::Editor::run(
+    int size, Random & random, AlgorithmEnum algorithm, Evaluation & evaluation
+) {
+    if (getTable().getIterationCount() == 0) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Adaptive importance sampling algorithms cannot be run unless "
+            "at least one iteration already exists."
+        );
+    }
+    Iteration const & last = getTable().getLastIteration();
+    BaseDistribution::Ptr importance = last.distribution->clone();
+    Iteration iteration(getSize(), size + getSize(), importance);
+    if (iteration.stop > getTable().getCapacity()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LengthErrorException,
+            (boost::format("New table size (%d) would be larger than capacity (%d).")
+             % iteration.stop % getTable().getCapacity()).str()
+        );
+    }
+    importance->updateFromSamples(
+        getParameters()[ndarray::view(last.start, last.stop)],
+        getWeights()[ndarray::view(last.start, last.stop)]
+    );
+    for (int n = iteration.start; n != iteration.stop; ++n) {
+        iteration.distribution->draw(random, getParameters()[n]);
+        evaluation.update(getParameters()[n]);
+        // TODO
+    }
+    getSize() = iteration.stop;
 }
 
 }}} // namespace lsst::meas::multifit

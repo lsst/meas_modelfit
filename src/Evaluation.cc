@@ -14,10 +14,9 @@ enum ProductEnum {
     COEFFICIENTS,
     RESIDUALS,
     RESIDUALS_JACOBIAN,
-    LOG_POSTERIOR,
+    OBJECTIVE_VALUE,
     COEFFICIENT_FISHER_MATRIX,
     COEFFICIENT_FISHER_FACTOR,
-    MARGINAL_LOG_POSTERIOR,
     PRODUCT_COUNT
 };
 
@@ -32,7 +31,7 @@ struct Bit {
 static int const coefficient_dependencies = 
     Bit<RESIDUALS>::flag |
     Bit<RESIDUALS_JACOBIAN>::flag |
-    Bit<LOG_POSTERIOR>::flag
+    Bit<OBJECTIVE_VALUE>::flag
     ;
 
 } // anonymous
@@ -376,14 +375,17 @@ void Evaluation::ensureResidualsJacobian() const {
     Bit<RESIDUALS_JACOBIAN>::set(_status);
 }
 
-void Evaluation::ensureLogPosterior() const {
-    if (Bit<LOG_POSTERIOR>::test(_status)) return;
+void Evaluation::ensureObjectiveValue() const {
+    if (Bit<OBJECTIVE_VALUE>::test(_status)) return;
     ensureResiduals();
-    _logPosterior = 0.5 * ndarray::viewAsEigen(_residuals).squaredNorm();
+    _objectiveValue = 0.5 * ndarray::viewAsEigen(_residuals).squaredNorm();
     if (_prior) {
-        _logPosterior += std::log(_prior->evaluate(_parameters));
+        _objectiveValue -= std::log(_prior->evaluate(_parameters));
+        if (_nestedPrior) {
+            _objectiveValue -= std::log(_nestedPrior->getNormalization());
+        }
     }
-    Bit<LOG_POSTERIOR>::set(_status);
+    Bit<OBJECTIVE_VALUE>::set(_status);
 }
 
 void Evaluation::ensureCoefficientFisherMatrix() const {
