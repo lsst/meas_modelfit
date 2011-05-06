@@ -126,6 +126,8 @@ public:
         return _logPosterior;
     }
 
+    ~Evaluation();
+
 private:
 
 #ifndef SWIG
