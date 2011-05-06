@@ -24,9 +24,8 @@
 #ifndef LSST_MEAS_MULTIFIT_GaussNewtonOptimizer
 #define LSST_MEAS_MULTIFIT_GaussNewtonOptimizer
 
-#include "lsst/meas/multifit/Evaluation.h"
-#include "lsst/meas/multifit/SimpleInterpreter.h"
 #include "lsst/meas/multifit/GaussianDistribution.h"
+#include "lsst/meas/multifit/BaseEvaluator.h"
 
 namespace lsst {
 namespace meas {
@@ -36,7 +35,7 @@ class GaussNewtonOptimizer {
 public:
     GaussNewtonOptimizer(){}
 
-    GaussianDistribution::Ptr solve(
+    GaussianDistribution solve(
         BaseEvaluator::Ptr const & evaluator,
         double const fTol=1.e-8, double const gTol=1.e-8, 
         double const minStep=1.e-8, 
@@ -52,8 +51,8 @@ public:
 
 private:
 
-    Evaluation _evaluation;
     bool _solverSuccess;
+
 };
 
 }}} //end namespace lsst::meas::multifit

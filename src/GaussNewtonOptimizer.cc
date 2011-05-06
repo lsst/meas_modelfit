@@ -1,24 +1,22 @@
 #include "lsst/meas/multifit/GaussNewtonOptimizer.h"
 #include "lsst/meas/algorithms/shapelet/NLSolver.h"
+#include "lsst/meas/multifit/Evaluation.h"
 
 #include <Eigen/Core>
 #include <cfloat>
 #include "lsst/ndarray/eigen.h"
 
-
-namespace lsst {
-namespace meas {
-namespace multifit {
 namespace {
 
-class Solver : public algorithms::shapelet::NLSolver {
+class Solver : public lsst::meas::algorithms::shapelet::NLSolver {
 public:
-    Solver(Evaluation & evaluation, 
+    Solver(lsst::meas::multifit::Evaluation & evaluation, 
            double const fTol, double const gTol, 
            double const minStep, int const maxIter, 
            double const tau
-    ) : _nCoeff(evalutaion.getEvaluator()->getCoefficientSize()),
-        _nParam(evalutaion.getEvaluator()->getParameterSize()),
+    ) : _nCoeff(evaluation.getEvaluator()->getCoefficientSize()),
+        _nParam(evaluation.getEvaluator()->getParameterSize()),
+        _nUnified(_nParam + _nCoeff),
         _evaluation(evaluation)
     {
         useHybrid();
@@ -34,11 +32,16 @@ public:
     virtual void calculateF(
         Eigen::VectorXd const & x, 
         Eigen::VectorXd & f
-    ) const {
-        ndarray::Array<double const 1, 1> u = ndarray::viewVectorAsArray(x);
-        _evaluation.update(u[ndarray::view(0, _nParam)], u[ndarray::view(_nParam, x.size())]);
+    ) const {    
+        lsst::ndarray::Array<double const, 1, 1> u = lsst::ndarray::static_dimension_cast<1>(
+            lsst::ndarray::Array<double const, 1, 0>(lsst::ndarray::viewVectorAsArray(x))
+        );
+        _evaluation.update(
+            u[lsst::ndarray::view(0, _nParam)], 
+            u[lsst::ndarray::view(_nParam, _nUnified)]
+        );
 
-        f << ndarray::viewAsEigen(_evalutaion.getResiduals());
+        f << lsst::ndarray::viewAsEigen(_evaluation.getResiduals());
     }
 
     virtual void calculateJ(
@@ -46,33 +49,39 @@ public:
         Eigen::VectorXd const & f,
         Eigen::MatrixXd & j
     ) const {
-        j << ndarray::viewAsEigen(_evaluation.getResidualsJacobian()),
-             ndarray::viewAsEigen(_evaluation.getModelMatrix());
+        j << lsst::ndarray::viewAsEigen(_evaluation.getResidualsJacobian()),
+             lsst::ndarray::viewAsEigen(_evaluation.getModelMatrix());
     }
 
 private:
-    int _nCoeff, _nParam;
-    Evaluation & _evaluation;
+    int _nCoeff;
+    int _nParam;
+    int _nUnified;
+    lsst::meas::multifit::Evaluation & _evaluation;
 };
 
 }
+namespace lsst {
+namespace meas {
+namespace multifit {
 
-GuassianDistribution GaussNewtonOptimizer::solve(
+
+GaussianDistribution GaussNewtonOptimizer::solve(
     BaseEvaluator::Ptr const & evaluator,
     double const fTol, double const gTol, 
     double const minStep, 
     int const maxIter, 
     double const tau, 
     bool retryWithSvd
-)
-{
+) {
     int nCoeff = evaluator->getCoefficientSize();
     int nParam = evaluator->getParameterSize();
     Eigen::VectorXd unified(nCoeff + nParam);
     Eigen::VectorXd residual(evaluator->getDataSize());
  
-    unified << ndarray::viewAsEigen(_evaluation.getParameters()),
-               ndarray::viewAsEigen(_evaluation.getCoefficients());
+    Evaluation evaluation(evaluator);
+    unified << ndarray::viewAsEigen(evaluation.getParameters()),
+               ndarray::viewAsEigen(evaluation.getCoefficients());
 
     ::Solver solver(evaluation, fTol, gTol, minStep, maxIter, tau);     
     _solverSuccess = solver.solve(unified, residual);
@@ -81,8 +90,10 @@ GuassianDistribution GaussNewtonOptimizer::solve(
         solver.useSVD();
         _solverSuccess = solver.solve(unified, residual);
     }
-    
-    return GaussianDistribution(unified, solver.getCovariance());
+   
+    Eigen::MatrixXd covariance;
+    solver.getCovariance(covariance);
+    return GaussianDistribution(unified, covariance);
 }
 
 }}}
