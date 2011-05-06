@@ -478,7 +478,7 @@ void Evaluation::updateNestedPrior() {
     }
 }
 
-~Evaluation::Evaluation() {}
+Evaluation::~Evaluation() {}
 
 
 }}} // namespace lsst::meas::multifit
