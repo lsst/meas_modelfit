@@ -64,6 +64,8 @@ class DefinitionTest(unittest.TestCase):
         self.assertEqual(p.getValue().getX(), 3.0)
         p.setActive(False)
         self.assertFalse(p.isActive())
+        p.getBounds().max = 3.0
+        self.assertEqual(p.getBounds().max, 3.0)
 
         ellipticity1 = mf.Ellipticity(0.6, -0.1)
         ellipticity2 = mf.Ellipticity(-0.25, 0.3)
@@ -88,6 +90,9 @@ class DefinitionTest(unittest.TestCase):
         self.assertEqual(float(r.getValue()), float(radius2))
         r.setActive(False)
         self.assertFalse(r.isActive())
+        r.setBounds(r.Bounds(0.0, 5.0))
+        self.assertEqual(r.getBounds().min, 0.0)
+        self.assertEqual(r.getBounds().max, 5.0)
 
     def testParameterSharing(self):
         self.assertEqual(self.star.getPosition().getValue(), self.starPoint)

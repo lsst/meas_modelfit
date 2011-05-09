@@ -16,3 +16,7 @@ multifitLib.Definition.FrameSet = FrameSet
 multifitLib.Definition.PositionComponent = PositionComponent
 multifitLib.Definition.RadiusComponent = RadiusComponent
 multifitLib.Definition.EllipticityComponent = EllipticityComponent
+
+PositionComponent.Bounds = multifitLib.detail_CircleConstraint
+RadiusComponent.Bounds = multifitLib.detail_MinMaxConstraint
+EllipticityComponent.Bounds = multifitLib.detail_CircleConstraint

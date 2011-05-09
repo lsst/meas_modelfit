@@ -34,10 +34,83 @@ namespace detail {
 
 template <ParameterType E> struct ParameterComponentTraits;
 
+struct CircleConstraint {
+    double max;
+
+    explicit CircleConstraint(double max_=std::numeric_limits<double>::infinity()) : max(max_) {}
+
+    friend inline std::ostream & operator<<(std::ostream & os, CircleConstraint const & k) {
+        return os << "||.|| <  " << k.max;
+    }
+
+private:
+    template <ParameterType E> friend class grid::ParameterComponent;
+
+    /// Return true if the parameters are in-bounds.
+    bool checkBounds(double const * paramIter) const {
+        return paramIter[0] * paramIter[0] + paramIter[1] + paramIter[1] <= max * max;
+    }
+
+    /**
+     *  If the parameters are out of bounds, move them to the boundary and return
+     *  a positive value that increases as the necessary parameter change increases.
+     *  Return 0.0 if the parameters are already in-bounds
+     */
+    double clipToBounds(double * paramIter) const {
+        double a = std::sqrt(max * max / (paramIter[0] * paramIter[0] + paramIter[1] + paramIter[1]));
+        if (a < 1.0) {
+            paramIter[0] *= a;
+            paramIter[1] *= a;
+            return -std::log(a);
+        }
+        return 0.0;
+    }
+};
+
+struct MinMaxConstraint {
+    double min;
+    double max;
+
+    /// Return true if the parameters are in-bounds.
+    explicit MinMaxConstraint(double min_=0.0, double max_=std::numeric_limits<double>::infinity()) 
+        : min(min_), max(max_) {}
+
+    friend inline std::ostream & operator<<(std::ostream & os, MinMaxConstraint const & k) {
+        return os << k.min << " <= (.) <= " << k.max;
+    }
+
+private:
+    template <ParameterType E> friend class grid::ParameterComponent;
+
+    /// Return true if the parameters are in-bounds.
+    bool checkBounds(double const * paramIter) const {
+        return *paramIter >= min && *paramIter <= max;
+    }
+
+    /**
+     *  If the parameters are out of bounds, move them to the boundary and return
+     *  a positive value that increases as the necessary parameter change increases.
+     *  Return 0.0 if the parameters are already in-bounds
+     */
+    double clipToBounds(double * paramIter) const {
+        if (*paramIter < min) {
+            double r = min - *paramIter;
+            *paramIter = min;
+            return r;
+        } else if (*paramIter > max) {
+            double r = *paramIter - max;
+            *paramIter = max;
+            return r;
+        }
+        return 0.0;
+    }
+};
+
 template <>
 struct ParameterComponentTraits<POSITION> {
 
     typedef lsst::afw::geom::Point2D Value;
+    typedef CircleConstraint Bounds;
     static int const SIZE = 2;
 
     static void readParameters(double const * paramIter, Value & value) {
@@ -55,6 +128,7 @@ template <>
 struct ParameterComponentTraits<RADIUS> {
 
     typedef Radius Value;
+    typedef MinMaxConstraint Bounds;
     static int const SIZE = 1;
 
     static void readParameters(double const * paramIter, Value & value) {
@@ -71,6 +145,7 @@ template <>
 struct ParameterComponentTraits<ELLIPTICITY> {
 
     typedef Ellipticity Value;
+    typedef CircleConstraint Bounds;
     static int const SIZE = 2;
 
     static void readParameters(double const * paramIter, Value & value) {
@@ -90,6 +165,7 @@ class ParameterComponentBase {
 public:
 
     typedef typename detail::ParameterComponentTraits<E>::Value Value;
+    typedef typename detail::ParameterComponentTraits<E>::Bounds Bounds;
     static int const SIZE = detail::ParameterComponentTraits<E>::SIZE;
 
     /**
@@ -105,18 +181,21 @@ public:
      */
     Value const & getValue() const { return _value; }
 
+    Bounds const & getBounds() const { return _bounds; }
+
 protected:
 
-    explicit ParameterComponentBase(Value const & value, bool active) :
-        _active(active), _value(value)
+    explicit ParameterComponentBase(Value const & value, Bounds const & bounds, bool active) :
+        _active(active), _value(value), _bounds(bounds)
     {}
 
     ParameterComponentBase(ParameterComponentBase const & other) :
-        _active(other._active), _value(other._value)
+        _active(other._active), _value(other._value), _bounds(other._bounds)
     {}
 
     bool _active;
     Value _value;
+    Bounds _bounds;
 };
 
 } // namespace detail
@@ -130,6 +209,7 @@ public:
     typedef boost::shared_ptr< ParameterComponent<E> > Ptr;
     typedef boost::shared_ptr< ParameterComponent<E> const > ConstPtr;
     typedef typename detail::ParameterComponentTraits<E>::Value Value;
+    typedef typename detail::ParameterComponentTraits<E>::Bounds Bounds;
 
 #ifndef SWIG // these are wrapped explicitly; SWIG is confused by the typedefs and "bool &"
 
@@ -147,16 +227,22 @@ public:
      *
      *  For most parameters, this is the same as the values in the initial parameter vector.
      *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
-     *
-     *  In Python, this is additionally wrapped as a property 'component.value',
-     *  because the syntax 'component.getValue() = ' is illegal.
      */
     Value & getValue() { return this->_value; }
     void setValue(Value const & value) { this->_value = value; }
     //@}
+    
+    //@{
+    /**
+     *  @brief Return and/or set the bounds of the ParameterComponent.
+     */
+    Bounds & getBounds() { return this->_bounds; }
+    void setBounds(Bounds const & bounds) { this->_bounds = bounds; }
+    //@}
 
     // Use const accessors from base class.
     using detail::ParameterComponentBase<E>::getValue;
+    using detail::ParameterComponentBase<E>::getBounds;
     using detail::ParameterComponentBase<E>::isActive;
 
     /**
@@ -172,7 +258,16 @@ public:
      *  Constructors are private to ensure we only get shared_ptrs to these things.
      */
     static Ptr make(Value const & value, bool active=true) {
-        return Ptr(new ParameterComponent(value, active));
+        return Ptr(new ParameterComponent(value, Bounds(), active));
+    }
+
+    /**
+     *  @brief Create a new ParameterComponent.
+     *
+     *  Constructors are private to ensure we only get shared_ptrs to these things.
+     */
+    static Ptr make(Value const & value, Bounds const & bounds, bool active=true) {
+        return Ptr(new ParameterComponent(value, bounds, active));
     }
 
 #endif
@@ -181,8 +276,8 @@ private:
 
     ParameterComponent(ParameterComponent const & other) : detail::ParameterComponentBase<E>(*this) {}
 
-    explicit ParameterComponent(Value const & value, bool active) : 
-        detail::ParameterComponentBase<E>(value, active) {}
+    explicit ParameterComponent(Value const & value, Bounds const & bounds, bool active) : 
+        detail::ParameterComponentBase<E>(value, bounds, active) {}
 
 };
 

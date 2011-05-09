@@ -43,6 +43,20 @@ public:
 
     int const offset;
 
+    /// Return true if the parameters are in-bounds.
+    bool checkBounds(double const * parameters) const {
+        return this->getBounds().checkBounds(parameters + offset);
+    }
+
+    /**
+     *  If the parameters are out of bounds, move them to the boundary and return
+     *  a positive value that increases as the necessary parameter change increases.
+     *  Return 0.0 if the parameters are already in-bounds
+     */
+    double clipToBounds(double * parameters) const {
+        return this->getBounds().clipToBounds(parameters + offset);
+    }
+
 private:
 
     friend class Initializer;

@@ -60,15 +60,30 @@ public:
 
     int const getFilterIndex(FilterId filterId) const;
 
+    /// @brief Return true if all parameters are in-bounds.
+    bool checkBounds(double const * paramIter) const;
+
+    /**
+     *  @brief Clip any out-of-bounds parameters to the bounds and return a positive number
+     *         indicating how much clipping was necessary.
+     *
+     *  The returned value has no well-defined units and may penalize some parameter types
+     *  more than others.  The return value will be zero when no clipping is necessary.
+     */
+    double clipToBounds(double * paramIter) const;
+
     ~Grid();
 
     ObjectArray objects;
     FrameArray frames;
     SourceArray sources;
 
+    //@{
+    /// Arrays of all active parameter components (inactive ones are still held by the Objects). 
     PositionArray positions;
     RadiusArray radii;
     EllipticityArray ellipticities;
+    //@}
     
     int const getFilterCount() const { return _filterCount; }
     int const getCoefficientCount() const { return _coefficientCount; }

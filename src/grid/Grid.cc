@@ -63,11 +63,13 @@ public:
             std::pair<DPtr,GPtr> item(dp, GPtr());
             std::pair<typename Map::iterator,bool> r = unique.insert(item);
             if (r.second) {
-                r.first->second.reset(new grid::ParameterComponent<E>(*dp, output._parameterCount));
-                if (r.first->second->isActive()) {
+                if (dp->isActive()) {
+                    r.first->second.reset(new grid::ParameterComponent<E>(*dp, output._parameterCount));
                     output._parameterCount += grid::ParameterComponent<E>::SIZE;
+                    container._ptrVec.push_back(r.first->second);
+                } else {
+                    r.first->second.reset(new grid::ParameterComponent<E>(*dp, -1));
                 }
-                container._ptrVec.push_back(r.first->second);
             }
             GPtr const * gp;
             gi->getComponentImpl(gp);
@@ -274,19 +276,13 @@ Grid::~Grid() { Initializer::destroyGrid(*this); }
 
 void Grid::writeParameters(double * paramIter) const {
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        if (i->isActive()) {
-            detail::ParameterComponentTraits<POSITION>::writeParameters(paramIter, i->getValue());
-        }
+        detail::ParameterComponentTraits<POSITION>::writeParameters(paramIter, i->getValue());
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        if (i->isActive()) {
-            detail::ParameterComponentTraits<RADIUS>::writeParameters(paramIter, i->getValue());
-        }
+        detail::ParameterComponentTraits<RADIUS>::writeParameters(paramIter, i->getValue());
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        if (i->isActive()) {
-            detail::ParameterComponentTraits<ELLIPTICITY>::writeParameters(paramIter, i->getValue());
-        }
+        detail::ParameterComponentTraits<ELLIPTICITY>::writeParameters(paramIter, i->getValue());
     }
 }
 
@@ -296,6 +292,33 @@ double Grid::sumLogWeights() const {
         r += ndarray::viewAsEigen(i->getWeights()).cwise().log().sum();
     }
     return r;
+}
+
+bool Grid::checkBounds(double const * paramIter) const {
+    for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
+        if (!i->checkBounds(paramIter)) return false;
+    }
+    for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
+        if (!i->checkBounds(paramIter)) return false;
+    }
+    for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
+        if (!i->checkBounds(paramIter)) return false;
+    }
+    return true;
+}
+
+double Grid::clipToBounds(double * paramIter) const {
+    double value = 0.0;
+    for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
+        value += i->clipToBounds(paramIter);
+    }
+    for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
+        value += i->clipToBounds(paramIter);
+    }
+    for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
+        value += i->clipToBounds(paramIter);
+    }
+    return value;
 }
 
 }}}} // namespace lsst::meas::multifit::grid

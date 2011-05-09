@@ -32,7 +32,8 @@ std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & compo
     static char const * names[] = { "Position", "Radius", "Ellipticity" };
     os << names[E] << " (@" << (&component) << ") = ";
     detail::ParameterComponentTraits<E>::printValue(os, component.getValue());
-    return os << (component.isActive() ? " (active)" : " (inactive)");
+    return os << (component.isActive() ? " (active) " : " (inactive) ") 
+              << "(" << component.getBounds() << ")";
 }
 
 template std::ostream & operator<<(std::ostream &, ParameterComponent<POSITION> const &);
