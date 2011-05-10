@@ -55,6 +55,12 @@ public:
     int getParameterSize() const { return _parameterSize; }
 
     /**
+     *  @brief Clip the given parameter vector to the valid range and return a penalty
+     *         that scales with how far the parameter vector was beyond the constraints.
+     */
+    virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
+
+    /**
      *  @brief Return the sum of the log of the variance of all data points.
      *
      *  More precisely, if the variance for pixel @f$i@f$ is @f$\sigma_i^2@f$, this function

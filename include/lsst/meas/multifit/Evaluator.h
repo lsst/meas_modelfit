@@ -41,6 +41,10 @@ public:
         return boost::make_shared<Evaluator>(grid);
     }
 
+    virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const {
+        return _grid->clipToBounds(parameters.getData());
+    }
+
 protected:
 
     virtual bool _evaluateModelMatrix(

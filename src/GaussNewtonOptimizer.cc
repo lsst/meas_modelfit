@@ -17,6 +17,8 @@ public:
     ) : _nCoeff(evaluation.getEvaluator()->getCoefficientSize()),
         _nParam(evaluation.getEvaluator()->getParameterSize()),
         _nUnified(_nParam + _nCoeff),
+        _penalty(0.0), 
+        _parameters(ndarray::allocate(_nUnified)),
         _evaluation(evaluation)
     {
         useHybrid();
@@ -32,16 +34,20 @@ public:
     virtual void calculateF(
         Eigen::VectorXd const & x, 
         Eigen::VectorXd & f
-    ) const {    
-        lsst::ndarray::Array<double const, 1, 1> u = lsst::ndarray::static_dimension_cast<1>(
-            lsst::ndarray::Array<double const, 1, 0>(lsst::ndarray::viewVectorAsArray(x))
-        );
+    ) const {
+        ndarray::viewAsEigen(_parameters) = x;
+        _penalty = _evaluation.getEvaluator()->clipToBounds(_parameters);
+
         _evaluation.update(
             u[lsst::ndarray::view(0, _nParam)], 
             u[lsst::ndarray::view(_nParam, _nUnified)]
         );
 
         f << lsst::ndarray::viewAsEigen(_evaluation.getResiduals());
+
+        if (_penalty > 0.0) {
+            f *= (1.0 + _penalty);
+        }
     }
 
     virtual void calculateJ(
@@ -51,12 +57,17 @@ public:
     ) const {
         j << lsst::ndarray::viewAsEigen(_evaluation.getResidualsJacobian()),
              lsst::ndarray::viewAsEigen(_evaluation.getModelMatrix());
+        if (_penalty > 0.0) {
+            j *= 1.0 + _penalty;
+        }
     }
 
 private:
     int _nCoeff;
     int _nParam;
     int _nUnified;
+    double _penalty;
+    lsst::ndarray::Array<double,1,1> _parameters;
     lsst::meas::multifit::Evaluation & _evaluation;
 };
 
