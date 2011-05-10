@@ -18,7 +18,7 @@ public:
         _nParam(evaluation.getEvaluator()->getParameterSize()),
         _nUnified(_nParam + _nCoeff),
         _penalty(0.0), 
-        _parameters(ndarray::allocate(_nUnified)),
+        _parameters(lsst::ndarray::allocate(_nUnified)),
         _evaluation(evaluation)
     {
         useHybrid();
@@ -35,12 +35,12 @@ public:
         Eigen::VectorXd const & x, 
         Eigen::VectorXd & f
     ) const {
-        ndarray::viewAsEigen(_parameters) = x;
+        lsst::ndarray::viewAsEigen(_parameters) = x;
         _penalty = _evaluation.getEvaluator()->clipToBounds(_parameters);
 
         _evaluation.update(
-            u[lsst::ndarray::view(0, _nParam)], 
-            u[lsst::ndarray::view(_nParam, _nUnified)]
+            _parameters[lsst::ndarray::view(0, _nParam)], 
+            _parameters[lsst::ndarray::view(_nParam, _nUnified)]
         );
 
         f << lsst::ndarray::viewAsEigen(_evaluation.getResiduals());
@@ -66,7 +66,7 @@ private:
     int _nCoeff;
     int _nParam;
     int _nUnified;
-    double _penalty;
+    mutable double _penalty;
     lsst::ndarray::Array<double,1,1> _parameters;
     lsst::meas::multifit::Evaluation & _evaluation;
 };

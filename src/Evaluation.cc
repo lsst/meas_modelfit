@@ -1,6 +1,8 @@
 #include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/ndarray/eigen.h"
 #include <Eigen/Cholesky>
+#include <Eigen/Array>
+#include <Eigen/QR>
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -199,7 +201,85 @@ private:
     Eigen::VectorXd _rhs;
 };
 
-Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator) : 
+class Evaluation::EigenSolver : public Evaluation::LinearSolver {
+public:
+    typedef Eigen::SelfAdjointEigenSolver<MatrixRM> Factorization;
+
+    virtual void solve(
+        ndarray::EigenView<double const,2,2> const & modelMatrix,
+        ndarray::EigenView<double const,1,1> const & data,
+        ndarray::EigenView<double,1,1> coefficients,
+        ndarray::Array<double,2,2> & fisherMatrix,
+        ndarray::Array<double,2,2> & fisherFactor,
+        int & status
+    ) {
+        if (!Bit<COEFFICIENT_FISHER_MATRIX>::test(status)) {
+            if (fisherMatrix.getData() == 0)
+                fisherMatrix = ndarray::allocate(modelMatrix.cols(), modelMatrix.cols());
+            computeFisherMatrix(modelMatrix, ndarray::viewAsEigen(fisherMatrix), fisherFactor, status);
+            Bit<COEFFICIENT_FISHER_MATRIX>::set(status);
+        }
+        _rhs = (modelMatrix.transpose() * data).lazy();
+        _rhs += _priorVector;
+        _factorization.compute(ndarray::viewAsEigen(fisherMatrix), true);
+        Eigen::VectorXd values = _factorization.eigenvalues();
+        double rcond = values.maxCoeff() * std::sqrt(std::numeric_limits<double>::epsilon());
+        values = (values.cwise() < rcond).select(
+            Eigen::VectorXd::Zero(values.size()), values.cwise().inverse()
+        );
+        coefficients = _factorization.eigenvalues() * values.asDiagonal()
+            * _factorization.eigenvalues().transpose() * _rhs;        
+    }
+
+    virtual void computeFisherFactor(
+        ndarray::EigenView<double const,2,2> const & modelMatrix,
+        ndarray::EigenView<double,2,2> fisherFactor,
+        ndarray::Array<double,2,2> & fisherMatrix,
+        int & status
+    ) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Robust solvers do not compute the Fisher matrix Cholesky factorization."
+        );
+    }
+
+    virtual void computeFisherMatrix(
+        ndarray::EigenView<double const,2,2> const & modelMatrix,
+        ndarray::EigenView<double,2,2> fisherMatrix,
+        ndarray::Array<double,2,2> & fisherFactor,
+        int & status
+    ) {
+        fisherMatrix.part<Eigen::SelfAdjoint>() = modelMatrix.transpose() * modelMatrix;
+        fisherMatrix.part<Eigen::SelfAdjoint>() += _priorMatrix.part<Eigen::SelfAdjoint>();
+    }
+
+    virtual void setPrior(Eigen::VectorXd const & mu, Eigen::MatrixXd const & sigma) {
+        _factorization.compute(sigma);
+        _priorMatrix = _factorization.eigenvectors() 
+            * _factorization.eigenvalues().cwise().inverse().asDiagonal()
+            * _factorization.eigenvectors().transpose();
+        _priorVector = _priorMatrix * mu;
+    }
+
+    virtual void setPrior(Eigen::VectorXd const & mu) {
+        _priorVector = _priorMatrix * mu;
+    }
+
+    explicit EigenSolver(int size) : 
+        _priorMatrix(MatrixRM::Zero(size, size)),
+        _priorVector(Eigen::VectorXd::Zero(size)),
+        _rhs(Eigen::VectorXd::Zero(size))
+    {}
+
+private:
+
+    Factorization _factorization;
+    MatrixRM _priorMatrix;
+    Eigen::VectorXd _priorVector;
+    Eigen::VectorXd _rhs;
+};
+
+Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator, bool robustSolver) : 
     _status(0), _evaluator(evaluator), _parameters(ndarray::allocate(_evaluator->getParameterSize()))
 {
     _evaluator->writeInitialParameters(_parameters);
@@ -207,7 +287,7 @@ Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator) :
 }
 
 Evaluation::Evaluation(
-    BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior
+    BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior, bool robustSolver
 ) : 
     _status(0), _evaluator(evaluator), _prior(prior.clone()),
     _parameters(ndarray::allocate(_evaluator->getParameterSize()))
@@ -218,7 +298,8 @@ Evaluation::Evaluation(
 
 Evaluation::Evaluation(
     BaseEvaluator::Ptr const & evaluator,
-    lsst::ndarray::Array<double const,1,1> const & parameters
+    lsst::ndarray::Array<double const,1,1> const & parameters,
+    bool robustSolver
 ) : 
     _status(0), _evaluator(evaluator), _parameters(ndarray::copy(parameters))
 {
@@ -228,7 +309,8 @@ Evaluation::Evaluation(
 Evaluation::Evaluation(
     BaseEvaluator::Ptr const & evaluator,
     lsst::ndarray::Array<double const,1,1> const & parameters,
-    BaseDistribution const & prior
+    BaseDistribution const & prior,
+    bool robustSolver
 ) : 
     _status(0), _evaluator(evaluator), _prior(prior.clone()),
     _parameters(ndarray::copy(parameters))
@@ -238,7 +320,8 @@ Evaluation::Evaluation(
 
 Evaluation::Evaluation(
     BaseEvaluator::Ptr const & evaluator,
-    Eigen::VectorXd const & parameters
+    Eigen::VectorXd const & parameters,
+    bool robustSolver
 ) : 
     _status(0), _evaluator(evaluator), _parameters(ndarray::allocate(parameters.size()))
 {
@@ -249,7 +332,8 @@ Evaluation::Evaluation(
 Evaluation::Evaluation(
     BaseEvaluator::Ptr const & evaluator,
     Eigen::VectorXd const & parameters,
-    BaseDistribution const & prior
+    BaseDistribution const & prior,
+    bool robustSolver
 ) : 
     _status(0), _evaluator(evaluator), _prior(prior.clone()),
     _parameters(ndarray::allocate(parameters.size()))

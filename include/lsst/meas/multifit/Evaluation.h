@@ -67,39 +67,44 @@ public:
 
     /// @brief Construct with no prior and use the evaluator's initial parameters.
     Evaluation(
-        BaseEvaluator::Ptr const & evaluator
+        BaseEvaluator::Ptr const & evaluator, bool robustSolver=false
     );
 
     /// @brief Construct with a prior and use the evaluator's initial parameters.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        BaseDistribution const & prior
+        BaseDistribution const & prior,
+        bool robustSolver=false
     );
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        lsst::ndarray::Array<double const,1,1> const & parameters
+        lsst::ndarray::Array<double const,1,1> const & parameters,
+        bool robustSolver=false
     );
 
     /// @brief Construct with a prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
         lsst::ndarray::Array<double const,1,1> const & parameters,
-        BaseDistribution const & prior
+        BaseDistribution const & prior,
+        bool robustSolver=false
     );
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        Eigen::VectorXd const & parameters
+        Eigen::VectorXd const & parameters,
+        bool robustSolver=false
     );
 
     /// @brief Construct with a prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
         Eigen::VectorXd const & parameters,
-        BaseDistribution const & prior
+        BaseDistribution const & prior,
+        bool robustSolver=false
     );
 
     /// @brief Update the parameters @f$\phi@f$.
@@ -216,8 +221,7 @@ private:
 #ifndef SWIG
     class LinearSolver;
     class CholeskySolver;
-    // TODO: a QR solver for when we don't have a prior on the coefficients.  
-    // But Eigen 2's QR solver doesn't have what we need.
+    class EigenSolver;
 #endif
 
     void ensureModelMatrix() const;

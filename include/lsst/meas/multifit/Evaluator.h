@@ -47,12 +47,12 @@ public:
 
 protected:
 
-    virtual bool _evaluateModelMatrix(
+    virtual void _evaluateModelMatrix(
         ndarray::Array<double,2,2> const & matrix,
         ndarray::Array<double const,1,1> const & param
     ) const;
 
-    virtual bool _evaluateModelMatrixDerivative(
+    virtual void _evaluateModelMatrixDerivative(
         ndarray::Array<double,3,3> const & modelMatrixDerivative,
         ndarray::Array<double const,2,2> const & modelMatrix,
         ndarray::Array<double const,1,1> const & param

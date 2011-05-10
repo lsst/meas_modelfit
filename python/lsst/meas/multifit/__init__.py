@@ -35,8 +35,6 @@ from . import definition
 import os
 import eups
 
-from . import sampling
-
 Position = lsst.afw.geom.Point2D
 Ellipticity = lsst.afw.geom.ellipses.ConformalShear
 Radius = lsst.afw.geom.ellipses.TraceRadius

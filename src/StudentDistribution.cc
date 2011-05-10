@@ -2,6 +2,7 @@
 #include <Eigen/Cholesky>
 #include <Eigen/Array>
 #include "lsst/ndarray/eigen.h"
+#include "boost/math/special_functions/gamma.hpp"
 
 namespace lsst { namespace meas { namespace multifit {
 

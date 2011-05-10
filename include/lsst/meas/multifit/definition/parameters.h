@@ -37,7 +37,7 @@ template <ParameterType E> struct ParameterComponentTraits;
 struct CircleConstraint {
     double max;
 
-    explicit CircleConstraint(double max_=std::numeric_limits<double>::infinity()) : max(max_) {}
+    explicit CircleConstraint(double max_) : max(max_) {}
 
     friend inline std::ostream & operator<<(std::ostream & os, CircleConstraint const & k) {
         return os << "||.|| <  " << k.max;
@@ -122,6 +122,8 @@ struct ParameterComponentTraits<POSITION> {
         paramIter[1] = 0.0;
     }
     static void printValue(std::ostream & os, Value const & value) { os << value; }
+
+    static Bounds getDefaultBounds() { return Bounds(5.0); }
 };
 
 template <>
@@ -139,6 +141,9 @@ struct ParameterComponentTraits<RADIUS> {
     }
     static void printValue(std::ostream & os, Value const & value) { os << (double)value; }
 
+    static Bounds getDefaultBounds() {
+        return Bounds(std::numeric_limits<double>::epsilon(), std::numeric_limits<double>::infinity());
+    }
 };
 
 template <>
@@ -158,6 +163,9 @@ struct ParameterComponentTraits<ELLIPTICITY> {
     }
     static void printValue(std::ostream & os, Value const & value) { os << value.getComplex(); }
 
+    static Bounds getDefaultBounds() {
+        return Bounds(-std::log(std::numeric_limits<double>::epsilon()));
+    }
 };
 
 template <ParameterType E>
@@ -258,7 +266,11 @@ public:
      *  Constructors are private to ensure we only get shared_ptrs to these things.
      */
     static Ptr make(Value const & value, bool active=true) {
-        return Ptr(new ParameterComponent(value, Bounds(), active));
+        return Ptr(
+            new ParameterComponent(
+                value, detail::ParameterComponentTraits<E>::getDefaultBounds(), active
+            )
+        );
     }
 
     /**

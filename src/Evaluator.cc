@@ -2,7 +2,7 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-bool Evaluator::_evaluateModelMatrix(
+void Evaluator::_evaluateModelMatrix(
     ndarray::Array<double,2,2> const & matrix,
     ndarray::Array<double const,1,1> const & param
 ) const {
@@ -58,11 +58,10 @@ bool Evaluator::_evaluateModelMatrix(
             }            
         }
     }
-    return true;
 }
 
 
-bool Evaluator::_evaluateModelMatrixDerivative(
+void Evaluator::_evaluateModelMatrixDerivative(
     ndarray::Array<double,3,3> const & derivative,
     ndarray::Array<double const,2,2> const & modelMatrix,
     ndarray::Array<double const,1,1> const & param
@@ -159,7 +158,6 @@ bool Evaluator::_evaluateModelMatrixDerivative(
             }
         }
     }
-    return true;
 }
 
 Evaluator::Evaluator(Grid::Ptr const & grid) :
