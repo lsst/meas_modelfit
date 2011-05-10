@@ -39,23 +39,26 @@ public:
 
     Ptr clone() const { return boost::static_pointer_cast<GaussianDistribution>(_clone()); }
 
+#ifndef SWIG
     virtual void draw(Random & engine, double * parameters) const;
-
     virtual double evaluate(double const * parameters) const;
+#endif
 
     virtual int getNestedDimensionality() const;
-
     virtual DependencyFlags getNestedDependency() const { return (_nestedConditional) ? MU_DEPENDENT : 0; }
 
+#ifndef SWIG
     Ptr evaluateNested(double const * parameters) const {
         return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters));
-    }
-    Ptr evaluateNested(lsst::ndarray::Array<double,1,1> const & parameters) const {
-        return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters.getData()));
     }
     Ptr evaluateNested(Eigen::VectorXd const & parameters) const {
         return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters.data()));
     }
+#endif
+    Ptr evaluateNested(lsst::ndarray::Array<double,1,1> const & parameters) const {
+        return boost::static_pointer_cast<GaussianDistribution>(_evaluateNested(parameters.getData()));
+    }
+
 
     /// @brief Convert a unified P(x,y) distribution into a nested P(x)P(y|x) distribution in-place.
     void convertUnifiedToNested(int nx);

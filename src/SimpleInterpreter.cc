@@ -54,4 +54,15 @@ void NestedSimpleInterpreter::ensureCompatibility() {
     }
 }
 
+void UnifiedSimpleInterpreter::ensureCompatibility() {
+    int nUnified = _grid->getParameterCount() + _grid->getCoefficientCount();
+    if (nUnified != _target->getDimensionality()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            (boost::format("Grid unified parameter size (%d) does not match distribution dimensionality (%d).")
+             % nUnified % _target->getDimensionality()).str()
+        );
+    }
+}
+
 }}} // namespace lsst::meas::multifit

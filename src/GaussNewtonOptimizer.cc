@@ -77,7 +77,7 @@ namespace meas {
 namespace multifit {
 
 
-GaussianDistribution GaussNewtonOptimizer::solve(
+GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     BaseEvaluator::Ptr const & evaluator,
     double const fTol, double const gTol, 
     double const minStep, 
@@ -95,16 +95,21 @@ GaussianDistribution GaussNewtonOptimizer::solve(
                ndarray::viewAsEigen(evaluation.getCoefficients());
 
     ::Solver solver(evaluation, fTol, gTol, minStep, maxIter, tau);     
-    _solverSuccess = solver.solve(unified, residual);
+    bool solverSuccess = solver.solve(unified, residual);
 
-    if(!_solverSuccess && retryWithSvd) {
+    if(!solverSuccess && retryWithSvd) {
         solver.useSVD();
-        _solverSuccess = solver.solve(unified, residual);
+        solverSuccess = solver.solve(unified, residual);
     }
    
+    if(!solverSuccess)
+        return GaussianDistribution::Ptr();
+
     Eigen::MatrixXd covariance;
     solver.getCovariance(covariance);
-    return GaussianDistribution(unified, covariance);
+    return GaussianDistribution::Ptr(
+        new GaussianDistribution(unified, covariance)
+    );
 }
 
 }}}

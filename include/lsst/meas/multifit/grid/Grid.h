@@ -54,7 +54,12 @@ public:
 
     Definition makeDefinition(double const * paramIter) const;
 
+#ifndef SWIG
     void writeParameters(double * paramIter) const;
+#endif
+    void writeParameters(ndarray::Array<double, 1, 1> const & params) const {
+        writeParameters(params.getData());
+    }
 
     double sumLogWeights() const;
 
@@ -74,6 +79,7 @@ public:
 
     ~Grid();
 
+#ifndef SWIG
     ObjectArray objects;
     FrameArray frames;
     SourceArray sources;
@@ -84,7 +90,8 @@ public:
     RadiusArray radii;
     EllipticityArray ellipticities;
     //@}
-    
+#endif
+
     int const getFilterCount() const { return _filterCount; }
     int const getCoefficientCount() const { return _coefficientCount; }
     int const getPixelCount() const { return _pixelCount; }

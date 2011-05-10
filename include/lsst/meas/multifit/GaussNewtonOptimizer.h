@@ -48,11 +48,6 @@ public:
     ndarray::Array<const double, 1, 1> getParameters() const;
     ndarray::Array<const double, 1, 1> getCoefficients() const;
     
-
-private:
-
-    bool _solverSuccess;
-
 };
 
 }}} //end namespace lsst::meas::multifit

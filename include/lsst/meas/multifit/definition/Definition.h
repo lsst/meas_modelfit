@@ -31,7 +31,7 @@
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
 class Definition {
-public:
+public:    
     typedef definition::Frame Frame;
     typedef definition::Object Object;
 

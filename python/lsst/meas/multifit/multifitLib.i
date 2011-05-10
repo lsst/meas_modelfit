@@ -43,7 +43,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/Evaluator.h"
 #include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/meas/multifit/ShapeletModelBasis.h"
-#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"    
 #define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
 #include "numpy/arrayobject.h"
 #include "lsst/ndarray/python.h"
@@ -177,3 +177,6 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %include "lsst/meas/multifit/Evaluator.h"
 
 %include "definition.i"
+%include "grid.i"
+%include "distribution.i"
+

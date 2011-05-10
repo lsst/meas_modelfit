@@ -25,6 +25,7 @@
 #define LSST_MEAS_MULTIFIT_Evaluator
 
 #include "lsst/base.h"
+#include "lsst/meas/multifit/definition/Definition.h"
 #include "lsst/meas/multifit/grid/Grid.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 
@@ -39,6 +40,9 @@ public:
     
     static Ptr make(Grid::Ptr const & grid) {
         return boost::make_shared<Evaluator>(grid);
+    }
+    static Ptr make(Definition const & definition) {
+        return boost::make_shared<Evaluator>(Grid::make(definition));
     }
 
     virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const {

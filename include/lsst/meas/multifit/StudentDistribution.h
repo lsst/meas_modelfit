@@ -51,9 +51,10 @@ public:
 
     Ptr clone() const { return boost::static_pointer_cast<StudentDistribution>(_clone()); }
 
+#ifndef SWIG
     virtual void draw(Random & engine, double * parameters) const;
-
     virtual double evaluate(double const * parameters) const;
+#endif
 
     /// @brief Construct a Standard Normal StudentDistribution with mu=0 and sigma=I.
     explicit StudentDistribution(int dimensionality, int dof);

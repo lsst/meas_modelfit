@@ -52,23 +52,27 @@ public:
 
     ///@{
     /// @brief Draw a parameter vector from the distribution.
+#ifndef SWIG    
     virtual void draw(Random & engine, double * parameters) const = 0;
-    void draw(Random & engine, lsst::ndarray::Array<double,1,1> const & parameters) const {
-        draw(engine, parameters.begin());
-    }
     void draw(Random & engine, Eigen::VectorXd & parameters) const {
         draw(engine, parameters.data());
+    }
+#endif
+    void draw(Random & engine, lsst::ndarray::Array<double,1,1> const & parameters) const {
+        draw(engine, parameters.begin());
     }
     ///@}
 
     ///@{
     ///  @brief Evaluate the distribution at the given parameters.
+#ifndef SWIG
     virtual double evaluate(double const * parameters) const = 0;
-    double evaluate(lsst::ndarray::Array<double const,1,1> const & parameters) const {
-        return evaluate(parameters.begin());
-    }
     double evaluate(Eigen::VectorXd const & parameters) const {
         return evaluate(parameters.data());
+    }
+#endif
+    double evaluate(lsst::ndarray::Array<double const,1,1> const & parameters) const {
+        return evaluate(parameters.begin());
     }
     ///@}
 
@@ -98,15 +102,18 @@ public:
      *  return the appropriate nested distribution subclass, but still make use of the virtual
      *  protected implementation.
      */
+#ifndef SWIG
     Ptr evaluateNested(double const * parameters) const {
         return _evaluateNested(parameters);
-    }
-    Ptr evaluateNested(lsst::ndarray::Array<double,1,1> const & parameters) const {
-        return _evaluateNested(parameters.getData());
     }
     Ptr evaluateNested(Eigen::VectorXd const & parameters) const {
         return _evaluateNested(parameters.data());
     }
+#endif
+    Ptr evaluateNested(lsst::ndarray::Array<double const,1,1> const & parameters) const {
+        return _evaluateNested(parameters.getData());
+    }
+
     ///@}
 
     ///@{
@@ -118,15 +125,18 @@ public:
      *
      *  The default implementation throws an exception.
      */
+#ifndef SWIG
     void updateNested(BaseDistribution & nested, double const * parameters) const {
         _updateNested(nested, parameters);
-    }
-    void updateNested(BaseDistribution & nested, lsst::ndarray::Array<double,1,1> const & parameters) const {
-        _updateNested(nested, parameters.getData());
     }
     void updateNested(BaseDistribution & nested, Eigen::VectorXd const & parameters) const {
         _updateNested(nested, parameters.data());
     }
+#endif
+    void updateNested(BaseDistribution & nested, lsst::ndarray::Array<double const,1,1> const & parameters) const {
+        _updateNested(nested, parameters.getData());
+    }
+
     ///@}
 
     /// @brief Compute the mean of the distribution.

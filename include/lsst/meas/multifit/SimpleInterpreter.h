@@ -179,8 +179,48 @@ private:
     }
 
     void ensureCompatibility();
-
 };
+
+/**
+ *  @brief NestedInterpreter for SimpleDistribution.
+ */
+class UnifiedSimpleInterpreter : public SimpleInterpreter, public UnifiedInterpreter {
+public:
+
+    typedef boost::shared_ptr<UnifiedSimpleInterpreter> Ptr;
+    typedef boost::shared_ptr<UnifiedSimpleInterpreter const> ConstPtr;
+
+    /// @brief Construct a mutable interpreter.
+    static Ptr make(SimpleDistribution::Ptr const & target, Grid::Ptr const & grid) {
+        return Ptr(new UnifiedSimpleInterpreter(grid, target));
+    }
+
+    /// @brief Construct a const interpreter.
+    static ConstPtr make(SimpleDistribution::ConstPtr const & target, Grid::Ptr const & grid) {
+        return ConstPtr(new UnifiedSimpleInterpreter(grid, target));
+    }
+
+private:
+
+    /// @brief Construct from a multifit grid and mutable SimpleDistribution pointer.
+    UnifiedSimpleInterpreter(
+        Grid::Ptr const & grid,
+        SimpleDistribution::Ptr const & target
+    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target), UnifiedInterpreter(grid) {
+        ensureCompatibility();
+    }
+
+    /// @brief Construct from a multifit grid and const SimpleDistribution pointer.
+    UnifiedSimpleInterpreter(
+        Grid::Ptr const & grid,
+        SimpleDistribution::ConstPtr const & target
+    ) : BaseInterpreter(grid), SimpleInterpreter(grid, target), UnifiedInterpreter(grid) {
+        ensureCompatibility();
+    }
+
+    void ensureCompatibility();
+};
+
 
 }}} // namespace lsst::meas::multifit
 
