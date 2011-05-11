@@ -453,7 +453,7 @@ void Evaluation::ensureResidualsJacobian() const {
     }
     ndarray::EigenView<double,1,1> coeffVec(_coefficients);
     ndarray::EigenView<double,2,2> jac(_residualsJacobian);
-    for (int n = 0; n <= jac.cols(); ++n) {
+    for (int n = 0; n < jac.cols(); ++n) {
         jac.col(n) = ndarray::viewAsEigen(_modelMatrixDerivative[n]) * coeffVec;
     }
     Bit<RESIDUALS_JACOBIAN>::set(_status);

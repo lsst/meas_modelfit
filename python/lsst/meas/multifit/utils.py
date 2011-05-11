@@ -5,6 +5,7 @@ from . import multifitLib
 import numpy
 import os
 import eups
+import math
 
 def loadBasis(name):
     productDir = eups.productDir("meas_multifit")
@@ -25,8 +26,20 @@ def makeEllipse(src):
         src.getIyy(), 
         src.getIxy()
     )
+    axes = afwGeom.ellipses.Axes(quad)
+    maxR = 2*numpy.sqrt(src.getFootprint().getArea())
+
+    print axes.getA(), axes.getB()
+    if (axes.getA() == 0.):
+        axes.setA(1e-16)
+    if (axes.getB() == 0.):
+        axes.setB(1e-16)
+    if (axes.getA() > maxR or axes.getB() > maxR or \
+            numpy.isnan(axes.getA()) or numpy.isnan(axes.getB())):
+        raise RuntimeError("Initial Source moments are unreasonably large")
+
     point = makePoint(src)
-    return afwGeom.ellipses.Ellipse(quad, point)
+    return afwGeom.ellipses.Ellipse(axes, point)
 
 def makePoint(src):
     return afwGeom.Point2D(src.getXAstrom(), src.getYAstrom())
@@ -39,7 +52,7 @@ def makeBitMask(mask, maskPlaneNames):
     bitmask=0
     for name in maskPlaneNames:
         bitmask |= mask.getPlaneBitMask(name)    
-
+    return bitmask
 
 def fitSource(cutout, src, policy):
     optimizer = multifitLib.GaussNewtonOptimizer()
@@ -47,29 +60,63 @@ def fitSource(cutout, src, policy):
     bitmask = makeBitMask(cutout.getMaskedImage().getMask(), 
             policy.getArray("maskPlaneName"))
 
-    ellipse = makeEllipse(src)
-    fp = src.getFootprint()
-    psDef = multifitLib.Definition.make(
-           cutout, fp, ellipse.getCenter(), 
-           policy.get("isVariable"), 
-           policy.get("isPositionActive"), 
-           bitmask)
-    psEval = multifitLib.Evaluator(psDef)
-    psDistribution = optimizer.solve(psEval)
-    psInterpreter = multifitLib.SimpleUnifiedInterpreter.make(
-            psDistribution,
-            psEval.getGrid())
+    #ftol = policy.get("ftol")
+    #gtol = policy.get("gtol")
+    #minStep = policy.get("minStep")
+    #maxIter = policy.get("maxIter")
+    #maxIter = policy.get("tau")
+    #maxIter = policy.get("useSVD")
     
-    basis = multifitLib.loadBasis(policy.get("basisName"))
-    sgDef = multifitLib.Definition.make(
+    try:
+        ellipse = makeEllipse(src)
+        point = ellipse.getCenter()
+    except Exception, e:
+        print e
+        ellipse = None
+        point = makePoint(src)        
+
+
+    fp = src.getFootprint()
+
+    print cutout
+    print bitmask
+    print fp
+    print ellipse
+    print point
+
+    psDef = multifitLib.Definition.make(
+           cutout, fp, point, 
+           policy.getBool("isVariable"), 
+           policy.getBool("isPositionActive"), 
+           bitmask)
+    psEval = multifitLib.Evaluator.make(psDef)
+    psDistribution = optimizer.solve(psEval)
+
+    if not psDistribution:
+        psInterpreter = None
+    else:
+        psInterpreter = multifitLib.UnifiedSimpleInterpreter.make(\
+                psDistribution, psEval.getGrid())
+    
+    if not ellipse:
+        return (psInterpreter, None)
+
+    basis = loadBasis(policy.get("basisName"))
+    sgDef = multifitLib.Definition.make(\
             cutout, fp, basis, ellipse,
             policy.get("isEllipticityActive"),
             policy.get("isRadiusActive"),
             policy.get("isPositionActive"),
             bitmask)
-    sgEval = multifitLib.Evaluator(sgDef)
+    sgEval = multifitLib.Evaluator.make(sgDef)
     sgDistribution = optimizer.solve(sgEval)
-    sgInterpreter = multifitLib.SimpleUnifiedInterpreter.make(
+
+    if not sgDistribution:
+        sgInterpreter = None
+    else:
+        print sgEval.getParameterSize()
+        print sgEval.getCoefficientSize()
+        sgInterpreter = multifitLib.UnifiedSimpleInterpreter.make(
             sgDistribution,
             sgEval.getGrid())
 

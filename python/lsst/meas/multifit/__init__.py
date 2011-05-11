@@ -26,6 +26,7 @@ from .multifitLib import (
     Grid,
     Definition,
     Evaluator,
+    Evaluation,
     ModelBasis,
     ShapeletModelBasis,
     CompoundShapeletModelBasis,

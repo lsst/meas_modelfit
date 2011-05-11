@@ -41,10 +41,10 @@ template std::ostream & operator<<(std::ostream &, ParameterComponent<RADIUS> co
 template std::ostream & operator<<(std::ostream &, ParameterComponent<ELLIPTICITY> const &);
 
 Object Object::makeStar(
-    ID id, 
+    ID const id, 
     lsst::afw::geom::Point2D const & position, 
-    bool isVariable,
-    bool isPositionActive
+    bool const isVariable,
+    bool const isPositionActive
 ) {
     Object r(id);
     r.getPosition() = PositionComponent::make(position, isPositionActive);
@@ -53,12 +53,12 @@ Object Object::makeStar(
 }
 
 Object Object::makeGalaxy(
-    ID id,
+    ID const id,
     ModelBasis::Ptr const & basis,
     lsst::afw::geom::ellipses::Ellipse const & ellipse,
-    bool isEllipticityActive,
-    bool isRadiusActive,
-    bool isPositionActive
+    bool const isEllipticityActive,
+    bool const isRadiusActive,
+    bool const isPositionActive
 ) {
     Object r(id);
     EllipseCore core(ellipse.getCore());
@@ -83,7 +83,7 @@ Frame Frame::make(
     ID const id,
     lsst::afw::image::Exposure<PixelT> const & exposure,
     Footprint::Ptr const & fp,
-    typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask
+    lsst::afw::image::MaskPixel const bitmask
 ) {
     typedef Pixel Pixel;
     typedef lsst::afw::image::MaskedImage<PixelT> MaskedImage;
@@ -134,11 +134,11 @@ Frame Frame::make(
 
 template Frame Frame::make<float>(
     ID const, lsst::afw::image::Exposure<float> const &, Footprint::Ptr const &,
-    lsst::afw::image::MaskedImage<float>::Mask::Pixel
+    lsst::afw::image::MaskPixel const
 );
 template Frame Frame::make<double>(
     ID const, lsst::afw::image::Exposure<double> const &, Footprint::Ptr const &, 
-    lsst::afw::image::MaskedImage<double>::Mask::Pixel
+    lsst::afw::image::MaskPixel const
 );
 
 std::ostream & operator<<(std::ostream & os, Frame const & frame) {
@@ -158,9 +158,9 @@ Definition Definition::make(
     afw::image::Exposure<PixelT> const & exposure,
     Footprint::Ptr const & fp,
     afw::geom::Point2D const & position,
-    bool isVariable, 
-    bool isPositionActive,
-    typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask
+    bool const isVariable, 
+    bool const isPositionActive,
+    lsst::afw::image::MaskPixel const bitmask
 ) {    
     //make a point source definition   
     Definition psDefinition;
@@ -175,15 +175,15 @@ template Definition Definition::make<float>(
     lsst::afw::image::Exposure<float> const &,
     lsst::meas::multifit::Footprint::Ptr const &,
     afw::geom::Point2D const&,
-    bool, bool,
-    lsst::afw::image::MaskedImage<float>::Mask::Pixel
+    bool const, bool const,
+    lsst::afw::image::MaskPixel const
 );
 template Definition Definition::make<double>(
     lsst::afw::image::Exposure<double> const &,
     lsst::meas::multifit::Footprint::Ptr const &,
     afw::geom::Point2D const&,
-    bool, bool,
-    lsst::afw::image::MaskedImage<double>::Mask::Pixel
+    bool const, bool const,
+    lsst::afw::image::MaskPixel const
 );
 
 template <typename PixelT>
@@ -192,10 +192,10 @@ Definition Definition::make(
     Footprint::Ptr const & fp,
     ModelBasis::Ptr const & basis,
     afw::geom::ellipses::Ellipse const & ellipse,
-    bool isEllipticityActive,
-    bool isRadiusActive,
-    bool isPositionActive,
-    typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask
+    bool const isEllipticityActive,
+    bool const isRadiusActive,
+    bool const isPositionActive,
+    lsst::afw::image::MaskPixel const bitmask
 ) {
     //make a single-galaxy definition    
     Definition sgDefinition;
@@ -216,16 +216,16 @@ template Definition Definition::make<float>(
     lsst::meas::multifit::Footprint::Ptr const &,
     ModelBasis::Ptr const &,
     afw::geom::ellipses::Ellipse const &,
-    bool, bool, bool,
-    lsst::afw::image::MaskedImage<float>::Mask::Pixel
+    bool const, bool const, bool const,
+    lsst::afw::image::MaskPixel const
 );
 template Definition Definition::make<double>(
     lsst::afw::image::Exposure<double> const &,
     lsst::meas::multifit::Footprint::Ptr const &,
     ModelBasis::Ptr const &,
     afw::geom::ellipses::Ellipse const &,
-    bool, bool, bool,
-    lsst::afw::image::MaskedImage<float>::Mask::Pixel
+    bool const, bool const, bool const,
+    lsst::afw::image::MaskPixel const
 );
 
 }}}} // namespace lsst::meas::multifit::definition

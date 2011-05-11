@@ -10,10 +10,10 @@ def test():
     policy = Policy()
     policy.add("isVariable", False)
     policy.add("isPositionActive", False)
-    policy.add("isRadiusActive", False)
-    policy.add("isEllipticityActive", False)
+    policy.add("isRadiusActive", True)
+    policy.add("isEllipticityActive", True)
     policy.add("maskPlaneName", "BAD")
-
+    policy.add("basisName", "ed+15:4000")
 
     results = {}
     dsTypes = ["highPs", "lowPs", "highSg", "lowSg"]    
@@ -28,7 +28,7 @@ def test():
             cutout.setPsf(psf)
 
             result = mf.utils.fitSource(cutout, src, policy)
-            results[ds+i]=result
+            results[ds+"%i"%i]=result
 
 
 if __name__ == '__main__':

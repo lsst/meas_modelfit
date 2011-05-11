@@ -41,6 +41,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 #include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/meas/multifit/ShapeletModelBasis.h"
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"    
@@ -121,6 +122,8 @@ def version(HeadURL = r"$HeadURL$"):
 %declareNumPyConverters(lsst::ndarray::Array<double const, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<double, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<double, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<double const, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<double const, 3, 3>);
 
 %include "lsst/meas/multifit/constants.h"
 
@@ -175,6 +178,8 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
         lsst::meas::multifit::Evaluator);
 
 %include "lsst/meas/multifit/Evaluator.h"
+
+%include "lsst/meas/multifit/Evaluation.h"
 
 %include "definition.i"
 %include "grid.i"

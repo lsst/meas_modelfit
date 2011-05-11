@@ -87,12 +87,24 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
 ) {
     int nCoeff = evaluator->getCoefficientSize();
     int nParam = evaluator->getParameterSize();
+
     Eigen::VectorXd unified(nCoeff + nParam);
+    Eigen::MatrixXd covariance(nParam+nCoeff, nParam+nCoeff);
+    Evaluation evaluation(evaluator);
+    if (nParam == 0) {
+        unified << ndarray::viewAsEigen(evaluation.getCoefficients());
+        covariance << ndarray::viewAsEigen(evaluation.getCoefficientFisherMatrix()).inverse();
+        return GaussianDistribution::Ptr(
+            new GaussianDistribution(unified, covariance)
+        );
+    }
+
     Eigen::VectorXd residual(evaluator->getDataSize());
  
-    Evaluation evaluation(evaluator);
+
     unified << ndarray::viewAsEigen(evaluation.getParameters()),
-               ndarray::viewAsEigen(evaluation.getCoefficients());
+                ndarray::viewAsEigen(evaluation.getCoefficients());
+    
 
     ::Solver solver(evaluation, fTol, gTol, minStep, maxIter, tau);     
     bool solverSuccess = solver.solve(unified, residual);
@@ -105,7 +117,7 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     if(!solverSuccess)
         return GaussianDistribution::Ptr();
 
-    Eigen::MatrixXd covariance;
+    
     solver.getCovariance(covariance);
     return GaussianDistribution::Ptr(
         new GaussianDistribution(unified, covariance)
