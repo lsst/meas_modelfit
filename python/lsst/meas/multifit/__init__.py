@@ -23,13 +23,23 @@ import lsst.afw.geom.ellipses
 
 from .multifitLib import (
     BaseEvaluator,
+    Grid,
     Definition,
     Evaluator,
     ModelBasis,
     ShapeletModelBasis,
     CompoundShapeletModelBasis,
     CompoundShapeletBuilder,
-    )
+    BaseDistribution,
+    SimpleDistribution,
+    StudentDistribution,
+    GaussianDistribution,
+    BaseInterpreter,
+    UnifiedInterpreter,
+    NestedInterpreter,
+    SimpleInterpreter,
+    UnifiedSimpleInterpreter,
+    NestedSimpleInterpreter)
 from . import multifitLib
 from . import definition
 import os

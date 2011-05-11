@@ -38,12 +38,12 @@ SWIG_SHARED_PTR_DERIVED(NestedInterpreterPtr,
         lsst::meas::multifit::BaseInterpreter,
         lsst::meas::multifit::NestedInterpreter);
 
-SWIG_SHARED_PTR_DERIVED(SimpleInterpreterPtr
-        lsst::meas::multifit::BaseInterpreter
+SWIG_SHARED_PTR_DERIVED(SimpleInterpreterPtr,
+        lsst::meas::multifit::BaseInterpreter,
         lsst::meas::multifit::SimpleInterpreter);
 SWIG_SHARED_PTR_DERIVED(UnifiedSimpleInterpreterPtr, 
         lsst::meas::multifit::SimpleInterpreter,
-        lsst::meas::multifit::UnifiedInterpreter);
+        lsst::meas::multifit::UnifiedSimpleInterpreter);
 SWIG_SHARED_PTR_DERIVED(NestedSimpleInterpreterPtr, 
         lsst::meas::multifit::SimpleInterpreter,
         lsst::meas::multifit::NestedSimpleInterpreter);

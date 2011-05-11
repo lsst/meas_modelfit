@@ -35,7 +35,7 @@ class GaussNewtonOptimizer {
 public:
     GaussNewtonOptimizer(){}
 
-    GaussianDistribution solve(
+    GaussianDistribution::Ptr solve(
         BaseEvaluator::Ptr const & evaluator,
         double const fTol=1.e-8, double const gTol=1.e-8, 
         double const minStep=1.e-8, 
@@ -43,11 +43,6 @@ public:
         double const tau=1.e-3, 
         bool retryWithSvd=false
     );
-
-    
-    ndarray::Array<const double, 1, 1> getParameters() const;
-    ndarray::Array<const double, 1, 1> getCoefficients() const;
-    
 };
 
 }}} //end namespace lsst::meas::multifit

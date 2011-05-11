@@ -38,10 +38,10 @@ SWIG_SHARED_PTR_DERIVED(SimpleDistributionPtr,
         lsst::meas::multifit::BaseDistribution, 
         lsst::meas::multifit::SimpleDistribution);
 SWIG_SHARED_PTR_DERIVED(StudentDistributionPtr, 
-        lsst::meas::multifit::SimpleDistribution
+        lsst::meas::multifit::SimpleDistribution,
         lsst::meas::multifit::StudentDistribution);
 SWIG_SHARED_PTR_DERIVED(GaussianDistributionPtr, 
-        lsst::meas::multifit::SimpleDistribution
+        lsst::meas::multifit::SimpleDistribution,
         lsst::meas::multifit::GaussianDistribution);
 
 %include "lsst/meas/multifit/BaseDistribution.h"

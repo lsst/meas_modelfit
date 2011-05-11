@@ -274,6 +274,17 @@ Grid::Grid(Definition const & definition) :
 
 Grid::~Grid() { Initializer::destroyGrid(*this); }
 
+int const Grid::getFilterIndex(FilterId filterId) const {
+    FilterMap::const_iterator i = _filters.find(filterId);
+    if(i == _filters.end()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            (boost::format("Filter with ID %d not found.") % filterId).str()
+        );
+    }
+    return i->second;
+}
+
 void Grid::writeParameters(double * paramIter) const {
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
         detail::ParameterComponentTraits<POSITION>::writeParameters(paramIter, i->getValue());
