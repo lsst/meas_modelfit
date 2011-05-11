@@ -90,7 +90,11 @@ def fitSource(cutout, src, policy):
            policy.getBool("isPositionActive"), 
            bitmask)
     psEval = multifitLib.Evaluator.make(psDef)
-    psDistribution = optimizer.solve(psEval)
+
+    try:
+        psDistribution = optimizer.solve(psEval)
+    except:
+        psDistribution = None
 
     if not psDistribution:
         psInterpreter = None
@@ -109,7 +113,10 @@ def fitSource(cutout, src, policy):
             policy.get("isPositionActive"),
             bitmask)
     sgEval = multifitLib.Evaluator.make(sgDef)
-    sgDistribution = optimizer.solve(sgEval)
+    try:
+        sgDistribution = optimizer.solve(sgEval)
+    except:
+        sgDistribution = None
 
     if not sgDistribution:
         sgInterpreter = None

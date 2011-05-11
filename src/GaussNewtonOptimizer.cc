@@ -87,7 +87,13 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
 ) {
     int nCoeff = evaluator->getCoefficientSize();
     int nParam = evaluator->getParameterSize();
-
+    
+    if (nCoeff + nParam > evaluator->getDataSize()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "Have fewer pixels than parameters. System is underdetermined"
+        );
+    }
     Eigen::VectorXd unified(nCoeff + nParam);
     Eigen::MatrixXd covariance(nParam+nCoeff, nParam+nCoeff);
     Evaluation evaluation(evaluator);
