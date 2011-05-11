@@ -3,6 +3,7 @@
 
 setupRequired(afw >= 4.3.2.0)
 setupRequired(meas_algorithms >= 4.3.1.0)
+setupOptional(meas_multifitData)
 
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
 envPrepend(DYLD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)

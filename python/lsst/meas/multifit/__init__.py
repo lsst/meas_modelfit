@@ -39,9 +39,12 @@ from .multifitLib import (
     NestedInterpreter,
     SimpleInterpreter,
     UnifiedSimpleInterpreter,
-    NestedSimpleInterpreter)
+    NestedSimpleInterpreter,
+    GaussNewtonOptimizer)
 from . import multifitLib
 from . import definition
+from . import utils
+
 import os
 import eups
 
@@ -51,10 +54,6 @@ Radius = lsst.afw.geom.ellipses.TraceRadius
 EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
 CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
 CompoundShapeletModelBasis.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
-
-def loadBasis(name):
-    path = os.path.join(eups.productDir("meas_multifit"), "data", "%s.boost" % name)
-    return CompoundShapeletModelBasis.load(path)
 
 del multifitLib
 

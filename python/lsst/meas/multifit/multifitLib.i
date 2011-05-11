@@ -181,3 +181,8 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %include "distribution.i"
 %include "interpreter.i"
 
+%{ 
+#include "lsst/meas/multifit/GaussNewtonOptimizer.h"
+%}
+
+%include "lsst/meas/multifit/GaussNewtonOptimizer.h"
