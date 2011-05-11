@@ -56,6 +56,9 @@ public:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
+    /// @brief Evaluate the integral of each basis function (with unit circle parameters).
+    void integrate(lsst::ndarray::Array<Pixel,1,1> const & vector) const;
+
     virtual ~ModelBasis() {}
 
 protected:
@@ -63,6 +66,8 @@ protected:
     explicit ModelBasis(int size) : _size(size) {}
 
     ModelBasis(ModelBasis const & other) : _size(other._size) {}
+
+    virtual void _integrate(lsst::ndarray::Array<Pixel,1,1> const & vector) const = 0;
 
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,

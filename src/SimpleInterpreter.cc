@@ -1,4 +1,5 @@
 #include "lsst/meas/multifit/SimpleInterpreter.h"
+#include "lsst/ndarray/eigen.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -44,6 +45,20 @@ void SimpleInterpreter::insertEllipseSigma(ID id, Eigen::Matrix5d const & sigma)
     obj.insertEllipseMatrix(getSigmaRef(), sigma);
 }
 
+double NestedSimpleInterpreter::computeFluxMean(ID object, ID frame) const {
+    throw LSST_EXCEPT(
+        lsst::pex::exceptions::LogicErrorException,
+        "Flux calculations not supported by NestedInterpreters."
+    );
+}
+
+double NestedSimpleInterpreter::computeFluxVariance(ID object, ID frame) const {
+    throw LSST_EXCEPT(
+        lsst::pex::exceptions::LogicErrorException,
+        "Flux calculations not supported by NestedInterpreters."
+    );
+}
+
 void NestedSimpleInterpreter::ensureCompatibility() {
     if (_grid->getParameterCount() != _target->getDimensionality()) {
         throw LSST_EXCEPT(
@@ -52,6 +67,52 @@ void NestedSimpleInterpreter::ensureCompatibility() {
              % _grid->getParameterCount() % _target->getDimensionality()).str()
         );
     }
+}
+
+double UnifiedSimpleInterpreter::computeFluxMean(ID objectId, ID frameId) const {
+    grid::Object const & object = grid::find(_grid->objects, objectId);
+    grid::Frame const & frame = grid::find(_grid->frames, frameId);
+    grid::Source const & source = object.sources[frame.getFrameIndex()];
+    assert(&object == &source.object);
+    assert(&frame == &source.frame);
+    if (object.getBasis()) {
+        Eigen::VectorXd coeff = getMuCRef().segment(
+            _grid->getParameterCount() + source.getCoefficientOffset(),
+            source.getCoefficientCount()
+        );
+        Ellipse ellipse(object.makeEllipse(getMuCRef().data()));
+        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
+        object.getBasis()->integrate(integration);
+        return ellipse.getCore().getArea() * ndarray::viewAsEigen(integration).dot(coeff) / M_PI;
+    }
+    return getMuCRef()[_grid->getParameterCount() + source.getCoefficientOffset()];
+}
+
+double UnifiedSimpleInterpreter::computeFluxVariance(ID objectId, ID frameId) const {
+    grid::Object const & object = grid::find(_grid->objects, objectId);
+    grid::Frame const & frame = grid::find(_grid->frames, frameId);
+    grid::Source const & source = object.sources[frame.getFrameIndex()];
+    assert(&object == &source.object);
+    assert(&frame == &source.frame);
+    if (object.getBasis()) {
+        Eigen::VectorXd sigma = getSigmaCRef().block(
+            _grid->getParameterCount() + source.getCoefficientOffset(),
+            _grid->getParameterCount() + source.getCoefficientOffset(),
+            source.getCoefficientCount(),
+            source.getCoefficientCount()
+        );
+        Ellipse ellipse(object.makeEllipse(getMuCRef().data()));
+        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
+        object.getBasis()->integrate(integration);
+        // TODO: factor in ellipse covariance
+        double result = ellipse.getCore().getArea() / M_PI; result *= result;
+        result *= ndarray::viewAsEigen(integration).dot(sigma * ndarray::viewAsEigen(integration));
+        return result;
+    }
+    return getSigmaCRef()(
+        _grid->getParameterCount() + source.getCoefficientOffset(),
+        _grid->getParameterCount() + source.getCoefficientOffset()
+    );
 }
 
 void UnifiedSimpleInterpreter::ensureCompatibility() {

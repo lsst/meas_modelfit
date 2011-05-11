@@ -30,7 +30,6 @@
 #define BOOST_TEST_MODULE evaluation
 
 #include "boost/test/unit_test.hpp"
-#include "boost/test/floating_point_comparison.hpp"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/ndarray/eigen.h"

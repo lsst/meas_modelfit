@@ -63,6 +63,12 @@ public:
     /// @brief Return the multifit grid.
     Grid::Ptr getGrid() const { return _grid; }
 
+    /// @brief Return the mean flux of the object on the given frame.
+    virtual double computeFluxMean(ID object, ID frame) const = 0;
+
+    /// @brief Return the variance of the flux of the object on the given frame.
+    virtual double computeFluxVariance(ID object, ID frame) const = 0;
+
     /// @brief Return the mean position of the object with the given ID.
     virtual lsst::afw::geom::Point2D computePointMean(ID id) const = 0;
 

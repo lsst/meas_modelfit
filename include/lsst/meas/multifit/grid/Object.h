@@ -75,7 +75,6 @@ public:
     /// @brief Throw an exception (LogicErrorException) if the object lacks a radius or ellipticity.
     void requireEllipse() const;
 
-#ifndef SWIG
     /// @brief Construct the point corresponding to this object from a parameter vector.
     lsst::afw::geom::Point2D makePoint(double const * paramIter) const;
 
@@ -153,7 +152,6 @@ public:
      *  Unperturb a point by changing the nth position parameter.
      */
     void unperturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n, double perturbation) const;
-#endif
 
 private:
 

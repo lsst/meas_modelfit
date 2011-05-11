@@ -127,6 +127,8 @@ public:
     virtual ~CompoundShapeletModelBasis() {}
 protected:
 
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,

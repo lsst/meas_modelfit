@@ -150,6 +150,12 @@ public:
     typedef boost::shared_ptr<NestedSimpleInterpreter> Ptr;
     typedef boost::shared_ptr<NestedSimpleInterpreter const> ConstPtr;
 
+    //@{
+    /// @brief BaseInterpreter interface implementations.
+    virtual double computeFluxMean(ID object, ID frame) const;
+    virtual double computeFluxVariance(ID object, ID frame) const;
+    //@}
+
     /// @brief Construct a mutable interpreter.
     static Ptr make(SimpleDistribution::Ptr const & target, Grid::Ptr const & grid) {
         return Ptr(new NestedSimpleInterpreter(grid, target));
@@ -182,13 +188,19 @@ private:
 };
 
 /**
- *  @brief NestedInterpreter for SimpleDistribution.
+ *  @brief UnifiedInterpreter for SimpleDistribution.
  */
 class UnifiedSimpleInterpreter : public SimpleInterpreter, public UnifiedInterpreter {
 public:
 
     typedef boost::shared_ptr<UnifiedSimpleInterpreter> Ptr;
     typedef boost::shared_ptr<UnifiedSimpleInterpreter const> ConstPtr;
+
+    //@{
+    /// @brief BaseInterpreter interface implementations.
+    virtual double computeFluxMean(ID object, ID frame) const;
+    virtual double computeFluxVariance(ID object, ID frame) const;
+    //@}
 
     /// @brief Construct a mutable interpreter.
     static Ptr make(SimpleDistribution::Ptr const & target, Grid::Ptr const & grid) {

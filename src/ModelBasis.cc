@@ -20,6 +20,14 @@ void ModelBasis::evaluate(
     _evaluate(matrix, footprint, ellipse);
 }
 
+void ModelBasis::integrate(lsst::ndarray::Array<double, 1, 1> const & vector) const {
+    detail::checkSize(
+        vector.getSize<0>(), getSize(),
+        "Number of vector elements (%d) does not match expected value (%d)."
+    );
+    _integrate(vector);
+}
+
 ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
     throw LSST_EXCEPT(lsst::pex::exceptions::LogicErrorException,
                       "ModelBasis subclass does not support convolution.");

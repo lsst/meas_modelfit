@@ -51,6 +51,8 @@ public:
 
     bool empty() const { return _last == _first; }
 
+    const_reference operator[](int n) const { return _first[n]; }
+
 private:
 
     friend class Initializer;

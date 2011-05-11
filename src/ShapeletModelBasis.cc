@@ -53,6 +53,13 @@ public:
 
 protected:
 
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Cannot integrate convolved basis."
+        );      
+    }
+
     virtual void _evaluate(
         ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
@@ -80,6 +87,13 @@ private:
 } // anonymous
 
 }}} // namespace lsst::meas::multifit
+
+void mf::ShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+    afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
+    vector.deep() = 0.0;
+    shapeletEvaluator.fillIntegration(vector);
+    vector.deep() *= _scale * _scale;
+}
 
 void mf::ShapeletModelBasis::_evaluate(
     lsst::ndarray::Array<double, 2, 1> const & matrix,

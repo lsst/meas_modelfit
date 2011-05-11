@@ -75,6 +75,8 @@ protected:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+
 private:
 
     FRIEND_MAKE_SHARED_2(ShapeletModelBasis, int, double);
