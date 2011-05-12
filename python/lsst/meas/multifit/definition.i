@@ -64,7 +64,7 @@ SWIG_SHARED_PTR(definition_EllipticityComponentPtr, lsst::meas::multifit::defini
 %define %AddComponentAccessors(TITLE, LOWER, UPPER)
 %enddef
 
-%define %DeclareParameterComponent(TITLE, LOWER, UPPER, CONSTRAINT)
+%define %DeclareDefinitionParameterComponent(TITLE, LOWER, UPPER, CONSTRAINT)
 %template(definition_##TITLE##Component)
 lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>;
 %PointerEQ(lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>)
@@ -124,9 +124,9 @@ SWIG_SHARED_PTR_DERIVED(definition_ObjectPtr, lsst::meas::multifit::detail::Obje
 
 %include "lsst/meas/multifit/definition/Object.h"
 
-%DeclareParameterComponent(Position, position, POSITION, detail::CircleConstraint);
-%DeclareParameterComponent(Radius, radius, RADIUS, detail::MinMaxConstraint);
-%DeclareParameterComponent(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
+%DeclareDefinitionParameterComponent(Position, position, POSITION, detail::CircleConstraint);
+%DeclareDefinitionParameterComponent(Radius, radius, RADIUS, detail::MinMaxConstraint);
+%DeclareDefinitionParameterComponent(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
 
 %PointerEQ(lsst::meas::multifit::definition::Object)
 %AddStreamRepr(lsst::meas::multifit::definition::Object)

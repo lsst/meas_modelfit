@@ -177,6 +177,15 @@ void Frame::applyWeights(ndarray::Array<double,1,0> const & vector) const {
     }
 }
 
+std::ostream & operator<<(std::ostream & os, Frame const & frame) {
+    std::string filterName("undefined");
+    try {
+        filterName = lsst::afw::image::Filter(frame.getFilterId()).getName();
+    } catch (lsst::pex::exceptions::NotFoundException &) {}
+    return os << "Frame " << frame.id << " (@" << (&frame) << ") = {" << filterName 
+              << ", " << frame.getFootprint()->getArea() << "pix}\n";
+}
+
 Source::Source(
     Frame const & frame_, Object const & object_, 
     CONST_PTR(afw::image::Wcs) const & wcs

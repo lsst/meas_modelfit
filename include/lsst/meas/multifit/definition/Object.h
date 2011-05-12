@@ -185,7 +185,9 @@ private:
     EllipticityComponent::Ptr _ellipticity;
 };
 
+#ifndef SWIG
 std::ostream & operator<<(std::ostream & os, Object const & obj);
+#endif
 
 }}}} // namespace lsst::meas::multifit::definition
 

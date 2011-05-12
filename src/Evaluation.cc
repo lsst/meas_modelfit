@@ -70,7 +70,7 @@ public:
     ) = 0;
 
     /**
-     *  Compute the Lower-triangular Cholesky factor of the Fisher matrix @f$F@f$ as defined in solve().
+     *  Compute the Lower-triangular Cholesky factor of the Fisher matrix @f$F@f$.
      *
      *  @param[in]     modelMatrix   Matrix @f$A@f$.  Always provided.
      *  @param[out]    fisherFactor  Lower triangular Cholesky factor of @f$F@f$.  Must always be filled.
@@ -87,7 +87,7 @@ public:
     ) = 0;
 
     /**
-     *  Compute the Fisher matrix @f$F@f$ as defined in solve().
+     *  Compute the Fisher matrix @f$F@f$.
      *
      *  @param[in]     modelMatrix   Matrix @f$A@f$.  Always provided.
      *  @param[out]    fisherMatrix  Matrix @f$F = A^T A + \Sigma^{-1}@f$.  Must always be filled.

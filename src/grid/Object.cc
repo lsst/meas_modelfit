@@ -257,4 +257,13 @@ void Object::unperturbEllipse(
     }
 }
 
+std::ostream & operator<<(std::ostream & os, Object const & obj) {
+    os << "Object " << obj.id << "(@" << (&obj) << ") = {"
+       << (obj.isVariable() ? "variable" : "nonvariable") << ", Rx" << obj.getRadiusFactor() << "}:\n";
+    if (obj.getPosition()) os << "    " << (*obj.getPosition()) << "\n";
+    if (obj.getRadius()) os << "    " << (*obj.getRadius()) << " x " << obj.getRadiusFactor() << "\n";
+    if (obj.getEllipticity()) os << "    " << (*obj.getEllipticity()) << "\n";
+    return os;
+}
+
 }}}} // namespace lsst::meas::multifit::grid

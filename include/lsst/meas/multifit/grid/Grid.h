@@ -79,11 +79,11 @@ public:
 
     ~Grid();
 
-#ifndef SWIG
     ObjectArray objects;
     FrameArray frames;
     SourceArray sources;
 
+#ifndef SWIG
     //@{
     /// Arrays of all active parameter components (inactive ones are still held by the Objects). 
     PositionArray positions;

@@ -297,8 +297,10 @@ typedef ParameterComponent<POSITION> PositionComponent;
 typedef ParameterComponent<RADIUS> RadiusComponent;
 typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
 
+#ifndef SWIG
 template <ParameterType E>
 std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
+#endif
 
 }}}} // namespace lsst::meas::multifit::definition
 

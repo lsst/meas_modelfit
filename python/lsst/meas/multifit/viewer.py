@@ -31,6 +31,9 @@ import numpy
 
 from matplotlib import pyplot
 
+def plotEvaluation(evaluation):
+    
+
 class ViewerBase(object):
 
     def __init__(self, evaluator, footprint, parameters=None, coefficients=None):

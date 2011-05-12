@@ -179,7 +179,9 @@ private:
     explicit Frame(detail::FrameBase const & other) : detail::FrameBase(other, true) {}
 };
 
+#ifndef SWIG
 std::ostream & operator<<(std::ostream & os, Frame const & frame);
+#endif
 
 }}}} // namespace lsst::meas::multifit::definition
 

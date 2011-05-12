@@ -41,11 +41,9 @@ public:
 
     typedef Array<Source> SourceArray;
     
-    // We can show all the internals except the parameter components because users will only ever 
-    // see const Objects, but we can't let them have non-const pointers to the parameter components.
-    // We'd also like to cast the components to their grid versions.
-
+#ifndef SWIG
     SourceArray sources;
+#endif
 
     /// @brief The number of coefficients for this object per Frame.
     int const getSourceCoefficientCount() const {
@@ -58,6 +56,7 @@ public:
     /// @brief The total number of coefficients for this object.
     int const getCoefficientCount() const { return _coefficientCount; }
 
+#ifndef SWIG
     //@{
     /// @brief Return the parameter components.
     PositionComponent::Ptr const getPosition() const { return _position; }
@@ -153,6 +152,8 @@ public:
      */
     void unperturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n, double perturbation) const;
 
+#endif
+
 private:
 
     friend class grid::Initializer;
@@ -172,6 +173,9 @@ private:
     EllipticityComponent::Ptr _ellipticity;
 };
 
+#ifndef SWIG
+std::ostream & operator<<(std::ostream & os, Object const & obj);
+
 inline afw::geom::Point2D const Source::getReferencePoint() const {
     return _transform(object.getPosition()->getValue());
 }
@@ -185,6 +189,7 @@ inline int const Source::getCoefficientOffset() const {
 inline int const Source::getCoefficientCount() const {
     return object.getSourceCoefficientCount();
 }
+#endif
 
 }}}} // namespace lsst::meas::multifit::grid
 
