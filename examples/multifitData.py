@@ -19,13 +19,12 @@ def test():
     results = []
     for i in range(2):
         if not butler.datasetExists("src", id=i):
-                continue
+            continue
         psf = butler.get("psf", id=i)
         exposure = butler.get("exp", id=i)
         exposure.set(psf)
         sources = butler.get("src", id=i)
         results.append(mf.utils.processExposure(exposure, sources, policy))
-
 
 if __name__ == '__main__':
     test()

@@ -28,210 +28,72 @@ import lsst.afw.image
 import lsst.afw.geom.ellipses
 import lsst.meas.multifit
 import numpy
-
+from . import utils
 from matplotlib import pyplot
+from lsst.meas.multifitData import DatasetMapper
+from lsst.daf.persistence import ButlerFactory
+from lsst.pex.policy import Policy
+import lsst.meas.algorithms
 
-def plotEvaluation(evaluation):
-    
-
-class ViewerBase(object):
-
-    def __init__(self, evaluator, footprint, parameters=None, coefficients=None):
-        self.evaluator = evaluator
-        self.footprint = footprint
-        self.parameters = numpy.zeros(self.evaluator.getParameterSize(), dtype=float)
-        self.coefficients = numpy.zeros(self.evaluator.getCoefficientSize(), dtype=float)
-        self.modelMatrix = numpy.zeros((self.footprint.getArea(), self.evaluator.getCoefficientSize()),
-                                       dtype=float)
-        self.bbox = self.footprint.getBBox()
-        self.dataImage = lsst.afw.image.ImageD(self.bbox)
-        self.modelImage = lsst.afw.image.ImageD(self.bbox)
-        self.residualImage = lsst.afw.image.ImageD(self.bbox)
-        self.dataVector = self.evaluator.getDataVector()
-        self.vmin = self.dataVector.min()
-        self.vmax = self.dataVector.max()
-        lsst.afw.detection.expandArray(
-            self.footprint, self.dataVector, self.dataImage.getArray(), self.bbox.getMin()
-            )
-        if parameters is None:
-            parameters = numpy.zeros(self.evaluator.getParameterSize(), dtype=float)
-            self.evaluator.writeInitialParameters(parameters)
-        self.update(parameters, coefficients)
-
-    def update(self, parameters, coefficients=None):
-        self.parameters[:] = parameters
-        self.evaluator.evaluateModelMatrix(self.modelMatrix, self.parameters)
-        r = None
-        if coefficients is not None:
-            self.coefficients[:] = coefficients
-        else:
-            r = self.solve()
-        self.modelVector = numpy.dot(self.modelMatrix, self.coefficients)
-        self.residualVector = self.dataVector - self.modelVector
-        lsst.afw.detection.expandArray(
-            self.footprint, self.modelVector, self.modelImage.getArray(), self.bbox.getMin()
-            )
-        lsst.afw.detection.expandArray(
-            self.footprint, self.residualVector, self.residualImage.getArray(), self.bbox.getMin()
-            )
-        return r
-
-    def solve(self):
-        x, residues, rank, sv = numpy.linalg.lstsq(self.modelMatrix, self.evaluator.getDataVector())
-        self.coefficients[:] = x
-        return 0.5 * residues[0] + numpy.log(sv).sum()
-
-    def plot(self, fignum=None):
-        dbox = lsst.afw.geom.Box2D(self.bbox)
+def plotEvaluation(evaluation, grid):
+    dataVector = evaluation.getEvaluator().getDataVector()
+    modelVector = evaluation.getModelVector()
+    residualVector = evaluation.getResiduals()
+    for source in grid.sources:
+        pyplot.figure()
+        pyplot.title("Object %d, Frame %d" % (source.object.id, source.frame.id))
+        pixelIndices = slice(source.frame.getPixelOffset(), source.frame.getPixelCount())
+        dataSubset = dataVector[pixelIndices]
+        modelSubset = modelVector[pixelIndices]
+        residualSubset = residualVector[pixelIndices]
+        footprint = source.frame.getFootprint()
+        ibox = footprint.getBBox()
+        dbox = lsst.afw.geom.BoxD(ibox)
         extent = (dbox.getMinX(), dbox.getMaxX(), dbox.getMinY(), dbox.getMaxY())
-        if fignum is None:
-            figure = pyplot.figure()
-        else:
-            figure = pyplot.figure(fignum)
-        def doCell(image, title):            
-            pyplot.imshow(image.getArray(), origin='lower', interpolation='nearest',
-                          extent=extent, vmin=self.vmin, vmax=self.vmax)
-            self.plotGeometry()
-            pyplot.title(title)
-            pyplot.xlim(extent[0], extent[1])
-            pyplot.ylim(extent[2], extent[3])
-        pyplot.subplot(1, 3, 1)
-        doCell(self.dataImage, "DATA")
-        modelAxes = pyplot.subplot(1, 3, 2)
-        doCell(self.modelImage, "MODEL")
-        residualAxes = pyplot.subplot(1, 3, 3)
-        doCell(self.residualImage, "RESIDUAL")
-        cax = figure.add_axes([0.05, 0.08, 0.90, 0.04])
-        pyplot.colorbar(cax=cax, orientation='horizontal')
-        
-class StarViewer(ViewerBase):
-
-    @staticmethod
-    def makeExample(sn=10.0):
-        bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(0, 0), lsst.afw.geom.Extent2I(50, 60))
-        footprint = lsst.afw.detection.Footprint(bbox)
-        point = lsst.afw.geom.Point2D(25.0, 30.0)
-        psf = lsst.afw.detection.createPsf("DoubleGaussian", 19, 19, 2.0, 1.0)
-        localPsf = psf.getLocalPsf(point)
-        vector = numpy.zeros(footprint.getArea(), dtype=float)
-        localPsf.evaluatePointSource(footprint, vector, lsst.afw.geom.Extent2D())
-        signal = vector.max()
-        sigma = signal / sn
-        exposure = lsst.afw.image.ExposureD(bbox)
-        lsst.afw.detection.expandArray(
-            footprint, vector, exposure.getMaskedImage().getImage().getArray(), bbox.getMin()
-            )
-        exposure.getMaskedImage().getImage().getArray()[:,:] \
-            += numpy.random.normal(scale=sigma, size=(bbox.getHeight(), bbox.getWidth()))
-        exposure.getMaskedImage().getVariance().getArray()[:,:] = sigma
-        exposure.setPsf(psf)
-        evaluator = lsst.meas.multifit.Evaluator.make(exposure, footprint, point, False, True)
-        return StarViewer(evaluator, footprint)
-
-    def update(self, parameters, coefficients=None):
-        r = ViewerBase.update(self, parameters, coefficients)
-        self.point = self.evaluator.extractPoint(0, self.parameters)
-        return r
-
-    def plotGeometry(self):
-        pyplot.plot([self.point.getX()], [self.point.getY()], 'kx')
-        
-class GalaxyViewer(ViewerBase):
-
-    @staticmethod
-    def makeExample(basis=None, ellipse=None, coefficients=None, sn=10.0, 
-                    isEllipticityActive=False, isRadiusActive=False, isPositionActive=False
-                    ):
-        if basis is None:
-            basis = lsst.meas.multifit.loadBasis("ed+00:0000")
-        if ellipse is None:
-            ellipse = lsst.afw.geom.ellipses.Ellipse(
-                lsst.afw.geom.ellipses.Axes(10.0, 8.0, 0.25),
-                lsst.afw.geom.Point2D(0.0, 0.0)
-                )
-        if coefficients is None:
-            coefficients = numpy.zeros(basis.getSize(), dtype=float)
-            coefficients[0] = 1.0
-        bounds = lsst.afw.geom.ellipses.Ellipse(ellipse)
-        bounds.scale(4)
-        footprint = lsst.afw.detection.Footprint(bounds);
-        bbox = footprint.getBBox()
-        psf = lsst.afw.detection.createPsf("DoubleGaussian", 19, 19, 2.0, 1.0)
-        localPsf = psf.getLocalPsf(ellipse.getCenter())
-        matrix = numpy.zeros((footprint.getArea(), basis.getSize()), dtype=float)
-        convolvedBasis = basis.convolve(localPsf)
-        convolvedBasis.evaluate(matrix, footprint, ellipse)
-        vector = numpy.dot(matrix, coefficients)
-        signal = vector.max()
-        sigma = signal / sn
-        exposure = lsst.afw.image.ExposureD(bbox)
-        lsst.afw.detection.expandArray(
-            footprint, vector, exposure.getMaskedImage().getImage().getArray(), bbox.getMin()
-            )
-        exposure.getMaskedImage().getImage().getArray()[:,:] \
-            += numpy.random.normal(scale=sigma, size=(bbox.getHeight(), bbox.getWidth()))
-        exposure.getMaskedImage().getVariance().getArray()[:,:] = sigma
-        exposure.setPsf(psf)
-        evaluator = lsst.meas.multifit.Evaluator.make(exposure, footprint, basis, ellipse, 
-                                                      isEllipticityActive, isRadiusActive, isPositionActive)
-        return GalaxyViewer(evaluator, footprint)
-
-    def update(self, parameters, coefficients=None):
-        r = ViewerBase.update(self, parameters, coefficients)
-        self.ellipse = self.evaluator.extractEllipse(0, self.parameters)
-        return r
-
-    def plotGeometry(self):
-        self.ellipse.plot(fill=False)
-
-def makeGaussianEllipse(component, i, j):
-    mu = component.getMu()
-    sigma = component.getSigma()
-    covariance = numpy.dot(sigma, sigma.transpose())
-    print covariance
-    return lsst.afw.geom.ellipses.Ellipse(
-        lsst.afw.geom.ellipses.Quadrupole(float(covariance[j,j]), float(covariance[i,i]), 
-                                          float(covariance[i,j])),
-        lsst.afw.geom.Point2D(float(mu[j]), float(mu[i]))
-        )
-
-def plotSamples(table, importance, old_importance=None):
-    nParameters = table["parameters"].shape[1]
-    mid = lambda x: 0.5*(x[:-1] + x[1:])
-    for i in range(nParameters):
-        for j in range(nParameters):
-            pyplot.subplot(nParameters, nParameters, i * nParameters + j + 1)
-            xmin = table["parameters"][:,j].min()
-            xmax = table["parameters"][:,j].max()
-            if i == j:
-                h, e = numpy.histogram(table["parameters"][:,i], bins=50, weights=table["weight"], new=True)
-                pyplot.plot(mid(e), h)
+        images = numpy.zeros((3, ibox.getHeight(), ibox.getWidth()), dtype=float)
+        lsst.afw.detection.expandArray(footprint, dataSubset, images[0], bbox.getMin());
+        lsst.afw.detection.expandArray(footprint, modelSubset, images[1], bbox.getMin());
+        lsst.afw.detection.expandArray(footprint, residualSubset, image[2], bbox.getMin());
+        vmin = images.min()
+        vmax = images.max()
+        for i in range(3):
+            pyplot.subplot(1, 3, i + 1)
+            pyplot.imshow(images[i], origin='lower', interpolation='nearest', 
+                          vmin=vmin, vmax=vmax, extent=extent)
+            if source.object.getBasis():
+                ellipse = source.object.makeEllipse(evaluation.getParameters())
+                ellipse.plot(fill=False)
             else:
-                ymin = table["parameters"][:,i].min()
-                ymax = table["parameters"][:,i].max()
-                if i > j:
-                    h, xe, ye = numpy.histogram2d(table["parameters"][:,j], table["parameters"][:,i],
-                                                  bins=25, weights=table["weight"])
-                    pyplot.imshow(h.transpose(), origin='lower', extent=(xe[0], xe[-1], ye[0], ye[-1]))
-                    pyplot.axis("tight")
-                    #pyplot.contour(mid(xe), mid(ye), h)
-                    for component in importance.getComponents():
-                        ellipse = makeGaussianEllipse(component, i, j)
-                        ellipse.plot(fill=False)
-                    if old_importance is not None:
-                        for component in old_importance.getComponents():
-                            ellipse = makeGaussianEllipse(component, i, j)
-                            ellipse.plot(fill=False, edgecolor="g")
-                else:
-                    pyplot.plot(table["parameters"][:,j], table["parameters"][:,i], "k,")
-                    pyplot.scatter(table["parameters"][:,j], table["parameters"][:,i],
-                                   100 * table['weight'] / table["weight"].sum(), alpha=0.5)
-                    for component in importance.getComponents():
-                        ellipse = makeGaussianEllipse(component, i, j)
-                        ellipse.plot(fill=False)
-                    if old_importance is not None:
-                        for component in old_importance.getComponents():
-                            ellipse = makeGaussianEllipse(component, i, j)
-                            ellipse.plot(fill=False, edgecolor="g")
-                pyplot.ylim(ymin, ymax)
-            pyplot.xlim(xmin, xmax)
+                point = source.object.makePoint(evaluation.getParameters())
+                pyplot.plot([self.point.getX()], [self.point.getY()], 'kx')
+    pyplot.show()
+
+def plotInterpreter(interpreter):
+    evaluator = lsst.meas.multifit.Evaluator(interpreter.getGrid())
+    evaluation = lsst.meas.multifit.Evaluation(evaluator, intepreter.computeParameterMean());
+    evaluation.setCoefficients(intepreter.computeCoefficientMean())
+    plotEvaluation(evaluation, intepreter.getGrid())
+
+class Viewer(object):
+
+    def __init__(self, dataset):
+        self.policy = Policy()
+        self.policy.add("nGrowFp", 3)
+        self.policy.add("isVariable", False)
+        self.policy.add("isPositionActive", False)
+        self.policy.add("isRadiusActive", True)
+        self.policy.add("isEllipticityActive", True)
+        self.policy.add("maskPlaneName", "BAD")
+        self.policy.add("basisName", "ed+15:4000")
+        bf = ButlerFactory(mapper=DatasetMapper())
+        butler = bf.create()
+        self.psf = butler.get("psf", id=dataset)
+        print self.psf
+        self.exposure = butler.get("exp", id=dataset)
+        self.exposure.setPsf(self.psf)
+        self.sources = butler.get("src", id=dataset)
+        self.bitmask = utils.makeBitmask(self.exposure.getMaskedImage().getMask(),
+                                         self.policy.getArray("maskPlaneName"))
+    
+    def plot(self, source):
+        interpreter = utils.fitSource(self.exposure, source, self.bitmask, self.policy)

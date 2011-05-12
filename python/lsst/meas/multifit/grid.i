@@ -73,12 +73,23 @@ template <typename T> class Array {};
 %template(grid_##NAME##Array)
 lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME>;
 %extend lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME> {
-    NAME const & __getitem__(int n) {
-        return self->operator[](n);
+    NAME const * __getitem__(int n) {
+        if (n < 0 || n >= self->size()) {
+            PyErr_SetString(PyExc_IndexError, "Index out of range.");
+            return 0;
+        }
+        return &self->operator[](n);
     }
     int __len__() {
         return self->size();
     }
+    %pythoncode %{
+        def __iter__(self):
+            for id in range(len(self)):
+                yield self[id]
+        def __repr__(self):
+            return "NAME""Array([\n"  + ",".join(repr(v) for v in self) + "\n])"
+    %}
 }
 %enddef
 

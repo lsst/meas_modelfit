@@ -59,6 +59,15 @@ double NestedSimpleInterpreter::computeFluxVariance(ID object, ID frame) const {
     );
 }
 
+Eigen::VectorXd NestedSimpleInterpreter::computeParameterMean() const { return getMuCRef(); }
+
+Eigen::VectorXd NestedSimpleInterpreter::computeCoefficientMean() const {
+    throw LSST_EXCEPT(
+        lsst::pex::exceptions::LogicErrorException,
+        "NestedSimpleInterpreter::computeCoefficientMean not yet implemented."
+    );    
+}
+
 void NestedSimpleInterpreter::ensureCompatibility() {
     if (_grid->getParameterCount() != _target->getDimensionality()) {
         throw LSST_EXCEPT(
@@ -67,6 +76,14 @@ void NestedSimpleInterpreter::ensureCompatibility() {
              % _grid->getParameterCount() % _target->getDimensionality()).str()
         );
     }
+}
+
+Eigen::VectorXd UnifiedSimpleInterpreter::computeParameterMean() const {
+    return getMuCRef().segment(0, _grid->getParameterCount());
+}
+
+Eigen::VectorXd UnifiedSimpleInterpreter::computeCoefficientMean() const {
+    return getMuCRef().segment(_grid->getParameterCount(), _grid->getCoefficientCount());
 }
 
 double UnifiedSimpleInterpreter::computeFluxMean(ID objectId, ID frameId) const {

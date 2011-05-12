@@ -65,43 +65,11 @@ def fitSource(exposure, src, bitmask, policy):
     fp = afwDetection.growFootprint(src.getFootprint(), policy.get("nGrowFp"))
 
     point = makePoint(src)
-    try:
-        core = makeEllipseCore(src)
-        core = checkEllipseCore(core, fp)
-        ellipse = afwGeom.ellipses.Ellipse(core, point)
-        del core
-    except Exception, e:
-        print e
-        ellipse = None
+    core = makeEllipseCore(src)
+    core = checkEllipseCore(core, fp)
+    ellipse = afwGeom.ellipses.Ellipse(core, point)
 
     optimizer = multifitLib.GaussNewtonOptimizer
-
-    #print cutout
-    #print bitmask
-    #print fp
-    #print ellipse
-    #print point
-
-    psDef = multifitLib.Definition.make(
-           exposure, fp, point, 
-           policy.getBool("isVariable"), 
-           policy.getBool("isPositionActive"), 
-           bitmask)
-    psEval = multifitLib.Evaluator.make(psDef)
-
-    try:
-        psDistribution = optimizer.solve(psEval)
-    except:
-        psDistribution = None
-
-    if not psDistribution:
-        psInterpreter = None
-    else:
-        psInterpreter = multifitLib.UnifiedSimpleInterpreter.make(\
-                psDistribution, psEval.getGrid())
-    
-    if not ellipse:
-        return (psInterpreter, None)
 
     basis = loadBasis(policy.get("basisName"))
     sgDef = multifitLib.Definition.make(\
@@ -111,19 +79,12 @@ def fitSource(exposure, src, bitmask, policy):
             policy.get("isPositionActive"),
             bitmask)
     sgEval = multifitLib.Evaluator.make(sgDef)
-    try:
-        sgDistribution = optimizer.solve(sgEval)
-    except:
-        sgDistribution = None
+    sgDistribution = optimizer.solve(sgEval)
+    sgInterpreter = multifitLib.UnifiedSimpleInterpreter.make(
+        sgDistribution,
+        sgEval.getGrid())
 
-    if not sgDistribution:
-        sgInterpreter = None
-    else:
-        sgInterpreter = multifitLib.UnifiedSimpleInterpreter.make(
-            sgDistribution,
-            sgEval.getGrid())
-
-    return (psInterpreter, sgInterpreter) 
+    return sgInterpreter
 
 
 def processExposure(exposure, sources, policy):
@@ -132,6 +93,10 @@ def processExposure(exposure, sources, policy):
     results = []   
     for s in sources:
         print "Fitting source", s.getId()
-        results.append(fitSource(exposure, s, bitmask, policy))
+        try:
+            results.append(fitSource(exposure, s, bitmask, policy))
+        except Exception, e:
+            print e
+            continue
 
     return results

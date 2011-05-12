@@ -31,22 +31,37 @@ import lsst.utils.tests as utilsTests
 import numpy
 import unittest
 
-class DefinitionTest(unittest.TestCase):
+class TestCaseMixIn(object):
 
-    def setUp(self):
+    def addGalaxy(self):
         self.galaxyEllipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(4.0, 3.0, 0.25), 
-                                                            lsst.afw.geom.Point2D(10.3, 42.1))
+                                                                lsst.afw.geom.Point2D(10.3, 42.1))
         self.galaxy = mf.definition.Object.makeGalaxy(
             1,
             mf.ShapeletModelBasis.make(2),
             self.galaxyEllipse,
             True, True, True
             )
+
+    def addStar(self):
         self.starPoint = lsst.afw.geom.Point2D(12.1, 56.7)
         self.star = mf.definition.Object.makeStar(3, self.starPoint, False, True)
+
+    def addFrame(self, footprint=None):
+        if footprint is None:
+            footprint = self.footprint
+        self.data = numpy.random.randn(footprint.getArea())
+        self.frame = mf.definition.Frame(0, footprint, self.data)
+        psf = lsst.afw.detection.createPsf("DoubleGaussian", 19, 19, 2.0, 1.0)
+        self.frame.setPsf(psf)
+
+class DefinitionTest(unittest.TestCase, TestCaseMixIn):
+
+    def setUp(self):
+        self.addGalaxy()
+        self.addStar()
         self.footprint = lsst.afw.detection.Footprint(self.galaxyEllipse)
-        self.data = numpy.random.randn(self.footprint.getArea())
-        self.frame = mf.definition.Frame(0, self.footprint, self.data)
+        self.addFrame()
 
     def tearDown(self):
         del self.frame
@@ -126,7 +141,7 @@ class DefinitionTest(unittest.TestCase):
         self.assertEqual(self.frame.getFootprint().getArea(), self.footprint.getArea())
         self.assertEqual(self.frame.getFootprint().getBBox(), self.footprint.getBBox())
         self.assert_(self.frame.getWcs() is None)
-        self.assert_(self.frame.getPsf() is None)
+        self.assert_(self.frame.getPsf() is not None)
         self.assertEqual(self.frame.getWeights().shape, (0,))
         self.assert_((self.frame.getData() == self.data).all())
         newData = numpy.random.randn(self.footprint.getArea())
@@ -136,8 +151,8 @@ class DefinitionTest(unittest.TestCase):
         self.frame.setWeights(weights)
         self.assert_((self.frame.getWeights() == weights).all())
         psf = lsst.afw.detection.createPsf("DoubleGaussian", 19, 19, 2.0, 1.0)
-        self.frame.setPsf(psf)
-        self.assert_(self.frame.getPsf() is not None)
+        self.frame.setPsf(None)
+        self.assert_(self.frame.getPsf() is None)
 
     def testFrameBuilding(self):
         bbox = lsst.afw.geom.BoxI(lsst.afw.geom.PointI(25, 40), lsst.afw.geom.ExtentI(10, 30))
@@ -160,13 +175,40 @@ class DefinitionTest(unittest.TestCase):
         definition.frames.insert(self.frame)
         self.assertEqual(list(definition.frames), [self.frame])
 
+class GridTest(unittest.TestCase, TestCaseMixIn):
+
+    def setUp(self):
+        self.addGalaxy()
+        self.addStar()
+        self.footprint = lsst.afw.detection.Footprint(self.galaxyEllipse)
+        self.addFrame()
+        self.definition = mf.Definition()
+        self.definition.objects.insert(self.star)
+        self.definition.objects.insert(self.galaxy)
+        self.definition.frames.insert(self.frame)
+
+    def tearDown(self):
+        del self.frame
+        del self.footprint
+        del self.definition
+
+    def testConstruction(self):
+        grid = mf.Grid.make(self.definition)
+        n = 0
+        for obj in grid.objects:
+            for source in obj.sources:
+                self.assertEqual(source, grid.sources[n])
+                n += 1
+
 def suite():
     utilsTests.init()
 
     suites = []
     suites += unittest.makeSuite(DefinitionTest)
+    suites += unittest.makeSuite(GridTest)
     suites += unittest.makeSuite(utilsTests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(exit=False):
     """Run the tests"""

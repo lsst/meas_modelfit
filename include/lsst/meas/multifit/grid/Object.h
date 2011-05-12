@@ -40,10 +40,8 @@ class Object : public detail::ObjectBase, private boost::noncopyable {
 public:
 
     typedef Array<Source> SourceArray;
-    
-#ifndef SWIG
+
     SourceArray sources;
-#endif
 
     /// @brief The number of coefficients for this object per Frame.
     int const getSourceCoefficientCount() const {

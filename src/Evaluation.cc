@@ -16,6 +16,7 @@ enum ProductEnum {
     COEFFICIENTS,
     RESIDUALS,
     RESIDUALS_JACOBIAN,
+    MODEL_VECTOR,
     OBJECTIVE_VALUE,
     COEFFICIENT_FISHER_MATRIX,
     COEFFICIENT_FISHER_FACTOR,
@@ -31,6 +32,7 @@ struct Bit {
 };
 
 static int const coefficient_dependencies = 
+    Bit<MODEL_VECTOR>::flag |
     Bit<RESIDUALS>::flag |
     Bit<RESIDUALS_JACOBIAN>::flag |
     Bit<OBJECTIVE_VALUE>::flag
@@ -429,16 +431,26 @@ void Evaluation::ensureCoefficients() const {
     Bit<COEFFICIENTS>::set(_status);
 }
 
-void Evaluation::ensureResiduals() const {
-    if (Bit<RESIDUALS>::test(_status)) return;
+void Evaluation::ensureModelVector() const {
+    if (Bit<MODEL_VECTOR>::test(_status)) return;
     ensureCoefficients();
     ensureModelMatrix();
+    if (_modelVector.getData() == 0) {
+        _modelVector = ndarray::allocate(_evaluator->getDataSize());
+    }
+    ndarray::viewAsEigen(_modelVector) 
+        = ndarray::viewAsEigen(_modelMatrix) * ndarray::viewAsEigen(_coefficients);
+    Bit<MODEL_VECTOR>::set(_status);
+}
+
+void Evaluation::ensureResiduals() const {
+    if (Bit<RESIDUALS>::test(_status)) return;
+    ensureModelVector();
     if (_residuals.getData() == 0) {
         _residuals = ndarray::allocate(_evaluator->getDataSize());
     }
-    ndarray::viewAsEigen(_residuals) 
-        = ndarray::viewAsEigen(_modelMatrix) * ndarray::viewAsEigen(_coefficients);
-    ndarray::viewAsEigen(_residuals) -= ndarray::viewAsEigen(_evaluator->getDataVector());
+    ndarray::viewAsEigen(_residuals) = ndarray::viewAsEigen(_modelVector) 
+        - ndarray::viewAsEigen(_evaluator->getDataVector());
     Bit<RESIDUALS>::set(_status);
 }
 

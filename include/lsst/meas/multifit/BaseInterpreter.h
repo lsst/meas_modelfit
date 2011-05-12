@@ -63,6 +63,9 @@ public:
     /// @brief Return the multifit grid.
     Grid::Ptr getGrid() const { return _grid; }
 
+    virtual Eigen::VectorXd computeParameterMean() const = 0;
+    virtual Eigen::VectorXd computeCoefficientMean() const = 0;
+
     /// @brief Return the mean flux of the object on the given frame.
     virtual double computeFluxMean(ID object, ID frame) const = 0;
 

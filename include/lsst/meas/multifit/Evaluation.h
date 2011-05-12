@@ -175,6 +175,12 @@ public:
         return _coefficients;
     }
 
+    /// @brief The model vector @f$r = Ax@f$.
+    lsst::ndarray::Array<double const,1,1> getModelVector() const {
+        ensureModelVector();
+        return _modelVector;
+    }
+
     /// @brief The residuals vector @f$r = Ax - y@f$.
     lsst::ndarray::Array<double const,1,1> getResiduals() const {
         ensureResiduals();
@@ -227,6 +233,7 @@ private:
     void ensureModelMatrix() const;
     void ensureModelMatrixDerivative() const;
     void ensureCoefficients() const;
+    void ensureModelVector() const;
     void ensureResiduals() const;
     void ensureResidualsJacobian() const;
     void ensureCoefficientFisherMatrix() const;
@@ -250,6 +257,7 @@ private:
     mutable ndarray::Array<double,2,2> _coefficientFisherFactor;
     mutable ndarray::Array<double,1,1> _residuals;
     mutable ndarray::Array<double,2,2> _residualsJacobian;
+    mutable ndarray::Array<double,1,1> _modelVector;
 };
 
 }}} // namespace lsst::meas::multifit

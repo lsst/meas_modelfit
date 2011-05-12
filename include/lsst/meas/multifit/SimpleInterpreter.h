@@ -152,6 +152,8 @@ public:
 
     //@{
     /// @brief BaseInterpreter interface implementations.
+    virtual Eigen::VectorXd computeParameterMean() const;
+    virtual Eigen::VectorXd computeCoefficientMean() const;
     virtual double computeFluxMean(ID object, ID frame) const;
     virtual double computeFluxVariance(ID object, ID frame) const;
     //@}
@@ -198,6 +200,8 @@ public:
 
     //@{
     /// @brief BaseInterpreter interface implementations.
+    virtual Eigen::VectorXd computeParameterMean() const;
+    virtual Eigen::VectorXd computeCoefficientMean() const;
     virtual double computeFluxMean(ID object, ID frame) const;
     virtual double computeFluxVariance(ID object, ID frame) const;
     //@}
