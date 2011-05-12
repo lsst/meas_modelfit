@@ -39,6 +39,9 @@ public:
 
     typedef boost::shared_ptr<ShapeletModelBasis> Ptr;
 
+    static void setPsfShapeletOrder(int order) { getPsfShapeletOrderRef() = order; }
+    static int getPsfShapeletOrder() { return getPsfShapeletOrderRef(); }
+
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
      *         parametrization.
@@ -85,6 +88,8 @@ private:
         : ModelBasis(afw::math::shapelets::computeSize(order)),
           _order(order), _scale(scale)
     {}
+
+    static int & getPsfShapeletOrderRef();
 
     int _order;
     double _scale;

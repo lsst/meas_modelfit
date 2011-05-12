@@ -33,8 +33,6 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace { 
 
-static int const SHAPELET_DEFAULT_ORDER = 8; // TODO: make this a policy value
-
 class ConvolvedShapeletModelBasis : public ModelBasis {
 public:
 
@@ -88,6 +86,11 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
+int & mf::ShapeletModelBasis::getPsfShapeletOrderRef() {
+    static int v = 4;
+    return v;
+}
+
 void mf::ShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
     afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
     vector.deep() = 0.0;
@@ -124,7 +127,7 @@ mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
         return convolve(s);
     } else {
         afwShapelets::ShapeletFunction s = 
-            psf->computeShapelet(afwShapelets::HERMITE, SHAPELET_DEFAULT_ORDER);
+            psf->computeShapelet(afwShapelets::HERMITE, getPsfShapeletOrder());
         s.getEllipse().getCenter() -= afw::geom::Extent2D(psf->getPoint());
         return convolve(s);
     }
