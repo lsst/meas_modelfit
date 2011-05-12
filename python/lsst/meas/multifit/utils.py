@@ -1,4 +1,4 @@
-import lsst.afw.detection as afwDet
+import lsst.afw.detection as afwDetection
 import lsst.afw.geom as afwGeom
 import lsst.afw.geom.ellipses
 from . import multifitLib
@@ -13,33 +13,29 @@ def loadBasis(name):
     return multifitLib.CompoundShapeletModelBasis.load(path)
 
 
-def makeEllipse(src):    
+def makeEllipseCore(src):    
     ixx= src.getIxx()
     ixy= src.getIxy()
     iyy= src.getIyy()
-    ixx = ((ixx < 0 or numpy.isnan(ixx)) and [0.0] or [ixx])[0]
-    ixy = ((ixy < 0 or numpy.isnan(ixy)) and [0.0] or [ixy])[0]
-    ixx = ((iyy < 0 or numpy.isnan(iyy)) and [0.0] or [iyy])[0]
 
-    quad = afwGeom.ellipses.Quadrupole(
-        src.getIxx(), 
-        src.getIyy(), 
-        src.getIxy()
-    )
-    axes = afwGeom.ellipses.Axes(quad)
-    maxR = 2*numpy.sqrt(src.getFootprint().getArea())
+    return  afwGeom.ellipses.Quadrupole(ixx, iyy, ixy)
 
-    print axes.getA(), axes.getB()
-    if (axes.getA() == 0.):
+def checkEllipseCore(core, fp):
+    axes = afwGeom.ellipses.Axes(core)
+    if(numpy.isnan(axes.getA()) or numpy.isnan(axes.getB())):
+        raise RuntimeError("Initial source measurements are NaN")
+
+    maxR = 2*numpy.sqrt(fp.getArea())
+
+    #print axes.getA(), axes.getB()
+    if (axes.getA() <= 0.):
         axes.setA(1e-16)
-    if (axes.getB() == 0.):
+    if (axes.getB() <= 0.):
         axes.setB(1e-16)
-    if (axes.getA() > maxR or axes.getB() > maxR or \
-            numpy.isnan(axes.getA()) or numpy.isnan(axes.getB())):
-        raise RuntimeError("Initial Source moments are unreasonably large")
+    if (axes.getA() > maxR or axes.getB() > maxR):
+        raise RuntimeError("Initial source moments are unreasonably large")
 
-    point = makePoint(src)
-    return afwGeom.ellipses.Ellipse(axes, point)
+    return axes
 
 def makePoint(src):
     return afwGeom.Point2D(src.getXAstrom(), src.getYAstrom())
@@ -54,38 +50,40 @@ def makeBitMask(mask, maskPlaneNames):
         bitmask |= mask.getPlaneBitMask(name)    
     return bitmask
 
-def fitSource(cutout, src, policy):
-    optimizer = multifitLib.GaussNewtonOptimizer()
-
-    bitmask = makeBitMask(cutout.getMaskedImage().getMask(), 
-            policy.getArray("maskPlaneName"))
+def fitSource(exposure, src, bitmask, policy):
+    if not checkSrcFlags(src):
+        #print "Ignoring flagged source"
+        return (None, None)
 
     #ftol = policy.get("ftol")
     #gtol = policy.get("gtol")
     #minStep = policy.get("minStep")
     #maxIter = policy.get("maxIter")
-    #maxIter = policy.get("tau")
-    #maxIter = policy.get("useSVD")
+    #tau = policy.get("tau")
+    #useSVD = policy.get("useSVD")
     
+    fp = afwDetection.growFootprint(src.getFootprint(), policy.get("nGrowFp"))
+
+    point = makePoint(src)
     try:
-        ellipse = makeEllipse(src)
-        point = ellipse.getCenter()
+        core = makeEllipseCore(src)
+        core = checkEllipseCore(core, fp)
+        ellipse = afwGeom.ellipses.Ellipse(core, point)
+        del core
     except Exception, e:
         print e
         ellipse = None
-        point = makePoint(src)        
 
+    optimizer = multifitLib.GaussNewtonOptimizer
 
-    fp = src.getFootprint()
-
-    print cutout
-    print bitmask
-    print fp
-    print ellipse
-    print point
+    #print cutout
+    #print bitmask
+    #print fp
+    #print ellipse
+    #print point
 
     psDef = multifitLib.Definition.make(
-           cutout, fp, point, 
+           exposure, fp, point, 
            policy.getBool("isVariable"), 
            policy.getBool("isPositionActive"), 
            bitmask)
@@ -107,7 +105,7 @@ def fitSource(cutout, src, policy):
 
     basis = loadBasis(policy.get("basisName"))
     sgDef = multifitLib.Definition.make(\
-            cutout, fp, basis, ellipse,
+            exposure, fp, basis, ellipse,
             policy.get("isEllipticityActive"),
             policy.get("isRadiusActive"),
             policy.get("isPositionActive"),
@@ -121,11 +119,19 @@ def fitSource(cutout, src, policy):
     if not sgDistribution:
         sgInterpreter = None
     else:
-        print sgEval.getParameterSize()
-        print sgEval.getCoefficientSize()
         sgInterpreter = multifitLib.UnifiedSimpleInterpreter.make(
             sgDistribution,
             sgEval.getGrid())
 
     return (psInterpreter, sgInterpreter) 
 
+
+def processExposure(exposure, sources, policy):
+    bitmask = makeBitmask(exposure.getMaskedImage().getMask(),
+                          policy.getArra("maskPlaneName"))
+    results = []   
+    for s in sources:
+        print "Fitting source", s.getId()
+        results.append(fitSource(exposure, s, bitmask, policy))
+
+    return results

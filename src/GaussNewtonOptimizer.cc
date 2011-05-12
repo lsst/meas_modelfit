@@ -11,6 +11,7 @@ namespace {
 class Solver : public lsst::meas::algorithms::shapelet::NLSolver {
 public:
     Solver(lsst::meas::multifit::Evaluation & evaluation, 
+           std::list<lsst::ndarray::Array<double, 1, 1> > & parameterPoints,
            double const fTol, double const gTol, 
            double const minStep, int const maxIter, 
            double const tau
@@ -18,7 +19,7 @@ public:
         _nParam(evaluation.getEvaluator()->getParameterSize()),
         _nUnified(_nParam + _nCoeff),
         _penalty(0.0), 
-        _parameters(lsst::ndarray::allocate(_nUnified)),
+        _parameterPoints(parameterPoints),
         _evaluation(evaluation)
     {
         useHybrid();
@@ -35,12 +36,15 @@ public:
         Eigen::VectorXd const & x, 
         Eigen::VectorXd & f
     ) const {
-        lsst::ndarray::viewAsEigen(_parameters) = x;
-        _penalty = _evaluation.getEvaluator()->clipToBounds(_parameters);
+        lsst::ndarray::Array<double, 1, 1> parameters = lsst::ndarray::copy(
+            lsst::ndarray::viewVectorAsArray(x)
+        );
+        _parameterPoints.push_back(parameters);
+        _penalty = _evaluation.getEvaluator()->clipToBounds(parameters);
 
         _evaluation.update(
-            _parameters[lsst::ndarray::view(0, _nParam)], 
-            _parameters[lsst::ndarray::view(_nParam, _nUnified)]
+            parameters[lsst::ndarray::view(0, _nParam)], 
+            parameters[lsst::ndarray::view(_nParam, _nUnified)]
         );
 
         f << lsst::ndarray::viewAsEigen(_evaluation.getResiduals());
@@ -67,7 +71,7 @@ private:
     int _nParam;
     int _nUnified;
     mutable double _penalty;
-    lsst::ndarray::Array<double,1,1> _parameters;
+    std::list<lsst::ndarray::Array<double,1,1> > &_parameterPoints;
     lsst::meas::multifit::Evaluation & _evaluation;
 };
 
@@ -83,7 +87,7 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     double const minStep, 
     int const maxIter, 
     double const tau, 
-    bool retryWithSvd
+    bool const retryWithSvd
 ) {
     int nCoeff = evaluator->getCoefficientSize();
     int nParam = evaluator->getParameterSize();
@@ -94,11 +98,13 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
             "Have fewer pixels than parameters. System is underdetermined"
         );
     }
+    _parameterPoints.clear();
     Eigen::VectorXd unified(nCoeff + nParam);
     Eigen::MatrixXd covariance(nParam+nCoeff, nParam+nCoeff);
     Evaluation evaluation(evaluator);
     if (nParam == 0) {
         unified << ndarray::viewAsEigen(evaluation.getCoefficients());
+        _parameterPoints.push_back(ndarray::copy(evaluation.getCoefficients()));
         covariance << ndarray::viewAsEigen(evaluation.getCoefficientFisherMatrix()).inverse();
         return GaussianDistribution::Ptr(
             new GaussianDistribution(unified, covariance)
@@ -111,8 +117,9 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     unified << ndarray::viewAsEigen(evaluation.getParameters()),
                 ndarray::viewAsEigen(evaluation.getCoefficients());
     
+    _parameterPoints.push_back(ndarray::copy(ndarray::viewVectorAsArray(unified)));
 
-    ::Solver solver(evaluation, fTol, gTol, minStep, maxIter, tau);     
+    ::Solver solver(evaluation, _parameterPoints, fTol, gTol, minStep, maxIter, tau);     
     bool solverSuccess = solver.solve(unified, residual);
 
     if(!solverSuccess && retryWithSvd) {
@@ -128,6 +135,19 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     return GaussianDistribution::Ptr(
         new GaussianDistribution(unified, covariance)
     );
+}
+
+lsst::ndarray::Array<const double, 2, 2> GaussNewtonOptimizer::getParameterPoints() const {
+    std::list<ndarray::Array<double, 1, 1> >::const_iterator i(_parameterPoints.begin());
+    ndarray::Array<double, 2, 2> parameterPoints = ndarray::allocate(
+        static_cast<int>(_parameterPoints.size()),
+        i->getSize<0>()
+    );
+
+    for(int j=0 ; i != _parameterPoints.end(); ++j) {
+        parameterPoints[j].deep() = *i;
+    }
+    return parameterPoints;
 }
 
 }}}

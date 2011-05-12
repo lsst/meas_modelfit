@@ -41,8 +41,11 @@ public:
         double const minStep=1.e-8, 
         int const maxIter=200, 
         double const tau=1.e-3, 
-        bool retryWithSvd=false
+        bool const retryWithSvd=false
     );
+    lsst::ndarray::Array<double const, 2, 2> getParameterPoints() const;
+private:
+    std::list<lsst::ndarray::Array<double, 1, 1> > _parameterPoints;
 };
 
 }}} //end namespace lsst::meas::multifit

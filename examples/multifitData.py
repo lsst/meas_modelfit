@@ -8,6 +8,7 @@ def test():
     butler = bf.create()
 
     policy = Policy()
+    policy.add("nGrowFp", 3)
     policy.add("isVariable", False)
     policy.add("isPositionActive", False)
     policy.add("isRadiusActive", True)
@@ -15,20 +16,15 @@ def test():
     policy.add("maskPlaneName", "BAD")
     policy.add("basisName", "ed+15:4000")
 
-    results = {}
-    dsTypes = ["highPs", "lowPs", "highSg", "lowSg"]    
-    for i in range(20):
-        psf = butler.get("psf", id=i)
-        for ds in dsTypes:
-            if not butler.datasetExists("src", id=i, dsType=ds):
+    results = []
+    for i in range(2):
+        if not butler.datasetExists("src", id=i):
                 continue
-
-            src = butler.get("src", id=i, dsType=ds)
-            cutout = butler.get("exp", id=i, dsType=ds)
-            cutout.setPsf(psf)
-
-            result = mf.utils.fitSource(cutout, src, policy)
-            results[ds+"%i"%i]=result
+        psf = butler.get("psf", id=i)
+        exposure = butler.get("exp", id=i)
+        exposure.set(psf)
+        sources = butler.get("src", id=i)
+        results.append(mf.utils.processExposure(exposure, sources, policy))
 
 
 if __name__ == '__main__':
