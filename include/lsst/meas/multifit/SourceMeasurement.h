@@ -65,9 +65,17 @@ public:
                                      CONST_PTR(afw::detection::Source)
                                     );
 
+    static bool isEllipticityActive, isRadiusActive, isPositionActive;
+    static bool retryWithSvd;
+    static lsst::afw::image::MaskPixel bitmask;
+    static int nGrowFp, maxIter;
+    static ModelBasis::Ptr basis;
+    static double ftol, gtol, minStep, tau;
+
 private:
     ShapeletModelPhotometry() : lsst::afw::detection::Photometry() { }
     LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
+
 };
 
 }}}

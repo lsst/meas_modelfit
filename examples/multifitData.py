@@ -22,7 +22,7 @@ def test():
             continue
         psf = butler.get("psf", id=i)
         exposure = butler.get("exp", id=i)
-        exposure.set(psf)
+        exposure.setPsf(psf)
         sources = butler.get("src", id=i)
         results.append(mf.utils.processExposure(exposure, sources, policy))
 

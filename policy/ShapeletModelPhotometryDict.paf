@@ -1,0 +1,93 @@
+#<? cfg paf dictionary ?>
+#
+# 
+target: ShapeletModelPhotometry
+
+definitions: {
+    nGrowFp:{
+        type: "int"        
+        description: "amount to grow input footprint"
+        minOccurs: 1
+        maxOccurs: 1
+        default: 1
+    }
+    psfShapeletOrder:{
+        type: "int"
+        description: "Desired shapelet order when converting to
+                     a non-shapelet psf to a shapelet psf"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 8
+    }
+    maxIter: {
+        type: "int"
+        description: "maximum iterations to perform in optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 200
+    }
+    isPositionActive: {
+        type: "bool"     
+        description: "if true will fit for position"
+        minOccurs: 0
+        maxOccurs: 1
+        default: false
+    }
+    isRadiusActive: {
+        type: "bool"
+        description: "if true will fit for radius"
+        minOccurs: 0
+        maxOccurs: 1
+        default: true
+    }
+    isEllipticityActive: {
+        type: "bool"
+        description: "if true will fit for ellipticity"
+        minOccurs: 0
+        maxOccurs: 1
+        default: true
+    }
+    retryWithSvd: {
+        type: "bool"     
+        description: "if true will use SVD in optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: false
+    }
+    
+    ftol: {
+        type: "double"
+        description: "convergence tolerance for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-8
+    }
+    gtol: {
+        type: "double"
+        description: "convergence tolerance for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-8
+    }
+    minStep: {
+        type: "double"
+        description: "minimum allowed step size for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-3
+    }
+    tau: {
+        type: "double"
+        description: "good-ness of initial parameters for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-3
+    }
+
+    maskPlaneName: {
+        type: "string"
+        description: "list of mask planes to consider when masking the footprint"
+        minOccurs: 0        
+        default: "BAD" "SAT" "CR" "EDGE"
+    }
+}
