@@ -374,14 +374,20 @@ void Evaluation::update(
 }
 
 void Evaluation::setCoefficients(lsst::ndarray::Array<double const,1,1> const & coefficients) {
-    assert(coefficients.getSize<0>() == _coefficients.getSize<0>());
+    assert(coefficients.size() == _evaluator->getCoefficientSize());
+    if (_coefficients.getData() == 0) {
+        _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
+    }
     _coefficients.deep() = coefficients;
     _status &= ~coefficient_dependencies;
     Bit<COEFFICIENTS>::set(_status);
 }
 
 void Evaluation::setCoefficients(Eigen::VectorXd const & coefficients) {
-    assert(coefficients.size() == _coefficients.getSize<0>());
+    if (_coefficients.getData() == 0) {
+        _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
+    }
+    assert(coefficients.size() == _evaluator->getCoefficientSize());
     ndarray::viewAsEigen(_coefficients) = coefficients;
     _status &= ~coefficient_dependencies;
     Bit<COEFFICIENTS>::set(_status);

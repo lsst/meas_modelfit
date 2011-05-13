@@ -125,20 +125,6 @@ SWIG_SHARED_PTR_DERIVED(grid_ObjectPtr, lsst::meas::multifit::detail::ObjectBase
     }
 }
 
-//------------------------------------- Source ---------------------------------------
-
-%{
-#include "lsst/meas/multifit/grid/Source.h"
-%}
-
-SWIG_SHARED_PTR(grid_SourcePtr, lsst::meas::multifit::grid::Source);
-
-%rename(grid_Source) lsst::meas::multifit::grid::Source;
-
-%include "lsst/meas/multifit/grid/Source.h"
-
-%PointerEQ(lsst::meas::multifit::grid::Source)
-
 //------------------------------------- Frame ---------------------------------------
 
 %{
@@ -168,6 +154,20 @@ SWIG_SHARED_PTR_DERIVED(grid_FramePtr, lsst::meas::multifit::detail::FrameBase, 
     lsst::ndarray::Array<lsst::meas::multifit::Pixel const,1,1> getData() { return self->getData(); }
     lsst::ndarray::Array<lsst::meas::multifit::Pixel const,1,1> getWeights() { return self->getWeights(); }
 }
+
+//------------------------------------- Source ---------------------------------------
+
+%{
+#include "lsst/meas/multifit/grid/Source.h"
+%}
+
+SWIG_SHARED_PTR(grid_SourcePtr, lsst::meas::multifit::grid::Source);
+
+%rename(grid_Source) lsst::meas::multifit::grid::Source;
+
+%include "lsst/meas/multifit/grid/Source.h"
+
+%PointerEQ(lsst::meas::multifit::grid::Source)
 
 //----------------------------- Grid -----------------------------------
 

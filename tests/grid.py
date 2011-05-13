@@ -198,7 +198,12 @@ class GridTest(unittest.TestCase, TestCaseMixIn):
         for obj in grid.objects:
             for source in obj.sources:
                 self.assertEqual(source, grid.sources[n])
+                self.assertEqual(source.object, obj)
+                self.assertEqual(source.object.id, obj.id)
+                self.assertEqual(source.frame.id, 0)
                 n += 1
+        for frame in grid.frames:
+            self.assertEqual(frame.id, 0)
 
 def suite():
     utilsTests.init()

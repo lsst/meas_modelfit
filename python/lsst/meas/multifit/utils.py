@@ -69,7 +69,7 @@ def fitSource(exposure, src, bitmask, policy):
     core = checkEllipseCore(core, fp)
     ellipse = afwGeom.ellipses.Ellipse(core, point)
 
-    optimizer = multifitLib.GaussNewtonOptimizer
+    optimizer = multifitLib.GaussNewtonOptimizer()
 
     basis = loadBasis(policy.get("basisName"))
     sgDef = multifitLib.Definition.make(\

@@ -99,7 +99,7 @@ public:
         Footprint::Ptr const & footprint,
         lsst::ndarray::Array<Pixel,1,1> const & data,
         lsst::ndarray::Array<Pixel,1,1> const & weights = lsst::ndarray::Array<Pixel,1,1>()
-    ) : detail::FrameBase(id, footprint, data, weights) {}
+    ) : detail::FrameBase(id_, footprint, data, weights) {}
 
     Frame(
         ID id_,

@@ -37,6 +37,7 @@ import lsst.meas.algorithms
 
 def plotEvaluation(evaluation, grid):
     dataVector = evaluation.getEvaluator().getDataVector()
+    modelMatrix = evaluation.getModelMatrix()
     modelVector = evaluation.getModelVector()
     residualVector = evaluation.getResiduals()
     for source in grid.sources:
@@ -51,11 +52,11 @@ def plotEvaluation(evaluation, grid):
         dbox = lsst.afw.geom.BoxD(ibox)
         extent = (dbox.getMinX(), dbox.getMaxX(), dbox.getMinY(), dbox.getMaxY())
         images = numpy.zeros((3, ibox.getHeight(), ibox.getWidth()), dtype=float)
-        lsst.afw.detection.expandArray(footprint, dataSubset, images[0], bbox.getMin());
-        lsst.afw.detection.expandArray(footprint, modelSubset, images[1], bbox.getMin());
-        lsst.afw.detection.expandArray(footprint, residualSubset, image[2], bbox.getMin());
-        vmin = images.min()
-        vmax = images.max()
+        lsst.afw.detection.expandArray(footprint, dataSubset, images[0], ibox.getMin());
+        lsst.afw.detection.expandArray(footprint, modelSubset, images[1], ibox.getMin());
+        lsst.afw.detection.expandArray(footprint, residualSubset, images[2], ibox.getMin());
+        vmin = images[0].min()
+        vmax = images[0].max()
         for i in range(3):
             pyplot.subplot(1, 3, i + 1)
             pyplot.imshow(images[i], origin='lower', interpolation='nearest', 
@@ -69,10 +70,11 @@ def plotEvaluation(evaluation, grid):
     pyplot.show()
 
 def plotInterpreter(interpreter):
-    evaluator = lsst.meas.multifit.Evaluator(interpreter.getGrid())
-    evaluation = lsst.meas.multifit.Evaluation(evaluator, intepreter.computeParameterMean());
-    evaluation.setCoefficients(intepreter.computeCoefficientMean())
-    plotEvaluation(evaluation, intepreter.getGrid())
+    evaluator = lsst.meas.multifit.Evaluator.make(interpreter.getGrid())
+    evaluation = lsst.meas.multifit.Evaluation(evaluator, interpreter.computeParameterMean())
+    coefficients = interpreter.computeCoefficientMean()
+    evaluation.setCoefficients(coefficients)
+    plotEvaluation(evaluation, interpreter.getGrid())
 
 class Viewer(object):
 
@@ -88,12 +90,12 @@ class Viewer(object):
         bf = ButlerFactory(mapper=DatasetMapper())
         butler = bf.create()
         self.psf = butler.get("psf", id=dataset)
-        print self.psf
         self.exposure = butler.get("exp", id=dataset)
         self.exposure.setPsf(self.psf)
         self.sources = butler.get("src", id=dataset)
-        self.bitmask = utils.makeBitmask(self.exposure.getMaskedImage().getMask(),
+        self.bitmask = utils.makeBitMask(self.exposure.getMaskedImage().getMask(),
                                          self.policy.getArray("maskPlaneName"))
     
     def plot(self, source):
         interpreter = utils.fitSource(self.exposure, source, self.bitmask, self.policy)
+        plotInterpreter(interpreter)
