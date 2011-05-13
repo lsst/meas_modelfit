@@ -57,7 +57,7 @@ public:
 #ifndef SWIG
     void writeParameters(double * paramIter) const;
 #endif
-    void writeParameters(ndarray::Array<double, 1, 1> const & params) const {
+    void writeParameters(lsst::ndarray::Array<double, 1, 1> const & params) const {
         writeParameters(params.getData());
     }
 

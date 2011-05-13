@@ -79,6 +79,8 @@ void NestedSimpleInterpreter::ensureCompatibility() {
 }
 
 Eigen::VectorXd UnifiedSimpleInterpreter::computeParameterMean() const {
+    if (_grid->getParameterCount() == 0)
+        return Eigen::VectorXd();
     return getMuCRef().segment(0, _grid->getParameterCount());
 }
 

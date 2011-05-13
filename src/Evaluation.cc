@@ -285,7 +285,7 @@ Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator, bool robustSolver) 
     _status(0), _evaluator(evaluator), _parameters(ndarray::allocate(_evaluator->getParameterSize()))
 {
     _evaluator->writeInitialParameters(_parameters);
-    _solver.reset(new CholeskySolver(evaluator->getCoefficientSize()));
+    initialize();
 }
 
 Evaluation::Evaluation(

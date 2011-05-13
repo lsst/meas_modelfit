@@ -35,7 +35,7 @@ class TestCaseMixIn(object):
 
     def addGalaxy(self):
         self.galaxyEllipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(4.0, 3.0, 0.25), 
-                                                                lsst.afw.geom.Point2D(10.3, 42.1))
+                                                            lsst.afw.geom.Point2D(10.3, 42.1))
         self.galaxy = mf.definition.Object.makeGalaxy(
             1,
             mf.ShapeletModelBasis.make(2),
@@ -204,6 +204,18 @@ class GridTest(unittest.TestCase, TestCaseMixIn):
                 n += 1
         for frame in grid.frames:
             self.assertEqual(frame.id, 0)
+
+    def testParameterVector(self):
+        grid = mf.Grid.make(self.definition)
+        parameters = numpy.zeros(grid.getParameterCount(), dtype=float)
+        grid.writeParameters(parameters)
+        print parameters
+        print grid.objects
+        #for obj in grid.objects:
+        #    if obj.getBasis() is not None:
+        #        print obj.makeEllipse(parameters).getParameterVector(), self.galaxyEllipse.getParameterVector()
+#else:
+#                print obj.makePoint(parameters), self.starPoint
 
 def suite():
     utilsTests.init()

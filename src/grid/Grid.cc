@@ -296,13 +296,13 @@ int const Grid::getFilterIndex(FilterId filterId) const {
 
 void Grid::writeParameters(double * paramIter) const {
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        detail::ParameterComponentTraits<POSITION>::writeParameters(paramIter, i->getValue());
+        detail::ParameterComponentTraits<POSITION>::writeParameters(paramIter + i->offset, i->getValue());
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        detail::ParameterComponentTraits<RADIUS>::writeParameters(paramIter, i->getValue());
+        detail::ParameterComponentTraits<RADIUS>::writeParameters(paramIter + i->offset, i->getValue());
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        detail::ParameterComponentTraits<ELLIPTICITY>::writeParameters(paramIter, i->getValue());
+        detail::ParameterComponentTraits<ELLIPTICITY>::writeParameters(paramIter + i->offset, i->getValue());
     }
 }
 

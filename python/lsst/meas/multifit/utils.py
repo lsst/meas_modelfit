@@ -79,7 +79,15 @@ def fitSource(exposure, src, bitmask, policy):
             policy.get("isPositionActive"),
             bitmask)
     sgEval = multifitLib.Evaluator.make(sgDef)
-    sgDistribution = optimizer.solve(sgEval)
+    if sgEval.getParameterSize() > 0:
+        sgDistribution = optimizer.solve(sgEval)
+    else:
+        evaluation = multifitLib.Evaluation(sgEval, True)
+        print evaluation.getModelMatrix()
+        sgDistribution = multifitLib.GaussianDistribution(
+            evaluation.getCoefficients(),
+            numpy.linalg.pinv(evaluation.getCoefficientFisherMatrix())
+            )
     sgInterpreter = multifitLib.UnifiedSimpleInterpreter.make(
         sgDistribution,
         sgEval.getGrid())

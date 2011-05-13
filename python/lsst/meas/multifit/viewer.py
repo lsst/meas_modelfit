@@ -38,6 +38,7 @@ import lsst.meas.algorithms
 def plotEvaluation(evaluation, grid):
     dataVector = evaluation.getEvaluator().getDataVector()
     modelMatrix = evaluation.getModelMatrix()
+    print modelMatrix
     modelVector = evaluation.getModelVector()
     residualVector = evaluation.getResiduals()
     for source in grid.sources:
@@ -71,10 +72,34 @@ def plotEvaluation(evaluation, grid):
 
 def plotInterpreter(interpreter):
     evaluator = lsst.meas.multifit.Evaluator.make(interpreter.getGrid())
-    evaluation = lsst.meas.multifit.Evaluation(evaluator, interpreter.computeParameterMean())
+    evaluation = lsst.meas.multifit.Evaluation(evaluator) #, interpreter.computeParameterMean()
     coefficients = interpreter.computeCoefficientMean()
     evaluation.setCoefficients(coefficients)
     plotEvaluation(evaluation, interpreter.getGrid())
+
+def makeBitMask(mask, maskPlaneNames):
+    bitmask=0
+    for name in maskPlaneNames:
+        bitmask |= mask.getPlaneBitMask(name)    
+    return bitmask
+
+def makeGrid(exposure, source, policy):
+    bitmask = makeBitMask(exposure.getMaskedImage().getMask(), policy.getArray("maskPlaneName"))
+    quadrupole = lsst.afw.geom.ellipses.Quadrupole(source.getIxx(), source.getIyy(), source.getIxy())
+    ellipse = lsst.afw.geom.ellipses.Ellipse(
+        lsst.meas.multifit.EllipseCore(quadrupole), 
+        lsst.afw.geom.Point2D(source.getXAstrom(), source.getYAstrom())
+        )
+    basis = utils.loadBasis(policy.get("basisName"))
+    footprint = lsst.afw.detection.growFootprint(source.getFootprint(), policy.get("nGrowFp"))
+    definition = lsst.meas.multifit.Definition.make(
+        exposure, footprint, basis, ellipse,
+        policy.get("isEllipticityActive"),
+        policy.get("isRadiusActive"),
+        policy.get("isPositionActive"),
+        bitmask
+        )
+    return lsst.meas.multifit.Grid.make(definition)
 
 class Viewer(object):
 
@@ -83,8 +108,8 @@ class Viewer(object):
         self.policy.add("nGrowFp", 3)
         self.policy.add("isVariable", False)
         self.policy.add("isPositionActive", False)
-        self.policy.add("isRadiusActive", True)
-        self.policy.add("isEllipticityActive", True)
+        self.policy.add("isRadiusActive", False)
+        self.policy.add("isEllipticityActive", False)
         self.policy.add("maskPlaneName", "BAD")
         self.policy.add("basisName", "ed+15:4000")
         bf = ButlerFactory(mapper=DatasetMapper())
@@ -97,5 +122,7 @@ class Viewer(object):
                                          self.policy.getArray("maskPlaneName"))
     
     def plot(self, source):
-        interpreter = utils.fitSource(self.exposure, source, self.bitmask, self.policy)
-        plotInterpreter(interpreter)
+        self.grid = makeGrid(self.exposure, source, self.policy)
+        self.evaluator = lsst.meas.multifit.Evaluator.make(self.grid)
+        self.evaluation = lsst.meas.multifit.Evaluation(self.evaluator)
+        plotEvaluation(self.evaluation, self.grid)
