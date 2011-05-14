@@ -36,10 +36,12 @@ from lsst.pex.policy import Policy
 import lsst.meas.algorithms
 
 def plotEvaluation(evaluation, grid):
+    print evaluation.getCoefficients()
     dataVector = evaluation.getEvaluator().getDataVector()
+    print "dataVector.sum():", dataVector.sum()
     modelMatrix = evaluation.getModelMatrix()
-    print modelMatrix
     modelVector = evaluation.getModelVector()
+    print "modelVector.sum():", modelVector.sum()
     residualVector = evaluation.getResiduals()
     for source in grid.sources:
         pyplot.figure()
@@ -49,17 +51,30 @@ def plotEvaluation(evaluation, grid):
         modelSubset = modelVector[pixelIndices]
         residualSubset = residualVector[pixelIndices]
         footprint = source.frame.getFootprint()
+        psfDataVector = numpy.zeros(footprint.getArea(), dtype=float)
+        psfModelVector = numpy.zeros(footprint.getArea(), dtype=float)
+        localPsfData = source.getLocalPsf()
+        shapelet = localPsfData.computeShapelet(lsst.afw.math.shapelets.HERMITE,
+                                                lsst.meas.multifit.ShapeletModelBasis.getPsfShapeletOrder())
+        multiShapelet = lsst.afw.math.shapelets.MultiShapeletFunction(shapelet)
+        localPsfModel = lsst.afw.detection.ShapeletLocalPsf(localPsfData.getPoint(), multiShapelet)
+        localPsfData.evaluatePointSource(footprint, psfDataVector)
+        localPsfModel.evaluatePointSource(footprint, psfModelVector)
+        psfResidualVector = psfModelVector - psfDataVector
         ibox = footprint.getBBox()
         dbox = lsst.afw.geom.BoxD(ibox)
         extent = (dbox.getMinX(), dbox.getMaxX(), dbox.getMinY(), dbox.getMaxY())
-        images = numpy.zeros((3, ibox.getHeight(), ibox.getWidth()), dtype=float)
+        images = numpy.zeros((6, ibox.getHeight(), ibox.getWidth()), dtype=float)
         lsst.afw.detection.expandArray(footprint, dataSubset, images[0], ibox.getMin());
         lsst.afw.detection.expandArray(footprint, modelSubset, images[1], ibox.getMin());
         lsst.afw.detection.expandArray(footprint, residualSubset, images[2], ibox.getMin());
+        lsst.afw.detection.expandArray(footprint, psfDataVector, images[3], ibox.getMin());
+        lsst.afw.detection.expandArray(footprint, psfModelVector, images[4], ibox.getMin());
+        lsst.afw.detection.expandArray(footprint, psfResidualVector, images[5], ibox.getMin());
         vmin = images[0].min()
         vmax = images[0].max()
         for i in range(3):
-            pyplot.subplot(1, 3, i + 1)
+            pyplot.subplot(2, 3, i + 1)
             pyplot.imshow(images[i], origin='lower', interpolation='nearest', 
                           vmin=vmin, vmax=vmax, extent=extent)
             if source.object.getBasis():
@@ -68,11 +83,24 @@ def plotEvaluation(evaluation, grid):
             else:
                 point = source.object.makePoint(evaluation.getParameters())
                 pyplot.plot([self.point.getX()], [self.point.getY()], 'kx')
+            print i, images[i].sum()
+        vmin = images[3].min()
+        vmax = images[3].max()
+        psfEllipse = localPsfData.computeMoments()
+        for i in range(3):
+            pyplot.subplot(2, 3, i + 4)
+            pyplot.imshow(images[i + 3], origin='lower', interpolation='nearest', 
+                          vmin=vmin, vmax=vmax, extent=extent)
+            psfEllipse.plot(fill=False)
+            print i+3, images[i + 3].sum()
     pyplot.show()
 
 def plotInterpreter(interpreter):
     evaluator = lsst.meas.multifit.Evaluator.make(interpreter.getGrid())
-    evaluation = lsst.meas.multifit.Evaluation(evaluator) #, interpreter.computeParameterMean()
+    if evaluator.getParameterSize() > 0:
+        evaluation = lsst.meas.multifit.Evaluation(evaluator, interpreter.computeParameterMean())
+    else:
+        evaluation = lsst.meas.multifit.Evaluation(evaluator)
     coefficients = interpreter.computeCoefficientMean()
     evaluation.setCoefficients(coefficients)
     plotEvaluation(evaluation, interpreter.getGrid())
@@ -111,7 +139,13 @@ class Viewer(object):
         self.policy.add("isRadiusActive", False)
         self.policy.add("isEllipticityActive", False)
         self.policy.add("maskPlaneName", "BAD")
-        self.policy.add("basisName", "ed+15:4000")
+        self.policy.add("basisName", "ed+06:2000")
+        self.policy.add("ftol", 1E-3)
+        self.policy.add("gtol", 1E-3)
+        self.policy.add("minStep", 1E-8)
+        self.policy.add("maxIter", 200)
+        self.policy.add("tau", 1E-3)
+        self.policy.add("retryWithSvd", True)
         bf = ButlerFactory(mapper=DatasetMapper())
         butler = bf.create()
         self.psf = butler.get("psf", id=dataset)
@@ -120,9 +154,28 @@ class Viewer(object):
         self.sources = butler.get("src", id=dataset)
         self.bitmask = utils.makeBitMask(self.exposure.getMaskedImage().getMask(),
                                          self.policy.getArray("maskPlaneName"))
+        self.optimizer = lsst.meas.multifit.GaussNewtonOptimizer()
     
     def plot(self, source):
         self.grid = makeGrid(self.exposure, source, self.policy)
         self.evaluator = lsst.meas.multifit.Evaluator.make(self.grid)
-        self.evaluation = lsst.meas.multifit.Evaluation(self.evaluator)
-        plotEvaluation(self.evaluation, self.grid)
+        self.distribution = self.optimizer.solve(
+            self.evaluator,
+            self.policy.get("ftol"),
+            self.policy.get("gtol"),
+            self.policy.get("minStep"),
+            self.policy.get("maxIter"),
+            self.policy.get("tau"),
+            self.policy.get("retryWithSvd")
+            )
+        if self.distribution is None:
+            print "Optimizer returned None"
+            return
+        interpreter = lsst.meas.multifit.UnifiedSimpleInterpreter.make(
+            self.distribution,
+            self.grid
+            )
+        print "model flux:", interpreter.computeFluxMean(0, 0)
+        plotInterpreter(interpreter)
+        #self.evaluation = lsst.meas.multifit.Evaluation(self.evaluator)
+        #plotEvaluation(self.evaluation, self.grid)

@@ -59,11 +59,13 @@ public:
         Eigen::VectorXd const & f,
         Eigen::MatrixXd & j
     ) const {
+        //std::cerr << "In calculateJ!\n";
         j << lsst::ndarray::viewAsEigen(_evaluation.getResidualsJacobian()),
              lsst::ndarray::viewAsEigen(_evaluation.getModelMatrix());
         if (_penalty > 0.0) {
             j *= 1.0 + _penalty;
         }
+        //std::cerr << j << "\n";
     }
 
 private:
@@ -138,6 +140,9 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
 }
 
 lsst::ndarray::Array<const double, 2, 2> GaussNewtonOptimizer::getParameterPoints() const {
+    if (_parameterPoints.empty()) {
+        return lsst::ndarray::Array<const double, 2, 2>();
+    }
     std::list<ndarray::Array<double, 1, 1> >::const_iterator i(_parameterPoints.begin());
     ndarray::Array<double, 2, 2> parameterPoints = ndarray::allocate(
         static_cast<int>(_parameterPoints.size()),

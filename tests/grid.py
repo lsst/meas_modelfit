@@ -210,12 +210,8 @@ class GridTest(unittest.TestCase, TestCaseMixIn):
         parameters = numpy.zeros(grid.getParameterCount(), dtype=float)
         grid.writeParameters(parameters)
         print parameters
-        print grid.objects
-        #for obj in grid.objects:
-        #    if obj.getBasis() is not None:
-        #        print obj.makeEllipse(parameters).getParameterVector(), self.galaxyEllipse.getParameterVector()
-#else:
-#                print obj.makePoint(parameters), self.starPoint
+        
+
 
 def suite():
     utilsTests.init()

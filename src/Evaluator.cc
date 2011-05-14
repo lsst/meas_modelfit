@@ -60,7 +60,7 @@ void Evaluator::_evaluateModelMatrix(
     }
 }
 
-
+#if 0
 void Evaluator::_evaluateModelMatrixDerivative(
     ndarray::Array<double,3,3> const & derivative,
     ndarray::Array<double const,2,2> const & modelMatrix,
@@ -159,6 +159,8 @@ void Evaluator::_evaluateModelMatrixDerivative(
         }
     }
 }
+
+#endif
 
 Evaluator::Evaluator(Grid::Ptr const & grid) :
     BaseEvaluator(
