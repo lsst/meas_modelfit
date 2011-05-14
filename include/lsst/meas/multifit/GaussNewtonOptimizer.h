@@ -44,8 +44,10 @@ public:
         bool const retryWithSvd=false
     );
     lsst::ndarray::Array<double const, 2, 2> getParameterPoints() const;
+    bool didConverge() const {return _didConverge;}
 private:
     std::list<lsst::ndarray::Array<double, 1, 1> > _parameterPoints;
+    bool _didConverge;
 };
 
 }}} //end namespace lsst::meas::multifit

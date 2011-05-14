@@ -6,6 +6,8 @@
 #include <cfloat>
 #include "lsst/ndarray/eigen.h"
 
+#include <iostream>
+
 namespace {
 
 class Solver : public lsst::meas::algorithms::shapelet::NLSolver {
@@ -82,7 +84,6 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
-
 GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     BaseEvaluator::Ptr const & evaluator,
     double const fTol, double const gTol, 
@@ -95,6 +96,7 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     int nParam = evaluator->getParameterSize();
     
     if (nCoeff + nParam > evaluator->getDataSize()) {
+        _didConverge=false;
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
             "Have fewer pixels than parameters. System is underdetermined"
@@ -105,6 +107,7 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     Eigen::MatrixXd covariance(nParam+nCoeff, nParam+nCoeff);
     Evaluation evaluation(evaluator);
     if (nParam == 0) {
+        _didConverge = true;
         unified << ndarray::viewAsEigen(evaluation.getCoefficients());
         _parameterPoints.push_back(ndarray::copy(evaluation.getCoefficients()));
         covariance << ndarray::viewAsEigen(evaluation.getCoefficientFisherMatrix()).inverse();
@@ -122,17 +125,13 @@ GaussianDistribution::Ptr GaussNewtonOptimizer::solve(
     _parameterPoints.push_back(ndarray::copy(ndarray::viewVectorAsArray(unified)));
 
     ::Solver solver(evaluation, _parameterPoints, fTol, gTol, minStep, maxIter, tau);     
-    bool solverSuccess = solver.solve(unified, residual);
+    _didConverge = solver.solve(unified, residual);
 
-    if(!solverSuccess && retryWithSvd) {
+    if(!_didConverge && retryWithSvd) {
         solver.useSVD();
-        solverSuccess = solver.solve(unified, residual);
+        _didConverge = solver.solve(unified, residual);
     }
    
-    if(!solverSuccess)
-        return GaussianDistribution::Ptr();
-
-    
     solver.getCovariance(covariance);
     return GaussianDistribution::Ptr(
         new GaussianDistribution(unified, covariance)

@@ -42,6 +42,7 @@ ModelBasis::Ptr lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::basis;
 template <int nCoeff>
 void ShapeletModelPhotometry<nCoeff>::defineSchema(lsst::afw::detection::Schema::Ptr schema) {
     schema->clear();
+    schema->add(afw::detection::SchemaEntry("status",  STATUS,   afw::detection::Schema::INT, 1));
     schema->add(afw::detection::SchemaEntry("flux",    FLUX,     afw::detection::Schema::DOUBLE, 1));
     schema->add(afw::detection::SchemaEntry("fluxErr", FLUX_ERR, afw::detection::Schema::DOUBLE, 1));
     schema->add(afw::detection::SchemaEntry("e1",      E1,       afw::detection::Schema::DOUBLE, 1));
@@ -55,17 +56,32 @@ void ShapeletModelPhotometry<nCoeff>::defineSchema(lsst::afw::detection::Schema:
 
 template <int nCoeff>
 ShapeletModelPhotometry<nCoeff>::ShapeletModelPhotometry(
-    BaseInterpreter::ConstPtr const & interpreter
+    int const status
+) : lsst::afw::detection::Photometry() {
+    init(); 
+    set<STATUS>(status);
+    set<FLUX>(std::numeric_limits<double>::quiet_NaN());
+    set<FLUX_ERR>(std::numeric_limits<double>::quiet_NaN());
+    set<E1>(std::numeric_limits<double>::quiet_NaN());
+    set<E2>(std::numeric_limits<double>::quiet_NaN());
+    set<RADIUS>(std::numeric_limits<double>::quiet_NaN());
+    for(int i = 0; i < nCoeff; ++i) {
+        set<COEFFICIENTS>(i, std::numeric_limits<double>::quiet_NaN());
+    }
+}
+
+template <int nCoeff>
+ShapeletModelPhotometry<nCoeff>::ShapeletModelPhotometry(
+    BaseInterpreter::ConstPtr const & interpreter,
+    int const status
 ) : afw::detection::Photometry() {
     init();
-    if(!interpreter) {
-        return;
-    }
+    set<STATUS>(status);
     set<FLUX>(interpreter->computeFluxMean(0, 0));
     set<FLUX_ERR>(sqrt(interpreter->computeFluxVariance(0,0)));
     afw::geom::ellipses::Ellipse ellipse = interpreter->computeEllipseMean(0);
     EllipseCore core(ellipse.getCore());
-    set<RADIUS>(static_cast<double>(core.getRadius()));
+    set<RADIUS>(static_cast<double>(core.getRadius())); 
     set<E1>(core.getE1());
     set<E2>(core.getE2());        
     Eigen::VectorXd coeff = interpreter->computeCoefficientMean();
@@ -128,7 +144,12 @@ std::string makeBasisPath(int nCoeff) {
         file = "ed+06:2000.boost";
     else if(nCoeff == 17)
         file = "ed+15:4000.boost";
-
+    else {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "Unsupported number of coefficients. No corresponding basis exists on file"
+        );
+    }
     fs::path path(utils::eups::productDir("meas_multifit"));
     path /= fs::path("data/"+file);
     return path.native_file_string();
@@ -142,17 +163,36 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
     CONST_PTR(afw::detection::Source) source
 ) {
     if (!source) {
-        return ShapeletModelPhotometry::Ptr(new ShapeletModelPhotometry()); 
+        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_SOURCE));
+    }
+    if (!source->getFootprint()) {
+        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_FOOTPRINT));
+    }
+    if (!basis) {
+        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_BASIS));
+    }
+    if (!im) {
+        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_EXPOSURE));
+    }
+    if (!im->getPsf()) {
+        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_PSF));
     }
 
     afw::detection::Footprint::Ptr fp = afw::detection::growFootprint(
         *source->getFootprint(), nGrowFp
     );
 
-    afw::geom::ellipses::Ellipse ellipse = makeEllipse(*source, *fp);
+    boost::scoped_ptr<afw::geom::ellipses::Ellipse> ellipse;
+
+    try{
+        ellipse.reset(new Ellipse(makeEllipse(*source, *fp)));
+    } catch(lsst::pex::exceptions::InvalidParameterException e) {
+        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(BAD_INITIAL_MOMENTS));
+    }
+
 
     Definition definition = Definition::make(
-        *im, fp, basis, ellipse, 
+        *im, fp, basis, *ellipse, 
         isEllipticityActive,
         isRadiusActive,
         isPositionActive,
@@ -168,7 +208,11 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
     UnifiedSimpleInterpreter::Ptr interpreter = UnifiedSimpleInterpreter::make(
         distribution, evaluator->getGrid()
     );
-    return boost::make_shared<ShapeletModelPhotometry<nCoeff> >(interpreter);
+    int status = (optimizer.didConverge())? 0 : NO_CONVERGENCE;
+    return boost::make_shared<ShapeletModelPhotometry<nCoeff> >(
+        interpreter,
+        status
+    );
 }
 
 

@@ -33,29 +33,25 @@ import unittest
 import eups
 import sys
 import math
+import numpy
 
-display = True
-
-import lsst.afw.display.ds9 as ds9
 class GaussianPsfTestCase(unittest.TestCase):
     """A test case detecting and measuring Gaussian PSFs"""
     def setUp(self):
         FWHM = 5
-        psf = afwDetection.createPsf("DoubleGaussian", 15, 15, FWHM/(2*math.sqrt(2*math.log(2))))
+        psf = afwDetection.createPsf("SingleGaussian", 15, 15, FWHM/(2*math.sqrt(2*math.log(2))))
         mi = afwImage.MaskedImageF(afwGeom.ExtentI(100, 100))
 
         self.xc, self.yc, self.flux = 45, 55, 1000.0
         mi.getImage().set(self.xc, self.yc, self.flux)
+        mi.getVariance().set(1e-6)
 
         cnvImage = mi.Factory(mi.getDimensions())
         afwMath.convolve(cnvImage, mi, psf.getKernel(), afwMath.ConvolutionControl())
-
         self.exp = afwImage.makeExposure(cnvImage)
         self.exp.setPsf(psf)
-        self.exp.getMaskedImage().getVariance().set(1)
-        ds9.mtv(self.exp)
 
-        axes = afwGeom.ellipses.Axes(10, 10, 0)
+        axes = afwGeom.ellipses.Axes(1, 1, 0)
         quad = afwGeom.ellipses.Quadrupole(axes)
         point = afwGeom.Point2D(self.xc, self.yc)
         ellipse = afwGeom.ellipses.Ellipse(axes, point)        
@@ -68,9 +64,6 @@ class GaussianPsfTestCase(unittest.TestCase):
         self.source.setIxy(quad.getIXY())
         self.source.setFootprint(afwDetection.Footprint(ellipse))
 
-        if display and False:
-            ds9.mtv(self.exp)
-
     def tearDown(self):
         del self.exp
         del self.source
@@ -81,7 +74,6 @@ class GaussianPsfTestCase(unittest.TestCase):
         # Total flux in image
         #
         flux = afwMath.makeStatistics(self.exp.getMaskedImage(), afwMath.SUM).getValue()
-        self.assertAlmostEqual(flux/self.flux, 1.0)
 
         #
         # Various algorithms
@@ -116,13 +108,15 @@ class GaussianPsfTestCase(unittest.TestCase):
         meas = mp.measure(afwDetection.Peak(self.xc, self.yc), self.source)
         for a in photoAlgorithms:
             photom = meas.find(a)
-            print >> sys.stderr, photom.getFlux()            
-            print >> sys.stderr, photom.get(afwDetection.Schema("E1", 4, afwDetection.Schema.DOUBLE))
-            print >> sys.stderr, photom.get(afwDetection.Schema("FLUX", 0, afwDetection.Schema.DOUBLE))
-            print >> sys.stderr, photom.get(afwDetection.Schema("COEFFICIENTS", 5, afwDetection.Schema.DOUBLE, 8))
-            print >> sys.stderr, photom.get(1, afwDetection.Schema("COEFFICIENTS", 5, afwDetection.Schema.DOUBLE, 8))
-            print >> sys.stderr, photom.get(2, afwDetection.Schema("COEFFICIENTS", 5, afwDetection.Schema.DOUBLE, 8))
-            print >> sys.stderr, photom.get(afwDetection.Schema("COEFFICIENTS", 5, afwDetection.Schema.DOUBLE, 8))
+            print >> sys.stderr, "flux:", photom.get(afwDetection.Schema("FLUX", 0, afwDetection.Schema.DOUBLE))
+            print >> sys.stderr, "fluxErr:",photom.get(afwDetection.Schema("FLUX_ERR", 1, afwDetection.Schema.DOUBLE))
+            print >> sys.stderr, "status:",photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT))
+            print >> sys.stderr, "e1:",photom.get(afwDetection.Schema("E1", 3, afwDetection.Schema.DOUBLE))
+            print >> sys.stderr, "e2:", photom.get(afwDetection.Schema("E2", 4, afwDetection.Schema.DOUBLE))
+            print >> sys.stderr, "radius",photom.get(afwDetection.Schema("RADIUS", 5, afwDetection.Schema.DOUBLE))
+            for i in range(8):
+                print >> sys.stderr, "coeff %i: %g"%(i, photom.get(i, afwDetection.Schema("COEFFICIENTS", 6, afwDetection.Schema.DOUBLE)))
+
             
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 

@@ -48,12 +48,27 @@ public:
     enum {
         FLUX = Base::FLUX,
         FLUX_ERR,
+        STATUS,
         E1, E2, RADIUS, 
         COEFFICIENTS,
         NVALUE = COEFFICIENTS + nCoeff
     };
 
-    ShapeletModelPhotometry(BaseInterpreter::ConstPtr const & interpreter);
+    enum {
+        NO_EXPOSURE=0x01, 
+        NO_PSF=0x02, 
+        NO_SOURCE=0x04, 
+        NO_BASIS=0x08,
+        NO_FOOTPRINT=0x10, 
+        BAD_INITIAL_MOMENTS=0x20, 
+        NO_CONVERGENCE=0x40
+    };
+
+    ShapeletModelPhotometry(int const status);
+    ShapeletModelPhotometry(
+        BaseInterpreter::ConstPtr const & interpreter, 
+        int const status
+    );
 
     virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
 
@@ -73,9 +88,9 @@ public:
     static double ftol, gtol, minStep, tau;
 
 private:
-    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() {init(); }
-    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
 
+    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() {init();}
+    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
 };
 
 }}}

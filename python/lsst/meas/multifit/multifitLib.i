@@ -191,3 +191,30 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %}
 
 %include "lsst/meas/multifit/GaussNewtonOptimizer.h"
+
+%{ 
+#include "lsst/meas/multifit/SourceMeasurement.h"
+%}
+
+
+%define %prePhotometry(N)
+SWIG_SHARED_PTR(ShapeletModelPhotometry ## N, lsst::meas::multifit::ShapeletModelPhotometry<N>);
+%enddef
+
+%prePhotometry(2)
+%prePhotometry(8)
+%prePhotometry(17)
+
+%include "lsst/meas/multifit/SourceMeasurement.h"
+
+%define %postPhotometry(N)
+%extent lsst::meas::multifit::ShapeletModelPhotometry {
+    %template lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<float>;
+    %template lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<double>;
+}
+%template(ShapeletModelPhotometry ## N) lsst::meas::multifit::ShapeletModelPhotometry<N>;
+%enddef
+
+%postPhotometry(2);
+%postPhotometry(8);
+%postPhotometry(17);
