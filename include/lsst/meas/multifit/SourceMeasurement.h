@@ -73,7 +73,7 @@ public:
     static double ftol, gtol, minStep, tau;
 
 private:
-    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() { }
+    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() {init(); }
     LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
 
 };

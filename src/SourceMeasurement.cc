@@ -57,17 +57,15 @@ template <int nCoeff>
 ShapeletModelPhotometry<nCoeff>::ShapeletModelPhotometry(
     BaseInterpreter::ConstPtr const & interpreter
 ) : afw::detection::Photometry() {
+    init();
     if(!interpreter) {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::RuntimeErrorException,
-            "Cannot construct measurement from NULL interpreter"
-        );
+        return;
     }
     set<FLUX>(interpreter->computeFluxMean(0, 0));
     set<FLUX_ERR>(sqrt(interpreter->computeFluxVariance(0,0)));
     afw::geom::ellipses::Ellipse ellipse = interpreter->computeEllipseMean(0);
     EllipseCore core(ellipse.getCore());
-    set<RADIUS>(core.getRadius());
+    set<RADIUS>(static_cast<double>(core.getRadius()));
     set<E1>(core.getE1());
     set<E2>(core.getE2());        
     Eigen::VectorXd coeff = interpreter->computeCoefficientMean();
@@ -83,7 +81,7 @@ afw::geom::ellipses::Ellipse makeEllipse(
     afw::geom::Point2D center(source.getXAstrom(), source.getYAstrom());
     if(!utils::isfinite(source.getIxx()) 
        || !utils::isfinite(source.getIyy()) 
-       || utils::isfinite(source.getIxy())
+       || !utils::isfinite(source.getIxy())
     ) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
@@ -91,13 +89,13 @@ afw::geom::ellipses::Ellipse makeEllipse(
         );
     }
     afw::geom::ellipses::Quadrupole quad(
-        source.getIxx(), source.getIyy(), source.getIxy()
+        source.getIxx(), source.getIyy(), source.getIxy() 
     );
 
     afw::geom::ellipses::Axes axes(quad);
-    if(axes.getA()<= 0.)
+    if(axes.getA()<= std::numeric_limits<double>::epsilon())
         axes.setA(std::numeric_limits<double>::epsilon());
-    if(axes.getB()<= 0.)
+    if(axes.getB()<= std::numeric_limits<double>::epsilon())
         axes.setB(std::numeric_limits<double>::epsilon());
 
     double maxRadius = 2*sqrt(fp.getArea());
@@ -143,6 +141,10 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
     CONST_PTR(afw::detection::Peak) peak,
     CONST_PTR(afw::detection::Source) source
 ) {
+    if (!source) {
+        return ShapeletModelPhotometry::Ptr(new ShapeletModelPhotometry()); 
+    }
+
     afw::detection::Footprint::Ptr fp = afw::detection::growFootprint(
         *source->getFootprint(), nGrowFp
     );

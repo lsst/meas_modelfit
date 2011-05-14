@@ -114,7 +114,7 @@ double UnifiedSimpleInterpreter::computeFluxVariance(ID objectId, ID frameId) co
     assert(&object == &source.object);
     assert(&frame == &source.frame);
     if (object.getBasis()) {
-        Eigen::VectorXd sigma = getSigmaCRef().block(
+        Eigen::MatrixXd sigma = getSigmaCRef().block(
             _grid->getParameterCount() + source.getCoefficientOffset(),
             _grid->getParameterCount() + source.getCoefficientOffset(),
             source.getCoefficientCount(),

@@ -4,6 +4,13 @@
 target: ShapeletModelPhotometry
 
 definitions: {
+    enabled: {
+        type: "bool"
+        description: "toggle on/off whether or not to do this measurement"
+        minOccurs: 1
+        maxOccurs: 1
+        default: true
+    }
     nGrowFp:{
         type: "int"        
         description: "amount to grow input footprint"
@@ -15,42 +22,42 @@ definitions: {
         type: "int"
         description: "Desired shapelet order when converting to
                      a non-shapelet psf to a shapelet psf"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
-        default: 8
+        default: 4
     }
     maxIter: {
         type: "int"
         description: "maximum iterations to perform in optimizer"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: 200
     }
     isPositionActive: {
         type: "bool"     
         description: "if true will fit for position"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: false
     }
     isRadiusActive: {
         type: "bool"
         description: "if true will fit for radius"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
-        default: true
+        default: false
     }
     isEllipticityActive: {
         type: "bool"
         description: "if true will fit for ellipticity"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
-        default: true
+        default: false
     }
     retryWithSvd: {
         type: "bool"     
         description: "if true will use SVD in optimizer"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: false
     }
@@ -58,36 +65,36 @@ definitions: {
     ftol: {
         type: "double"
         description: "convergence tolerance for optimizer"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: 1e-8
     }
     gtol: {
         type: "double"
         description: "convergence tolerance for optimizer"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: 1e-8
     }
     minStep: {
         type: "double"
         description: "minimum allowed step size for optimizer"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: 1e-3
     }
     tau: {
         type: "double"
         description: "good-ness of initial parameters for optimizer"
-        minOccurs: 0
+        minOccurs: 1
         maxOccurs: 1
         default: 1e-3
     }
 
     maskPlaneName: {
         type: "string"
-        description: "list of mask planes to consider when masking the footprint"
-        minOccurs: 0        
+        description: "list of planes to consider when masking the footprint"
+        minOccurs: 1        
         default: "BAD" "SAT" "CR" "EDGE"
     }
 }
