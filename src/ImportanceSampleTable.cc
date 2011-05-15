@@ -25,7 +25,7 @@ void ImportanceSampleTable::run(
     int size, Random & random, BaseDistribution const & importance,
     BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior
 ) {
-    Evaluation evaluation(evaluator, prior);
+    Evaluation evaluation(evaluator); // TODO
     Editor & editor = static_cast<Editor&>(_edit());
     editor.run(size, random, importance, evaluation);
 }
@@ -34,7 +34,7 @@ void ImportanceSampleTable::run(
     int size, Random & random, AlgorithmEnum algorithm,
     BaseEvaluator::Ptr const & evaluator
 ) {
-    Evaluation evaluation(evaluator);
+    Evaluation evaluation(evaluator); // TODO
     Editor & editor = static_cast<Editor&>(_edit());
     editor.run(size, random, algorithm, evaluation);
 }
@@ -43,7 +43,7 @@ void ImportanceSampleTable::run(
     int size, Random & random, AlgorithmEnum algorithm,
     BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior
 ) {
-    Evaluation evaluation(evaluator, prior);
+    Evaluation evaluation(evaluator);
     Editor & editor = static_cast<Editor&>(_edit());
     editor.run(size, random, algorithm, evaluation);
 }

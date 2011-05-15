@@ -180,16 +180,18 @@ void Evaluator::_initialize() {
         Grid::FrameArray::const_iterator i = _grid->frames.begin();
         i != _grid->frames.end(); ++i
     ) {
-        if (i->getWeights().empty()) {
-            _dataVector[
-                ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
+        _dataVector[
+            ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] = i->getData();
-        } else {
+        
+        if (!i->getWeights().empty()) {
             _dataVector[
                 ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
-            ] = (i->getData() / i->getWeights());
+            ] *= i->getWeights();
         }
     }
+    _constraintMatrix = _grid->getConstraintMatrix();
+    _constraintVector = _grid->getConstraintVector();
 }
 
 void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & param) const {

@@ -69,7 +69,7 @@ public:
     int getConstraintSize() const { return _constraintMatrix.getSize<0>(); }
 
     /// @brief Return the inequality constraint matrix.
-    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
+    lsst::ndarray::Array<Pixel const,2,1> getConstraintMatrix() const { return _constraintMatrix; }
 
     /// @brief Return the inequality constraint vector.
     lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
@@ -91,7 +91,7 @@ protected:
      *  Should only be called by subclasses upon construction.
      */
     void attachConstraint(
-        lsst::ndarray::Array<Pixel,2,2> const & matrix,
+        lsst::ndarray::Array<Pixel,2,1> const & matrix,
         lsst::ndarray::Array<Pixel,1,1> const & vector
     );
 
@@ -116,7 +116,7 @@ protected:
 private:
 
     int const _size;
-    ndarray::Array<Pixel,2,2> _constraintMatrix;
+    ndarray::Array<Pixel,2,1> _constraintMatrix;
     ndarray::Array<Pixel,1,1> _constraintVector;
 };
 

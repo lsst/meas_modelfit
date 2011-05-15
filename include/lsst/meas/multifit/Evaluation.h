@@ -34,27 +34,20 @@ namespace lsst { namespace meas { namespace multifit {
  *
  *  Evaluation is essentially a lazy solver for "separable" nonlinear least squares problems,
  *  in which the problem can be written as linear least squares problem with a parameterized
- *  matrix, extended to include an optional Bayesian prior.  More precisely, Evaluation
- *  supports problems of the form:
+ *  matrix.  More precisely, Evaluation supports problems of the form:
  *  @f[
- *      \min_{\phi,x} q = \frac{1}{2}(A(\phi)x - y)^T (A(\phi)x - y) 
- *          + \frac{1}{2}(x - \mu(\phi))^T \Sigma{-1}(\phi) (x - \mu(\phi))
- *          + \frac{1}{2}\ln\left|2\pi\Sigma(\phi)\right| - \ln P(\phi)
+ *      \min_{\phi,x} q = \frac{1}{2}(A(\phi)x - y)^T (A(\phi)x - y)
  *  @f]
  *  where:
  *   - @f$\phi@f$ is the vector of nonlinear parameters (hereafter simply called "parameters")
  *   - @f$x@f$ is the vector of linear parameters ("coefficients")
  *   - @f$y@f$ is the data vector
  *   - @f$A$@f is the model matrix
- *   - @f$\mu@f$ and @f$\Sigma@f$ are the mean and covariance of a Gaussian prior on
- *     the coefficients, conditional on the parameters: @f$P(x|\phi) ~ \mathcal{N}(\mu,\Sigma)@f$
- *   - @f$P(\phi)$ is the prior on the parameters
  *   - @f$q@f$ is the objective value to be minimized
  *
  *  Some intermediate and derivative products produced by the Evaluation include:
  *   - the residuals vector @f$r = Ax - y@f$
  *   - the coefficient Fisher matrix @f$F = A^T A + \Sigma^{-1}@f$
- *   - the lower-triangular Cholesky factor @f$L@f$ of the coefficient Fisher matrix @f$L L^T = F@f$
  *   - partial derivatives of the model matrix and residuals vector with respect to the parameters
  *
  *  If constructed without a prior, only the first term is evaluated.
@@ -66,45 +59,18 @@ class Evaluation : private boost::noncopyable {
 public:
 
     /// @brief Construct with no prior and use the evaluator's initial parameters.
-    Evaluation(
-        BaseEvaluator::Ptr const & evaluator, bool robustSolver=false
-    );
+    Evaluation(BaseEvaluator::Ptr const & evaluator);
 
-    /// @brief Construct with a prior and use the evaluator's initial parameters.
+    /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        BaseDistribution const & prior,
-        bool robustSolver=false
+        lsst::ndarray::Array<double const,1,1> const & parameters
     );
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        lsst::ndarray::Array<double const,1,1> const & parameters,
-        bool robustSolver=false
-    );
-
-    /// @brief Construct with a prior and the given parameter vector.
-    Evaluation(
-        BaseEvaluator::Ptr const & evaluator,
-        lsst::ndarray::Array<double const,1,1> const & parameters,
-        BaseDistribution const & prior,
-        bool robustSolver=false
-    );
-
-    /// @brief Construct with no prior and the given parameter vector.
-    Evaluation(
-        BaseEvaluator::Ptr const & evaluator,
-        Eigen::VectorXd const & parameters,
-        bool robustSolver=false
-    );
-
-    /// @brief Construct with a prior and the given parameter vector.
-    Evaluation(
-        BaseEvaluator::Ptr const & evaluator,
-        Eigen::VectorXd const & parameters,
-        BaseDistribution const & prior,
-        bool robustSolver=false
+        Eigen::VectorXd const & parameters
     );
 
     /// @brief Update the parameters @f$\phi@f$.
@@ -136,9 +102,6 @@ public:
 
     /// @brief Return the evaluator that defines the model matrix and data vector.
     BaseEvaluator::Ptr getEvaluator() const { return _evaluator; }
-
-    /// @brief Return the distribution that defines the prior.  May be empty.
-    BaseDistribution::ConstPtr getPrior() const { return _prior; }
     
     /// @brief Return the parameters @f$\phi@f$.
     lsst::ndarray::Array<double const,1,1> getParameters() const { return _parameters; }
@@ -208,12 +171,6 @@ public:
         return _coefficientFisherMatrix;
     }
 
-    /// @brief The lower-triangular Cholesky factor @f$L@f$ of @f$F@f$, $L L^T = F = A^T A + \Sigma^{-1}$.
-    lsst::ndarray::Array<double const,2,2> getCoefficientFisherFactor() const {
-        ensureCoefficientFisherFactor();
-        return _coefficientFisherFactor;
-    }
-
     /// @brief Return the objective value @f$q@f$.
     double getObjectiveValue() const {
         ensureObjectiveValue();
@@ -227,7 +184,7 @@ private:
 #ifndef SWIG
     class LinearSolver;
     class CholeskySolver;
-    class EigenSolver;
+    class ConstrainedSolver;
 #endif
 
     void ensureModelMatrix() const;
@@ -237,16 +194,12 @@ private:
     void ensureResiduals() const;
     void ensureResidualsJacobian() const;
     void ensureCoefficientFisherMatrix() const;
-    void ensureCoefficientFisherFactor() const;
     void ensureObjectiveValue() const;
 
     void initialize();
-    void updateNestedPrior();
 
     mutable int _status;
     BaseEvaluator::Ptr _evaluator;
-    BaseDistribution::ConstPtr _prior;
-    GaussianDistribution::Ptr _nestedPrior;
     boost::scoped_ptr<LinearSolver> _solver;
     mutable double _objectiveValue;
     ndarray::Array<double,1,1> _parameters;
@@ -254,7 +207,6 @@ private:
     mutable ndarray::Array<double,3,3> _modelMatrixDerivative;
     mutable ndarray::Array<double,1,1> _coefficients;
     mutable ndarray::Array<double,2,2> _coefficientFisherMatrix;
-    mutable ndarray::Array<double,2,2> _coefficientFisherFactor;
     mutable ndarray::Array<double,1,1> _residuals;
     mutable ndarray::Array<double,2,2> _residualsJacobian;
     mutable ndarray::Array<double,1,1> _modelVector;

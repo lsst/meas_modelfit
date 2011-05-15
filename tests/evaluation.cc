@@ -75,12 +75,7 @@ using namespace lsst::meas::multifit;
 BOOST_AUTO_TEST_CASE(evaluation1) {
     for (int n = 0; n < 1; ++n) {
         TestEvaluator::Ptr evaluator(new TestEvaluator(50, 10));
-        Evaluation robustEv(evaluator, true);
-        Evaluation choleskyEv(evaluator, false);
-        BOOST_CHECK(
-            lsst::ndarray::viewAsEigen(robustEv.getCoefficients()).isApprox(
-                lsst::ndarray::viewAsEigen(choleskyEv.getCoefficients())
-            )
-        );
+        Evaluation robustEv(evaluator);
+        robustEv.getCoefficients();
     }
 }

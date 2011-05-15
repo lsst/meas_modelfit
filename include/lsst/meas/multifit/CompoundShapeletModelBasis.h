@@ -87,8 +87,8 @@ protected:
     static ndarray::Array<Pixel,2,2> _makeIdentity(int size);
 
     ElementVector _elements;
-    ndarray::Array<const Pixel,2,1> _forward;
-    ndarray::Array<const Pixel,2,1> _reverse;
+    ndarray::Array<Pixel const,2,1> _forward;
+    ndarray::Array<Pixel const,2,1> _reverse;
 };
 
 } // namespace detail
@@ -171,7 +171,19 @@ public:
         lsst::ndarray::Array<Pixel const,2,1> const & reverse
     );
 
+    void setConstraint(
+        lsst::ndarray::Array<Pixel const,2,1> const & matrix,
+        lsst::ndarray::Array<Pixel const,1,1> const & vector
+    );
+
     CompoundShapeletModelBasis::Ptr build() const;
+
+private:
+
+    friend class CompoundShapeletModelBasis;
+    
+    ndarray::Array<Pixel,2,1> _constraintMatrix;
+    ndarray::Array<Pixel,1,1> _constraintVector;
 };
 
 }}} // namespace lsst::meas::multifit

@@ -50,7 +50,7 @@ ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
 }
 
 void ModelBasis::attachConstraint(
-    lsst::ndarray::Array<Pixel,2,2> const & matrix,
+    lsst::ndarray::Array<Pixel,2,1> const & matrix,
     lsst::ndarray::Array<Pixel,1,1> const & vector
 ) {
     detail::checkSize(
@@ -61,6 +61,8 @@ void ModelBasis::attachConstraint(
         matrix.getSize<1>(), _size,
         "Incorrect number of columns (%d) in constraint matrix (expected %d)."
     );
+    _constraintMatrix = matrix;
+    _constraintVector = vector;
 }
 
 }}} // namespace lsst::meas::multifit

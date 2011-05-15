@@ -78,7 +78,9 @@ public:
     }
 
     static Definition makeDefinition(Grid const & grid, double const * paramIter) {
-        Definition result(grid.getWcs()->clone());
+        Wcs::Ptr wcs;
+        if (grid.getWcs()) wcs = grid.getWcs()->clone();
+        Definition result(wcs);
         for (Grid::FrameArray::const_iterator i = grid.frames.begin(); i != grid.frames.end(); ++i) {
             result.frames.insert(definition::Frame(*i));
         }
@@ -99,6 +101,7 @@ public:
         output.sources._last = output.sources._first
             = reinterpret_cast<grid::Source*>(output._sourceData.get());
 
+        int constraintCount = 0;
         try {
             int frameCount = 0;
             for (
@@ -125,10 +128,19 @@ public:
                     *i, output._coefficientCount, frameCount, output._filterCount
                 );
                 output._coefficientCount += newObject->getCoefficientCount();
+                if (newObject->getBasis()) {
+                    constraintCount += newObject->getBasis()->getConstraintSize()
+                        * (newObject->getCoefficientCount() / newObject->getSourceCoefficientCount());
+                }
             }
             transferComponents<POSITION>(input, output, output.positions);
             transferComponents<RADIUS>(input, output, output.radii);
             transferComponents<ELLIPTICITY>(input, output, output.ellipticities);
+            if (constraintCount) {
+                output._constraintVector = ndarray::allocate(constraintCount);
+                output._constraintMatrix = ndarray::allocate(constraintCount, output._coefficientCount);
+            }
+            int constraintOffset = 0;
             for (
                 grid::Object * i = output.objects._first; 
                 i != output.objects._last;
@@ -144,6 +156,27 @@ public:
                     new (output.sources._last++) grid::Source(*j, *i, output.getWcs());
                 }
                 i->sources._last = output.sources._last;
+                if (i->getBasis() && i->getBasis()->getConstraintSize()) {
+                    int nConstraints = i->getBasis()->getConstraintSize();
+                    int nSteps = output._filterCount;
+                    if (i->isVariable()) {
+                        nSteps = frameCount;
+                    }
+                    for (int step = 0; step < nSteps; ++step) {
+                        output._constraintVector[
+                            ndarray::view(constraintOffset, constraintOffset + nConstraints)
+                        ] = i->getBasis()->getConstraintVector();
+                        output._constraintMatrix[
+                            ndarray::view(
+                                constraintOffset, constraintOffset + nConstraints
+                            ) (
+                                i->getCoefficientOffset() + step * i->getSourceCoefficientCount(),
+                                i->getCoefficientOffset() + (step + 1) * i->getSourceCoefficientCount()
+                            )
+                        ] = i->getBasis()->getConstraintMatrix();
+                        constraintOffset += nConstraints;
+                    }
+                }
             }
             
         } catch (...) {

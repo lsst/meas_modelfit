@@ -94,6 +94,10 @@ public:
     int const getCoefficientCount() const { return _coefficientCount; }
     int const getPixelCount() const { return _pixelCount; }
     int const getParameterCount() const { return _parameterCount; }
+    int const getConstraintCount() const { return _constraintVector.getSize<0>(); }
+
+    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
+    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
 
     CONST_PTR(Wcs) const getWcs() const { return _wcs; }
 
@@ -121,6 +125,9 @@ private:
     int _coefficientCount;
     int _pixelCount;
     int _parameterCount;
+    
+    ndarray::Array<Pixel,2,2> _constraintMatrix;
+    ndarray::Array<Pixel,1,1> _constraintVector;
 
     boost::scoped_array<char> _objectData;
     boost::scoped_array<char> _frameData;

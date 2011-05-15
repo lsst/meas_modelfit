@@ -54,6 +54,9 @@ public:
     /// @brief Number of parameters.
     int getParameterSize() const { return _parameterSize; }
 
+    /// @brief Number of coefficient inequality constraints.
+    int getConstraintSize() const { return _constraintVector.getSize<0>(); }
+
     /**
      *  @brief Clip the given parameter vector to the valid range and return a penalty
      *         that scales with how far the parameter vector was beyond the constraints.
@@ -66,6 +69,20 @@ public:
      *  If the data vector is weighted (divided by sigma) the evaluted model matrix should be as well.
      */
     lsst::ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
+
+    /**
+     *  @brief Inequality constraint matrix.
+     *
+     *  This is the matrix @f$A@f$ in the constraint @f$Ax \ge b@f$.
+     */
+    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
+
+    /**
+     *  @brief Inequality constraint matrix.
+     *
+     *  This is the vector @f$b@f$ in the constraint @f$Ax \ge b@f$.
+     */
+    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
 
     /**
      *  @brief Evaluate the matrix with the given parameters.
@@ -105,7 +122,9 @@ protected:
     BaseEvaluator(int dataSize, int coefficientSize, int parameterSize) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
-        _dataVector(ndarray::allocate(ndarray::makeVector(dataSize)))
+        _dataVector(ndarray::allocate(dataSize)),
+        _constraintVector(),
+        _constraintMatrix()
     {}
 
     BaseEvaluator(
@@ -113,13 +132,17 @@ protected:
     ) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
-        _dataVector(data)
+        _dataVector(data),
+        _constraintVector(),
+        _constraintMatrix()
     {}
 
     BaseEvaluator(BaseEvaluator const & other) :
         _coefficientSize(other._coefficientSize), 
         _parameterSize(other._parameterSize), 
-        _dataVector(other._dataVector)
+        _dataVector(other._dataVector),
+        _constraintVector(other._constraintVector),
+        _constraintMatrix(other._constraintMatrix)
     {}
 
     virtual void _evaluateModelMatrix(
@@ -138,6 +161,8 @@ protected:
     int const _coefficientSize;
     int const _parameterSize;
     ndarray::Array<Pixel,1,1> _dataVector;
+    ndarray::Array<Pixel const,1,1> _constraintVector;
+    ndarray::Array<Pixel const,2,2> _constraintMatrix;
 
 private:
     void operator=(BaseEvaluator const &) {}

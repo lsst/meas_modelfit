@@ -35,8 +35,6 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
-static int const SHAPELET_DEFAULT_ORDER = 8; // TODO: make this a policy value
-
 class ConvolvedCompoundShapeletModelBasis : public ModelBasis {
 public:
 
@@ -220,7 +218,7 @@ ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
         return convolve(s);
     } else {
         afwShapelets::ShapeletFunction s = 
-            psf->computeShapelet(afwShapelets::HERMITE, SHAPELET_DEFAULT_ORDER);
+            psf->computeShapelet(afwShapelets::HERMITE, ShapeletModelBasis::getPsfShapeletOrder());
         s.getEllipse().getCenter() -= afw::geom::Extent2D(psf->getPoint());
         return convolve(s);
     }
@@ -299,7 +297,11 @@ CompoundShapeletModelBasis::CompoundShapeletModelBasis(
     CompoundShapeletBuilder const & builder
 ) : ModelBasis(builder.getSize()),
     detail::CompoundShapeletBase(builder)
-{}
+{
+    if (builder._constraintMatrix.getSize<0>() > 0) {
+        attachConstraint(builder._constraintMatrix, builder._constraintVector);
+    }
+}
 
 CompoundShapeletBuilder::CompoundShapeletBuilder(
     ComponentVector const & components
@@ -324,6 +326,10 @@ void CompoundShapeletBuilder::orthogonalize() {
     MatrixT newReverse(ndarray::allocate(_reverse.getShape()));
     newForward = ndarray::viewAsEigen(_forward) * m;
     newReverse = cholesky.matrixL().transpose() * ndarray::viewAsEigen(_reverse);
+    if (_constraintMatrix.getSize<0>() > 0) {
+        ndarray::Array<Pixel,2,2> newConstraintMatrix = ndarray::allocate(_constraintMatrix.getShape());
+        ndarray::viewAsEigen(newConstraintMatrix) = ndarray::viewAsEigen(_constraintMatrix) * m;
+    }
     _forward = newForward.getArray();
     _reverse = newReverse.getArray();
     _resetElements();
@@ -332,6 +338,7 @@ void CompoundShapeletBuilder::orthogonalize() {
 void CompoundShapeletBuilder::slice(int start, int stop) {
     _forward = _forward[ndarray::view()(start, stop)];
     _reverse = _reverse[ndarray::view()(start, stop)];
+    _constraintMatrix = _constraintMatrix[ndarray::view()(start, stop)];
     _resetElements();
 
 }
@@ -355,6 +362,22 @@ void CompoundShapeletBuilder::setMapping(
     _forward = ndarray::copy(forward);
     _reverse = ndarray::copy(reverse);
     _resetElements();
+}
+
+void CompoundShapeletBuilder::setConstraint(
+    ndarray::Array<Pixel const,2,1> const & matrix,
+    ndarray::Array<Pixel const,1,1> const & vector
+) {
+    detail::checkSize(
+        matrix.getSize<0>(), vector.getSize<0>(),
+        "Number of constraints in matrix (%d) do not match number of constraints in vector (%d)."
+    );
+    detail::checkSize(
+        matrix.getSize<1>(), getSize(),
+        "Incorrect number of columns (%d) in constraint matrix (expected %d)."
+    );
+    _constraintMatrix = ndarray::copy(matrix);
+    _constraintVector = ndarray::copy(vector);
 }
 
 CompoundShapeletModelBasis::Ptr CompoundShapeletBuilder::build() const {
@@ -389,8 +412,16 @@ CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
         ndarray::makeVector(height, width)
     );
     ar >> boost::serialization::make_array(reverse.getData(), size);
-    
+    int constraintSize;
+    ar >> constraintSize;
     CompoundShapeletBuilder builder(components, forward, reverse);
+    if (constraintSize > 0) {
+        ndarray::Array<Pixel,2,2> cMatrix = ndarray::allocate(constraintSize, width);
+        ndarray::Array<Pixel,1,1> cVector = ndarray::allocate(constraintSize);
+        ar >> boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());
+        ar >> boost::serialization::make_array(cVector.getData(), cVector.getNumElements());
+        builder.setConstraint(cMatrix, cVector);
+    }
     return builder.build();
 }
 
@@ -414,6 +445,14 @@ void CompoundShapeletModelBasis::save(std::string const & filename) {
     ar << width;
     ar << boost::serialization::make_array(forward.getData(), size);
     ar << boost::serialization::make_array(reverse.getData(), size);
+    int constraintSize = getConstraintSize();
+    ar << constraintSize;
+    if (constraintSize > 0) {
+        ndarray::Array<Pixel,2,2> cMatrix = ndarray::copy(getConstraintMatrix());
+        ndarray::Array<Pixel,1,1> cVector = ndarray::copy(getConstraintVector());
+        ar << boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());
+        ar << boost::serialization::make_array(cVector.getData(), cVector.getNumElements());
+    }
 }
 
 }}} //end namespace lsst::meas::multifit
