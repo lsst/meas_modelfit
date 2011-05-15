@@ -164,8 +164,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
 
 Evaluator::Evaluator(Grid::Ptr const & grid) :
     BaseEvaluator(
-        grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount(),
-        -2*grid->sumLogWeights()
+        grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount()
     ),
     _grid(grid)
 {

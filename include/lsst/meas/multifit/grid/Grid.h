@@ -61,8 +61,6 @@ public:
         writeParameters(params.getData());
     }
 
-    double sumLogWeights() const;
-
     int const getFilterIndex(FilterId filterId) const;
 
     /// @brief Return true if all parameters are in-bounds.

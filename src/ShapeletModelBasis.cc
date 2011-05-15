@@ -118,6 +118,29 @@ void mf::ShapeletModelBasis::_evaluate(
     }
 }
 
+void mf::ShapeletModelBasis::_evaluateRadialProfile(
+    lsst::ndarray::Array<Pixel,2,1> const & profile,
+    lsst::ndarray::Array<Pixel const,1,1> const & radii
+) const {
+    afwShapelets::BasisEvaluator basisEval(_order, afwShapelets::LAGUERRE);
+    for (int r = 0; r < radii.getSize<0>(); ++r) {
+        lsst::ndarray::Array<Pixel,1,1> row(profile[r]);
+        basisEval.fillEvaluation(row, radii[r] / _scale, 0.0);
+        for (int n = 0; n <= _order; ++n) {
+            int offset = afwShapelets::computeOffset(n);
+            for (int p = n, q = 0; q <= p; --p, ++q) {
+                if (p != q) {
+                    row[offset + 2 * q] = 0.0;
+                    row[offset + 2 * q + 1] = 0.0;
+                }
+            }
+        }
+        afwShapelets::ConversionMatrix::convertOperationVector(
+            row, afwShapelets::LAGUERRE, afwShapelets::HERMITE, _order
+        );
+    }
+}
+
 mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     CONST_PTR(LocalPsf) const & psf
 ) const {

@@ -306,14 +306,6 @@ void Grid::writeParameters(double * paramIter) const {
     }
 }
 
-double Grid::sumLogWeights() const {
-    double r = 0;
-    for (FrameArray::const_iterator i = frames.begin(); i != frames.end(); ++i) {
-        r += ndarray::viewAsEigen(i->getWeights()).cwise().log().sum();
-    }
-    return r;
-}
-
 bool Grid::checkBounds(double const * paramIter) const {
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
         if (!i->checkBounds(paramIter)) return false;

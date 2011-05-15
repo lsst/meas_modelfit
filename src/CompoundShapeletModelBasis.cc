@@ -283,6 +283,18 @@ void CompoundShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> co
     }
 }
 
+void CompoundShapeletModelBasis::_evaluateRadialProfile(
+    lsst::ndarray::Array<Pixel,2,1> const & profile,
+    lsst::ndarray::Array<Pixel const,1,1> const & radii
+) const {
+    profile.deep() = 0.0;
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        ndarray::Array<Pixel,2,2> front(ndarray::allocate(radii.getSize<0>(), i->component->getSize()));
+        i->component->evaluateRadialProfile(front, radii);
+        ndarray::viewAsEigen(profile) += ndarray::viewAsEigen(front) * i->forward;
+    }
+}
+
 CompoundShapeletModelBasis::CompoundShapeletModelBasis(
     CompoundShapeletBuilder const & builder
 ) : ModelBasis(builder.getSize()),

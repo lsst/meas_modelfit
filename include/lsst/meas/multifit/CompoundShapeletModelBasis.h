@@ -135,6 +135,11 @@ protected:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
+    virtual void _evaluateRadialProfile(
+        lsst::ndarray::Array<Pixel,2,1> const & profile,
+        lsst::ndarray::Array<Pixel const,1,1> const & radii
+    ) const;
+
 private:
     FRIEND_MAKE_SHARED_1(CompoundShapeletModelBasis, lsst::meas::multifit::CompoundShapeletBuilder);
 

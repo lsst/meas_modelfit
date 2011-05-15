@@ -47,7 +47,7 @@ public:
     virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const { return 0.0; }
 
     TestEvaluator(int dataSize, int coefficientSize) :
-        BaseEvaluator(dataSize, coefficientSize, 0, 0.0),
+        BaseEvaluator(dataSize, coefficientSize, 0),
         _matrix(ndarray::allocate(dataSize, coefficientSize))
     {
         ndarray::viewAsEigen(_matrix) = Eigen::MatrixXd::Random(dataSize, coefficientSize);

@@ -61,17 +61,6 @@ public:
     virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
 
     /**
-     *  @brief Return the sum of the log of the variance of all data points.
-     *
-     *  More precisely, if the variance for pixel @f$i@f$ is @f$\sigma_i^2@f$, this function
-     *  should return @f$ \sum_i \ln \sigma_i^2 @f$.
-     *
-     *  This can be used to transform the @f$\chi^2@f$ into the log likelihood, which can
-     *  be useful for certain Bayesian applications.
-     */
-    double getLogVarianceSum() const { return _logVarianceSum; }
-
-    /**
      *  @brief Data vector.
      *
      *  If the data vector is weighted (divided by sigma) the evaluted model matrix should be as well.
@@ -113,28 +102,24 @@ protected:
 
     friend class Evaluation;
 
-    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize, double logVarianceSum) :
+    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
-        _dataVector(ndarray::allocate(ndarray::makeVector(dataSize))),
-        _logVarianceSum(logVarianceSum)
+        _dataVector(ndarray::allocate(ndarray::makeVector(dataSize)))
     {}
 
     BaseEvaluator(
-        ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize, 
-        double logVarianceSum
+        ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize
     ) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
-        _dataVector(data),
-        _logVarianceSum(logVarianceSum)
+        _dataVector(data)
     {}
 
     BaseEvaluator(BaseEvaluator const & other) :
         _coefficientSize(other._coefficientSize), 
         _parameterSize(other._parameterSize), 
-        _dataVector(other._dataVector),
-        _logVarianceSum(other._logVarianceSum)
+        _dataVector(other._dataVector)
     {}
 
     virtual void _evaluateModelMatrix(
@@ -153,7 +138,6 @@ protected:
     int const _coefficientSize;
     int const _parameterSize;
     ndarray::Array<Pixel,1,1> _dataVector;
-    double _logVarianceSum;
 
 private:
     void operator=(BaseEvaluator const &) {}

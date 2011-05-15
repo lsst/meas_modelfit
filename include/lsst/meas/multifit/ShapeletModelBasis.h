@@ -80,6 +80,11 @@ protected:
 
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
 
+    virtual void _evaluateRadialProfile(
+        lsst::ndarray::Array<Pixel,2,1> const & profile,
+        lsst::ndarray::Array<Pixel const,1,1> const & radii
+    ) const;
+
 private:
 
     FRIEND_MAKE_SHARED_2(ShapeletModelBasis, int, double);
