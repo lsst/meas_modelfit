@@ -41,20 +41,18 @@ def makeBitMask(mask, maskPlaneNames):
         bitmask |= mask.getPlaneBitMask(name)    
     return bitmask
 
-def makeGrid(exposure, source, policy):
-    bitmask = makeBitMask(exposure.getMaskedImage().getMask(), policy.getArray("maskPlaneName"))
+def makeGrid(exposure, source, basis, bitmask, policy):
     quadrupole = lsst.afw.geom.ellipses.Quadrupole(source.getIxx(), source.getIyy(), source.getIxy())
     ellipse = lsst.afw.geom.ellipses.Ellipse(
         lsst.meas.multifit.EllipseCore(quadrupole), 
         lsst.afw.geom.Point2D(source.getXAstrom(), source.getYAstrom())
         )
-    basis = utils.loadBasis(policy.get("basisName"))
-    footprint = lsst.afw.detection.growFootprint(source.getFootprint(), policy.get("nGrowFp"))
+    footprint = lsst.afw.detection.growFootprint(source.getFootprint(), policy.get("SHAPELET_MODEL_8.nGrowFp"))
     definition = lsst.meas.multifit.Definition.make(
         exposure, footprint, basis, ellipse,
-        policy.get("isEllipticityActive"),
-        policy.get("isRadiusActive"),
-        policy.get("isPositionActive"),
+        policy.get("SHAPELET_MODEL_8.isEllipticityActive"),
+        policy.get("SHAPELET_MODEL_8.isRadiusActive"),
+        policy.get("SHAPELET_MODEL_8.isPositionActive"),
         bitmask
         )
     return lsst.meas.multifit.Grid.make(definition)
@@ -63,49 +61,61 @@ class Viewer(object):
 
     def __init__(self, dataset, noWeights=False):
         self.policy = Policy()
-        self.policy.add("nGrowFp", 3)
-        self.policy.add("isVariable", False)
-        self.policy.add("isPositionActive", False)
-        self.policy.add("isRadiusActive", False)
-        self.policy.add("isEllipticityActive", False)
-        self.policy.add("maskPlaneName", "BAD")
-        self.policy.add("basisName", "ed+06:2000")
-        self.policy.add("ftol", 1E-3)
-        self.policy.add("gtol", 1E-3)
-        self.policy.add("minStep", 1E-8)
-        self.policy.add("maxIter", 200)
-        self.policy.add("tau", 1E-3)
-        self.policy.add("retryWithSvd", True)
+        self.policy.add("SHAPELET_MODEL_8.enabled", True)
+        self.policy.add("SHAPELET_MODEL_8.nGrowFp", 3)
+        self.policy.add("SHAPELET_MODEL_8.isPositionActive", False)
+        self.policy.add("SHAPELET_MODEL_8.isRadiusActive", False)
+        self.policy.add("SHAPELET_MODEL_8.isEllipticityActive", False)
+        self.policy.add("SHAPELET_MODEL_8.maskPlaneName", "BAD")
+        self.policy.add("SHAPELET_MODEL_8.ftol", 1E-3)
+        self.policy.add("SHAPELET_MODEL_8.gtol", 1E-3)
+        self.policy.add("SHAPELET_MODEL_8.minStep", 1E-8)
+        self.policy.add("SHAPELET_MODEL_8.maxIter", 200)
+        self.policy.add("SHAPELET_MODEL_8.tau", 1E-3)
+        self.policy.add("SHAPELET_MODEL_8.retryWithSvd", True)
+         
+        self.basis = utils.loadBasis("ed+06:2000")
+
+
         bf = ButlerFactory(mapper=DatasetMapper())
         butler = bf.create()
         self.psf = butler.get("psf", id=dataset)
-        self.exposure = butler.get("exp", id=dataset)
+
+        expD = butler.get("exp", id=dataset)
+        miD = expD.getMaskedImage()
+        miF = lsst.afw.image.MaskedImageF(miD.getImage().convertF(), miD.getMask(), miD.getVariance())
+
+        self.exposure = lsst.afw.image.ExposureF(miF, expD.getWcs())
         self.exposure.setPsf(self.psf)
         if noWeights:
             self.exposure.getMaskedImage().getVariance().getArray()[:] = 1.0
         self.sources = butler.get("src", id=dataset)
         self.bitmask = utils.makeBitMask(self.exposure.getMaskedImage().getMask(),
-                                         self.policy.getArray("maskPlaneName"))
-        self.optimizer = lsst.meas.multifit.GaussNewtonOptimizer()
+                                         self.policy.getArray("SHAPELET_MODEL_8.maskPlaneName"))
+
+        self.measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(self.exposure)
+        self.measurePhotometry.addAlgorithm("SHAPELET_MODEL_8")
+        self.measurePhotometry.configure(self.policy)
+
         self.scaleFactor = 5
         self.fits = {}
         self.plots = {}
 
-    @staticmethod
-    def _finishDict(d):
-        d["distribution"] = lsst.meas.multifit.GaussianDistribution(
-            d["evaluation"].getCoefficients(),
-            numpy.linalg.inv(d["evaluation"].getCoefficientFisherMatrix())
-            )
-        d["interpreter"] = lsst.meas.multifit.UnifiedSimpleInterpreter.make(d["distribution"], d["grid"])
-        d["flux"] = d["interpreter"].computeFluxMean(0, 0)
-    
     def fit(self, index):
         source = self.sources[index]
-        d = {"grid": makeGrid(self.exposure, source, self.policy)}
+        d = {"grid": makeGrid(self.exposure, source, self.basis, self.bitmask, self.policy)}
         d["evaluator"] = lsst.meas.multifit.Evaluator.make(d["grid"])
         d["evaluation"] = lsst.meas.multifit.Evaluation(d["evaluator"])
-        self._finishDict(d)
+        
+        photom = self.measurePhotometry.measure(lsst.afw.detection.Peak(), source).find("SHAPELET_MODEL_8")
+
+        nCoeff = d["evaluator"].getCoefficientSize()
+        coefficients = numpy.zeros(nCoeff, dtype=float)
+        for i in range(nCoeff):
+            coefficients[i] = photom.get(i, lsst.afw.detection.Schema("COEFFICIENTS", 6, lsst.afw.detection.Schema.DOUBLE))
+        d["evaluation"].setCoefficients(coefficients)
+        d["flux"] = photom.getFlux()
+
         self.fits[index] = d
 
     def makePlotDict(self, index):
@@ -137,7 +147,7 @@ class Viewer(object):
             fitDict["evaluation"].getParameters(),
             fitDict["evaluation"].getCoefficients(),
             )
-        self._finishDict(plotDict)
+        plotDict["flux"] = fitDict["flux"]
         self.plots[index] = plotDict
 
     def makeImages(self, d):

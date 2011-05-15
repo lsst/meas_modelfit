@@ -198,19 +198,19 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 
 %define %prePhotometry(N)
-SWIG_SHARED_PTR(ShapeletModelPhotometry ## N, lsst::meas::multifit::ShapeletModelPhotometry<N>);
+SWIG_SHARED_PTR(ShapeletModelPhotometry##N, lsst::meas::multifit::ShapeletModelPhotometry<N>);
 %enddef
 
-%prePhotometry(2)
-%prePhotometry(8)
-%prePhotometry(17)
+%prePhotometry(2);
+%prePhotometry(8);
+%prePhotometry(17);
 
 %include "lsst/meas/multifit/SourceMeasurement.h"
 
 %define %postPhotometry(N)
-%extent lsst::meas::multifit::ShapeletModelPhotometry {
-    %template lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<float>;
-    %template lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<double>;
+%extent lsst::meas::multifit::ShapeletModelPhotometry##N {
+    %template(doMeasure) lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<float>;
+    %template(doMeasure) lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<double>;
 }
 %template(ShapeletModelPhotometry ## N) lsst::meas::multifit::ShapeletModelPhotometry<N>;
 %enddef
