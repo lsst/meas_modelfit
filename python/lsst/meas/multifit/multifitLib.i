@@ -193,6 +193,12 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %include "lsst/meas/multifit/GaussNewtonOptimizer.h"
 
 %{ 
+#include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
+%}
+
+%include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
+
+%{ 
 #include "lsst/meas/multifit/SourceMeasurement.h"
 %}
 

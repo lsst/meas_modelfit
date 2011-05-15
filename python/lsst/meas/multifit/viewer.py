@@ -59,7 +59,7 @@ def makeGrid(exposure, source, basis, bitmask, policy):
 
 class Viewer(object):
 
-    def __init__(self, dataset, noWeights=False):
+    def __init__(self, dataset):
         self.policy = Policy()
         self.policy.add("SHAPELET_MODEL_8.enabled", True)
         self.policy.add("SHAPELET_MODEL_8.nGrowFp", 3)
@@ -67,15 +67,8 @@ class Viewer(object):
         self.policy.add("SHAPELET_MODEL_8.isRadiusActive", False)
         self.policy.add("SHAPELET_MODEL_8.isEllipticityActive", False)
         self.policy.add("SHAPELET_MODEL_8.maskPlaneName", "BAD")
-        self.policy.add("SHAPELET_MODEL_8.ftol", 1E-3)
-        self.policy.add("SHAPELET_MODEL_8.gtol", 1E-3)
-        self.policy.add("SHAPELET_MODEL_8.minStep", 1E-8)
-        self.policy.add("SHAPELET_MODEL_8.maxIter", 200)
-        self.policy.add("SHAPELET_MODEL_8.tau", 1E-3)
-        self.policy.add("SHAPELET_MODEL_8.retryWithSvd", True)
-         
         self.basis = utils.loadBasis("ed+06:2000")
-
+        self.nTestPoints = 5
 
         bf = ButlerFactory(mapper=DatasetMapper())
         butler = bf.create()
@@ -87,12 +80,10 @@ class Viewer(object):
 
         self.exposure = lsst.afw.image.ExposureF(miF, expD.getWcs())
         self.exposure.setPsf(self.psf)
-        if noWeights:
-            self.exposure.getMaskedImage().getVariance().getArray()[:] = 1.0
         self.sources = butler.get("src", id=dataset)
         self.bitmask = utils.makeBitMask(self.exposure.getMaskedImage().getMask(),
                                          self.policy.getArray("SHAPELET_MODEL_8.maskPlaneName"))
-
+        self.optimizer = lsst.meas.multifit.BruteForceSourceOptimizer()
         self.measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(self.exposure)
         self.measurePhotometry.addAlgorithm("SHAPELET_MODEL_8")
         self.measurePhotometry.configure(self.policy)
@@ -100,22 +91,26 @@ class Viewer(object):
         self.scaleFactor = 5
         self.fits = {}
         self.plots = {}
-
-    def fit(self, index):
+    
+    def fit(self, index, mode=None):
         source = self.sources[index]
         d = {"grid": makeGrid(self.exposure, source, self.basis, self.bitmask, self.policy)}
         d["evaluator"] = lsst.meas.multifit.Evaluator.make(d["grid"])
         d["evaluation"] = lsst.meas.multifit.Evaluation(d["evaluator"])
-        
-        photom = self.measurePhotometry.measure(lsst.afw.detection.Peak(), source).find("SHAPELET_MODEL_8")
+        if mode == "usePhotometry":
 
-        nCoeff = d["evaluator"].getCoefficientSize()
-        coefficients = numpy.zeros(nCoeff, dtype=float)
-        for i in range(nCoeff):
-            coefficients[i] = photom.get(i, lsst.afw.detection.Schema("COEFFICIENTS", 6, lsst.afw.detection.Schema.DOUBLE))
-        d["evaluation"].setCoefficients(coefficients)
-        d["flux"] = photom.getFlux()
+            photom = self.measurePhotometry.measure(lsst.afw.detection.Peak(), source).find("SHAPELET_MODEL_8")
 
+            nCoeff = d["evaluator"].getCoefficientSize()
+            coefficients = numpy.zeros(nCoeff, dtype=float)
+            for i in range(nCoeff):
+                coefficients[i] = photom.get(i, lsst.afw.detection.Schema("COEFFICIENTS", 6, lsst.afw.detection.Schema.DOUBLE))
+            d["evaluation"].setCoefficients(coefficients)
+            d["flux"] = photom.getFlux()
+
+        elif mode == "fitPython":
+            self.optimizer.solve(d["evaluator"], self.nTestPoints)
+            d["evaluation"].update(self.optimizer.getBestParameters(), self.optimizer.getCoefficients())
         self.fits[index] = d
 
     def makePlotDict(self, index):
@@ -147,7 +142,6 @@ class Viewer(object):
             fitDict["evaluation"].getParameters(),
             fitDict["evaluation"].getCoefficients(),
             )
-        plotDict["flux"] = fitDict["flux"]
         self.plots[index] = plotDict
 
     def makeImages(self, d):
@@ -216,23 +210,35 @@ class Viewer(object):
             d["psfs"].append(l)
 
     def plotRow(self, frame, row, nrows):
+        colors = ("r", "g", "b")
         for i in range(3):
-            pyplot.subplot(nrows, 3, 3 * row + 1 + i)
+            axes = pyplot.subplot(nrows, 4, 4 * row + 1 + i)
             pyplot.imshow(frame['images'][i], origin='lower', interpolation='nearest', 
                           extent=frame['extent'], vmin=frame['vmin'], vmax=frame['vmax'])
+            axes.get_xaxis().set_ticks([])
+            axes.get_yaxis().set_ticks([])
             for ellipse in frame['ellipses']:
                 ellipse.plot(fill=False)
             for point in frame['points']:
                 pyplot.plot([point.getX()], [point.getY()], 'kx')
-            pyplot.axis("off")
-            pyplot.title("sum=%f" % frame["images"][i].sum())
+            pyplot.xlabel("sum=%f" % frame["images"][i].sum())
+            if i == 0:
+                pyplot.ylabel("min=%f\nmax=%f" % (frame['vmin'], frame['vmax']))
+            
+            #hist, edges = numpy.histogram(frame["images"][i], bins=10, new=True)
+            pyplot.subplot(nrows, 4, 4 * row + 4)
+            #pyplot.plot(0.5 * (edges[:-1] + edges[1:]), hist, colors[i])
+            pyplot.hist(frame["images"][i].ravel(), bins=20, alpha=0.2,
+                        edgecolor=colors[i], facecolor=colors[i])
 
-    def plot(self, index):
+    def plot(self, index, mode="fitPython"):
+        self.fit(index, mode=mode)
         self.makePlotDict(index)
         self.makeImages(self.fits[index])
         self.makeImages(self.plots[index])
         self.makePsfImages(self.fits[index])
-        print "Computed flux: ", self.plots[index]["flux"]
+        #print "Computed flux: ", self.fits[index]["flux"]
+        pyplot.figure()
         for n in range(1):
             self.plotRow(self.fits[index]["frames"][n], 0, 3)
             self.plotRow(self.plots[index]["frames"][n], 1, 3)

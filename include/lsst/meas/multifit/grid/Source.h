@@ -45,6 +45,23 @@ public:
     Frame const & frame;
     Object const & object;
 
+    /**
+     *  @brief Return the mean flux of the object on this frame, given parameter and coefficient vectors.
+     */
+    double computeFluxMean(
+        lsst::ndarray::Array<double const,1,1> const & parameters,
+        lsst::ndarray::Array<double const,1,1> const & coefficients
+    ) const;
+
+    /**
+     *  @brief Return the variance of the flux of the object on this frame, given a parameter vector
+     *         and the coefficient covariance matrix.
+     */
+    double computeFluxVariance(
+        lsst::ndarray::Array<double const,1,1> const & parameters,
+        lsst::ndarray::Array<double const,2,1> const & covariance
+    ) const;
+
     int const getCoefficientOffset() const;
 
     int const getCoefficientCount() const;

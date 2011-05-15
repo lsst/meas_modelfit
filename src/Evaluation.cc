@@ -290,7 +290,6 @@ void Evaluation::initialize() {
         );
     }
     if (_evaluator->getConstraintSize() > 0) {
-        std::cerr << "Using constrained solver.\n";
         _solver.reset(
             new ConstrainedSolver(_evaluator->getConstraintMatrix(), _evaluator->getConstraintVector())
         );

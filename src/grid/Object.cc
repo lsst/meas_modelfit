@@ -266,4 +266,42 @@ std::ostream & operator<<(std::ostream & os, Object const & obj) {
     return os;
 }
 
+double Source::computeFluxMean(
+    lsst::ndarray::Array<double const,1,1> const & parameters,
+    lsst::ndarray::Array<double const,1,1> const & coefficients
+) const {
+    if (object.getBasis()) {
+        Ellipse ellipse(object.makeEllipse(parameters.getData()));
+        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
+        object.getBasis()->integrate(integration);
+        return (ellipse.getCore().getArea() / M_PI)
+            * ndarray::viewAsEigen(
+                coefficients[
+                    ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())
+                ]).dot(ndarray::viewAsEigen(integration));
+    }
+    return coefficients[getCoefficientOffset()];
+}
+
+double Source::computeFluxVariance(
+    lsst::ndarray::Array<double const,1,1> const & parameters,
+    lsst::ndarray::Array<double const,2,1> const & covariance
+) const {
+    if (object.getBasis()) {
+        Eigen::MatrixXd sigma = ndarray::viewAsEigen(covariance).block(
+            getCoefficientOffset(),
+            getCoefficientOffset(),
+            getCoefficientCount(),
+            getCoefficientCount()
+        );
+        Ellipse ellipse(object.makeEllipse(parameters.getData()));
+        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
+        object.getBasis()->integrate(integration);
+        double result = ellipse.getCore().getArea() / M_PI; result *= result;
+        result *= ndarray::viewAsEigen(integration).dot(sigma * ndarray::viewAsEigen(integration));
+        return result;
+    }
+    return covariance[getCoefficientOffset()][getCoefficientOffset()];
+}
+
 }}}} // namespace lsst::meas::multifit::grid

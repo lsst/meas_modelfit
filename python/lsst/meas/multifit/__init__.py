@@ -41,7 +41,9 @@ from .multifitLib import (
     SimpleInterpreter,
     UnifiedSimpleInterpreter,
     NestedSimpleInterpreter,
-    GaussNewtonOptimizer)
+    GaussNewtonOptimizer,
+    BruteForceSourceOptimizer
+    )
 from . import multifitLib
 from . import definition
 from . import grid

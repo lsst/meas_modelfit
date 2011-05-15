@@ -36,14 +36,23 @@ public:
 
     BruteForceSourceOptimizer() {}
 
-    GaussianDistribution::Ptr solve(Evaluator::Ptr const & evaluator, int n);
+    void solve(Evaluator::Ptr const & evaluator, int n);
+
+    int getBestIndex() const { return _bestIndex; }
+    double getBestObjectiveValue() const { return _objectiveValues[_bestIndex]; }
+    lsst::ndarray::Array<double const,1,1> getBestParameters() const { return _parameters[_bestIndex]; }
+    lsst::ndarray::Array<double const,1,1> getBestCoefficients() const { return _bestCoefficients; }
+    lsst::ndarray::Array<double const,2,2> getCoefficientCovariance() const { return _coefficientCovariance; }
 
     lsst::ndarray::Array<double const,2,2> getParameters() const { return _parameters; }
     lsst::ndarray::Array<double const,1,1> getObjectiveValues() const { return _objectiveValues; }
 
 private:
+    int _bestIndex;
     lsst::ndarray::Array<double,2,2> _parameters;
     lsst::ndarray::Array<double,1,1> _objectiveValues;
+    lsst::ndarray::Array<double,2,2> _coefficientCovariance;
+    lsst::ndarray::Array<double,1,1> _bestCoefficients;
 };
 
 }}} //end namespace lsst::meas::multifit
