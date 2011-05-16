@@ -6,7 +6,7 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-void BruteForceSourceOptimizer::solve(Evaluator::Ptr const & evaluator, int nTestPoints) {
+bool BruteForceSourceOptimizer::solve(Evaluator::Ptr const & evaluator, int nTestPoints) {
     static double const SQRT_EPS = std::sqrt(std::numeric_limits<double>::epsilon());
     int nParam = evaluator->getParameterSize();
     int nCoeff = evaluator->getCoefficientSize();
@@ -33,10 +33,14 @@ void BruteForceSourceOptimizer::solve(Evaluator::Ptr const & evaluator, int nTes
         )
     );
     afw::geom::ellipses::Quadrupole psfMoments(psfEllipse.getCore());
-    double minIxx = std::max(fullMoments.getIXX() - psfMoments.getIXX(), SQRT_EPS);
-    double minIyy = std::max(fullMoments.getIYY() - psfMoments.getIYY(), SQRT_EPS);
+    double minIxx = fullMoments.getIXX() - psfMoments.getIXX();
+    double minIyy = fullMoments.getIYY() - psfMoments.getIYY();
     double minIxy = fullMoments.getIXY() - psfMoments.getIXY();
-    minIxy = ((minIxy > 0) ? 1 : -1) * (SQRT_EPS + std::min(std::abs(minIxy), std::sqrt(minIxx * minIyy)));
+    if ((minIxx < SQRT_EPS) || (minIyy < SQRT_EPS) || (minIxy * minIxy > minIxx * minIyy)) {
+        minIxx = SQRT_EPS;
+        minIyy = SQRT_EPS;
+        minIxy = 0.0;
+    }
     double dIxx = (fullMoments.getIXX() - minIxx) / nTestPoints;
     double dIyy = (fullMoments.getIYY() - minIyy) / nTestPoints;
     double dIxy = (fullMoments.getIXY() - minIxy) / nTestPoints;
@@ -47,8 +51,12 @@ void BruteForceSourceOptimizer::solve(Evaluator::Ptr const & evaluator, int nTes
         afw::geom::ellipses::Quadrupole q(minIxx + i * dIxx, minIyy + i * dIyy, minIxy + i * dIxy);
         Ellipse ellipse(q, afw::geom::Point2D(source.object.getPosition()->getValue()));
         source.object.readEllipse(_parameters[i].getData(), ellipse);
-        evaluation.update(_parameters[i]);
-        _objectiveValues[i] = evaluation.getObjectiveValue();
+        try {
+            evaluation.update(_parameters[i]);
+            _objectiveValues[i] = evaluation.getObjectiveValue();
+        } catch (...) {
+            continue;
+        }
         if (evaluation.getObjectiveValue() < bestValue) {
             _bestIndex = i;
             bestValue = evaluation.getObjectiveValue();
@@ -59,6 +67,7 @@ void BruteForceSourceOptimizer::solve(Evaluator::Ptr const & evaluator, int nTes
     Eigen::LDLT<Eigen::MatrixXd> ldlt(ndarray::viewAsTransposedEigen(_coefficientCovariance));
     ndarray::viewAsTransposedEigen(_coefficientCovariance).setIdentity();
     ldlt.solveInPlace(ndarray::viewAsTransposedEigen(_coefficientCovariance).setIdentity());
+    return _bestIndex >= 0;
 }
 
 

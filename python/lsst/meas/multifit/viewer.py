@@ -64,10 +64,10 @@ class Viewer(object):
         self.policy.add("SHAPELET_MODEL_8.enabled", True)
         self.policy.add("SHAPELET_MODEL_8.nGrowFp", 3)
         self.policy.add("SHAPELET_MODEL_8.isPositionActive", False)
-        self.policy.add("SHAPELET_MODEL_8.isRadiusActive", False)
-        self.policy.add("SHAPELET_MODEL_8.isEllipticityActive", False)
+        self.policy.add("SHAPELET_MODEL_8.isRadiusActive", True)
+        self.policy.add("SHAPELET_MODEL_8.isEllipticityActive", True)
         self.policy.add("SHAPELET_MODEL_8.maskPlaneName", "BAD")
-        self.basis = utils.loadBasis("ed+06:2000")
+        self.basis = utils.loadBasis("ed+00:0000")
         self.nTestPoints = 5
 
         bf = ButlerFactory(mapper=DatasetMapper())
@@ -97,7 +97,7 @@ class Viewer(object):
         d = {"grid": makeGrid(self.exposure, source, self.basis, self.bitmask, self.policy)}
         d["evaluator"] = lsst.meas.multifit.Evaluator.make(d["grid"])
         d["evaluation"] = lsst.meas.multifit.Evaluation(d["evaluator"])
-        if mode == "usePhotometry":
+        if mode == "photometry":
 
             photom = self.measurePhotometry.measure(lsst.afw.detection.Peak(), source).find("SHAPELET_MODEL_8")
 
@@ -106,11 +106,18 @@ class Viewer(object):
             for i in range(nCoeff):
                 coefficients[i] = photom.get(i, lsst.afw.detection.Schema("COEFFICIENTS", 6, lsst.afw.detection.Schema.DOUBLE))
             d["evaluation"].setCoefficients(coefficients)
-            d["flux"] = photom.getFlux()
+            print "flux:", photom.getFlux()
+            print "fluxErr:", photom.getFluxErr()
 
-        elif mode == "fitPython":
+        elif mode == "bfso":
             self.optimizer.solve(d["evaluator"], self.nTestPoints)
-            d["evaluation"].update(self.optimizer.getBestParameters(), self.optimizer.getCoefficients())
+            d["evaluation"].update(self.optimizer.getBestParameters(), self.optimizer.getBestCoefficients())
+            print "flux:", d["grid"].sources[0].computeFluxMean(self.optimizer.getBestParameters(), 
+                                                                self.optimizer.getBestCoefficients())
+            print "fluxErr:", (d["grid"].sources[0].computeFluxVariance(
+                    self.optimizer.getBestParameters(),
+                    self.optimizer.getCoefficientCovariance()
+                    ))**0.5
         self.fits[index] = d
 
     def makePlotDict(self, index):
@@ -217,8 +224,8 @@ class Viewer(object):
                           extent=frame['extent'], vmin=frame['vmin'], vmax=frame['vmax'])
             axes.get_xaxis().set_ticks([])
             axes.get_yaxis().set_ticks([])
-            for ellipse in frame['ellipses']:
-                ellipse.plot(fill=False)
+            for k, ellipse in enumerate(frame['ellipses']):
+                ellipse.plot(fill=False, edgecolor=("k" if k == 0 else "w"))
             for point in frame['points']:
                 pyplot.plot([point.getX()], [point.getY()], 'kx')
             pyplot.xlabel("sum=%f" % frame["images"][i].sum())
@@ -231,7 +238,7 @@ class Viewer(object):
             pyplot.hist(frame["images"][i].ravel(), bins=20, alpha=0.2,
                         edgecolor=colors[i], facecolor=colors[i])
 
-    def plot(self, index, mode="fitPython"):
+    def plot(self, index, mode=None):
         self.fit(index, mode=mode)
         self.makePlotDict(index)
         self.makeImages(self.fits[index])

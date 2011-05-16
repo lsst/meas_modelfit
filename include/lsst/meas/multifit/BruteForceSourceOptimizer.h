@@ -36,7 +36,7 @@ public:
 
     BruteForceSourceOptimizer() {}
 
-    void solve(Evaluator::Ptr const & evaluator, int n);
+    bool solve(Evaluator::Ptr const & evaluator, int n);
 
     int getBestIndex() const { return _bestIndex; }
     double getBestObjectiveValue() const { return _objectiveValues[_bestIndex]; }
