@@ -28,7 +28,8 @@
 #include "lsst/afw/detection/Photometry.h"
 #include "lsst/afw/detection/Astrometry.h"
 #include "lsst/afw/detection/Shape.h"
-#include "lsst/meas/multifit/BaseInterpreter.h"
+#include "lsst/meas/multifit/GaussNewtonOptimizer.h"
+#include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
 #include <Eigen/Core>
 
 namespace lsst {
@@ -61,14 +62,8 @@ public:
         NO_BASIS=0x08,
         NO_FOOTPRINT=0x10, 
         BAD_INITIAL_MOMENTS=0x20, 
-        NO_CONVERGENCE=0x40
+        OPTIMIZER_FAILED=0x40
     };
-
-    ShapeletModelPhotometry(int const status);
-    ShapeletModelPhotometry(
-        BaseInterpreter::ConstPtr const & interpreter, 
-        int const status
-    );
 
     virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
 
@@ -79,15 +74,33 @@ public:
                                      CONST_PTR(afw::detection::Peak),
                                      CONST_PTR(afw::detection::Source)
                                     );
+    ShapeletModelPhotometry(int const status);
+#if 0
+    ShapeletModelPhotometry(
+        GaussNewtonOptimizer & optimizer,
+        BaseEvaluator::Ptr const & evaluator
+    );
+#endif
+    ShapeletModelPhotometry(
+        BruteForceSourceOptimizer const & optimizer,
+        Evaluator::Ptr const & evaluator
+    );
 
     static bool isEllipticityActive, isRadiusActive, isPositionActive;
-    static bool retryWithSvd;
     static lsst::afw::image::MaskPixel bitmask;
-    static int nGrowFp, maxIter;
+    static int nGrowFp;
     static ModelBasis::Ptr basis;
+
+    static int nTestPoints;
+#if 0
+    static int maxIter
     static double ftol, gtol, minStep, tau;
+    static bool retryWithSvd;
+#endif
 
 private:
+
+
 
     ShapeletModelPhotometry() : lsst::afw::detection::Photometry() {init();}
     LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
