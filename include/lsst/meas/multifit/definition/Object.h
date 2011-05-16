@@ -53,9 +53,9 @@ public:
 protected:
     
     ObjectBase(
-        ID id_, 
-        double radiusFactor,
-        bool variable,
+        ID const id_, 
+        double const radiusFactor,
+        bool const variable,
         ModelBasis::Ptr const & basis = ModelBasis::Ptr()
     ) : id(id_), _radiusFactor(radiusFactor), _variable(variable), _basis(basis) {}
 
@@ -97,19 +97,19 @@ public:
     {}
 
     static Object makeStar(
-        ID id, 
+        ID const id, 
         lsst::afw::geom::Point2D const & position, 
-        bool isVariable = false,
-        bool isPositionActive=false
+        bool const isVariable = false,
+        bool const isPositionActive=false
     );
 
     static Object makeGalaxy(
-        ID id,
+        ID const id,
         ModelBasis::Ptr const & basis,
         lsst::afw::geom::ellipses::Ellipse const & ellipse,
-        bool isEllipticityActive=false,
-        bool isRadiusActive=false,
-        bool isPositionActive=false
+        bool const isEllipticityActive=false,
+        bool const isRadiusActive=false,
+        bool const isPositionActive=false
     );
 
     //@{
@@ -185,7 +185,9 @@ private:
     EllipticityComponent::Ptr _ellipticity;
 };
 
+#ifndef SWIG
 std::ostream & operator<<(std::ostream & os, Object const & obj);
+#endif
 
 }}}} // namespace lsst::meas::multifit::definition
 

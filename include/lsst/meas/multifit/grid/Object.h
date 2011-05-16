@@ -40,10 +40,6 @@ class Object : public detail::ObjectBase, private boost::noncopyable {
 public:
 
     typedef Array<Source> SourceArray;
-    
-    // We can show all the internals except the parameter components because users will only ever 
-    // see const Objects, but we can't let them have non-const pointers to the parameter components.
-    // We'd also like to cast the components to their grid versions.
 
     SourceArray sources;
 
@@ -58,6 +54,7 @@ public:
     /// @brief The total number of coefficients for this object.
     int const getCoefficientCount() const { return _coefficientCount; }
 
+#ifndef SWIG
     //@{
     /// @brief Return the parameter components.
     PositionComponent::Ptr const getPosition() const { return _position; }
@@ -72,9 +69,38 @@ public:
     }
     //@}
 
-#ifndef SWIG
+    /// @brief Throw an exception (LogicErrorException) if the object lacks a radius or ellipticity.
+    void requireEllipse() const;
+
     /// @brief Construct the point corresponding to this object from a parameter vector.
     lsst::afw::geom::Point2D makePoint(double const * paramIter) const;
+
+    /**
+     *  @brief Fill the elements of a parameter vector with values from the given point.
+     *
+     *  If the position component of the object is inactive, no action is taken.
+     */
+    void readPoint(double * paramIter, lsst::afw::geom::Point2D const & point) const;
+
+    /**
+     *  @brief Given a symmetric matrix corresponding to a full parameter vector, extract
+     *         a 2x2 matrix corresponding to the point.
+     *
+     *  The returned matrix will be zero if the position is inactive.
+     *
+     *  The ordering of ellipse parameters is (e1, e2, r, x, y).
+     */
+    Eigen::Matrix2d extractPointMatrix(Eigen::MatrixXd const & matrix) const;
+
+    /**
+     *  @brief Given a symmetric matrix corresponding to the full parameter vector, set the
+     *         2x2 block corresponding to the point.
+     *
+     *  If the position is inactive, the full matrix will not be modified.
+     *
+     *  The ordering of ellipse parameters is (e1, e2, r, x, y).
+     */
+     void insertPointMatrix(Eigen::MatrixXd & full, Eigen::Matrix2d const & block) const;
 
     /**
      *  Perturb a point by changing the nth position parameter.
@@ -93,6 +119,25 @@ public:
     /// @brief Construct the ellipse corresponding to this object from a parameter vector.
     lsst::afw::geom::ellipses::Ellipse makeEllipse(double const * paramIter) const;
 
+    /// @brief Fill the elements of a parameter vector with values from the given ellipse.
+    void readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse const & ellipse) const;
+
+    /**
+     *  @brief Given a symmetric matrix corresponding to a full parameter vector, extract
+     *         a 5x5 matrix corresponding to the ellipse.
+     *
+     *  Rows and columns that correspond to inactive parameters will be zero.
+     */
+    Eigen::Matrix5d extractEllipseMatrix(Eigen::MatrixXd const & matrix) const;
+
+    /**
+     *  @brief Given a symmetric matrix corresponding to the full parameter vector, set the
+     *         5x5 block corresponding to the ellipse.
+     *
+     *  Block rows and columns that correspond to inactive parameters will be ignored.
+     */
+    void insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const & block) const;
+
     /**
      *  Perturb an ellipse by changing the nth ellipse parameter.
      *  Returns the offset of the nth ellipse parameter and the
@@ -104,6 +149,7 @@ public:
      *  Unperturb a point by changing the nth position parameter.
      */
     void unperturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n, double perturbation) const;
+
 #endif
 
 private:
@@ -125,6 +171,9 @@ private:
     EllipticityComponent::Ptr _ellipticity;
 };
 
+#ifndef SWIG
+std::ostream & operator<<(std::ostream & os, Object const & obj);
+
 inline afw::geom::Point2D const Source::getReferencePoint() const {
     return _transform(object.getPosition()->getValue());
 }
@@ -138,6 +187,7 @@ inline int const Source::getCoefficientOffset() const {
 inline int const Source::getCoefficientCount() const {
     return object.getSourceCoefficientCount();
 }
+#endif
 
 }}}} // namespace lsst::meas::multifit::grid
 

@@ -43,6 +43,22 @@ public:
 
     int const offset;
 
+#ifndef SWIG
+    /// Return true if the parameters are in-bounds.
+    bool checkBounds(double const * parameters) const {
+        return this->getBounds().checkBounds(parameters + offset);
+    }
+
+    /**
+     *  If the parameters are out of bounds, move them to the boundary and return
+     *  a positive value that increases as the necessary parameter change increases.
+     *  Return 0.0 if the parameters are already in-bounds
+     */
+    double clipToBounds(double * parameters) const {
+        return this->getBounds().clipToBounds(parameters + offset);
+    }
+#endif
+
 private:
 
     friend class Initializer;
@@ -52,9 +68,12 @@ private:
 
 };
 
+
 typedef ParameterComponent<POSITION> PositionComponent;
 typedef ParameterComponent<RADIUS> RadiusComponent;
 typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
+
+#ifndef SWIG
 
 template <ParameterType E>
 class ComponentArray {
@@ -91,6 +110,8 @@ private:
 
 template <ParameterType E>
 std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
+
+#endif
 
 }}}} // namespace lsst::meas::multifit::grid
 

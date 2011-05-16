@@ -30,7 +30,6 @@
 #define BOOST_TEST_MODULE evaluator
 
 #include "boost/test/unit_test.hpp"
-#include "boost/test/floating_point_comparison.hpp"
 #include "lsst/meas/multifit/grid/Grid.h"
 #include "lsst/meas/multifit/Evaluator.h"
 #include "lsst/meas/multifit/ShapeletModelBasis.h"

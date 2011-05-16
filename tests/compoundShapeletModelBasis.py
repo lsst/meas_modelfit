@@ -26,6 +26,8 @@ import lsst.afw.detection as afwDetection
 import lsst.afw.geom as afwGeom
 import lsst.afw.geom.ellipses as geomEllipses
 import lsst.meas.multifit as mf
+import lsst.meas.multifit.utils as mfUtils
+import lsst.afw.math.shapelets as shapelets
 
 import lsst.utils.tests as utilsTests
 import numpy
@@ -75,7 +77,25 @@ class CompoundShapeletModelBasisTest(unittest.TestCase):
 
         os.remove(filename)
 
-
+    def testIntegration(self):
+        components = mf.CompoundShapeletBuilder.ComponentVector()
+        components.push_back(mf.ShapeletModelBasis.make(4, 1.0))
+        components.push_back(mf.ShapeletModelBasis.make(4, 1.1))
+        builder = mf.CompoundShapeletBuilder(components)
+        builder.orthogonalize()
+        basis = builder.build()
+        ellipse = geomEllipses.Ellipse(geomEllipses.Axes(10.0, 8.0, 0.3), afwGeom.Point2D(0.0, 0.0))
+        bounds = geomEllipses.Ellipse(ellipse)
+        bounds.scale(8.0)
+        footprint = afwDetection.Footprint(bounds)
+        matrix = numpy.zeros((footprint.getArea(), basis.getSize()), dtype=float)
+        basis.evaluate(matrix, footprint, ellipse)
+        integration = numpy.zeros(basis.getSize(), dtype=float)
+        basis.integrate(integration)
+        factor = ellipse.getCore().getArea() / numpy.pi
+        total = matrix.sum(axis=0) / factor
+        self.assert_(numpy.allclose(integration, total))
+        
 
 def suite():
     utilsTests.init()

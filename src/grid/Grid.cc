@@ -63,11 +63,13 @@ public:
             std::pair<DPtr,GPtr> item(dp, GPtr());
             std::pair<typename Map::iterator,bool> r = unique.insert(item);
             if (r.second) {
-                r.first->second.reset(new grid::ParameterComponent<E>(*dp, output._parameterCount));
-                if (r.first->second->isActive()) {
+                if (dp->isActive()) {
+                    r.first->second.reset(new grid::ParameterComponent<E>(*dp, output._parameterCount));
                     output._parameterCount += grid::ParameterComponent<E>::SIZE;
+                    container._ptrVec.push_back(r.first->second);
+                } else {
+                    r.first->second.reset(new grid::ParameterComponent<E>(*dp, -1));
                 }
-                container._ptrVec.push_back(r.first->second);
             }
             GPtr const * gp;
             gi->getComponentImpl(gp);
@@ -76,7 +78,9 @@ public:
     }
 
     static Definition makeDefinition(Grid const & grid, double const * paramIter) {
-        Definition result(grid.getWcs()->clone());
+        Wcs::Ptr wcs;
+        if (grid.getWcs()) wcs = grid.getWcs()->clone();
+        Definition result(wcs);
         for (Grid::FrameArray::const_iterator i = grid.frames.begin(); i != grid.frames.end(); ++i) {
             result.frames.insert(definition::Frame(*i));
         }
@@ -97,6 +101,7 @@ public:
         output.sources._last = output.sources._first
             = reinterpret_cast<grid::Source*>(output._sourceData.get());
 
+        int constraintCount = 0;
         try {
             int frameCount = 0;
             for (
@@ -123,10 +128,19 @@ public:
                     *i, output._coefficientCount, frameCount, output._filterCount
                 );
                 output._coefficientCount += newObject->getCoefficientCount();
+                if (newObject->getBasis()) {
+                    constraintCount += newObject->getBasis()->getConstraintSize()
+                        * (newObject->getCoefficientCount() / newObject->getSourceCoefficientCount());
+                }
             }
             transferComponents<POSITION>(input, output, output.positions);
             transferComponents<RADIUS>(input, output, output.radii);
             transferComponents<ELLIPTICITY>(input, output, output.ellipticities);
+            if (constraintCount) {
+                output._constraintVector = ndarray::allocate(constraintCount);
+                output._constraintMatrix = ndarray::allocate(constraintCount, output._coefficientCount);
+            }
+            int constraintOffset = 0;
             for (
                 grid::Object * i = output.objects._first; 
                 i != output.objects._last;
@@ -142,6 +156,27 @@ public:
                     new (output.sources._last++) grid::Source(*j, *i, output.getWcs());
                 }
                 i->sources._last = output.sources._last;
+                if (i->getBasis() && i->getBasis()->getConstraintSize()) {
+                    int nConstraints = i->getBasis()->getConstraintSize();
+                    int nSteps = output._filterCount;
+                    if (i->isVariable()) {
+                        nSteps = frameCount;
+                    }
+                    for (int step = 0; step < nSteps; ++step) {
+                        output._constraintVector[
+                            ndarray::view(constraintOffset, constraintOffset + nConstraints)
+                        ] = i->getBasis()->getConstraintVector();
+                        output._constraintMatrix[
+                            ndarray::view(
+                                constraintOffset, constraintOffset + nConstraints
+                            ) (
+                                i->getCoefficientOffset() + step * i->getSourceCoefficientCount(),
+                                i->getCoefficientOffset() + (step + 1) * i->getSourceCoefficientCount()
+                            )
+                        ] = i->getBasis()->getConstraintMatrix();
+                        constraintOffset += nConstraints;
+                    }
+                }
             }
             
         } catch (...) {
@@ -173,6 +208,15 @@ void Frame::applyWeights(ndarray::Array<double,1,0> const & vector) const {
     if (!_weights.empty()) {
         vector.deep() *= _weights;
     }
+}
+
+std::ostream & operator<<(std::ostream & os, Frame const & frame) {
+    std::string filterName("undefined");
+    try {
+        filterName = lsst::afw::image::Filter(frame.getFilterId()).getName();
+    } catch (lsst::pex::exceptions::NotFoundException &) {}
+    return os << "Frame " << frame.id << " (@" << (&frame) << ") = {" << filterName 
+              << ", " << frame.getFootprint()->getArea() << "pix}\n";
 }
 
 Source::Source(
@@ -272,30 +316,54 @@ Grid::Grid(Definition const & definition) :
 
 Grid::~Grid() { Initializer::destroyGrid(*this); }
 
+int const Grid::getFilterIndex(FilterId filterId) const {
+    FilterMap::const_iterator i = _filters.find(filterId);
+    if(i == _filters.end()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            (boost::format("Filter with ID %d not found.") % filterId).str()
+        );
+    }
+    return i->second;
+}
+
 void Grid::writeParameters(double * paramIter) const {
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        if (i->isActive()) {
-            detail::ParameterComponentTraits<POSITION>::writeParameters(paramIter, i->getValue());
-        }
+        detail::ParameterComponentTraits<POSITION>::writeParameters(paramIter + i->offset, i->getValue());
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        if (i->isActive()) {
-            detail::ParameterComponentTraits<RADIUS>::writeParameters(paramIter, i->getValue());
-        }
+        detail::ParameterComponentTraits<RADIUS>::writeParameters(paramIter + i->offset, i->getValue());
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        if (i->isActive()) {
-            detail::ParameterComponentTraits<ELLIPTICITY>::writeParameters(paramIter, i->getValue());
-        }
+        detail::ParameterComponentTraits<ELLIPTICITY>::writeParameters(paramIter + i->offset, i->getValue());
     }
 }
 
-double Grid::sumLogWeights() const {
-    double r = 0;
-    for (FrameArray::const_iterator i = frames.begin(); i != frames.end(); ++i) {
-        r += ndarray::viewAsEigen(i->getWeights()).cwise().log().sum();
+bool Grid::checkBounds(double const * paramIter) const {
+    for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
+        if (!i->checkBounds(paramIter)) return false;
     }
-    return r;
+    for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
+        if (!i->checkBounds(paramIter)) return false;
+    }
+    for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
+        if (!i->checkBounds(paramIter)) return false;
+    }
+    return true;
+}
+
+double Grid::clipToBounds(double * paramIter) const {
+    double value = 0.0;
+    for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
+        value += i->clipToBounds(paramIter);
+    }
+    for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
+        value += i->clipToBounds(paramIter);
+    }
+    for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
+        value += i->clipToBounds(paramIter);
+    }
+    return value;
 }
 
 }}}} // namespace lsst::meas::multifit::grid

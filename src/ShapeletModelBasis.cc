@@ -33,8 +33,6 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace { 
 
-static int const SHAPELET_DEFAULT_ORDER = 8; // TODO: make this a policy value
-
 class ConvolvedShapeletModelBasis : public ModelBasis {
 public:
 
@@ -52,6 +50,13 @@ public:
     {}
 
 protected:
+
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "Cannot integrate convolved basis."
+        );      
+    }
 
     virtual void _evaluate(
         ndarray::Array<Pixel, 2, 1> const & matrix,
@@ -81,6 +86,18 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
+int & mf::ShapeletModelBasis::getPsfShapeletOrderRef() {
+    static int v = 4;
+    return v;
+}
+
+void mf::ShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+    afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
+    vector.deep() = 0.0;
+    shapeletEvaluator.fillIntegration(vector);
+    vector.deep() *= _scale * _scale;
+}
+
 void mf::ShapeletModelBasis::_evaluate(
     lsst::ndarray::Array<double, 2, 1> const & matrix,
     CONST_PTR(Footprint) const & footprint,
@@ -101,6 +118,29 @@ void mf::ShapeletModelBasis::_evaluate(
     }
 }
 
+void mf::ShapeletModelBasis::_evaluateRadialProfile(
+    lsst::ndarray::Array<Pixel,2,1> const & profile,
+    lsst::ndarray::Array<Pixel const,1,1> const & radii
+) const {
+    afwShapelets::BasisEvaluator basisEval(_order, afwShapelets::LAGUERRE);
+    for (int r = 0; r < radii.getSize<0>(); ++r) {
+        lsst::ndarray::Array<Pixel,1,1> row(profile[r]);
+        basisEval.fillEvaluation(row, radii[r] / _scale, 0.0);
+        for (int n = 0; n <= _order; ++n) {
+            int offset = afwShapelets::computeOffset(n);
+            for (int p = n, q = 0; q <= p; --p, ++q) {
+                if (p != q) {
+                    row[offset + 2 * q] = 0.0;
+                    row[offset + 2 * q + 1] = 0.0;
+                }
+            }
+        }
+        afwShapelets::ConversionMatrix::convertOperationVector(
+            row, afwShapelets::LAGUERRE, afwShapelets::HERMITE, _order
+        );
+    }
+}
+
 mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     CONST_PTR(LocalPsf) const & psf
 ) const {
@@ -110,7 +150,7 @@ mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
         return convolve(s);
     } else {
         afwShapelets::ShapeletFunction s = 
-            psf->computeShapelet(afwShapelets::HERMITE, SHAPELET_DEFAULT_ORDER);
+            psf->computeShapelet(afwShapelets::HERMITE, getPsfShapeletOrder());
         s.getEllipse().getCenter() -= afw::geom::Extent2D(psf->getPoint());
         return convolve(s);
     }

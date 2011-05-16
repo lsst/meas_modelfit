@@ -23,19 +23,34 @@ import lsst.afw.geom.ellipses
 
 from .multifitLib import (
     BaseEvaluator,
+    Grid,
     Definition,
     Evaluator,
+    Evaluation,
     ModelBasis,
     ShapeletModelBasis,
     CompoundShapeletModelBasis,
     CompoundShapeletBuilder,
+    BaseDistribution,
+    SimpleDistribution,
+    StudentDistribution,
+    GaussianDistribution,
+    BaseInterpreter,
+    UnifiedInterpreter,
+    NestedInterpreter,
+    SimpleInterpreter,
+    UnifiedSimpleInterpreter,
+    NestedSimpleInterpreter,
+    GaussNewtonOptimizer,
+    BruteForceSourceOptimizer
     )
 from . import multifitLib
 from . import definition
+from . import grid
+from . import utils
+
 import os
 import eups
-
-from . import sampling
 
 Position = lsst.afw.geom.Point2D
 Ellipticity = lsst.afw.geom.ellipses.ConformalShear
@@ -43,10 +58,6 @@ Radius = lsst.afw.geom.ellipses.TraceRadius
 EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
 CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
 CompoundShapeletModelBasis.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
-
-def loadBasis(name):
-    path = os.path.join(eups.productDir("meas_multifit"), "data", "%s.boost" % name)
-    return CompoundShapeletModelBasis.load(path)
 
 del multifitLib
 

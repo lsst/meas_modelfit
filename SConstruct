@@ -33,7 +33,7 @@ LSST Multifit Implementation.
 #
 env.libs["meas_multifit"] += env.getlibs("boost wcslib cfitsio minuit2 gsl utils " +
         "daf_base daf_data daf_persistence pex_exceptions pex_logging pex_policy " +
-        "security fftw3 afw ndarray")
+        "security fftw3 afw meas_algorithms ndarray")
 
 if True:
     #
@@ -48,7 +48,6 @@ for d in (
     ".",
     "lib",
     "python/lsst/meas/multifit",
-    "python/lsst/meas/multifit/sampling",
     #"examples",
     "tests",
     "doc",

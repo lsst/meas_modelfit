@@ -99,7 +99,7 @@ public:
         Footprint::Ptr const & footprint,
         lsst::ndarray::Array<Pixel,1,1> const & data,
         lsst::ndarray::Array<Pixel,1,1> const & weights = lsst::ndarray::Array<Pixel,1,1>()
-    ) : detail::FrameBase(id, footprint, data, weights) {}
+    ) : detail::FrameBase(id_, footprint, data, weights) {}
 
     Frame(
         ID id_,
@@ -127,7 +127,7 @@ public:
         ID const id,
         lsst::afw::image::Exposure<PixelT> const & exposure,
         Footprint::Ptr const & footprint,
-        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
+        lsst::afw::image::MaskPixel const bitmask=~0x0
     );
     
 #ifndef SWIG
@@ -179,7 +179,9 @@ private:
     explicit Frame(detail::FrameBase const & other) : detail::FrameBase(other, true) {}
 };
 
+#ifndef SWIG
 std::ostream & operator<<(std::ostream & os, Frame const & frame);
+#endif
 
 }}}} // namespace lsst::meas::multifit::definition
 

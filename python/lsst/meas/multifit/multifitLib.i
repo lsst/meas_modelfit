@@ -41,9 +41,10 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 #include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/meas/multifit/ShapeletModelBasis.h"
-#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"    
 #define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
 #include "numpy/arrayobject.h"
 #include "lsst/ndarray/python.h"
@@ -121,6 +122,8 @@ def version(HeadURL = r"$HeadURL$"):
 %declareNumPyConverters(lsst::ndarray::Array<double const, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<double, 1, 1>);
 %declareNumPyConverters(lsst::ndarray::Array<double, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<double const, 2, 2>);
+%declareNumPyConverters(lsst::ndarray::Array<double const, 3, 3>);
 
 %include "lsst/meas/multifit/constants.h"
 
@@ -176,4 +179,48 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %include "lsst/meas/multifit/Evaluator.h"
 
+%include "lsst/meas/multifit/Evaluation.h"
+
 %include "definition.i"
+%include "grid.i"
+%include "distribution.i"
+%include "interpreter.i"
+
+%{ 
+#include "lsst/meas/multifit/GaussNewtonOptimizer.h"
+%}
+
+%include "lsst/meas/multifit/GaussNewtonOptimizer.h"
+
+%{ 
+#include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
+%}
+
+%include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
+
+%{ 
+#include "lsst/meas/multifit/SourceMeasurement.h"
+%}
+
+
+%define %prePhotometry(N)
+SWIG_SHARED_PTR(ShapeletModelPhotometry##N, lsst::meas::multifit::ShapeletModelPhotometry<N>);
+%enddef
+
+%prePhotometry(2);
+%prePhotometry(8);
+%prePhotometry(17);
+
+%include "lsst/meas/multifit/SourceMeasurement.h"
+
+%define %postPhotometry(N)
+%extent lsst::meas::multifit::ShapeletModelPhotometry##N {
+    %template(doMeasure) lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<float>;
+    %template(doMeasure) lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<double>;
+}
+%template(ShapeletModelPhotometry ## N) lsst::meas::multifit::ShapeletModelPhotometry<N>;
+%enddef
+
+%postPhotometry(2);
+%postPhotometry(8);
+%postPhotometry(17);

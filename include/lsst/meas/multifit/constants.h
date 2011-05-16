@@ -28,6 +28,7 @@
 #include "lsst/afw/image/Wcs.h"
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/image/Calib.h"
+#include "lsst/afw/math/Random.h"
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/detection/LocalPsf.h"
 #include "lsst/afw/detection/Footprint.h"
@@ -49,16 +50,13 @@
     friend boost::shared_ptr<T> boost::make_shared<T,A1,A2,A3,A4>(      \
         A1 const &, A2 const &, A3 const &, A4 const &                  \
     )
-
-#define FRIEND_MULTIFIT_GRID_INTERNALS                                  \
-    template <ParameterType F> friend class lsst::meas::multifit::grid::ParameterComponent; \
-    friend class lsst::meas::multifit::grid::Grid;                      \
-    friend class lsst::meas::multifit::grid::Object;                    \
-    friend class lsst::meas::multifit::grid::Frame;                     \
-    friend class lsst::meas::multifit::grid::Source;                    \
-    friend class lsst::meas::multifit::grid::Initializer
-
 #endif
+
+namespace Eigen {
+
+typedef Eigen::Matrix<double,5,5> Matrix5d;
+
+} // namespace Eigen
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -75,18 +73,26 @@ inline void checkSize(int actualSize, int expectedSize, char const * message) {
 
 } // namespace detail
 
-
-
 typedef boost::int64_t ID;
 typedef int FilterId;
 
 enum ParameterType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
 
+/**
+ *  These set the what parameters are used to define an ellipse throughout the package,
+ *  but they can't just be changed here: the implementations of the ParameterComponent,
+ *  grid::Object, and SimpleDistribution assume the types here in setting bounds and
+ *  converting between parameter vectors and covariance matrices and ellipses.
+ */
+///@{
 typedef lsst::afw::geom::Point2D Position;
 typedef lsst::afw::geom::ellipses::TraceRadius Radius;
 typedef lsst::afw::geom::ellipses::ConformalShear Ellipticity;
 typedef lsst::afw::geom::ellipses::Separable<Ellipticity, Radius> EllipseCore;
 typedef lsst::afw::geom::ellipses::Ellipse Ellipse;
+///@}
+
+typedef lsst::afw::math::Random Random;
 
 typedef lsst::afw::image::Filter Filter;
 typedef lsst::afw::image::Calib Calib;
@@ -96,11 +102,15 @@ typedef lsst::afw::detection::LocalPsf LocalPsf;
 typedef lsst::afw::detection::Footprint Footprint;
 
 typedef LocalPsf::Pixel Pixel;
-typedef lsst::afw::image::Exposure<lsst::meas::multifit::Pixel> Exposure;
+//typedef lsst::afw::image::Exposure<lsst::meas::multifit::Pixel> Exposure;
 
 LSST_EXCEPTION_TYPE(InvalidDefinitionError,
                     lsst::pex::exceptions::InvalidParameterException,
                     lsst::meas::multifit::InvalidDefinitionError);
+
+LSST_EXCEPTION_TYPE(DerivativeNotImplementedError,
+                    lsst::pex::exceptions::LogicErrorException,
+                    lsst::meas::multifit::DerivativeNotImplementedError);
 
 namespace definition {
 

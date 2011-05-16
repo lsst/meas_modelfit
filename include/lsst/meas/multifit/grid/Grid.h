@@ -54,11 +54,26 @@ public:
 
     Definition makeDefinition(double const * paramIter) const;
 
+#ifndef SWIG
     void writeParameters(double * paramIter) const;
-
-    double sumLogWeights() const;
+#endif
+    void writeParameters(lsst::ndarray::Array<double, 1, 1> const & params) const {
+        writeParameters(params.getData());
+    }
 
     int const getFilterIndex(FilterId filterId) const;
+
+    /// @brief Return true if all parameters are in-bounds.
+    bool checkBounds(double const * paramIter) const;
+
+    /**
+     *  @brief Clip any out-of-bounds parameters to the bounds and return a positive number
+     *         indicating how much clipping was necessary.
+     *
+     *  The returned value has no well-defined units and may penalize some parameter types
+     *  more than others.  The return value will be zero when no clipping is necessary.
+     */
+    double clipToBounds(double * paramIter) const;
 
     ~Grid();
 
@@ -66,14 +81,23 @@ public:
     FrameArray frames;
     SourceArray sources;
 
+#ifndef SWIG
+    //@{
+    /// Arrays of all active parameter components (inactive ones are still held by the Objects). 
     PositionArray positions;
     RadiusArray radii;
     EllipticityArray ellipticities;
-    
+    //@}
+#endif
+
     int const getFilterCount() const { return _filterCount; }
     int const getCoefficientCount() const { return _coefficientCount; }
     int const getPixelCount() const { return _pixelCount; }
     int const getParameterCount() const { return _parameterCount; }
+    int const getConstraintCount() const { return _constraintVector.getSize<0>(); }
+
+    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
+    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
 
     CONST_PTR(Wcs) const getWcs() const { return _wcs; }
 
@@ -101,6 +125,9 @@ private:
     int _coefficientCount;
     int _pixelCount;
     int _parameterCount;
+    
+    ndarray::Array<Pixel,2,2> _constraintMatrix;
+    ndarray::Array<Pixel,1,1> _constraintVector;
 
     boost::scoped_array<char> _objectData;
     boost::scoped_array<char> _frameData;

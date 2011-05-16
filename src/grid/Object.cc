@@ -56,6 +56,15 @@ void Object::validate() const {
     }
 }
 
+void Object::requireEllipse() const {
+    if (!getRadius() || !getEllipticity()) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            (boost::format("Object %d lacks an ellipticity and/or radius component.") % id).str()
+        );
+    }
+}
+
 lsst::afw::geom::Point2D Object::makePoint(double const * paramIter) const {
     lsst::afw::geom::Point2D result = getPosition()->getValue();
     if (getPosition()->isActive()) {
@@ -63,6 +72,14 @@ lsst::afw::geom::Point2D Object::makePoint(double const * paramIter) const {
         result += lsst::afw::geom::Extent2D(p[0], p[1]);
     }
     return result;
+}
+
+void Object::readPoint(double * paramIter, lsst::afw::geom::Point2D const & point) const {
+    if (getPosition()->isActive()) {
+        double * p = paramIter + getPosition()->offset;
+        p[0] = point.getX() - getPosition()->getValue().getX();
+        p[1] = point.getY() - getPosition()->getValue().getY();
+    }
 }
 
 std::pair<int,double> Object::perturbPoint(lsst::afw::geom::Point2D & point, int n) const {
@@ -73,7 +90,24 @@ std::pair<int,double> Object::perturbPoint(lsst::afw::geom::Point2D & point, int
     return result;
 }
 
+Eigen::Matrix2d Object::extractPointMatrix(Eigen::MatrixXd const & matrix) const {
+    Eigen::Matrix2d r;
+    if (getPosition()->isActive()) {
+        r = matrix.block<2,2>(getPosition()->offset, getPosition()->offset);
+    } else {
+        r.setZero();
+    }
+    return r;
+}
+
+void Object::insertPointMatrix(Eigen::MatrixXd & full, Eigen::Matrix2d const & block) const {
+    if (getPosition()->isActive()) {
+        full.block<2,2>(getPosition()->offset, getPosition()->offset) = block;
+    }
+}
+
 lsst::afw::geom::ellipses::Ellipse Object::makeEllipse(double const * paramIter) const {
+    requireEllipse();
     lsst::afw::geom::Ellipse result(
         EllipseCore(
             getEllipticity()->getValue(),
@@ -98,7 +132,79 @@ lsst::afw::geom::ellipses::Ellipse Object::makeEllipse(double const * paramIter)
     return result;
 }
 
+void Object::readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse const & ellipse) const {
+    requireEllipse();
+    readPoint(paramIter, ellipse.getCenter());
+    EllipseCore core(ellipse.getCore());
+    core.scale(1.0 / getRadiusFactor());
+    if (getEllipticity()->isActive()) {
+        double * p = paramIter + getEllipticity()->offset;
+        p[0] = core.getEllipticity().getE1();
+        p[1] = core.getEllipticity().getE2();
+    }
+    if (getRadius()->isActive()) {
+        double * p = paramIter + getRadius()->offset;
+        p[0] = core.getRadius();
+    }
+}
+
+Eigen::Matrix5d Object::extractEllipseMatrix(Eigen::MatrixXd const & matrix) const {
+    requireEllipse();
+    Eigen::Matrix5d r = Eigen::Matrix5d::Zero();
+    if (getPosition()->isActive() && getEllipticity()->isActive()) {
+        r.block<2,2>(3,0) = matrix.block<2,2>(getPosition()->offset, getEllipticity()->offset);
+        r.block<2,2>(0,3) = matrix.block<2,2>(getEllipticity()->offset, getPosition()->offset);
+    }
+    if (getPosition()->isActive() && getRadius()->isActive()) {
+        r.block<2,1>(3,2) = matrix.block<2,1>(getPosition()->offset, getRadius()->offset);
+        r.block<1,2>(2,3) = matrix.block<1,2>(getRadius()->offset, getPosition()->offset);
+    }
+    if (getEllipticity()->isActive() && getRadius()->isActive()) {
+        r.block<2,1>(0,2) = matrix.block<2,1>(getEllipticity()->offset, getRadius()->offset);
+        r.block<1,2>(2,0) = matrix.block<1,2>(getRadius()->offset, getEllipticity()->offset);
+    }
+    if (getPosition()->isActive()) {
+        r.block<2,2>(3,3) = matrix.block<2,2>(getPosition()->offset, getPosition()->offset);
+    }
+    if (getEllipticity()->isActive()) {
+        r.block<2,2>(0,0) = matrix.block<2,2>(getEllipticity()->offset, getEllipticity()->offset);
+    }
+    if (getRadius()->isActive()) {
+        r(2, 2) = matrix(getRadius()->offset, getRadius()->offset);
+        r.row(2) *= getRadiusFactor();
+        r.col(2) *= getRadiusFactor();
+    }
+    return r;
+}
+
+void Object::insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const & block) const {
+    requireEllipse();
+    double rf = getRadiusFactor();
+    if (getPosition()->isActive()) {
+        full.block<2,2>(getPosition()->offset, getPosition()->offset) = block.block<2,2>(3,3);
+    }
+    if (getEllipticity()->isActive()) {
+        full.block<2,2>(getEllipticity()->offset, getEllipticity()->offset) = block.block<2,2>(0,0);
+    }
+    if (getRadius()->isActive()) {
+        full(getRadius()->offset, getRadius()->offset) = block(2, 2) / (rf * rf);
+    }
+    if (getPosition()->isActive() && getEllipticity()->isActive()) {
+        full.block<2,2>(getPosition()->offset, getEllipticity()->offset) = block.block<2,2>(3,0);
+        full.block<2,2>(getEllipticity()->offset, getPosition()->offset) = block.block<2,2>(0,3);
+    }
+    if (getPosition()->isActive() && getRadius()->isActive()) {
+        full.block<2,1>(getPosition()->offset, getRadius()->offset) = block.block<2,1>(3,2) / rf;
+        full.block<1,2>(getRadius()->offset, getPosition()->offset) = block.block<1,2>(2,3) / rf;
+    }
+    if (getEllipticity()->isActive() && getRadius()->isActive()) {
+        full.block<2,1>(getEllipticity()->offset, getRadius()->offset) = block.block<2,1>(0,2) / rf;
+        full.block<1,2>(getRadius()->offset, getEllipticity()->offset) = block.block<1,2>(2,0) / rf;
+    }
+}
+
 std::pair<int,double> Object::perturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n) const {
+    requireEllipse();
     if (n < 3) {
         EllipseCore & core = static_cast<EllipseCore &>(ellipse.getCore());
         core.scale(1.0 / getRadiusFactor());
@@ -135,6 +241,7 @@ void Object::unperturbEllipse(
     lsst::afw::geom::ellipses::Ellipse & ellipse, 
     int n, double perturbation
 ) const {
+    requireEllipse();
     if (n < 3) {
         EllipseCore & core = static_cast<EllipseCore &>(ellipse.getCore());
         double * parameter;
@@ -148,6 +255,53 @@ void Object::unperturbEllipse(
     } else {
         unperturbPoint(ellipse.getCenter(), n-3, perturbation);
     }
+}
+
+std::ostream & operator<<(std::ostream & os, Object const & obj) {
+    os << "Object " << obj.id << "(@" << (&obj) << ") = {"
+       << (obj.isVariable() ? "variable" : "nonvariable") << ", Rx" << obj.getRadiusFactor() << "}:\n";
+    if (obj.getPosition()) os << "    " << (*obj.getPosition()) << "\n";
+    if (obj.getRadius()) os << "    " << (*obj.getRadius()) << " x " << obj.getRadiusFactor() << "\n";
+    if (obj.getEllipticity()) os << "    " << (*obj.getEllipticity()) << "\n";
+    return os;
+}
+
+double Source::computeFluxMean(
+    lsst::ndarray::Array<double const,1,1> const & parameters,
+    lsst::ndarray::Array<double const,1,1> const & coefficients
+) const {
+    if (object.getBasis()) {
+        Ellipse ellipse(object.makeEllipse(parameters.getData()));
+        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
+        object.getBasis()->integrate(integration);
+        return (ellipse.getCore().getArea() / M_PI)
+            * ndarray::viewAsEigen(
+                coefficients[
+                    ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())
+                ]).dot(ndarray::viewAsEigen(integration));
+    }
+    return coefficients[getCoefficientOffset()];
+}
+
+double Source::computeFluxVariance(
+    lsst::ndarray::Array<double const,1,1> const & parameters,
+    lsst::ndarray::Array<double const,2,1> const & covariance
+) const {
+    if (object.getBasis()) {
+        Eigen::MatrixXd sigma = ndarray::viewAsEigen(covariance).block(
+            getCoefficientOffset(),
+            getCoefficientOffset(),
+            getCoefficientCount(),
+            getCoefficientCount()
+        );
+        Ellipse ellipse(object.makeEllipse(parameters.getData()));
+        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
+        object.getBasis()->integrate(integration);
+        double result = ellipse.getCore().getArea() / M_PI; result *= result;
+        result *= ndarray::viewAsEigen(integration).dot(sigma * ndarray::viewAsEigen(integration));
+        return result;
+    }
+    return covariance[getCoefficientOffset()][getCoefficientOffset()];
 }
 
 }}}} // namespace lsst::meas::multifit::grid

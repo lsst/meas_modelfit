@@ -24,7 +24,7 @@ void BaseEvaluator::evaluateModelMatrix(
     _evaluateModelMatrix(matrix, param);
 }
 
-void BaseEvaluator::evaluateModelDerivative(
+void BaseEvaluator::evaluateModelMatrixDerivative(
     ndarray::Array<double,3,3> const & derivative,
     ndarray::Array<double const,1,1> const & param
 ) const {
@@ -44,23 +44,19 @@ void BaseEvaluator::evaluateModelDerivative(
         param.getSize<0>(), getParameterSize(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    _evaluateModelDerivative(derivative, param);
+    ndarray::Array<double,2,2> modelMatrix = ndarray::allocate(getDataSize(), getCoefficientSize());
+    _evaluateModelMatrix(modelMatrix, param);
+    _evaluateModelMatrixDerivative(derivative, modelMatrix, param);
 }
 
-void BaseEvaluator::_evaluateModelDerivative(
+void BaseEvaluator::_evaluateModelMatrixDerivative(
     ndarray::Array<double,3,3> const & derivative,
+    ndarray::Array<double const,2,2> const & fiducial,
     ndarray::Array<double const,1,1> const & param
 ) const {
     static double const epsilon = std::sqrt(
         std::numeric_limits<double>::epsilon()
     );
-
-    ndarray::Array<double,2,2> fiducial(
-        ndarray::allocate(
-            ndarray::makeVector(getDataSize(), getCoefficientSize())
-        )
-    );
-    _evaluateModelMatrix(fiducial, param);
     ndarray::Array<double, 1, 1> parameters(ndarray::copy(param));
     for (int n = 0; n < _parameterSize; ++n) {
         parameters[n] += epsilon;
@@ -68,7 +64,7 @@ void BaseEvaluator::_evaluateModelDerivative(
         derivative[n] -= fiducial;
         derivative[n] /= epsilon;
         parameters[n] -= epsilon;
-    }    
+    }
 }
 
 void BaseEvaluator::writeInitialParameters(

@@ -87,8 +87,8 @@ protected:
     static ndarray::Array<Pixel,2,2> _makeIdentity(int size);
 
     ElementVector _elements;
-    ndarray::Array<const Pixel,2,1> _forward;
-    ndarray::Array<const Pixel,2,1> _reverse;
+    ndarray::Array<Pixel const,2,1> _forward;
+    ndarray::Array<Pixel const,2,1> _reverse;
 };
 
 } // namespace detail
@@ -127,10 +127,17 @@ public:
     virtual ~CompoundShapeletModelBasis() {}
 protected:
 
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
         lsst::afw::geom::Ellipse const & ellipse
+    ) const;
+
+    virtual void _evaluateRadialProfile(
+        lsst::ndarray::Array<Pixel,2,1> const & profile,
+        lsst::ndarray::Array<Pixel const,1,1> const & radii
     ) const;
 
 private:
@@ -164,7 +171,19 @@ public:
         lsst::ndarray::Array<Pixel const,2,1> const & reverse
     );
 
+    void setConstraint(
+        lsst::ndarray::Array<Pixel const,2,1> const & matrix,
+        lsst::ndarray::Array<Pixel const,1,1> const & vector
+    );
+
     CompoundShapeletModelBasis::Ptr build() const;
+
+private:
+
+    friend class CompoundShapeletModelBasis;
+    
+    ndarray::Array<Pixel,2,1> _constraintMatrix;
+    ndarray::Array<Pixel,1,1> _constraintVector;
 };
 
 }}} // namespace lsst::meas::multifit

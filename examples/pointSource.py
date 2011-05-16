@@ -26,22 +26,24 @@ import lsst.afw.image
 import lsst.afw.detection
 import lsst.afw.image
 import lsst.afw.geom.ellipses
-import lsst.meas.multifit.viewer
-import lsst.meas.multifit.sampling
+import lsst.meas.multifit
 import numpy
 from matplotlib import pyplot
 
-def makeSampler(viewer):
-    engine = lsst.meas.multifit.sampling.RandomEngine()
-    mean = viewer.parameters.copy()
-    sigma = numpy.identity(mean.size, dtype=float)
-    sigma[0,0] = 3.0
-    sigma[1,1] = 0.3
-    sigma[2,2] = 0.3
-    importance = lsst.meas.multifit.sampling.MixtureDistribution(
-        [lsst.meas.multifit.sampling.MixtureComponent(1.0, mean, sigma)], -1,
-        )
-    sampler = lsst.meas.multifit.sampling.IterativeImportanceSampler(
-        viewer.evaluator, importance, engine
-        )
-    return sampler
+def makeBasis():
+    psf = lsst.afw.detection.createPsf("DoubleGaussian", 19, 19, 2.0, 1.0)
+    localPsf = psf.getLocalPsf(lsst.afw.geom.Point2D(0.0, 0.0))
+    basis = lsst.meas.multifit.loadBasis("ed+00:0000")
+    convolvedBasis = basis.convolve(localPsf)
+    return convolvedBasis
+
+basis = makeBasis()
+bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-10, -10), lsst.afw.geom.Point2I(10, 10))
+footprint = lsst.afw.detection.Footprint(bbox)
+envelope = lsst.afw.geom.Box2D(bbox)
+extent = (envelope.getMinX(), envelope.getMaxX(), envelope.getMinY(), envelope.getMaxY())
+core = lsst.meas.multifit.EllipseCore(5.0, 0.0, 1E-16)
+ellipse = lsst.afw.geom.ellipses.Ellipse(core, lsst.afw.geom.Point2D(0.0, 0.0))
+array = numpy.zeros((footprint.getArea(), basis.getSize()), dtype=float)
+images = array.reshape(bbox.getHeight(), bbox.getWidth(), basis.getSize())
+basis.evaluate(array, footprint, ellipse)

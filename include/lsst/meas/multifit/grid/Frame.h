@@ -55,6 +55,8 @@ private:
     int _frameIndex;
 };
 
+std::ostream & operator<<(std::ostream & os, Frame const & frame);
+
 }}}} // namespace lsst::meas::multifit::grid
 
 #endif // !LSST_MEAS_MULTIFIT_GRID_Frame

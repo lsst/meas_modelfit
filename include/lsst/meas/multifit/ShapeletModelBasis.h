@@ -39,6 +39,9 @@ public:
 
     typedef boost::shared_ptr<ShapeletModelBasis> Ptr;
 
+    static void setPsfShapeletOrder(int order) { getPsfShapeletOrderRef() = order; }
+    static int getPsfShapeletOrder() { return getPsfShapeletOrderRef(); }
+
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
      *         parametrization.
@@ -75,6 +78,13 @@ protected:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+
+    virtual void _evaluateRadialProfile(
+        lsst::ndarray::Array<Pixel,2,1> const & profile,
+        lsst::ndarray::Array<Pixel const,1,1> const & radii
+    ) const;
+
 private:
 
     FRIEND_MAKE_SHARED_2(ShapeletModelBasis, int, double);
@@ -83,6 +93,8 @@ private:
         : ModelBasis(afw::math::shapelets::computeSize(order)),
           _order(order), _scale(scale)
     {}
+
+    static int & getPsfShapeletOrderRef();
 
     int _order;
     double _scale;

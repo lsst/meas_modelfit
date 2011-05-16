@@ -31,7 +31,7 @@
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
 class Definition {
-public:
+public:    
     typedef definition::Frame Frame;
     typedef definition::Object Object;
 
@@ -51,24 +51,24 @@ public:
 
     template<typename PixelT>
     static Definition make(
-        afw::image::Exposure<PixelT> const & exposure,
+        lsst::afw::image::Exposure<PixelT> const & exposure,
         Footprint::Ptr const & fp,
         afw::geom::Point2D const & position,
-        bool isVariable=false,
-        bool isPositionActive=false,
-        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
+        bool const isVariable=false,
+        bool const isPositionActive=false,
+        lsst::afw::image::MaskPixel const bitmask=~0x0
     );
 
     template<typename PixelT>
     static Definition make(
-        afw::image::Exposure<PixelT> const & exposure,
+        lsst::afw::image::Exposure<PixelT> const & exposure,
         Footprint::Ptr const & fp,
         ModelBasis::Ptr const & basis,
         afw::geom::ellipses::Ellipse const & ellipse,
-        bool isEllipticityActive=false,
-        bool isRadiusActive=false,
-        bool isPositionActive=false,
-        typename lsst::afw::image::MaskedImage<PixelT>::Mask::Pixel bitmask=~0x0
+        bool const isEllipticityActive=false,
+        bool const isRadiusActive=false,
+        bool const isPositionActive=false,
+        lsst::afw::image::MaskPixel const bitmask=~0x0
     );
 
 private:

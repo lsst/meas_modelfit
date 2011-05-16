@@ -60,9 +60,10 @@ void Evaluator::_evaluateModelMatrix(
     }
 }
 
-
-void Evaluator::_evaluateModelDerivative(
+#if 0
+void Evaluator::_evaluateModelMatrixDerivative(
     ndarray::Array<double,3,3> const & derivative,
+    ndarray::Array<double const,2,2> const & modelMatrix,
     ndarray::Array<double const,1,1> const & param
 ) const {
     derivative.deep() = 0.0;
@@ -79,12 +80,15 @@ void Evaluator::_evaluateModelDerivative(
                 ++source
             ) {
                 int coefficientOffset = source->getCoefficientOffset();
-                ndarray::Array<double, 2, 2> fiducial = lsst::ndarray::allocate(
-                    lsst::ndarray::makeVector(source->frame.getPixelCount(), source->getCoefficientCount())
-                );
-                source->getBasis()->evaluate(
-                    fiducial, source->frame.getFootprint(), ellipse.transform(source->getTransform())
-                );
+                ndarray::Array<double const,2,1> fiducial = modelMatrix[
+                    ndarray::view(
+                        source->frame.getPixelOffset(),
+                        source->frame.getPixelOffset() + source->frame.getPixelCount()
+                    )(
+                        coefficientOffset,
+                        coefficientOffset + source->getCoefficientCount()
+                    )
+                ];
                 ndarray::Array<double,3,1> block = 
                     derivative[
                         ndarray::view(
@@ -119,11 +123,14 @@ void Evaluator::_evaluateModelDerivative(
                 source != object->sources.end();
                 ++source
             ) {
-                ndarray::Array<double, 1, 1> fiducial = source->getLocalPsf()->evaluatePointSource(
-                    *source->frame.getFootprint(),
-                    source->getTransform()(point) - source->getReferencePoint()
-                );   
-
+                ndarray::Array<double const,1,0> fiducial = modelMatrix[
+                    ndarray::view(
+                        source->frame.getPixelOffset(), 
+                        source->frame.getPixelOffset() + source->frame.getPixelCount()
+                    )(
+                        source->getCoefficientOffset()
+                    )                        
+                ];
                 ndarray::Array<double,2,0> block = 
                     derivative[
                         ndarray::view(
@@ -153,10 +160,11 @@ void Evaluator::_evaluateModelDerivative(
     }
 }
 
+#endif
+
 Evaluator::Evaluator(Grid::Ptr const & grid) :
     BaseEvaluator(
-        grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount(),
-        -2*grid->sumLogWeights()
+        grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount()
     ),
     _grid(grid)
 {
@@ -172,16 +180,18 @@ void Evaluator::_initialize() {
         Grid::FrameArray::const_iterator i = _grid->frames.begin();
         i != _grid->frames.end(); ++i
     ) {
-        if (i->getWeights().empty()) {
-            _dataVector[
-                ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
+        _dataVector[
+            ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] = i->getData();
-        } else {
+        
+        if (!i->getWeights().empty()) {
             _dataVector[
                 ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
-            ] = (i->getData() / i->getWeights());
+            ] *= i->getWeights();
         }
     }
+    _constraintMatrix = _grid->getConstraintMatrix();
+    _constraintVector = _grid->getConstraintVector();
 }
 
 void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & param) const {

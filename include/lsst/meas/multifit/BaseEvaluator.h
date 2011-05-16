@@ -31,6 +31,8 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+class Evaluation;
+
 /**
  *  @brief An abstract base class that combines a data vector and model(s),
  *         organizing the model as a parameterized matrix multiplied by a vector
@@ -52,16 +54,14 @@ public:
     /// @brief Number of parameters.
     int getParameterSize() const { return _parameterSize; }
 
+    /// @brief Number of coefficient inequality constraints.
+    int getConstraintSize() const { return _constraintVector.getSize<0>(); }
+
     /**
-     *  @brief Return the sum of the log of the variance of all data points.
-     *
-     *  More precisely, if the variance for pixel @f$i@f$ is @f$\sigma_i^2@f$, this function
-     *  should return @f$ \sum_i \ln \sigma_i^2 @f$.
-     *
-     *  This can be used to transform the @f$\chi^2@f$ into the log likelihood, which can
-     *  be useful for certain Bayesian applications.
+     *  @brief Clip the given parameter vector to the valid range and return a penalty
+     *         that scales with how far the parameter vector was beyond the constraints.
      */
-    double getLogVarianceSum() const { return _logVarianceSum; }
+    virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
 
     /**
      *  @brief Data vector.
@@ -69,6 +69,20 @@ public:
      *  If the data vector is weighted (divided by sigma) the evaluted model matrix should be as well.
      */
     lsst::ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
+
+    /**
+     *  @brief Inequality constraint matrix.
+     *
+     *  This is the matrix @f$A@f$ in the constraint @f$Ax \ge b@f$.
+     */
+    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
+
+    /**
+     *  @brief Inequality constraint matrix.
+     *
+     *  This is the vector @f$b@f$ in the constraint @f$Ax \ge b@f$.
+     */
+    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
 
     /**
      *  @brief Evaluate the matrix with the given parameters.
@@ -88,10 +102,13 @@ public:
      *  @brief Evaluate the derivative of the matrix with respect to the parameters.
      *
      *  The first dimension of the array is the parameter dimension.
+     *
+     *  The model matrix is guaranteed to be the result of _evaluateModelMatrix with the same
+     *  parameter vector.
      */
-    void evaluateModelDerivative(
-        lsst::ndarray::Array<Pixel,3,3> const & derivative,
-        lsst::ndarray::Array<Pixel const,1,1> const & param
+    virtual void evaluateModelMatrixDerivative(
+        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
+        ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
     void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & param) const;
@@ -100,28 +117,32 @@ public:
 
 protected:
 
-    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize, double logVarianceSum) :
+    friend class Evaluation;
+
+    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
-        _dataVector(ndarray::allocate(ndarray::makeVector(dataSize))),
-        _logVarianceSum(logVarianceSum)
+        _dataVector(ndarray::allocate(dataSize)),
+        _constraintVector(),
+        _constraintMatrix()
     {}
 
     BaseEvaluator(
-        ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize, 
-        double logVarianceSum
+        ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize
     ) :
         _coefficientSize(coefficientSize),
         _parameterSize(parameterSize),
         _dataVector(data),
-        _logVarianceSum(logVarianceSum)
+        _constraintVector(),
+        _constraintMatrix()
     {}
 
     BaseEvaluator(BaseEvaluator const & other) :
         _coefficientSize(other._coefficientSize), 
         _parameterSize(other._parameterSize), 
         _dataVector(other._dataVector),
-        _logVarianceSum(other._logVarianceSum)
+        _constraintVector(other._constraintVector),
+        _constraintMatrix(other._constraintMatrix)
     {}
 
     virtual void _evaluateModelMatrix(
@@ -129,8 +150,9 @@ protected:
         ndarray::Array<Pixel const,1,1> const & param
     ) const = 0;
 
-    virtual void _evaluateModelDerivative(
-        ndarray::Array<Pixel,3,3> const & derivative,
+    virtual void _evaluateModelMatrixDerivative(
+        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
+        ndarray::Array<Pixel const,2,2> const & modelMatrix,
         ndarray::Array<Pixel const,1,1> const & param
     ) const;
 
@@ -139,7 +161,8 @@ protected:
     int const _coefficientSize;
     int const _parameterSize;
     ndarray::Array<Pixel,1,1> _dataVector;
-    double _logVarianceSum;
+    ndarray::Array<Pixel const,1,1> _constraintVector;
+    ndarray::Array<Pixel const,2,2> _constraintMatrix;
 
 private:
     void operator=(BaseEvaluator const &) {}
