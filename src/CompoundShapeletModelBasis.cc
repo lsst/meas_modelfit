@@ -431,7 +431,7 @@ void CompoundShapeletModelBasis::save(std::string const & filename) {
 
     int nElement = _elements.size();
     ar << nElement;
-    for(int i; i < nElement; ++i) {
+    for(int i=0; i < nElement; ++i) {
         int order = _elements[i].component->getOrder();
         double scale = _elements[i].component->getScale();
         ar << order;

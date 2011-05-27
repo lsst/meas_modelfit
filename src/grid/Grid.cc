@@ -113,9 +113,10 @@ public:
                     std::make_pair(i->getFilterId(), output._filterCount)
                 );
                 if (r.second) ++output._filterCount;
-                grid::Frame * newFrame = new (output.frames._last++) grid::Frame(
+                grid::Frame * newFrame = new (output.frames._last) grid::Frame(
                     *i, output._pixelCount, r.first->second, frameCount
                 );
+                ++output.frames._last;
                 output._pixelCount += newFrame->getPixelCount();
                 ++frameCount;
             }
@@ -124,9 +125,10 @@ public:
                 i != input.objects.end();
                 ++i
             ) {
-                grid::Object * newObject = new (output.objects._last++) grid::Object(
+                grid::Object * newObject = new (output.objects._last) grid::Object(
                     *i, output._coefficientCount, frameCount, output._filterCount
                 );
+                ++output.objects._last;
                 output._coefficientCount += newObject->getCoefficientCount();
                 if (newObject->getBasis()) {
                     constraintCount += newObject->getBasis()->getConstraintSize()
@@ -153,7 +155,8 @@ public:
                     j != output.frames.end();
                     ++j
                 ) {
-                    new (output.sources._last++) grid::Source(*j, *i, output.getWcs());
+                    new (output.sources._last) grid::Source(*j, *i, output.getWcs());
+                    ++output.sources._last;
                 }
                 i->sources._last = output.sources._last;
                 if (i->getBasis() && i->getBasis()->getConstraintSize()) {

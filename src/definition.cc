@@ -89,7 +89,7 @@ Frame Frame::make(
     typedef lsst::afw::image::MaskedImage<PixelT> MaskedImage;
     
     Footprint::Ptr maskedFp(new Footprint(*fp));
-    fp->intersectMask(*exposure.getMaskedImage().getMask(), bitmask);
+    maskedFp->intersectMask(*exposure.getMaskedImage().getMask(), bitmask);
 
     //grab portion of exposure's MaskedImage that matches fp
     lsst::afw::geom::BoxI bbox = maskedFp->getBBox();
@@ -118,12 +118,11 @@ Frame Frame::make(
         )
     );
     weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
-
     Frame frame(
         id, 
         exposure.getFilter().getId(), 
         Wcs::Ptr(), 
-        boost::const_pointer_cast<afw::detection::Psf>(exposure.getPsf()), // or should we clone?
+        exposure.getPsf()->clone(),
         maskedFp,
         data, 
         weights.getArray()

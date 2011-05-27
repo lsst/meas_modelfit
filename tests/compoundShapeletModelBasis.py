@@ -54,7 +54,9 @@ class CompoundShapeletModelBasisTest(unittest.TestCase):
         builder.setMapping(forward, reverse)
         saver = builder.build()
 
-        f = saver.getForward()
+        print forward.shape
+        print reverse.shape
+
         filename = os.path.join("tests", "compound_shapelet.boost")
         saver.save(filename)
 

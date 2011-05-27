@@ -221,6 +221,13 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_PSF));
     }
 
+#if 0
+    if (source->getSourceId() != 2071) {
+        // Just to see if it's specifically this object that matters.
+        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_EXPOSURE));
+    }
+#endif
+
     afw::detection::Footprint::Ptr fp = afw::detection::growFootprint(
         *source->getFootprint(), nGrowFp
     );
@@ -242,12 +249,6 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
         bitmask
     );
     Evaluator::Ptr evaluator = Evaluator::make(definition);
-#if 0
-    GaussNewtonOptimizer optimizer;
-    return ShapeletModelPhotometry::Ptr(
-        ShapeletModelPhotometry(optimizer, evaluator)
-    );
-#endif
     BruteForceSourceOptimizer optimizer;
     bool success = optimizer.solve(evaluator, nTestPoints);
     if(!success) {
@@ -314,6 +315,11 @@ volatile bool isInstance[] = {
     INSTANTIATE("SHAPELET_MODEL_17", float, 17),
     INSTANTIATE("SHAPELET_MODEL_17", double, 17)
 };
+
+template class lsst::meas::multifit::ShapeletModelPhotometry<2>;
+template class lsst::meas::multifit::ShapeletModelPhotometry<8>;
+template class lsst::meas::multifit::ShapeletModelPhotometry<17>;
+
 
 // \endcond
 
