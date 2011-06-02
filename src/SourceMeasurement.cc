@@ -22,6 +22,8 @@ template <int nCoeff>
 bool lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::isRadiusActive;
 template <int nCoeff>
 bool lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::isPositionActive;
+template <int nCoeff>
+bool lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::addPointSource;
 
 
 template <int nCoeff>
@@ -241,14 +243,21 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
     }
 
 
-    Definition definition = Definition::make(
-        *im, fp, basis, *ellipse, 
-        isEllipticityActive,
-        isRadiusActive,
-        isPositionActive,
-        bitmask
+    Definition def;
+    def.frames.insert(definition::Frame::make(0, *im, fp, bitmask));
+    def.objects.insert(
+        definition::Object::makeGalaxy(
+            0, basis, *ellipse,
+            isEllipticityActive,
+            isRadiusActive,
+            isPositionActive
+        )
     );
-    Evaluator::Ptr evaluator = Evaluator::make(definition);
+    if (addPointSource) {
+        def.objects.insert(definition::Object(1));
+        def.objects[1].getPosition() = def.objects[0].getPosition();
+    }
+    Evaluator::Ptr evaluator = Evaluator::make(def);
     BruteForceSourceOptimizer optimizer;
     bool success = optimizer.solve(evaluator, nTestPoints);
     if(!success) {
@@ -275,6 +284,7 @@ bool ShapeletModelPhotometry<nCoeff>::doConfigure(
     isEllipticityActive = local.getBool("isEllipticityActive");
     isRadiusActive = local.getBool("isRadiusActive");
     isPositionActive = local.getBool("isPositionActive");
+    addPointSource = local.getBool("addPointSource");
     bitmask = makeBitMask(local.getStringArray("maskPlaneName"));
     
     

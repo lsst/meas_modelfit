@@ -48,6 +48,13 @@ definitions: {
         maxOccurs: 1
         default: false
     }
+    addPointSource: {
+        type: "bool"
+        description: "if true will fit a linear combination of shapelets + point source"
+        minOccurs: 1
+        maxOccurs: 1
+        default: false
+    }
     maskPlaneName: {
         type: "string"
         description: "list of planes to consider when masking the footprint"

@@ -43,6 +43,43 @@ namespace image = lsst::afw::image;
 namespace multifit = lsst::meas::multifit;
 namespace ndarray =lsst::ndarray;
 
+template <typename T>
+multifit::Evaluator::Ptr makeEvaluator(
+    image::Exposure<T> const & exposure,
+    detection::Footprint::Ptr const & footprint,
+    geom::Point2D const & point,
+    bool isVariable=false,
+    bool isPositionActive=false
+) {
+    multifit::Definition def;
+    def.frames.insert(multifit::definition::Frame::make(0, exposure, footprint));
+    def.objects.insert(multifit::definition::Object::makeStar(0, point, isVariable, isPositionActive));
+    return multifit::Evaluator::make(multifit::Grid::make(def));
+}
+
+template <typename T>
+multifit::Evaluator::Ptr makeEvaluator(
+    image::Exposure<T> const & exposure,
+    detection::Footprint::Ptr const & footprint,
+    multifit::ModelBasis::Ptr const & basis,
+    geom::ellipses::Ellipse const & ellipse,
+    bool isEllipticityActive=false,
+    bool isRadiusActive=false,
+    bool isPositionActive=false
+) {
+    multifit::Definition def;
+    def.frames.insert(multifit::definition::Frame::make(0, exposure, footprint));
+    def.objects.insert(
+        multifit::definition::Object::makeGalaxy(
+            0, basis, ellipse, 
+            isEllipticityActive,
+            isRadiusActive,
+            isPositionActive
+        )
+    );
+    return multifit::Evaluator::make(multifit::Grid::make(def));
+}
+
 void checkEvaluator(
     multifit::Evaluator const & eval,
     multifit::Footprint const & fp,
@@ -96,14 +133,10 @@ BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
     detection::Footprint::Ptr fp(new detection::Footprint(bbox));
     geom::Point2D point(30.5, 55.8);
     
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point))
-    );
+    multifit::Evaluator::Ptr eval = makeEvaluator(*exp, fp, point, false, false);
     checkEvaluator(*eval, *fp, 1, 0, 1.0, 0.5);
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, true))
-    );
+    eval = makeEvaluator(*exp, fp, point, false, true);
     checkEvaluator(*eval, *fp, 1, 2, 1.0, 0.5);
     ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterSize());
     eval->writeInitialParameters(parameters);
@@ -123,20 +156,14 @@ BOOST_AUTO_TEST_CASE(GalaxySourceConstruction) {
     multifit::ModelBasis::Ptr basis = multifit::ShapeletModelBasis::make(5);
 
 
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse))
-    );
+    multifit::Evaluator::Ptr eval = makeEvaluator(*exp, fp, basis, ellipse);
     checkEvaluator(*eval, *fp, basis->getSize(), 0, 1.0, 0.5);
 
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, false))
-    );
+    eval = makeEvaluator(*exp, fp, basis, ellipse, true, true, false);
     checkEvaluator(*eval, *fp, basis->getSize(), 3, 1.0, 0.5);
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, true))
-    );
+    eval = makeEvaluator(*exp, fp, basis, ellipse, true, true, true);
     checkEvaluator(*eval, *fp, basis->getSize(), 5, 1.0, 0.5);
 }
 

@@ -87,6 +87,7 @@ public:
     );
 
     static bool isEllipticityActive, isRadiusActive, isPositionActive;
+    static bool addPointSource;
     static lsst::afw::image::MaskPixel bitmask;
     static int nGrowFp;
     static ModelBasis::Ptr basis;
