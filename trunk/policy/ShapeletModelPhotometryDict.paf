@@ -1,0 +1,110 @@
+#<? cfg paf dictionary ?>
+#
+# 
+target: ShapeletModelPhotometry
+
+definitions: {
+    enabled: {
+        type: "bool"
+        description: "toggle on/off whether or not to do this measurement"
+        minOccurs: 1
+        maxOccurs: 1
+        default: true
+    }
+    nGrowFp:{
+        type: "int"        
+        description: "amount to grow input footprint"
+        minOccurs: 1
+        maxOccurs: 1
+        default: 1
+    }
+    psfShapeletOrder:{
+        type: "int"
+        description: "Desired shapelet order when converting to
+                     a non-shapelet psf to a shapelet psf"
+        minOccurs: 1
+        maxOccurs: 1
+        default: 4
+    }
+
+    isPositionActive: {
+        type: "bool"     
+        description: "if true will fit for position"
+        minOccurs: 1
+        maxOccurs: 1
+        default: false
+    }
+    isRadiusActive: {
+        type: "bool"
+        description: "if true will fit for radius"
+        minOccurs: 1
+        maxOccurs: 1
+        default: false
+    }
+    isEllipticityActive: {
+        type: "bool"
+        description: "if true will fit for ellipticity"
+        minOccurs: 1
+        maxOccurs: 1
+        default: false
+    }
+    maskPlaneName: {
+        type: "string"
+        description: "list of planes to consider when masking the footprint"
+        minOccurs: 1        
+        default: "BAD" "SAT" "CR" "EDGE"
+    }
+    nTestPoints: {
+        type: "int"
+        description: "number of parameter points to evaluate in BruteForceSourceOptimizer"
+        minOccurs: 1
+        maxOccurs: 1
+        default: 5
+    }
+
+    maxIter: {
+        type: "int"
+        description: "maximum iterations to perform in optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 200
+    }
+    retryWithSvd: {
+        type: "bool"     
+        description: "if true will use SVD in optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: false
+    }
+    
+    ftol: {
+        type: "double"
+        description: "convergence tolerance for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-8
+    }
+    gtol: {
+        type: "double"
+        description: "convergence tolerance for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-8
+    }
+    minStep: {
+        type: "double"
+        description: "minimum allowed step size for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-3
+    }
+    tau: {
+        type: "double"
+        description: "good-ness of initial parameters for optimizer"
+        minOccurs: 0
+        maxOccurs: 1
+        default: 1e-3
+    }
+
+
+}
