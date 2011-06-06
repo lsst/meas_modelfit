@@ -35,6 +35,7 @@ import sys
 import math
 import numpy
 
+
 class GaussianPsfTestCase(unittest.TestCase):
     """A test case detecting and measuring Gaussian PSFs"""
     def setUp(self):
@@ -78,7 +79,7 @@ class GaussianPsfTestCase(unittest.TestCase):
         #
         # Various algorithms
         #
-        photoAlgorithms = ["SHAPELET_MODEL_2"]
+        photoAlgorithms = ["SHAPELET_MODEL_8"]
         mp = measAlgorithms.makeMeasurePhotometry(self.exp)
         for a in photoAlgorithms:
             mp.addAlgorithm(a)
@@ -86,8 +87,9 @@ class GaussianPsfTestCase(unittest.TestCase):
         rad = 10.0
         pol = policy.Policy(policy.PolicyString(
             """#<?cfg paf policy?>
-            SHAPELET_MODEL_2: {
+            SHAPELET_MODEL_8: {
                 enabled: true
+                fitDeltaFunction: true
                 #nGrowFp: 2
                 #psfShapeletOrder: 2
                 #maxIter: 200
@@ -114,8 +116,6 @@ class GaussianPsfTestCase(unittest.TestCase):
             print >> sys.stderr, "e1:",photom.get(afwDetection.Schema("E1", 3, afwDetection.Schema.DOUBLE))
             print >> sys.stderr, "e2:", photom.get(afwDetection.Schema("E2", 4, afwDetection.Schema.DOUBLE))
             print >> sys.stderr, "radius",photom.get(afwDetection.Schema("RADIUS", 5, afwDetection.Schema.DOUBLE))
-            for i in range(2):
-                print >> sys.stderr, "coeff %i: %g"%(i, photom.get(i, afwDetection.Schema("COEFFICIENTS", 6, afwDetection.Schema.DOUBLE)))
 
             
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -123,7 +123,7 @@ class GaussianPsfTestCase(unittest.TestCase):
 def suite():
     """Returns a suite containing all the test cases in this module."""
     utilTests.init()
-
+    
     suites = []
     suites += unittest.makeSuite(GaussianPsfTestCase)
     suites += unittest.makeSuite(utilTests.MemoryTestCase)

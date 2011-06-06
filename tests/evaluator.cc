@@ -97,12 +97,12 @@ BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
     geom::Point2D point(30.5, 55.8);
     
     multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point))
+        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, false, ~0x0, true))
     );
     checkEvaluator(*eval, *fp, 1, 0, 1.0, 0.5);
 
     eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, true))
+        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, true, ~0x0, true))
     );
     checkEvaluator(*eval, *fp, 1, 2, 1.0, 0.5);
     ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterSize());
@@ -124,18 +124,18 @@ BOOST_AUTO_TEST_CASE(GalaxySourceConstruction) {
 
 
     multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse))
+        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, false, false, false, ~0x0, true))
     );
     checkEvaluator(*eval, *fp, basis->getSize(), 0, 1.0, 0.5);
 
 
     eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, false))
+        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, false, ~0x0, true))
     );
     checkEvaluator(*eval, *fp, basis->getSize(), 3, 1.0, 0.5);
 
     eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, true))
+        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, true, ~0x0, true))
     );
     checkEvaluator(*eval, *fp, basis->getSize(), 5, 1.0, 0.5);
 }

@@ -83,7 +83,8 @@ Frame Frame::make(
     ID const id,
     lsst::afw::image::Exposure<PixelT> const & exposure,
     Footprint::Ptr const & fp,
-    lsst::afw::image::MaskPixel const bitmask
+    lsst::afw::image::MaskPixel const bitmask,
+    bool const usePixelWeights
 ) {
     typedef Pixel Pixel;
     typedef lsst::afw::image::MaskedImage<PixelT> MaskedImage;
@@ -117,7 +118,12 @@ Frame Frame::make(
             lsst::ndarray::makeVector(maskedFp->getArea())
         )
     );
-    weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
+    if(usePixelWeights) {
+        weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
+    } else {
+        weights.setOnes();
+    }
+
     Frame frame(
         id, 
         exposure.getFilter().getId(), 
@@ -132,12 +138,16 @@ Frame Frame::make(
 }
 
 template Frame Frame::make<float>(
-    ID const, lsst::afw::image::Exposure<float> const &, Footprint::Ptr const &,
-    lsst::afw::image::MaskPixel const
+    ID const, 
+    lsst::afw::image::Exposure<float> const &, Footprint::Ptr const &,
+    lsst::afw::image::MaskPixel const,
+    bool const
 );
 template Frame Frame::make<double>(
-    ID const, lsst::afw::image::Exposure<double> const &, Footprint::Ptr const &, 
-    lsst::afw::image::MaskPixel const
+    ID const, 
+    lsst::afw::image::Exposure<double> const &, Footprint::Ptr const &, 
+    lsst::afw::image::MaskPixel const,
+    bool const
 );
 
 std::ostream & operator<<(std::ostream & os, Frame const & frame) {
@@ -159,11 +169,14 @@ Definition Definition::make(
     afw::geom::Point2D const & position,
     bool const isVariable, 
     bool const isPositionActive,
-    lsst::afw::image::MaskPixel const bitmask
+    lsst::afw::image::MaskPixel const bitmask,
+    bool const usePixelWeights
 ) {    
     //make a point source definition   
     Definition psDefinition;
-    psDefinition.frames.insert(Frame::make<PixelT>(0, exposure, fp, bitmask));
+    psDefinition.frames.insert(
+        Frame::make<PixelT>(0, exposure, fp, bitmask, usePixelWeights)
+    );
     psDefinition.objects.insert(
         definition::Object::makeStar(0, position, isVariable, isPositionActive)
     );
@@ -175,14 +188,16 @@ template Definition Definition::make<float>(
     lsst::meas::multifit::Footprint::Ptr const &,
     afw::geom::Point2D const&,
     bool const, bool const,
-    lsst::afw::image::MaskPixel const
+    lsst::afw::image::MaskPixel const,
+    bool const
 );
 template Definition Definition::make<double>(
     lsst::afw::image::Exposure<double> const &,
     lsst::meas::multifit::Footprint::Ptr const &,
     afw::geom::Point2D const&,
     bool const, bool const,
-    lsst::afw::image::MaskPixel const
+    lsst::afw::image::MaskPixel const,
+    bool const
 );
 
 template <typename PixelT>
@@ -194,11 +209,14 @@ Definition Definition::make(
     bool const isEllipticityActive,
     bool const isRadiusActive,
     bool const isPositionActive,
-    lsst::afw::image::MaskPixel const bitmask
+    lsst::afw::image::MaskPixel const bitmask,
+    bool const usePixelWeights
 ) {
     //make a single-galaxy definition    
     Definition sgDefinition;
-    sgDefinition.frames.insert(Frame::make<PixelT>(0, exposure, fp, bitmask));
+    sgDefinition.frames.insert(
+        Frame::make<PixelT>(0, exposure, fp, bitmask, usePixelWeights)
+    );
     sgDefinition.objects.insert(
         definition::Object::makeGalaxy(
             0, basis, ellipse,
@@ -216,7 +234,8 @@ template Definition Definition::make<float>(
     ModelBasis::Ptr const &,
     afw::geom::ellipses::Ellipse const &,
     bool const, bool const, bool const,
-    lsst::afw::image::MaskPixel const
+    lsst::afw::image::MaskPixel const,
+    bool const
 );
 template Definition Definition::make<double>(
     lsst::afw::image::Exposure<double> const &,
@@ -224,7 +243,8 @@ template Definition Definition::make<double>(
     ModelBasis::Ptr const &,
     afw::geom::ellipses::Ellipse const &,
     bool const, bool const, bool const,
-    lsst::afw::image::MaskPixel const
+    lsst::afw::image::MaskPixel const,
+    bool const
 );
 
 }}}} // namespace lsst::meas::multifit::definition

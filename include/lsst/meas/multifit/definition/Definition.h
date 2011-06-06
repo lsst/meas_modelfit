@@ -56,7 +56,8 @@ public:
         afw::geom::Point2D const & position,
         bool const isVariable=false,
         bool const isPositionActive=false,
-        lsst::afw::image::MaskPixel const bitmask=~0x0
+        lsst::afw::image::MaskPixel const bitmask=~0x0,
+        bool const usePixelWeights=false
     );
 
     template<typename PixelT>
@@ -68,7 +69,8 @@ public:
         bool const isEllipticityActive=false,
         bool const isRadiusActive=false,
         bool const isPositionActive=false,
-        lsst::afw::image::MaskPixel const bitmask=~0x0
+        lsst::afw::image::MaskPixel const bitmask=~0x0,
+        bool const usePixelWeights=false
     );
 
 private:

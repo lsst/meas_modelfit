@@ -37,7 +37,7 @@ namespace meas {
 namespace multifit {
 
 template <
-    int nCoeff ///< Number of basis functions; instantiated for 2, 8, and 17 to match persisted basis sets.
+    int basisSize ///< Number of basis functions; instantiated for 2, 8, and 17 to match persisted basis sets.
     >
 class ShapeletModelPhotometry : public lsst::afw::detection::Photometry {
 public:
@@ -51,8 +51,7 @@ public:
         FLUX_ERR,
         STATUS,
         E1, E2, RADIUS, 
-        COEFFICIENTS,
-        NVALUE = COEFFICIENTS + nCoeff
+        COEFFICIENTS
     };
 
     enum {
@@ -62,7 +61,8 @@ public:
         NO_BASIS=0x08,
         NO_FOOTPRINT=0x10, 
         BAD_INITIAL_MOMENTS=0x20, 
-        OPTIMIZER_FAILED=0x40
+        OPTIMIZER_FAILED=0x40,
+        GALAXY_MODEL_FAILED=0x80
     };
 
     virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
@@ -82,13 +82,19 @@ public:
     );
 #endif
     ShapeletModelPhotometry(
-        BruteForceSourceOptimizer const & optimizer,
-        Evaluator::Ptr const & evaluator
+        Evaluator::Ptr const & evaluator,
+        ndarray::Array<double const, 1,1> const & param,
+        ndarray::Array<double const, 1,1> const & coeff,
+        ndarray::Array<double const, 2,1> const & covar,
+        int const status
     );
 
+    static bool usePixelWeights;
+    static bool fitDeltaFunction;
     static bool isEllipticityActive, isRadiusActive, isPositionActive;
     static lsst::afw::image::MaskPixel bitmask;
     static int nGrowFp;
+    static int nCoeff;
     static ModelBasis::Ptr basis;
 
     static int nTestPoints;
