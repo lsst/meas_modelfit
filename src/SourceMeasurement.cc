@@ -247,6 +247,7 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
     CONST_PTR(afw::detection::Peak) peak,
     CONST_PTR(afw::detection::Source) source
 ) {
+  std::cerr << "starting source " << source->getSourceId() << std::endl;
     if (!source) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_SOURCE));
     }

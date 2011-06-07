@@ -722,7 +722,9 @@ void cholesky_decomposition(Matrix<double>& A)
         {
           std::ostringstream os;
           // raise error
+#ifdef TRACE_SOLVER
           print_matrix("A", A);
+#endif
           os << "Error in cholesky decomposition, sum: " << sum;
           throw std::logic_error(os.str());
           exit(-1);
