@@ -53,14 +53,14 @@ definitions: {
         description: "if true will fit for radius"
         minOccurs: 1
         maxOccurs: 1
-        default: false
+        default: true
     }
     isEllipticityActive: {
         type: "bool"
         description: "if true will fit for ellipticity"
         minOccurs: 1
         maxOccurs: 1
-        default: false
+        default: true
     }
     maskPlaneName: {
         type: "string"

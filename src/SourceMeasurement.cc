@@ -254,7 +254,6 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_FOOTPRINT));
     }
     if (!basis) {
-        std::cerr << "no basis on measure" <<std::endl;
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_BASIS));
     }
     if (!im) {
