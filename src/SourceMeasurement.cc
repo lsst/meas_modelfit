@@ -247,7 +247,6 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
     CONST_PTR(afw::detection::Peak) peak,
     CONST_PTR(afw::detection::Source) source
 ) {
-  std::cerr << "starting source " << source->getSourceId() << std::endl;
     if (!source) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_SOURCE));
     }
@@ -263,13 +262,6 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
     if (!im->getPsf()) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_PSF));
     }
-
-#if 0
-    if (source->getSourceId() != 2071) {
-        // Just to see if it's specifically this object that matters.
-        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_EXPOSURE));
-    }
-#endif
 
     afw::detection::Footprint::Ptr fp = afw::detection::growFootprint(
         *source->getFootprint(), nGrowFp
