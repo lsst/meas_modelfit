@@ -8,8 +8,10 @@
 #include "lsst/utils/Utils.h"
 #include "lsst/utils/ieee.h"
 
-namespace lsst { namespace meas { namespace multifit {
+#define LSST_MAX_DEBUG 0
+#include "lsst/pex/logging/Debug.h"
 
+namespace lsst { namespace meas { namespace multifit {
 
 template <int basisSize>
 bool lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::usePixelWeights;
@@ -49,9 +51,6 @@ double lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::tau;
 template <int basisSize>
 int lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::maxIter;
 #endif
-
-
-
 
 template <int basisSize>
 void ShapeletModelPhotometry<basisSize>::defineSchema(lsst::afw::detection::Schema::Ptr schema) {
@@ -247,6 +246,8 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
     CONST_PTR(afw::detection::Peak) peak,
     CONST_PTR(afw::detection::Source) source
 ) {
+    pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
+    log.debug(1, boost::format("Processing source %lld") % source->getSourceId());
     if (!source) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_SOURCE));
     }
@@ -278,6 +279,11 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
     
     Definition definition;
     definition.frames.insert(definition::Frame::make(0, *im, fp, bitmask, usePixelWeights));
+
+    if (definition.frames[0].getFootprint()->getArea() == 0) {
+	return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_FOOTPRINT));
+    }
+
     //fit both a point source and galaxy model for the same object
     definition::Object galaxy = definition::Object::makeGalaxy(
         0, basis, *ellipse, 
@@ -291,7 +297,6 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
 
     definition.objects.insert(galaxy);
     definition.objects.insert(star);
-
 
     ndarray::Array<const double, 1, 1> param, coeff;
     ndarray::Array<const double, 2, 1> covar;

@@ -120,7 +120,7 @@ Frame Frame::make(
     );
     if(usePixelWeights) {
         weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
-    } else {
+    } else if (weights.size() > 0) {
         weights.setOnes();
     }
 
