@@ -36,7 +36,7 @@ class TestCaseMixIn(object):
     def addGalaxy(self):
         self.galaxyEllipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(4.0, 3.0, 0.25), 
                                                             lsst.afw.geom.Point2D(10.3, 42.1))
-        self.galaxy = mf.definition.Object.makeGalaxy(
+        self.galaxy = mf.definition.ObjectComponent.makeGalaxy(
             1,
             mf.ShapeletModelBasis.make(2),
             self.galaxyEllipse,
@@ -45,7 +45,7 @@ class TestCaseMixIn(object):
 
     def addStar(self):
         self.starPoint = lsst.afw.geom.Point2D(12.1, 56.7)
-        self.star = mf.definition.Object.makeStar(3, self.starPoint, False, True)
+        self.star = mf.definition.ObjectComponent.makeStar(3, self.starPoint, False, True)
 
     def addFrame(self, footprint=None):
         if footprint is None:
@@ -116,7 +116,7 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
         self.assertEqual(self.galaxy.getPosition(), self.star.getPosition())
         self.assertNotEqual(self.galaxy.getPosition(), self.star.getRadius()) # this shouldn't throw
 
-    def testObjectAccessors(self):
+    def testObjectComponentAccessors(self):
         self.assertEqual(self.star.id, 3)
         self.assertEqual(self.galaxy.id, 1)
         self.assertFalse(self.star.isVariable())
@@ -129,8 +129,8 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
         self.galaxy.setRadiusFactor(2.0)
         self.assertEqual(self.galaxy.getRadiusFactor(), 2.0)
 
-    def testObjectSet(self):
-        s = mf.definition.ObjectSet()
+    def testObjectComponentSet(self):
+        s = mf.definition.ObjectComponentSet()
         self.assert_(s.insert(self.star))
         self.assert_(s.insert(self.galaxy))
         self.assertFalse(s.insert(self.star))

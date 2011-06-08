@@ -86,7 +86,7 @@ namespace definition {
 /**
  *  @brief A customized exposure-like class for multifit definitions.
  *
- *  Like those of definition::Object, accessors of Frame return by non-const reference, reflecting
+ *  Like those of definition::ObjectComponent, accessors of Frame return by non-const reference, reflecting
  *  the fact that they can be set freely and will be validated only when a Grid is constructed.
  *  from the Definition.  We have used accessors rather than public data members so the interface 
  *  is similar to that of grid::Frame, which behaves like a const version of definition::Frame.

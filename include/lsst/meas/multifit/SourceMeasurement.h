@@ -28,8 +28,8 @@
 #include "lsst/afw/detection/Photometry.h"
 #include "lsst/afw/detection/Astrometry.h"
 #include "lsst/afw/detection/Shape.h"
-#include "lsst/meas/multifit/GaussNewtonOptimizer.h"
-#include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
+#include "lsst/afw/detection/Peak.h"
+#include "lsst/meas/multifit/ModelBasis.h"
 #include <Eigen/Core>
 
 namespace lsst {
@@ -75,16 +75,6 @@ public:
                                      CONST_PTR(afw::detection::Source)
                                     );
     ShapeletModelPhotometry(int const status);
-#if 0
-    ShapeletModelPhotometry(
-        GaussNewtonOptimizer & optimizer,
-        BaseEvaluator::Ptr const & evaluator
-    );
-#endif
-    ShapeletModelPhotometry(
-        BruteForceSourceOptimizer const & optimizer,
-        Evaluator::Ptr const & evaluator
-    );
 
     static bool isEllipticityActive, isRadiusActive, isPositionActive;
     static bool addPointSource;
@@ -93,11 +83,6 @@ public:
     static ModelBasis::Ptr basis;
 
     static int nTestPoints;
-#if 0
-    static int maxIter
-    static double ftol, gtol, minStep, tau;
-    static bool retryWithSvd;
-#endif
 
 private:
 

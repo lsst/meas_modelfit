@@ -8,17 +8,17 @@ namespace lsst { namespace meas { namespace multifit { namespace grid {
 static double const EPSILON = std::sqrt(std::numeric_limits<double>::epsilon());
 
 template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component) {
-    return os << (*definition::ParameterComponent<E>::make(component.getValue(), component.isActive()))
+std::ostream & operator<<(std::ostream & os, ParameterElement<E> const & component) {
+    return os << (*definition::ParameterElement<E>::make(component.getValue(), component.isActive()))
               << " [" << component.offset << "]";
 }
 
-template std::ostream & operator<<(std::ostream &, ParameterComponent<POSITION> const &);
-template std::ostream & operator<<(std::ostream &, ParameterComponent<RADIUS> const &);
-template std::ostream & operator<<(std::ostream &, ParameterComponent<ELLIPTICITY> const &);
+template std::ostream & operator<<(std::ostream &, ParameterElement<POSITION> const &);
+template std::ostream & operator<<(std::ostream &, ParameterElement<RADIUS> const &);
+template std::ostream & operator<<(std::ostream &, ParameterElement<ELLIPTICITY> const &);
 
-Object::Object(definition::Object const & def, int coefficientOffset, int frameCount, int filterCount) :
-    detail::ObjectBase(def), 
+ObjectComponent::ObjectComponent(definition::ObjectComponent const & def, int coefficientOffset, int frameCount, int filterCount) :
+    detail::ObjectComponentBase(def), 
     _coefficientOffset(coefficientOffset),
     _coefficientCount(1)
 {
@@ -32,7 +32,7 @@ Object::Object(definition::Object const & def, int coefficientOffset, int frameC
     }
 }
 
-void Object::validate() const {
+void ObjectComponent::validate() const {
     if (!getPosition()) {
         throw LSST_EXCEPT(
             lsst::meas::multifit::InvalidDefinitionError,
@@ -43,29 +43,29 @@ void Object::validate() const {
         if (!getRadius() || !getEllipticity()) {
             throw LSST_EXCEPT(
                 lsst::meas::multifit::InvalidDefinitionError,
-                "Objects with a basis must have a radius and ellipticity component."
+                "ObjectComponents with a basis must have a radius and ellipticity component."
             );
         }
     } else {
         if (getRadius() || getEllipticity()) {
             throw LSST_EXCEPT(
                 lsst::meas::multifit::InvalidDefinitionError,
-                "Objects without a basis cannot have a radius or ellipticity component."
+                "ObjectComponents without a basis cannot have a radius or ellipticity component."
             );
         }
     }
 }
 
-void Object::requireEllipse() const {
+void ObjectComponent::requireEllipse() const {
     if (!getRadius() || !getEllipticity()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
-            (boost::format("Object %d lacks an ellipticity and/or radius component.") % id).str()
+            (boost::format("ObjectComponent %d lacks an ellipticity and/or radius component.") % id).str()
         );
     }
 }
 
-lsst::afw::geom::Point2D Object::makePoint(double const * paramIter) const {
+lsst::afw::geom::Point2D ObjectComponent::makePoint(double const * paramIter) const {
     lsst::afw::geom::Point2D result = getPosition()->getValue();
     if (getPosition()->isActive()) {
         double const * p = paramIter + getPosition()->offset;
@@ -74,7 +74,7 @@ lsst::afw::geom::Point2D Object::makePoint(double const * paramIter) const {
     return result;
 }
 
-void Object::readPoint(double * paramIter, lsst::afw::geom::Point2D const & point) const {
+void ObjectComponent::readPoint(double * paramIter, lsst::afw::geom::Point2D const & point) const {
     if (getPosition()->isActive()) {
         double * p = paramIter + getPosition()->offset;
         p[0] = point.getX() - getPosition()->getValue().getX();
@@ -82,7 +82,7 @@ void Object::readPoint(double * paramIter, lsst::afw::geom::Point2D const & poin
     }
 }
 
-std::pair<int,double> Object::perturbPoint(lsst::afw::geom::Point2D & point, int n) const {
+std::pair<int,double> ObjectComponent::perturbPoint(lsst::afw::geom::Point2D & point, int n) const {
     if (!getPosition()->isActive()) return std::pair<int,double>(-1, 0.0);
     double parameter = point[n] - getPosition()->getValue()[n];
     std::pair<int,double> result(getPosition()->offset + n, ((parameter < 0) ? EPSILON : -EPSILON));
@@ -90,7 +90,7 @@ std::pair<int,double> Object::perturbPoint(lsst::afw::geom::Point2D & point, int
     return result;
 }
 
-Eigen::Matrix2d Object::extractPointMatrix(Eigen::MatrixXd const & matrix) const {
+Eigen::Matrix2d ObjectComponent::extractPointMatrix(Eigen::MatrixXd const & matrix) const {
     Eigen::Matrix2d r;
     if (getPosition()->isActive()) {
         r = matrix.block<2,2>(getPosition()->offset, getPosition()->offset);
@@ -100,13 +100,13 @@ Eigen::Matrix2d Object::extractPointMatrix(Eigen::MatrixXd const & matrix) const
     return r;
 }
 
-void Object::insertPointMatrix(Eigen::MatrixXd & full, Eigen::Matrix2d const & block) const {
+void ObjectComponent::insertPointMatrix(Eigen::MatrixXd & full, Eigen::Matrix2d const & block) const {
     if (getPosition()->isActive()) {
         full.block<2,2>(getPosition()->offset, getPosition()->offset) = block;
     }
 }
 
-lsst::afw::geom::ellipses::Ellipse Object::makeEllipse(double const * paramIter) const {
+lsst::afw::geom::ellipses::Ellipse ObjectComponent::makeEllipse(double const * paramIter) const {
     requireEllipse();
     lsst::afw::geom::Ellipse result(
         EllipseCore(
@@ -132,7 +132,7 @@ lsst::afw::geom::ellipses::Ellipse Object::makeEllipse(double const * paramIter)
     return result;
 }
 
-void Object::readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse const & ellipse) const {
+void ObjectComponent::readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse const & ellipse) const {
     requireEllipse();
     readPoint(paramIter, ellipse.getCenter());
     EllipseCore core(ellipse.getCore());
@@ -148,7 +148,7 @@ void Object::readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse 
     }
 }
 
-Eigen::Matrix5d Object::extractEllipseMatrix(Eigen::MatrixXd const & matrix) const {
+Eigen::Matrix5d ObjectComponent::extractEllipseMatrix(Eigen::MatrixXd const & matrix) const {
     requireEllipse();
     Eigen::Matrix5d r = Eigen::Matrix5d::Zero();
     if (getPosition()->isActive() && getEllipticity()->isActive()) {
@@ -177,7 +177,7 @@ Eigen::Matrix5d Object::extractEllipseMatrix(Eigen::MatrixXd const & matrix) con
     return r;
 }
 
-void Object::insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const & block) const {
+void ObjectComponent::insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const & block) const {
     requireEllipse();
     double rf = getRadiusFactor();
     if (getPosition()->isActive()) {
@@ -203,7 +203,7 @@ void Object::insertEllipseMatrix(Eigen::MatrixXd & full, Eigen::Matrix5d const &
     }
 }
 
-std::pair<int,double> Object::perturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n) const {
+std::pair<int,double> ObjectComponent::perturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n) const {
     requireEllipse();
     if (n < 3) {
         EllipseCore & core = static_cast<EllipseCore &>(ellipse.getCore());
@@ -237,7 +237,7 @@ std::pair<int,double> Object::perturbEllipse(lsst::afw::geom::ellipses::Ellipse 
     }
 }
 
-void Object::unperturbEllipse(
+void ObjectComponent::unperturbEllipse(
     lsst::afw::geom::ellipses::Ellipse & ellipse, 
     int n, double perturbation
 ) const {
@@ -257,8 +257,8 @@ void Object::unperturbEllipse(
     }
 }
 
-std::ostream & operator<<(std::ostream & os, Object const & obj) {
-    os << "Object " << obj.id << "(@" << (&obj) << ") = {"
+std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj) {
+    os << "ObjectComponent " << obj.id << "(@" << (&obj) << ") = {"
        << (obj.isVariable() ? "variable" : "nonvariable") << ", Rx" << obj.getRadiusFactor() << "}:\n";
     if (obj.getPosition()) os << "    " << (*obj.getPosition()) << "\n";
     if (obj.getRadius()) os << "    " << (*obj.getRadius()) << " x " << obj.getRadiusFactor() << "\n";
@@ -266,7 +266,7 @@ std::ostream & operator<<(std::ostream & os, Object const & obj) {
     return os;
 }
 
-double Source::computeFluxMean(
+double SourceComponent::computeFluxMean(
     lsst::ndarray::Array<double const,1,1> const & parameters,
     lsst::ndarray::Array<double const,1,1> const & coefficients
 ) const {
@@ -283,7 +283,7 @@ double Source::computeFluxMean(
     return coefficients[getCoefficientOffset()];
 }
 
-double Source::computeFluxVariance(
+double SourceComponent::computeFluxVariance(
     lsst::ndarray::Array<double const,1,1> const & parameters,
     lsst::ndarray::Array<double const,2,1> const & covariance
 ) const {

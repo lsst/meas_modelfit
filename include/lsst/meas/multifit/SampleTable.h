@@ -25,8 +25,9 @@
 #define LSST_MEAS_MULTIFIT_SampleTable
 
 #include "lsst/ndarray.h"
-#include <boost/shared_ptr.hpp>
-#include <boost/noncopyable.hpp>
+#include "lsst/meas/multifit/constants.h"
+#include "boost/shared_ptr.hpp"
+#include "boost/noncopyable.hpp"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -42,14 +43,14 @@ public:
     /**
      *  @brief The (samples)x(parameters) matrix of parameter values.
      */
-    lsst::ndarray::Array<double const,2,2> getParameters() const {
+    lsst::ndarray::Array<Pixel const,2,2> getParameters() const {
         return _parameters[ndarray::view(0, _size)];
     }
 
     /**
      *  @brief The weights corresponding to each sample.
      */
-    lsst::ndarray::Array<double const,1,1> getWeights() const {
+    lsst::ndarray::Array<Pixel const,1,1> getWeights() const {
         return _weights[ndarray::view(0, _size)];
     }
 
@@ -93,11 +94,11 @@ protected:
 
         explicit Editor(SampleTable * table) : _table(table) {}
 
-        lsst::ndarray::Array<double,1,1> const & getWeights() {
+        lsst::ndarray::Array<Pixel,1,1> const & getWeights() {
             return getTable()._weights;
         }
 
-        lsst::ndarray::Array<double,2,2> const & getParameters() {
+        lsst::ndarray::Array<Pixel,2,2> const & getParameters() {
             return getTable()._parameters;
         }
 
@@ -173,8 +174,8 @@ private:
 
     int _size;
     Editor::Ptr _editor;
-    lsst::ndarray::Array<double,2,2> _parameters;
-    lsst::ndarray::Array<double,1,1> _weights;
+    lsst::ndarray::Array<Pixel,2,2> _parameters;
+    lsst::ndarray::Array<Pixel,1,1> _weights;
 };
 
 }}} // namespace lsst::meas::multifit

@@ -3,22 +3,22 @@
 namespace lsst { namespace meas { namespace multifit {
 
 void Evaluator::_evaluateModelMatrix(
-    ndarray::Array<double,2,2> const & matrix,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<Pixel,2,2> const & matrix,
+    ndarray::Array<Pixel const,1,1> const & param
 ) const {
     matrix.deep() = 0.0;
     for (
-        Grid::ObjectArray::const_iterator object = _grid->objects.begin();
+        Grid::ObjectComponentArray::const_iterator object = _grid->objects.begin();
         object != _grid->objects.end(); ++object
     ) {
         if (object->getBasis()) {
             lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end(); ++source
             ) {
                 int coefficientOffset = source->getCoefficientOffset();
-                lsst::ndarray::Array<double,2,1> block = matrix[
+                lsst::ndarray::Array<Pixel,2,1> block = matrix[
                     lsst::ndarray::view(
                         source->frame.getPixelOffset(), 
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -37,11 +37,11 @@ void Evaluator::_evaluateModelMatrix(
         } else {
             afw::geom::Point2D point = object->makePoint(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
                 ++source
             ) {
-                ndarray::Array<double,1,0> block = matrix[
+                ndarray::Array<Pixel,1,0> block = matrix[
                     lsst::ndarray::view(
                         source->frame.getPixelOffset(), 
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -62,25 +62,25 @@ void Evaluator::_evaluateModelMatrix(
 
 #if 0
 void Evaluator::_evaluateModelMatrixDerivative(
-    ndarray::Array<double,3,3> const & derivative,
-    ndarray::Array<double const,2,2> const & modelMatrix,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<Pixel,3,3> const & derivative,
+    ndarray::Array<Pixel const,2,2> const & modelMatrix,
+    ndarray::Array<Pixel const,1,1> const & param
 ) const {
     derivative.deep() = 0.0;
     for (
-        Grid::ObjectArray::const_iterator object = _grid->objects.begin();
+        Grid::ObjectComponentArray::const_iterator object = _grid->objects.begin();
         object != _grid->objects.end();
         ++object
     ) {
         if (object->getBasis()) {
             lsst::afw::geom::Ellipse ellipse = object->makeEllipse(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
                 ++source
             ) {
                 int coefficientOffset = source->getCoefficientOffset();
-                ndarray::Array<double const,2,1> fiducial = modelMatrix[
+                ndarray::Array<Pixel const,2,1> fiducial = modelMatrix[
                     ndarray::view(
                         source->frame.getPixelOffset(),
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -89,7 +89,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                         coefficientOffset + source->getCoefficientCount()
                     )
                 ];
-                ndarray::Array<double,3,1> block = 
+                ndarray::Array<Pixel,3,1> block = 
                     derivative[
                         ndarray::view(
                         )(
@@ -103,7 +103,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                 //TODO remove magic number 5 
                 //this is the number of ellipse parameters
                 for (int n = 0; n < 5; ++n) {
-                    std::pair<int,double> p = object->perturbEllipse(ellipse, n);
+                    std::pair<int,Pixel> p = object->perturbEllipse(ellipse, n);
                     if (p.first < 0) continue;
                     source->getBasis()->evaluate(
                         block[p.first],                        
@@ -119,11 +119,11 @@ void Evaluator::_evaluateModelMatrixDerivative(
         } else {
             lsst::afw::geom::Point2D point = object->makePoint(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
                 ++source
             ) {
-                ndarray::Array<double const,1,0> fiducial = modelMatrix[
+                ndarray::Array<Pixel const,1,0> fiducial = modelMatrix[
                     ndarray::view(
                         source->frame.getPixelOffset(), 
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -131,7 +131,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                         source->getCoefficientOffset()
                     )                        
                 ];
-                ndarray::Array<double,2,0> block = 
+                ndarray::Array<Pixel,2,0> block = 
                     derivative[
                         ndarray::view(
                         )(
@@ -141,11 +141,11 @@ void Evaluator::_evaluateModelMatrixDerivative(
                             source->getCoefficientOffset()
                         )
                     ];
-                for (int n = 0; n < grid::PositionComponent::SIZE; ++n) {
-                    std::pair<int,double> p = object->perturbPoint(point, n);
+                for (int n = 0; n < grid::PositionElement::SIZE; ++n) {
+                    std::pair<int,Pixel> p = object->perturbPoint(point, n);
                     if (p.first < 0) continue;
  
-                    source->getLocalPsf()->evaluatePointSource(
+                    source->getLocalPsf()->evaluatePointSourceComponent(
                         *source->frame.getFootprint(),
                         block[p.first],
                         source->getTransform()(point) - source->getReferencePoint()
@@ -194,7 +194,7 @@ void Evaluator::_initialize() {
     _constraintVector = _grid->getConstraintVector();
 }
 
-void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & param) const {
+void Evaluator::_writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const {
     _grid->writeParameters(param.getData());
 }
 

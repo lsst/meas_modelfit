@@ -51,29 +51,29 @@
 }
 %enddef
 
-//----------------------------- ParameterComponents -----------------------------------
+//----------------------------- ParameterElements -----------------------------------
 
 %{
-#include "lsst/meas/multifit/definition/parameters.h"
+#include "lsst/meas/multifit/definition/elements.h"
 %}
 
-SWIG_SHARED_PTR(definition_PositionComponentPtr, lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::POSITION>);
-SWIG_SHARED_PTR(definition_RadiusComponentPtr, lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::RADIUS>);
-SWIG_SHARED_PTR(definition_EllipticityComponentPtr, lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::ELLIPTICITY>);
+SWIG_SHARED_PTR(definition_PositionElementPtr, lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::POSITION>);
+SWIG_SHARED_PTR(definition_RadiusElementPtr, lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::RADIUS>);
+SWIG_SHARED_PTR(definition_EllipticityElementPtr, lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::ELLIPTICITY>);
 
-%define %AddComponentAccessors(TITLE, LOWER, UPPER)
+%define %AddElementAccessors(TITLE, LOWER, UPPER)
 %enddef
 
-%define %DeclareDefinitionParameterComponent(TITLE, LOWER, UPPER, CONSTRAINT)
-%template(definition_##TITLE##Component)
-lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>;
-%PointerEQ(lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>)
-%AddStreamRepr(lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER>)
-%extend lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER> {
+%define %DeclareDefinitionParameterElement(TITLE, LOWER, UPPER, CONSTRAINT)
+%template(definition_##TITLE##Element)
+lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::UPPER>;
+%PointerEQ(lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::UPPER>)
+%AddStreamRepr(lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::UPPER>)
+%extend lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::UPPER> {
     static boost::shared_ptr< 
-        lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER >
+        lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER >
     > make(lsst::meas::multifit::TITLE const & value, bool active=true) {
-        return lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER >::make(
+        return lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER >::make(
             value, active
         );
     }
@@ -97,10 +97,10 @@ lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER
     }
 }
 %extend lsst::meas::multifit::definition::Object {
-    boost::shared_ptr< lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER > > get ## TITLE() {
+    boost::shared_ptr< lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER > > get ## TITLE() {
         return self->get##TITLE();
     }
-    void set ## TITLE(boost::shared_ptr< lsst::meas::multifit::definition::ParameterComponent< lsst::meas::multifit::UPPER > > value) {
+    void set ## TITLE(boost::shared_ptr< lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER > > value) {
         self->get ## TITLE() = value;
     }
 }
@@ -109,27 +109,27 @@ lsst::meas::multifit::definition::ParameterComponent<lsst::meas::multifit::UPPER
 %rename(detail_CircleConstraint) lsst::meas::multifit::detail::CircleConstraint;
 %rename(detail_MinMaxConstraint) lsst::meas::multifit::detail::MinMaxConstraint;
 
-%include "lsst/meas/multifit/definition/parameters.h"
+%include "lsst/meas/multifit/definition/elements.h"
 
 //------------------------------------- Object ---------------------------------------
 
 %{
-#include "lsst/meas/multifit/definition/Object.h"
+#include "lsst/meas/multifit/definition/ObjectComponent.h"
 %}
 
-SWIG_SHARED_PTR(detail_ObjectBasePtr, lsst::meas::multifit::detail::ObjectBase);
-SWIG_SHARED_PTR_DERIVED(definition_ObjectPtr, lsst::meas::multifit::detail::ObjectBase, lsst::meas::multifit::definition::Object);
+SWIG_SHARED_PTR(detail_ObjectComponentBasePtr, lsst::meas::multifit::detail::ObjectComponentBase);
+SWIG_SHARED_PTR_DERIVED(definition_ObjectComponentPtr, lsst::meas::multifit::detail::ObjectComponentBase, lsst::meas::multifit::definition::ObjectComponent);
 
-%rename(definition_Object) lsst::meas::multifit::definition::Object;
+%rename(definition_ObjectComponent) lsst::meas::multifit::definition::ObjectComponent;
 
-%include "lsst/meas/multifit/definition/Object.h"
+%include "lsst/meas/multifit/definition/ObjectComponent.h"
 
-%DeclareDefinitionParameterComponent(Position, position, POSITION, detail::CircleConstraint);
-%DeclareDefinitionParameterComponent(Radius, radius, RADIUS, detail::MinMaxConstraint);
-%DeclareDefinitionParameterComponent(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
+%DeclareDefinitionParameterElement(Position, position, POSITION, detail::CircleConstraint);
+%DeclareDefinitionParameterElement(Radius, radius, RADIUS, detail::MinMaxConstraint);
+%DeclareDefinitionParameterElement(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
 
-%PointerEQ(lsst::meas::multifit::definition::Object)
-%AddStreamRepr(lsst::meas::multifit::definition::Object)
+%PointerEQ(lsst::meas::multifit::definition::ObjectComponent)
+%AddStreamRepr(lsst::meas::multifit::definition::ObjectComponent)
 
 //------------------------------------- Frame ---------------------------------------
 
@@ -226,7 +226,7 @@ lsst::meas::multifit::definition::Set<lsst::meas::multifit::definition::NAME>;
 }
 %enddef
 
-%DeclareSet(Object)
+%DeclareSet(ObjectComponent)
 %DeclareSet(Frame)
 
 

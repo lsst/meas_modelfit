@@ -75,7 +75,7 @@ public:
     /**
      *  @brief The Evaluation "objective value" at each sample point.
      */
-    lsst::ndarray::Array<double const,1,1> getObjective() const {
+    lsst::ndarray::Array<Pixel const,1,1> getObjective() const {
         return _objective[ndarray::view(0, getSize())];
     }
 
@@ -83,7 +83,7 @@ public:
      *  @brief The density of the distribution the sample was drawn from, multiplied by
      *         the total number of samples.
      */
-    lsst::ndarray::Array<double const,1,1> getImportance() const {
+    lsst::ndarray::Array<Pixel const,1,1> getImportance() const {
         return _importance[ndarray::view(0, getSize())];
     }
 
@@ -168,11 +168,11 @@ protected:
 
     protected:
 
-        lsst::ndarray::Array<double,1,1> const & getObjective() {
+        lsst::ndarray::Array<Pixel,1,1> const & getObjective() {
             return getTable()._objective;
         }
 
-        lsst::ndarray::Array<double,1,1> const & getImportance() {
+        lsst::ndarray::Array<Pixel,1,1> const & getImportance() {
             return getTable()._importance;
         }
 
@@ -192,8 +192,8 @@ protected:
 
 private:
     std::vector<Iteration> _iterations;
-    lsst::ndarray::Array<double,1,1> _objective;
-    lsst::ndarray::Array<double,1,1> _importance;
+    lsst::ndarray::Array<Pixel,1,1> _objective;
+    lsst::ndarray::Array<Pixel,1,1> _importance;
 };
 
 }}} // namespace lsst::meas::multifit

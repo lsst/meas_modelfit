@@ -6,8 +6,8 @@
 namespace lsst { namespace meas { namespace multifit {
 
 void BaseEvaluator::evaluateModelMatrix(
-    ndarray::Array<double,2,2> const & matrix,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<Pixel,2,2> const & matrix,
+    ndarray::Array<Pixel const,1,1> const & param
 ) const {
     detail::checkSize(
         matrix.getSize<0>(), getDataSize(),
@@ -25,8 +25,8 @@ void BaseEvaluator::evaluateModelMatrix(
 }
 
 void BaseEvaluator::evaluateModelMatrixDerivative(
-    ndarray::Array<double,3,3> const & derivative,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<Pixel,3,3> const & derivative,
+    ndarray::Array<Pixel const,1,1> const & param
 ) const {
     detail::checkSize(
         derivative.getSize<0>(), getParameterSize(),
@@ -44,20 +44,20 @@ void BaseEvaluator::evaluateModelMatrixDerivative(
         param.getSize<0>(), getParameterSize(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    ndarray::Array<double,2,2> modelMatrix = ndarray::allocate(getDataSize(), getCoefficientSize());
+    ndarray::Array<Pixel,2,2> modelMatrix = ndarray::allocate(getDataSize(), getCoefficientSize());
     _evaluateModelMatrix(modelMatrix, param);
     _evaluateModelMatrixDerivative(derivative, modelMatrix, param);
 }
 
 void BaseEvaluator::_evaluateModelMatrixDerivative(
-    ndarray::Array<double,3,3> const & derivative,
-    ndarray::Array<double const,2,2> const & fiducial,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<Pixel,3,3> const & derivative,
+    ndarray::Array<Pixel const,2,2> const & fiducial,
+    ndarray::Array<Pixel const,1,1> const & param
 ) const {
-    static double const epsilon = std::sqrt(
-        std::numeric_limits<double>::epsilon()
+    static Pixel const epsilon = std::sqrt(
+        std::numeric_limits<Pixel>::epsilon()
     );
-    ndarray::Array<double, 1, 1> parameters(ndarray::copy(param));
+    ndarray::Array<Pixel, 1, 1> parameters(ndarray::copy(param));
     for (int n = 0; n < _parameterSize; ++n) {
         parameters[n] += epsilon;
         _evaluateModelMatrix(derivative[n], parameters);
@@ -68,7 +68,7 @@ void BaseEvaluator::_evaluateModelMatrixDerivative(
 }
 
 void BaseEvaluator::writeInitialParameters(
-    ndarray::Array<double,1,1> const & param
+    ndarray::Array<Pixel,1,1> const & param
 ) const {
     detail::checkSize(
         param.getSize<0>(), getParameterSize(),

@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_GRID_Frame
 
 #include "lsst/meas/multifit/definition/Frame.h"
-#include "lsst/meas/multifit/grid/Source.h"
+#include "lsst/meas/multifit/grid/SourceComponent.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 

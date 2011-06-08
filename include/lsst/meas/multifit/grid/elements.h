@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_GRID_parameters
 #define LSST_MEAS_MULTIFIT_GRID_parameters
 
-#include "lsst/meas/multifit/definition/parameters.h"
+#include "lsst/meas/multifit/definition/elements.h"
 
 #include <boost/iterator/indirect_iterator.hpp>
 #include <vector>
@@ -34,12 +34,12 @@
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 template <ParameterType E>
-class ParameterComponent : public detail::ParameterComponentBase<E>, private boost::noncopyable {
+class ParameterElement : public detail::ParameterElementBase<E>, private boost::noncopyable {
 public:
     
     // No ConstPtr typedef to make it clear that this class is strictly immutable.
-    typedef boost::shared_ptr< ParameterComponent<E> > Ptr;
-    typedef typename detail::ParameterComponentTraits<E>::Value Value;
+    typedef boost::shared_ptr< ParameterElement<E> > Ptr;
+    typedef typename detail::ParameterElementTraits<E>::Value Value;
 
     int const offset;
 
@@ -63,26 +63,26 @@ private:
 
     friend class Initializer;
 
-    ParameterComponent(definition::ParameterComponent<E> const & definition, int offset_) : 
-        detail::ParameterComponentBase<E>(definition), offset(offset_) {}
+    ParameterElement(definition::ParameterElement<E> const & definition, int offset_) : 
+        detail::ParameterElementBase<E>(definition), offset(offset_) {}
 
 };
 
 
-typedef ParameterComponent<POSITION> PositionComponent;
-typedef ParameterComponent<RADIUS> RadiusComponent;
-typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
+typedef ParameterElement<POSITION> PositionElement;
+typedef ParameterElement<RADIUS> RadiusElement;
+typedef ParameterElement<ELLIPTICITY> EllipticityElement;
 
 #ifndef SWIG
 
 template <ParameterType E>
-class ComponentArray {
-    typedef typename ParameterComponent<E>::Ptr Ptr;
+class ElementArray {
+    typedef typename ParameterElement<E>::Ptr Ptr;
     typedef std::vector<Ptr> PtrVec;
     typedef typename PtrVec::const_iterator PtrIter;
 public:
 
-    typedef ParameterComponent<E> value_type;
+    typedef ParameterElement<E> value_type;
     typedef Ptr pointer;
     typedef value_type const & reference;
     typedef reference const_reference;
@@ -91,7 +91,7 @@ public:
     typedef boost::indirect_iterator<PtrIter> iterator;
     typedef iterator const_iterator;
 
-    ComponentArray() : _ptrVec() {}
+    ElementArray() : _ptrVec() {}
 
     const_iterator begin() const { return _ptrVec.begin(); }
     const_iterator end() const { return _ptrVec.end(); }
@@ -109,7 +109,7 @@ private:
 };
 
 template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
+std::ostream & operator<<(std::ostream & os, ParameterElement<E> const & component);
 
 #endif
 

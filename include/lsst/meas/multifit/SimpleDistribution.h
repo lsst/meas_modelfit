@@ -94,10 +94,6 @@ protected:
     Eigen::VectorXd _mu;
     Eigen::MatrixXd _sigma;
 
-private:
-
-    friend class SimpleInterpreter;
-
 };
 
 }}} // namespace lsst::meas::multifit

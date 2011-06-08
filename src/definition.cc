@@ -28,31 +28,31 @@ FrameBase::FrameBase(FrameBase const & other, bool deep) :
 namespace definition {
 
 template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component) {
+std::ostream & operator<<(std::ostream & os, ParameterElement<E> const & component) {
     static char const * names[] = { "Position", "Radius", "Ellipticity" };
     os << names[E] << " (@" << (&component) << ") = ";
-    detail::ParameterComponentTraits<E>::printValue(os, component.getValue());
+    detail::ParameterElementTraits<E>::printValue(os, component.getValue());
     return os << (component.isActive() ? " (active) " : " (inactive) ") 
               << "(" << component.getBounds() << ")";
 }
 
-template std::ostream & operator<<(std::ostream &, ParameterComponent<POSITION> const &);
-template std::ostream & operator<<(std::ostream &, ParameterComponent<RADIUS> const &);
-template std::ostream & operator<<(std::ostream &, ParameterComponent<ELLIPTICITY> const &);
+template std::ostream & operator<<(std::ostream &, ParameterElement<POSITION> const &);
+template std::ostream & operator<<(std::ostream &, ParameterElement<RADIUS> const &);
+template std::ostream & operator<<(std::ostream &, ParameterElement<ELLIPTICITY> const &);
 
-Object Object::makeStar(
+ObjectComponent ObjectComponent::makeStar(
     ID const id, 
     lsst::afw::geom::Point2D const & position, 
     bool const isVariable,
     bool const isPositionActive
 ) {
-    Object r(id);
-    r.getPosition() = PositionComponent::make(position, isPositionActive);
+    ObjectComponent r(id);
+    r.getPosition() = PositionElement::make(position, isPositionActive);
     r.isVariable() = isVariable;    
     return r;
 }
 
-Object Object::makeGalaxy(
+ObjectComponent ObjectComponent::makeGalaxy(
     ID const id,
     ModelBasis::Ptr const & basis,
     lsst::afw::geom::ellipses::Ellipse const & ellipse,
@@ -60,17 +60,17 @@ Object Object::makeGalaxy(
     bool const isRadiusActive,
     bool const isPositionActive
 ) {
-    Object r(id);
+    ObjectComponent r(id);
     EllipseCore core(ellipse.getCore());
-    r.getPosition() = PositionComponent::make(ellipse.getCenter(), isPositionActive);
-    r.getEllipticity() = EllipticityComponent::make(core.getEllipticity(), isEllipticityActive);
-    r.getRadius() = RadiusComponent::make(core.getRadius(), isRadiusActive);
+    r.getPosition() = PositionElement::make(ellipse.getCenter(), isPositionActive);
+    r.getEllipticity() = EllipticityElement::make(core.getEllipticity(), isEllipticityActive);
+    r.getRadius() = RadiusElement::make(core.getRadius(), isRadiusActive);
     r.getBasis() = basis;
     return r;
 }
 
-std::ostream & operator<<(std::ostream & os, Object const & obj) {
-    os << "Object " << obj.id << "(@" << (&obj) << ") = {"
+std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj) {
+    os << "ObjectComponent " << obj.id << "(@" << (&obj) << ") = {"
        << (obj.isVariable() ? "variable" : "nonvariable") << ", Rx" << obj.getRadiusFactor() << "}:\n";
     if (obj.getPosition()) os << "    " << (*obj.getPosition()) << "\n";
     if (obj.getRadius()) os << "    " << (*obj.getRadius()) << " x " << obj.getRadiusFactor() << "\n";

@@ -35,14 +35,6 @@ from .multifitLib import (
     SimpleDistribution,
     StudentDistribution,
     GaussianDistribution,
-    BaseInterpreter,
-    UnifiedInterpreter,
-    NestedInterpreter,
-    SimpleInterpreter,
-    UnifiedSimpleInterpreter,
-    NestedSimpleInterpreter,
-    GaussNewtonOptimizer,
-    BruteForceSourceOptimizer
     )
 from . import multifitLib
 from . import definition

@@ -61,7 +61,7 @@ public:
      *  @brief Clip the given parameter vector to the valid range and return a penalty
      *         that scales with how far the parameter vector was beyond the constraints.
      */
-    virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
+    virtual double clipToBounds(lsst::ndarray::Array<Pixel,1,1> const & parameters) const = 0;
 
     /**
      *  @brief Data vector.

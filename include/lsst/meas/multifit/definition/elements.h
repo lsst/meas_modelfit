@@ -32,7 +32,7 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace detail {
 
-template <ParameterType E> struct ParameterComponentTraits;
+template <ParameterType E> struct ParameterElementTraits;
 
 struct CircleConstraint {
     double max;
@@ -44,7 +44,7 @@ struct CircleConstraint {
     }
 
 private:
-    template <ParameterType E> friend class grid::ParameterComponent;
+    template <ParameterType E> friend class grid::ParameterElement;
 
     /// Return true if the parameters are in-bounds.
     bool checkBounds(double const * paramIter) const {
@@ -80,7 +80,7 @@ struct MinMaxConstraint {
     }
 
 private:
-    template <ParameterType E> friend class grid::ParameterComponent;
+    template <ParameterType E> friend class grid::ParameterElement;
 
     /// Return true if the parameters are in-bounds.
     bool checkBounds(double const * paramIter) const {
@@ -107,7 +107,7 @@ private:
 };
 
 template <>
-struct ParameterComponentTraits<POSITION> {
+struct ParameterElementTraits<POSITION> {
 
     typedef lsst::afw::geom::Point2D Value;
     typedef CircleConstraint Bounds;
@@ -127,7 +127,7 @@ struct ParameterComponentTraits<POSITION> {
 };
 
 template <>
-struct ParameterComponentTraits<RADIUS> {
+struct ParameterElementTraits<RADIUS> {
 
     typedef Radius Value;
     typedef MinMaxConstraint Bounds;
@@ -147,7 +147,7 @@ struct ParameterComponentTraits<RADIUS> {
 };
 
 template <>
-struct ParameterComponentTraits<ELLIPTICITY> {
+struct ParameterElementTraits<ELLIPTICITY> {
 
     typedef Ellipticity Value;
     typedef CircleConstraint Bounds;
@@ -169,12 +169,12 @@ struct ParameterComponentTraits<ELLIPTICITY> {
 };
 
 template <ParameterType E>
-class ParameterComponentBase {
+class ParameterElementBase {
 public:
 
-    typedef typename detail::ParameterComponentTraits<E>::Value Value;
-    typedef typename detail::ParameterComponentTraits<E>::Bounds Bounds;
-    static int const SIZE = detail::ParameterComponentTraits<E>::SIZE;
+    typedef typename detail::ParameterElementTraits<E>::Value Value;
+    typedef typename detail::ParameterElementTraits<E>::Bounds Bounds;
+    static int const SIZE = detail::ParameterElementTraits<E>::SIZE;
 
     /**
      *  @brief True if the position is allowed to vary during fitting.
@@ -182,7 +182,7 @@ public:
     bool const isActive() const { return _active; }
 
     /**
-     *  @brief Return the value of the ParameterComponent.
+     *  @brief Return the value of the ParameterElement.
      *
      *  For most parameters, this is the same as the values in the initial parameter vector.
      *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
@@ -193,11 +193,11 @@ public:
 
 protected:
 
-    explicit ParameterComponentBase(Value const & value, Bounds const & bounds, bool active) :
+    explicit ParameterElementBase(Value const & value, Bounds const & bounds, bool active) :
         _active(active), _value(value), _bounds(bounds)
     {}
 
-    ParameterComponentBase(ParameterComponentBase const & other) :
+    ParameterElementBase(ParameterElementBase const & other) :
         _active(other._active), _value(other._value), _bounds(other._bounds)
     {}
 
@@ -211,13 +211,13 @@ protected:
 namespace definition {
 
 template <ParameterType E>
-class ParameterComponent : public detail::ParameterComponentBase<E> {
+class ParameterElement : public detail::ParameterElementBase<E> {
 public:
     
-    typedef boost::shared_ptr< ParameterComponent<E> > Ptr;
-    typedef boost::shared_ptr< ParameterComponent<E> const > ConstPtr;
-    typedef typename detail::ParameterComponentTraits<E>::Value Value;
-    typedef typename detail::ParameterComponentTraits<E>::Bounds Bounds;
+    typedef boost::shared_ptr< ParameterElement<E> > Ptr;
+    typedef boost::shared_ptr< ParameterElement<E> const > ConstPtr;
+    typedef typename detail::ParameterElementTraits<E>::Value Value;
+    typedef typename detail::ParameterElementTraits<E>::Bounds Bounds;
 
 #ifndef SWIG // these are wrapped explicitly; SWIG is confused by the typedefs and "bool &"
 
@@ -231,7 +231,7 @@ public:
     
     //@{
     /**
-     *  @brief Return and/or set the value of the ParameterComponent.
+     *  @brief Return and/or set the value of the ParameterElement.
      *
      *  For most parameters, this is the same as the values in the initial parameter vector.
      *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
@@ -242,64 +242,64 @@ public:
     
     //@{
     /**
-     *  @brief Return and/or set the bounds of the ParameterComponent.
+     *  @brief Return and/or set the bounds of the ParameterElement.
      */
     Bounds & getBounds() { return this->_bounds; }
     void setBounds(Bounds const & bounds) { this->_bounds = bounds; }
     //@}
 
     // Use const accessors from base class.
-    using detail::ParameterComponentBase<E>::getValue;
-    using detail::ParameterComponentBase<E>::getBounds;
-    using detail::ParameterComponentBase<E>::isActive;
+    using detail::ParameterElementBase<E>::getValue;
+    using detail::ParameterElementBase<E>::getBounds;
+    using detail::ParameterElementBase<E>::isActive;
 
     /**
      *  @brief Deep-copy.
      *
      *  @note Not called clone() because it's not virtual, and it doesn't need to be.
      */
-    Ptr copy() const { return Ptr(new ParameterComponent(*this)); }
+    Ptr copy() const { return Ptr(new ParameterElement(*this)); }
 
     /**
-     *  @brief Create a new ParameterComponent.
+     *  @brief Create a new ParameterElement.
      *
      *  Constructors are private to ensure we only get shared_ptrs to these things.
      */
     static Ptr make(Value const & value, bool active=true) {
         return Ptr(
-            new ParameterComponent(
-                value, detail::ParameterComponentTraits<E>::getDefaultBounds(), active
+            new ParameterElement(
+                value, detail::ParameterElementTraits<E>::getDefaultBounds(), active
             )
         );
     }
 
     /**
-     *  @brief Create a new ParameterComponent.
+     *  @brief Create a new ParameterElement.
      *
      *  Constructors are private to ensure we only get shared_ptrs to these things.
      */
     static Ptr make(Value const & value, Bounds const & bounds, bool active=true) {
-        return Ptr(new ParameterComponent(value, bounds, active));
+        return Ptr(new ParameterElement(value, bounds, active));
     }
 
 #endif
 
 private:
 
-    ParameterComponent(ParameterComponent const & other) : detail::ParameterComponentBase<E>(*this) {}
+    ParameterElement(ParameterElement const & other) : detail::ParameterElementBase<E>(*this) {}
 
-    explicit ParameterComponent(Value const & value, Bounds const & bounds, bool active) : 
-        detail::ParameterComponentBase<E>(value, bounds, active) {}
+    explicit ParameterElement(Value const & value, Bounds const & bounds, bool active) : 
+        detail::ParameterElementBase<E>(value, bounds, active) {}
 
 };
 
-typedef ParameterComponent<POSITION> PositionComponent;
-typedef ParameterComponent<RADIUS> RadiusComponent;
-typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
+typedef ParameterElement<POSITION> PositionElement;
+typedef ParameterElement<RADIUS> RadiusElement;
+typedef ParameterElement<ELLIPTICITY> EllipticityElement;
 
 #ifndef SWIG
 template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
+std::ostream & operator<<(std::ostream & os, ParameterElement<E> const & component);
 #endif
 
 }}}} // namespace lsst::meas::multifit::definition

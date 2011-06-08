@@ -50,21 +50,21 @@ public:
     /**
      *  @brief The vector of nested amplitudes.
      */
-    lsst::ndarray::Array<double const,1,1> getNestedAmplitudes() const {
+    lsst::ndarray::Array<Pixel const,1,1> getNestedAmplitudes() const {
         return _nestedAmplitudes[ndarray::view(0, getSize())];
     }
 
     /**
      *  @brief The (samples)x(nested dim.) matrix of nested mean vectors.
      */
-    lsst::ndarray::Array<double const,2,2> getNestedMeans() const {
+    lsst::ndarray::Array<Pixel const,2,2> getNestedMeans() const {
         return _nestedMeans[ndarray::view(0, getSize())];
     }
 
     /**
      *  @brief The (samples)x(nested dim.)x(nested dim.) tensor of nested matrices.
      */
-    lsst::ndarray::Array<double const,3,3> getNestedMatrices() const {
+    lsst::ndarray::Array<Pixel const,3,3> getNestedMatrices() const {
         return _nestedMatrices[ndarray::view(0, getSize())];
     }
 
@@ -90,15 +90,15 @@ protected:
 
         explicit Editor(NestedSampleTable * table) : SampleTable::Editor(table) {}
 
-        lsst::ndarray::Array<double,1,1> const & getNestedAmplitudes() {
+        lsst::ndarray::Array<Pixel,1,1> const & getNestedAmplitudes() {
             return getTable()._nestedAmplitudes;
         }
 
-        lsst::ndarray::Array<double,2,2> const & getNestedMeans() {
+        lsst::ndarray::Array<Pixel,2,2> const & getNestedMeans() {
             return getTable()._nestedMeans;
         }
 
-        lsst::ndarray::Array<double,3,3> const & getNestedMatrices() {
+        lsst::ndarray::Array<Pixel,3,3> const & getNestedMatrices() {
             return getTable()._nestedMatrices;
         }
 
@@ -130,9 +130,9 @@ protected:
 
 private:
     NestedMatrixType _nestedMatrixType;
-    lsst::ndarray::Array<double,1,1> _nestedAmplitudes;
-    lsst::ndarray::Array<double,2,2> _nestedMeans;
-    lsst::ndarray::Array<double,3,3> _nestedMatrices;
+    lsst::ndarray::Array<Pixel,1,1> _nestedAmplitudes;
+    lsst::ndarray::Array<Pixel,2,2> _nestedMeans;
+    lsst::ndarray::Array<Pixel,3,3> _nestedMatrices;
 };
 
 
