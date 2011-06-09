@@ -32,8 +32,6 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace detail {
 
-template <ParameterType E> struct ParameterElementTraits;
-
 struct CircleConstraint {
     double max;
 
@@ -44,11 +42,12 @@ struct CircleConstraint {
     }
 
 private:
-    template <ParameterType E> friend class grid::ParameterElement;
+    friend class grid::Grid;
+    friend class grid::Initializer;
 
     /// Return true if the parameters are in-bounds.
-    bool checkBounds(double const * paramIter) const {
-        return paramIter[0] * paramIter[0] + paramIter[1] + paramIter[1] <= max * max;
+    bool checkBounds(double const * iter) const {
+        return iter[0] * iter[0] + iter[1] + iter[1] <= max * max;
     }
 
     /**
@@ -56,11 +55,11 @@ private:
      *  a positive value that increases as the necessary parameter change increases.
      *  Return 0.0 if the parameters are already in-bounds
      */
-    double clipToBounds(double * paramIter) const {
-        double a = std::sqrt(max * max / (paramIter[0] * paramIter[0] + paramIter[1] + paramIter[1]));
+    double clipToBounds(double * iter) const {
+        double a = std::sqrt(max * max / (iter[0] * iter[0] + iter[1] + iter[1]));
         if (a < 1.0) {
-            paramIter[0] *= a;
-            paramIter[1] *= a;
+            iter[0] *= a;
+            iter[1] *= a;
             return -std::log(a);
         }
         return 0.0;
@@ -80,11 +79,12 @@ struct MinMaxConstraint {
     }
 
 private:
-    template <ParameterType E> friend class grid::ParameterElement;
+    friend class grid::Grid;
+    friend class grid::Initializer;
 
     /// Return true if the parameters are in-bounds.
-    bool checkBounds(double const * paramIter) const {
-        return *paramIter >= min && *paramIter <= max;
+    bool checkBounds(double const * iter) const {
+        return *iter >= min && *iter <= max;
     }
 
     /**
@@ -92,14 +92,14 @@ private:
      *  a positive value that increases as the necessary parameter change increases.
      *  Return 0.0 if the parameters are already in-bounds
      */
-    double clipToBounds(double * paramIter) const {
-        if (*paramIter < min) {
-            double r = min - *paramIter;
-            *paramIter = min;
+    double clipToBounds(double * iter) const {
+        if (*iter < min) {
+            double r = min - *iter;
+            *iter = min;
             return r;
-        } else if (*paramIter > max) {
-            double r = *paramIter - max;
-            *paramIter = max;
+        } else if (*iter > max) {
+            double r = *iter - max;
+            *iter = max;
             return r;
         }
         return 0.0;
@@ -107,59 +107,58 @@ private:
 };
 
 template <>
-struct ParameterElementTraits<POSITION> {
+struct SharedElementTraits<POSITION> {
 
     typedef lsst::afw::geom::Point2D Value;
     typedef CircleConstraint Bounds;
     static int const SIZE = 2;
 
-    static void readParameters(double const * paramIter, Value & value) {
-        value[0] += paramIter[0];
-        value[1] += paramIter[1];
+    static void readIter(double const * iter, Value & value) {
+        value[0] += iter[0];
+        value[1] += iter[1];
     }
-    static void writeParameters(double * paramIter, Value const & value) {
-        paramIter[0] = 0.0;
-        paramIter[1] = 0.0;
+    static void writeIter(double * iter, Value const & value) {
+        iter[0] = 0.0;
+        iter[1] = 0.0;
     }
     static void printValue(std::ostream & os, Value const & value) { os << value; }
 
     static Bounds getDefaultBounds() { return Bounds(5.0); }
+
 };
 
 template <>
-struct ParameterElementTraits<RADIUS> {
+struct SharedElementTraits<RADIUS> {
 
     typedef Radius Value;
     typedef MinMaxConstraint Bounds;
     static int const SIZE = 1;
 
-    static void readParameters(double const * paramIter, Value & value) {
-        value = paramIter[0];
+    static void readIter(double const * iter, Value & value) {
+        value = iter[0];
     }
-    static void writeParameters(double * paramIter, Value const & value) {
-        paramIter[0] = value;
+    static void writeIter(double * iter, Value const & value) {
+        iter[0] = value;
     }
     static void printValue(std::ostream & os, Value const & value) { os << (double)value; }
 
-    static Bounds getDefaultBounds() {
-        return Bounds(std::numeric_limits<double>::epsilon(), std::numeric_limits<double>::infinity());
-    }
+    static Bounds getDefaultBounds() { return Bounds(); }
 };
 
 template <>
-struct ParameterElementTraits<ELLIPTICITY> {
+struct SharedElementTraits<ELLIPTICITY> {
 
     typedef Ellipticity Value;
     typedef CircleConstraint Bounds;
     static int const SIZE = 2;
 
-    static void readParameters(double const * paramIter, Value & value) {
-        value.setE1(paramIter[0]);
-        value.setE2(paramIter[1]);
+    static void readIter(double const * iter, Value & value) {
+        value.setE1(iter[0]);
+        value.setE2(iter[1]);
     }
-    static void writeParameters(double * paramIter, Value const & value) {
-        paramIter[0] = value.getE1();
-        paramIter[1] = value.getE2();
+    static void writeIter(double * iter, Value const & value) {
+        iter[0] = value.getE1();
+        iter[1] = value.getE2();
     }
     static void printValue(std::ostream & os, Value const & value) { os << value.getComplex(); }
 
@@ -168,21 +167,39 @@ struct ParameterElementTraits<ELLIPTICITY> {
     }
 };
 
-template <ParameterType E>
-class ParameterElementBase {
+template <>
+struct SharedElementTraits<FLUX> {
+
+    typedef double Value;
+    typedef MinMaxConstraint Bounds;
+    static int const SIZE = 1;
+
+    static void readIter(double const * iter, Value & value) {
+        value = *iter;
+    }
+    static void writeIter(double * iter, Value const & value) {
+        *iter = value;
+    }
+    static void printValue(std::ostream & os, Value const & value) { os << value; }
+
+    static Bounds getDefaultBounds() { return Bounds(); }
+};
+
+template <SharedType E>
+class SharedElementBase {
 public:
 
-    typedef typename detail::ParameterElementTraits<E>::Value Value;
-    typedef typename detail::ParameterElementTraits<E>::Bounds Bounds;
-    static int const SIZE = detail::ParameterElementTraits<E>::SIZE;
+    typedef typename detail::SharedElementTraits<E>::Value Value;
+    typedef typename detail::SharedElementTraits<E>::Bounds Bounds;
+    static int const SIZE = detail::SharedElementTraits<E>::SIZE;
 
     /**
-     *  @brief True if the position is allowed to vary during fitting.
+     *  @brief True if the parameter is allowed to vary during fitting.
      */
     bool const isActive() const { return _active; }
 
     /**
-     *  @brief Return the value of the ParameterElement.
+     *  @brief Return the value of the SharedElement.
      *
      *  For most parameters, this is the same as the values in the initial parameter vector.
      *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
@@ -193,11 +210,11 @@ public:
 
 protected:
 
-    explicit ParameterElementBase(Value const & value, Bounds const & bounds, bool active) :
+    explicit SharedElementBase(Value const & value, Bounds const & bounds, bool active) :
         _active(active), _value(value), _bounds(bounds)
     {}
 
-    ParameterElementBase(ParameterElementBase const & other) :
+    SharedElementBase(SharedElementBase const & other) :
         _active(other._active), _value(other._value), _bounds(other._bounds)
     {}
 
@@ -210,14 +227,14 @@ protected:
 
 namespace definition {
 
-template <ParameterType E>
-class ParameterElement : public detail::ParameterElementBase<E> {
+template <SharedElementType E>
+class SharedElement : public detail::SharedElementBase<E> {
 public:
     
-    typedef boost::shared_ptr< ParameterElement<E> > Ptr;
-    typedef boost::shared_ptr< ParameterElement<E> const > ConstPtr;
-    typedef typename detail::ParameterElementTraits<E>::Value Value;
-    typedef typename detail::ParameterElementTraits<E>::Bounds Bounds;
+    typedef boost::shared_ptr< SharedElement<E> > Ptr;
+    typedef boost::shared_ptr< SharedElement<E> const > ConstPtr;
+    typedef typename detail::SharedElementTraits<E>::Value Value;
+    typedef typename detail::SharedElementTraits<E>::Bounds Bounds;
 
 #ifndef SWIG // these are wrapped explicitly; SWIG is confused by the typedefs and "bool &"
 
@@ -231,7 +248,7 @@ public:
     
     //@{
     /**
-     *  @brief Return and/or set the value of the ParameterElement.
+     *  @brief Return and/or set the value of the SharedElement.
      *
      *  For most parameters, this is the same as the values in the initial parameter vector.
      *  For POSITION, the parameter vector contains a pair of (x,y) offsets from this value.
@@ -242,64 +259,64 @@ public:
     
     //@{
     /**
-     *  @brief Return and/or set the bounds of the ParameterElement.
+     *  @brief Return and/or set the bounds of the SharedElement.
      */
     Bounds & getBounds() { return this->_bounds; }
     void setBounds(Bounds const & bounds) { this->_bounds = bounds; }
     //@}
 
     // Use const accessors from base class.
-    using detail::ParameterElementBase<E>::getValue;
-    using detail::ParameterElementBase<E>::getBounds;
-    using detail::ParameterElementBase<E>::isActive;
+    using detail::SharedElementBase<E>::getValue;
+    using detail::SharedElementBase<E>::getBounds;
+    using detail::SharedElementBase<E>::isActive;
 
     /**
      *  @brief Deep-copy.
      *
      *  @note Not called clone() because it's not virtual, and it doesn't need to be.
      */
-    Ptr copy() const { return Ptr(new ParameterElement(*this)); }
+    Ptr copy() const { return Ptr(new SharedElement(*this)); }
 
     /**
-     *  @brief Create a new ParameterElement.
+     *  @brief Create a new SharedElement.
      *
      *  Constructors are private to ensure we only get shared_ptrs to these things.
      */
     static Ptr make(Value const & value, bool active=true) {
         return Ptr(
-            new ParameterElement(
-                value, detail::ParameterElementTraits<E>::getDefaultBounds(), active
+            new SharedElement(
+                value, detail::SharedElementTraits<E>::getDefaultBounds(), active
             )
         );
     }
 
     /**
-     *  @brief Create a new ParameterElement.
+     *  @brief Create a new SharedElement.
      *
      *  Constructors are private to ensure we only get shared_ptrs to these things.
      */
     static Ptr make(Value const & value, Bounds const & bounds, bool active=true) {
-        return Ptr(new ParameterElement(value, bounds, active));
+        return Ptr(new SharedElement(value, bounds, active));
     }
 
 #endif
 
 private:
 
-    ParameterElement(ParameterElement const & other) : detail::ParameterElementBase<E>(*this) {}
+    SharedElement(SharedElement const & other) : detail::SharedElementBase<E>(other) {}
 
-    explicit ParameterElement(Value const & value, Bounds const & bounds, bool active) : 
-        detail::ParameterElementBase<E>(value, bounds, active) {}
+    explicit SharedElement(Value const & value, Bounds const & bounds, bool active) : 
+        detail::SharedElementBase<E>(value, bounds, active) {}
 
 };
 
-typedef ParameterElement<POSITION> PositionElement;
-typedef ParameterElement<RADIUS> RadiusElement;
-typedef ParameterElement<ELLIPTICITY> EllipticityElement;
+typedef SharedElement<POSITION> PositionElement;
+typedef SharedElement<RADIUS> RadiusElement;
+typedef SharedElement<ELLIPTICITY> EllipticityElement;
 
 #ifndef SWIG
-template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterElement<E> const & component);
+template <SharedElementType E>
+std::ostream & operator<<(std::ostream & os, SharedElement<E> const & component);
 #endif
 
 }}}} // namespace lsst::meas::multifit::definition

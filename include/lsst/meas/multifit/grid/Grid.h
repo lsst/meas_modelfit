@@ -42,8 +42,8 @@ public:
     typedef grid::Frame Frame;
     typedef grid::SourceComponent SourceComponent;
 
-    typedef grid::Array<ObjectComponent> ObjectComponentArray;
     typedef grid::Array<Frame> FrameArray;
+    typedef grid::Array<ObjectComponent> ObjectComponentArray;
     typedef grid::Array<SourceComponent> SourceComponentArray;
 
     typedef grid::ElementArray<POSITION> PositionArray;
@@ -52,19 +52,14 @@ public:
 
     Definition makeDefinition() const;
 
-    Definition makeDefinition(double const * paramIter) const;
+    Definition makeDefinition(lsst::ndarray::Array<double const,1,1> const & parameters) const;
 
-#ifndef SWIG
-    void writeParameters(double * paramIter) const;
-#endif
-    void writeParameters(lsst::ndarray::Array<double, 1, 1> const & params) const {
-        writeParameters(params.getData());
-    }
+    void writeParameters(lsst::ndarray::Array<double,1,1> const & parameters) const;
 
     int const getFilterIndex(FilterId filterId) const;
 
     /// @brief Return true if all parameters are in-bounds.
-    bool checkBounds(double const * paramIter) const;
+    bool checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const;
 
     /**
      *  @brief Clip any out-of-bounds parameters to the bounds and return a positive number
@@ -73,7 +68,7 @@ public:
      *  The returned value has no well-defined units and may penalize some parameter types
      *  more than others.  The return value will be zero when no clipping is necessary.
      */
-    double clipToBounds(double * paramIter) const;
+    Pixel clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const;
 
     ~Grid();
 
@@ -92,12 +87,11 @@ public:
 
     int const getFilterCount() const { return _filterCount; }
     int const getCoefficientCount() const { return _coefficientCount; }
+    int const getFluxCoefficientCount() const { return _fluxCoefficientCount; }
+    int const getMorphologyCoefficientCount() const { return _morphologyCoefficientCount; }
     int const getPixelCount() const { return _pixelCount; }
     int const getParameterCount() const { return _parameterCount; }
-    int const getConstraintCount() const { return _constraintVector.getSize<0>(); }
-
-    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
-    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
+    int const getConstraintCount() const { return _constraintCount; }
 
     CONST_PTR(Wcs) const getWcs() const { return _wcs; }
 
@@ -123,11 +117,11 @@ private:
 
     int _filterCount;
     int _coefficientCount;
+    int _fluxCoefficientCount;
+    int _morphologyCoefficientCount;
     int _pixelCount;
     int _parameterCount;
-    
-    ndarray::Array<Pixel,2,2> _constraintMatrix;
-    ndarray::Array<Pixel,1,1> _constraintVector;
+    int _constraintCount;
 
     boost::scoped_array<char> _objectData;
     boost::scoped_array<char> _frameData;

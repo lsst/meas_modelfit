@@ -33,56 +33,40 @@
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
-template <ParameterType E>
-class ParameterElement : public detail::ParameterElementBase<E>, private boost::noncopyable {
+template <SharedElementType E>
+class SharedElement : public detail::SharedElementBase<E>, private boost::noncopyable {
 public:
     
     // No ConstPtr typedef to make it clear that this class is strictly immutable.
-    typedef boost::shared_ptr< ParameterElement<E> > Ptr;
-    typedef typename detail::ParameterElementTraits<E>::Value Value;
+    typedef boost::shared_ptr< SharedElement<E> > Ptr;
+    typedef typename detail::SharedElementTraits<E>::Value Value;
 
     int const offset;
-
-#ifndef SWIG
-    /// Return true if the parameters are in-bounds.
-    bool checkBounds(double const * parameters) const {
-        return this->getBounds().checkBounds(parameters + offset);
-    }
-
-    /**
-     *  If the parameters are out of bounds, move them to the boundary and return
-     *  a positive value that increases as the necessary parameter change increases.
-     *  Return 0.0 if the parameters are already in-bounds
-     */
-    double clipToBounds(double * parameters) const {
-        return this->getBounds().clipToBounds(parameters + offset);
-    }
-#endif
 
 private:
 
     friend class Initializer;
 
-    ParameterElement(definition::ParameterElement<E> const & definition, int offset_) : 
-        detail::ParameterElementBase<E>(definition), offset(offset_) {}
+    SharedElement(definition::SharedElement<E> const & definition, int offset_) : 
+        detail::SharedElementBase<E>(definition), offset(offset_) {}
 
 };
 
 
-typedef ParameterElement<POSITION> PositionElement;
-typedef ParameterElement<RADIUS> RadiusElement;
-typedef ParameterElement<ELLIPTICITY> EllipticityElement;
+typedef SharedElement<POSITION> PositionElement;
+typedef SharedElement<RADIUS> RadiusElement;
+typedef SharedElement<ELLIPTICITY> EllipticityElement;
 
 #ifndef SWIG
 
-template <ParameterType E>
+template <SharedElementType E>
 class ElementArray {
-    typedef typename ParameterElement<E>::Ptr Ptr;
+    typedef boost::shared_ptr< SharedElement<T> > Ptr;
     typedef std::vector<Ptr> PtrVec;
     typedef typename PtrVec::const_iterator PtrIter;
 public:
 
-    typedef ParameterElement<E> value_type;
+    typedef SharedElement<T> value_type;
     typedef Ptr pointer;
     typedef value_type const & reference;
     typedef reference const_reference;
@@ -108,8 +92,8 @@ private:
 
 };
 
-template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterElement<E> const & component);
+template <SharedElementType E>
+std::ostream & operator<<(std::ostream & os, SharedElement<E> const & component);
 
 #endif
 

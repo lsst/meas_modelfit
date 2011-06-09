@@ -27,18 +27,18 @@ FrameBase::FrameBase(FrameBase const & other, bool deep) :
 
 namespace definition {
 
-template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterElement<E> const & component) {
+template <SharedElementType E>
+std::ostream & operator<<(std::ostream & os, SharedElement<E> const & element) {
     static char const * names[] = { "Position", "Radius", "Ellipticity" };
-    os << names[E] << " (@" << (&component) << ") = ";
-    detail::ParameterElementTraits<E>::printValue(os, component.getValue());
-    return os << (component.isActive() ? " (active) " : " (inactive) ") 
-              << "(" << component.getBounds() << ")";
+    os << names[E] << " (@" << (&element) << ") = ";
+    detail::SharedElementTraits<E>::printValue(os, element.getValue());
+    return os << (element.isActive() ? " (active) " : " (inactive) ") 
+              << "(" << element.getBounds() << ")";
 }
 
-template std::ostream & operator<<(std::ostream &, ParameterElement<POSITION> const &);
-template std::ostream & operator<<(std::ostream &, ParameterElement<RADIUS> const &);
-template std::ostream & operator<<(std::ostream &, ParameterElement<ELLIPTICITY> const &);
+template std::ostream & operator<<(std::ostream &, SharedElement<POSITION> const &);
+template std::ostream & operator<<(std::ostream &, SharedElement<RADIUS> const &);
+template std::ostream & operator<<(std::ostream &, SharedElement<ELLIPTICITY> const &);
 
 ObjectComponent ObjectComponent::makeStar(
     ID const id, 
@@ -47,8 +47,8 @@ ObjectComponent ObjectComponent::makeStar(
     bool const isPositionActive
 ) {
     ObjectComponent r(id);
-    r.getPosition() = PositionElement::make(position, isPositionActive);
-    r.isVariable() = isVariable;    
+    r.getPositionElement() = PositionElement::make(position, isPositionActive);
+    r.isVariable() = isVariable;
     return r;
 }
 
@@ -62,9 +62,9 @@ ObjectComponent ObjectComponent::makeGalaxy(
 ) {
     ObjectComponent r(id);
     EllipseCore core(ellipse.getCore());
-    r.getPosition() = PositionElement::make(ellipse.getCenter(), isPositionActive);
-    r.getEllipticity() = EllipticityElement::make(core.getEllipticity(), isEllipticityActive);
-    r.getRadius() = RadiusElement::make(core.getRadius(), isRadiusActive);
+    r.getPositionElement() = PositionElement::make(ellipse.getCenter(), isPositionActive);
+    r.getEllipticityElement() = EllipticityElement::make(core.getEllipticity(), isEllipticityActive);
+    r.getRadiusElement() = RadiusElement::make(core.getRadius(), isRadiusActive);
     r.getBasis() = basis;
     return r;
 }
@@ -72,9 +72,10 @@ ObjectComponent ObjectComponent::makeGalaxy(
 std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj) {
     os << "ObjectComponent " << obj.id << "(@" << (&obj) << ") = {"
        << (obj.isVariable() ? "variable" : "nonvariable") << ", Rx" << obj.getRadiusFactor() << "}:\n";
-    if (obj.getPosition()) os << "    " << (*obj.getPosition()) << "\n";
-    if (obj.getRadius()) os << "    " << (*obj.getRadius()) << " x " << obj.getRadiusFactor() << "\n";
-    if (obj.getEllipticity()) os << "    " << (*obj.getEllipticity()) << "\n";
+    if (obj.getPositionElement()) os << "    " << (*obj.getPositionElement()) << "\n";
+    if (obj.getRadiusElement()) 
+        os << "    " << (*obj.getRadiusElement()) << " x " << obj.getRadiusFactor() << "\n";
+    if (obj.getEllipticityElement()) os << "    " << (*obj.getEllipticityElement()) << "\n";
     return os;
 }
 
@@ -87,7 +88,7 @@ Frame Frame::make(
 ) {
     typedef Pixel Pixel;
     typedef lsst::afw::image::MaskedImage<PixelT> MaskedImage;
-    
+
     Footprint::Ptr maskedFp(new Footprint(*fp));
     maskedFp->intersectMask(*exposure.getMaskedImage().getMask(), bitmask);
 

@@ -76,15 +76,19 @@ namespace definition {
 /**
  *  @brief An astronomical object in a multifit definition.
  *
- *  An ObjectComponent will typically represent a point source or elliptical source.  For the former, the
- *  radius, ellipticity, and basis pointers will be empty, while they will all be non-empty for the latter.
+ *  An ObjectComponent will typically represent a point source or elliptical
+ *  source.  For the former, the radius, ellipticity, and basis pointers will be
+ *  empty, while they will all be non-empty for the latter.
  *
- *  Most of the accessors of object return by non-const reference, reflecting that ObjectComponent is essentially
- *  a struct that is validated only when a Grid is constructed from the Definition.  We have used accessors
- *  rather than public data members so the interface is similar to that of grid::ObjectComponent, which behaves
- *  like a const version of definition::ObjectComponent.
+ *  Most of the accessors of object return by non-const reference, reflecting
+ *  that ObjectComponent is essentially a struct that is validated only when a
+ *  Grid is constructed from the Definition.  We have used accessors rather than
+ *  public data members so the interface is similar to that of
+ *  grid::ObjectComponent, which behaves like a const version of
+ *  definition::ObjectComponent.
  *
- *  In Python, accessors of ObjectComponent will be wrapped both with "get/set" methods and as Python properties.
+ *  In Python, accessors of ObjectComponent will be wrapped both with "get/set"
+ *  methods and as Python properties.
  */
 class ObjectComponent : public detail::ObjectComponentBase {
 public:
@@ -92,8 +96,8 @@ public:
     explicit ObjectComponent(ID id_) : detail::ObjectComponentBase(id_, 1.0, false) {}
 
     ObjectComponent(ObjectComponent const & other) :
-        detail::ObjectComponentBase(other),
-        _position(other._position), _radius(other._radius), _ellipticity(other._ellipticity)
+        detail::ObjectComponentBase(other), _position(other._position), _radius(other._radius), 
+        _ellipticity(other._ellipticity), _flux(other._flux)
     {}
 
     static ObjectComponent makeStar(
@@ -117,24 +121,24 @@ public:
      *  @brief Return and/or set the parameter components.
      */
 #ifndef SWIG
-    PositionElement::Ptr & getPosition() { return _position; }
-    RadiusElement::Ptr & getRadius() { return _radius; }
-    EllipticityElement::Ptr & getEllipticity() { return _ellipticity; }
+    PositionElement::Ptr & getPositionElement() { return _position; }
+    RadiusElement::Ptr & getRadiusElement() { return _radius; }
+    EllipticityElement::Ptr & getEllipticityElement() { return _ellipticity; }
 
-    PositionElement::Ptr const getPosition() const { return _position; }
-    RadiusElement::Ptr const getRadius() const { return _radius; }
-    EllipticityElement::Ptr const getEllipticity() const { return _ellipticity; }
+    PositionElement::Ptr const getPositionElement() const { return _position; }
+    RadiusElement::Ptr const getRadiusElement() const { return _radius; }
+    EllipticityElement::Ptr const getEllipticityElement() const { return _ellipticity; }
 
-    template <ParameterType E>
-    typename ParameterElement<E>::Ptr & getElement() {
-        typename ParameterElement<E>::Ptr const * p;
+    template <SharedElementType E>
+    typename SharedElement<E>::Ptr & getElement() {
+        typename SharedElement<E>::Ptr const * p;
         getElementImpl(p);
-        return const_cast<typename ParameterElement<E>::Ptr &>(*p);
+        return const_cast<typename SharedElement<E>::Ptr &>(*p);
     }
 
-    template <ParameterType E>
-    typename ParameterElement<E>::Ptr const getElement() const {
-        typename ParameterElement<E>::Ptr const * p;
+    template <SharedElementType E>
+    typename SharedElement<E>::Ptr const getElement() const {
+        typename SharedElement<E>::Ptr const * p;
         getElementImpl(p);
         return *p;
     }
@@ -151,7 +155,6 @@ public:
      *         in each exposure).
      */
     bool & isVariable() { return _variable; };
-
 #endif
 
     using detail::ObjectComponentBase::getBasis;
@@ -172,9 +175,11 @@ public:
 
 private:
 
+    friend class grid::Grid;
     friend class grid::Initializer;
 
-    explicit ObjectComponent(detail::ObjectComponentBase const & other) : detail::ObjectComponentBase(other) {}
+    explicit ObjectComponent(detail::ObjectComponentBase const & other) : 
+        detail::ObjectComponentBase(other) {}
 
     void getElementImpl(PositionElement::Ptr const * & p) const { p = &_position; }
     void getElementImpl(RadiusElement::Ptr const * & p) const { p = &_radius; }

@@ -172,7 +172,7 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
     );
     if (addPointSource) {
         def.objects.insert(definition::ObjectComponent(1));
-        def.objects[1].getPosition() = def.objects[0].getPosition();
+        def.objects[1].getPositionElement() = def.objects[0].getPositionElement();
     }
     Evaluator::Ptr evaluator = Evaluator::make(def);
 #if 0 // TODO

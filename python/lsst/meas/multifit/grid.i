@@ -31,9 +31,8 @@
 SWIG_SHARED_PTR(grid_PositionElementPtr, lsst::meas::multifit::grid::ParameterElement<lsst::meas::multifit::POSITION>);
 SWIG_SHARED_PTR(grid_RadiusElementPtr, lsst::meas::multifit::grid::ParameterElement<lsst::meas::multifit::RADIUS>);
 SWIG_SHARED_PTR(grid_EllipticityElementPtr, lsst::meas::multifit::grid::ParameterElement<lsst::meas::multifit::ELLIPTICITY>);
-
-%define %AddElementAccessors(TITLE, LOWER, UPPER)
-%enddef
+SWIG_SHARED_PTR(grid_FluxElementPtr, lsst::meas::multifit::grid::FluxParameterElement);
+%rename(grid_FluxElement) lsst::meas::multifit::grid::FluxElement;
 
 %define %DeclareGridParameterElement(TITLE, LOWER, UPPER, CONSTRAINT)
 %template(grid_##TITLE##Element)
@@ -49,8 +48,8 @@ lsst::meas::multifit::grid::ParameterElement<lsst::meas::multifit::UPPER>;
     }
 }
 %extend lsst::meas::multifit::grid::ObjectComponent {
-    boost::shared_ptr< lsst::meas::multifit::grid::ParameterElement< lsst::meas::multifit::UPPER > > get ## TITLE() {
-        return self->get##TITLE();
+    boost::shared_ptr< lsst::meas::multifit::grid::ParameterElement< lsst::meas::multifit::UPPER > > get##TITLE##Element() {
+        return self->get##TITLE##Element();
     }
 }
 %enddef
@@ -110,6 +109,17 @@ SWIG_SHARED_PTR_DERIVED(grid_ObjectComponentPtr, lsst::meas::multifit::detail::O
 %DeclareGridParameterElement(Position, position, POSITION, detail::CircleConstraint);
 %DeclareGridParameterElement(Radius, radius, RADIUS, detail::MinMaxConstraint);
 %DeclareGridParameterElement(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
+
+%PointerEQ(lsst::meas::multifit::grid::FluxElement)
+%AddStreamRepr(lsst::meas::multifit::grid::FluxElement)
+%extend lsst::meas::multifit::grid::FluxElement {
+    double getValue() { return self->getValue(); }
+}
+%extend lsst::meas::multifit::grid::ObjectComponent {
+    boost::shared_ptr< lsst::meas::multifit::grid::FluxElement > getFluxElement() {
+        return self->getFluxElement();
+    }
+}
 
 %PointerEQ(lsst::meas::multifit::grid::ObjectComponent)
 %AddStreamRepr(lsst::meas::multifit::grid::ObjectComponent)

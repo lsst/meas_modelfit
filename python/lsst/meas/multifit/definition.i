@@ -60,9 +60,8 @@
 SWIG_SHARED_PTR(definition_PositionElementPtr, lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::POSITION>);
 SWIG_SHARED_PTR(definition_RadiusElementPtr, lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::RADIUS>);
 SWIG_SHARED_PTR(definition_EllipticityElementPtr, lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::ELLIPTICITY>);
-
-%define %AddElementAccessors(TITLE, LOWER, UPPER)
-%enddef
+SWIG_SHARED_PTR(definition_FluxElementPtr, lsst::meas::multifit::definition::FluxElement);
+%rename(definition_FluxElement) lsst::meas::multifit::definition::FluxElement;
 
 %define %DeclareDefinitionParameterElement(TITLE, LOWER, UPPER, CONSTRAINT)
 %template(definition_##TITLE##Element)
@@ -75,6 +74,15 @@ lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::UPPER>;
     > make(lsst::meas::multifit::TITLE const & value, bool active=true) {
         return lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER >::make(
             value, active
+        );
+    }
+    static boost::shared_ptr< 
+        lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER >
+    > make(lsst::meas::multifit::TITLE const & value, lsst::meas::multifit::CONSTRAINT const & bounds, 
+           bool active=true
+    ) {
+        return lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER >::make(
+            value, bounds, active
         );
     }
     lsst::meas::multifit::TITLE & getValue() {
@@ -96,22 +104,21 @@ lsst::meas::multifit::definition::ParameterElement<lsst::meas::multifit::UPPER>;
         self->isActive() = active;
     }
 }
-%extend lsst::meas::multifit::definition::Object {
-    boost::shared_ptr< lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER > > get ## TITLE() {
-        return self->get##TITLE();
+%extend lsst::meas::multifit::definition::ObjectComponent {
+    boost::shared_ptr< lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER > > get##TITLE##Element() {
+        return self->get##TITLE##Element();
     }
-    void set ## TITLE(boost::shared_ptr< lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER > > value) {
-        self->get ## TITLE() = value;
+    void set##TITLE##Element(boost::shared_ptr< lsst::meas::multifit::definition::ParameterElement< lsst::meas::multifit::UPPER > > value) {
+        self->get##TITLE##Element() = value;
     }
 }
 %enddef
-
 %rename(detail_CircleConstraint) lsst::meas::multifit::detail::CircleConstraint;
 %rename(detail_MinMaxConstraint) lsst::meas::multifit::detail::MinMaxConstraint;
 
 %include "lsst/meas/multifit/definition/elements.h"
 
-//------------------------------------- Object ---------------------------------------
+//------------------------------------- ObjectComponent ---------------------------------------
 
 %{
 #include "lsst/meas/multifit/definition/ObjectComponent.h"
@@ -127,6 +134,37 @@ SWIG_SHARED_PTR_DERIVED(definition_ObjectComponentPtr, lsst::meas::multifit::det
 %DeclareDefinitionParameterElement(Position, position, POSITION, detail::CircleConstraint);
 %DeclareDefinitionParameterElement(Radius, radius, RADIUS, detail::MinMaxConstraint);
 %DeclareDefinitionParameterElement(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
+
+%PointerEQ(lsst::meas::multifit::definition::FluxElement)
+%AddStreamRepr(lsst::meas::multifit::definition::FluxElement)
+%extend lsst::meas::multifit::definition::FluxElement {
+    static boost::shared_ptr<lsst::meas::multifit::definition::FluxElement> make() {
+        return lsst::meas::multifit::definition::FluxElement::make();
+    }
+    static boost::shared_ptr<lsst::meas::multifit::definition::FluxElement> make(double value) {
+        return lsst::meas::multifit::definition::FluxElement::make(value);
+    }
+    static boost::shared_ptr<lsst::meas::multifit::definition::FluxElement> make(
+        double value, lsst::meas::multifit::detail::MinMaxConstraint const & bounds
+    ) {
+        return lsst::meas::multifit::definition::FluxElement::make(value, bounds);
+    }
+    double getValue() { return self->getValue(); }
+    void setValue(double value) { self->getValue() = value; }
+
+    lsst::meas::multifit::detail::MinMaxConstraint & getBounds() { return self->getBounds(); }
+    void setBounds(lsst::meas::multifit::detail::MinMaxConstraint const & bounds) {
+        self->getBounds() = bounds;
+    }
+}
+%extend lsst::meas::multifit::definition::ObjectComponent {
+    boost::shared_ptr<lsst::meas::multifit::definition::FluxElement> getFluxElement() {
+        return self->getFluxElement();
+    }
+    void setFluxElement(boost::shared_ptr<lsst::meas::multifit::definition::FluxElement> value) {
+        self->getFluxElement() = value;
+    }
+}
 
 %PointerEQ(lsst::meas::multifit::definition::ObjectComponent)
 %AddStreamRepr(lsst::meas::multifit::definition::ObjectComponent)

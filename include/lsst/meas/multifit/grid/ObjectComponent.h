@@ -57,13 +57,13 @@ public:
 #ifndef SWIG
     //@{
     /// @brief Return the parameter components.
-    PositionElement::Ptr const getPosition() const { return _position; }
-    RadiusElement::Ptr const getRadius() const { return _radius; }
-    EllipticityElement::Ptr const getEllipticity() const { return _ellipticity; }
+    PositionElement::Ptr const getPositionElement() const { return _position; }
+    RadiusElement::Ptr const getRadiusElement() const { return _radius; }
+    EllipticityElement::Ptr const getEllipticityElement() const { return _ellipticity; }
 
-    template <ParameterType E>
-    typename ParameterElement<E>::Ptr const getElement() const {
-        typename ParameterElement<E>::Ptr const * p;
+    template <SharedElementType E>
+    typename SharedElement<E>::Ptr const getElement() const {
+        typename SharedElement<E>::Ptr const * p;
         getElementImpl(p);
         return *p;
     }
@@ -73,14 +73,17 @@ public:
     void requireEllipse() const;
 
     /// @brief Construct the point corresponding to this object from a parameter vector.
-    lsst::afw::geom::Point2D makePoint(double const * paramIter) const;
+    lsst::afw::geom::Point2D makePoint(lsst::ndarray::Array<double const,1,1> const & parameters) const;
 
     /**
      *  @brief Fill the elements of a parameter vector with values from the given point.
      *
      *  If the position component of the object is inactive, no action is taken.
      */
-    void readPoint(double * paramIter, lsst::afw::geom::Point2D const & point) const;
+    void readPoint(
+        lsst::ndarray::Array<double,1,1> const & parameters,
+        lsst::afw::geom::Point2D const & point
+    ) const;
 
     /**
      *  @brief Given a symmetric matrix corresponding to a full parameter vector, extract
@@ -117,10 +120,15 @@ public:
     }
 
     /// @brief Construct the ellipse corresponding to this object from a parameter vector.
-    lsst::afw::geom::ellipses::Ellipse makeEllipse(double const * paramIter) const;
+    lsst::afw::geom::ellipses::Ellipse makeEllipse(
+        lsst::ndarray::Array<double const,1,1> const & parameters
+    ) const;
 
     /// @brief Fill the elements of a parameter vector with values from the given ellipse.
-    void readEllipse(double * paramIter, lsst::afw::geom::ellipses::Ellipse const & ellipse) const;
+    void readEllipse(
+        lsst::ndarray::Array<double> const & parameters,
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
+    ) const;
 
     /**
      *  @brief Given a symmetric matrix corresponding to a full parameter vector, extract
@@ -156,7 +164,9 @@ private:
 
     friend class grid::Initializer;
 
-    ObjectComponent(definition::ObjectComponent const & def, int coefficientOffset, int filterCount, int frameCount);
+    ObjectComponent(
+        definition::ObjectComponent const & def, int coefficientOffset, int filterCount, int frameCount
+    );
 
     void validate() const;
 
@@ -175,7 +185,7 @@ private:
 std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj);
 
 inline afw::geom::Point2D const SourceComponent::getReferencePoint() const {
-    return _transform(object.getPosition()->getValue());
+    return _transform(object.getPositionElement()->getValue());
 }
 
 inline int const SourceComponent::getCoefficientOffset() const {

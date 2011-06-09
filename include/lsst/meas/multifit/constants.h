@@ -34,6 +34,7 @@
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/detection/Source.h"
 #include "lsst/pex/exceptions.h"
+#include "lsst/ndarray_fwd.h"
 
 #ifndef SWIG
 
@@ -76,10 +77,10 @@ inline void checkSize(int actualSize, int expectedSize, char const * message) {
 typedef boost::int64_t ID;
 typedef int FilterId;
 
-enum ParameterType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
+enum SharedElementType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
 
 /**
- *  These set the what parameters are used to define an ellipse throughout the package,
+ *  These set what parameters are used to define an ellipse throughout the package,
  *  but they can't just be changed here: the implementations of the ParameterElement,
  *  grid::ObjectComponent, and SimpleDistribution assume the types here in setting bounds and
  *  converting between parameter vectors and covariance matrices and ellipses.
@@ -102,7 +103,6 @@ typedef lsst::afw::detection::LocalPsf LocalPsf;
 typedef lsst::afw::detection::Footprint Footprint;
 
 typedef LocalPsf::Pixel Pixel;
-//typedef lsst::afw::image::Exposure<lsst::meas::multifit::Pixel> Exposure;
 
 LSST_EXCEPTION_TYPE(InvalidDefinitionError,
                     lsst::pex::exceptions::InvalidParameterException,
@@ -114,7 +114,8 @@ LSST_EXCEPTION_TYPE(DerivativeNotImplementedError,
 
 namespace definition {
 
-template <ParameterType E> class ParameterElement;
+template <SharedElementType E> class SharedElement;
+class FluxElement;
 class ObjectComponent;
 class Frame;
 class Definition;
@@ -123,10 +124,10 @@ class Definition;
 
 namespace grid {
 
-template <ParameterType E> class ParameterElement;
+template <SharedElementType E> class SharedElement;
 class ObjectComponent;
-class Frame;
 class SourceComponent;
+class Frame;
 class Grid;
 class Initializer;
 
