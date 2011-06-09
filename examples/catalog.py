@@ -6,6 +6,12 @@ import lsst.meas.algorithms
 import lsst.daf.persistence
 import numpy
 import sys
+import logging
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 FLUX_SCHEMA = lsst.afw.detection.Schema("Flux", 0, lsst.afw.detection.Schema.DOUBLE)
 FLUX_ERR_SCHEMA = lsst.afw.detection.Schema("FluxErr", 1, lsst.afw.detection.Schema.DOUBLE)
@@ -15,36 +21,50 @@ E2_SCHEMA = lsst.afw.detection.Schema("E2", 4, lsst.afw.detection.Schema.DOUBLE)
 RADIUS_SCHEMA = lsst.afw.detection.Schema("R", 5, lsst.afw.detection.Schema.DOUBLE)
 COEFF_SCHEMA = lsst.afw.detection.Schema("COEFFICIENTS", 6, lsst.afw.detection.Schema.DOUBLE)
 
-ID = 0
-PSF_FLUX = 1
-PSF_FLUX_ERR = 2
-X = 3
-Y = 4
-IXX = 5
-IYY = 6 
-IXY = 7
-FIT_STATUS = 8
-FIT_FLUX = 9
-FIT_FLUX_ERR = 10
-FIT_E1 = 11
-FIT_E2 = 12
-FIT_R = 13
-FIT_COEFF_START = 14
+fields = (("dataset", int),
+          ("id", numpy.int64),
+          ("psf_flux", float), 
+          ("psf_flux_err", float),
+          ("x", float),
+          ("y", float),
+          ("ixx", float),
+          ("iyy", float),
+          ("ixy", float),
+          ("status", numpy.int64),
+          ("flux", float),
+          ("flux_err", float),
+          ("e1", float),
+          ("e2", float),
+          ("r", float),
+          ("pixels", int),
+          )
+
 
 def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, fitDelta=True):
     bf = lsst.daf.persistence.ButlerFactory( \
-            mapper=lsst.meas.multifitData.DatasetMapper())
+        mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
-    algorithm = "SHAPELET_MODEL_%d"%basisSize
+    algorithm = "SHAPELET_MODEL_%d" % basisSize
     policy = lsst.pex.policy.Policy()
     policy.add(algorithm + ".enabled", True)
     policy.add(algorithm + ".fitDeltaFunction", fitDelta)
-   
-    nVals = 14 + basisSize
-    if(fitDelta):
-        nVals += 1
-    full = None
+    nCoeffs = basisSize
+    if fitDelta:
+        nCoeffs += 1
+    if basisSize == 2:
+        basis = lsst.meas.multifit.utils.loadBasis("ed+02:0000")
+    elif basisSize == 8:
+        basis = lsst.meas.multifit.utils.loadBasis("ed+06:2000")
+    elif basisSize == 17:
+        basis = lsst.meas.multifit.utils.loadBasis("ed+15:4000")
+    rawIntegral = numpy.zeros(nCoeffs, dtype=float)
+    basis.integrate(rawIntegral[:basisSize])
+    if fitDelta:
+        rawIntegral[-1] = 1.0
+    dtype = numpy.dtype(list(fields) + [("integral", float, nCoeffs), ("coeff", float, nCoeffs)])
+    tables = []
     for d in datasets:
+        logging.info("Processing dataset %d" % d)
         if not butler.datasetExists("src", id=d):
             continue
         psf = butler.get("psf", id=d)
@@ -63,49 +83,63 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, fitDelta=True):
         measurePhotometry.addAlgorithm(algorithm)
         measurePhotometry.configure(policy)
 
-
-
-        partial = numpy.zeros((len(sources), nVals), dtype=float)
+        table = numpy.zeros((len(sources)), dtype=dtype)
+        table["dataset"] = d
         for j, src in enumerate(sources):
-            partial[j, ID] = src.getId()
-            partial[j, PSF_FLUX] = src.getPsfFlux()
-            partial[j, PSF_FLUX_ERR] = src.getPsfFluxErr()
-            partial[j, X] = src.getXAstrom()
-            partial[j, Y] = src.getYAstrom()
-            partial[j, IXX] = src.getIxx()
-            partial[j, IYY] = src.getIyy()
-            partial[j, IXY] = src.getIxy()
-
+            logging.debug("Fitting source %d (%d/%d)" % (src.getId(), j+1, len(sources)))
+            record = table[j]
+            record["id"] = src.getId()
+            record["psf_flux"] = src.getPsfFlux()
+            record["psf_flux_err"] = src.getPsfFluxErr()
+            record["x"] = src.getXAstrom()
+            record["y"] = src.getYAstrom()
+            record["ixx"] = src.getIxx()
+            record["iyy"] = src.getIyy()
+            record["ixy"] = src.getIxy()
+            record["pixels"] = src.getFootprint().getArea()
             photom = measurePhotometry.measure(lsst.afw.detection.Peak(), src).find(algorithm)
-            partial[j,FIT_STATUS] = photom.get(STATUS_SCHEMA)
-            partial[j,FIT_FLUX] = photom.get(FLUX_SCHEMA)
-            partial[j,FIT_FLUX_ERR] = photom.get(FLUX_ERR_SCHEMA)
-            partial[j,FIT_E1] = photom.get(E1_SCHEMA)
-            partial[j,FIT_E2] = photom.get(E2_SCHEMA)
-            partial[j,FIT_R] = photom.get(RADIUS_SCHEMA)
-            
+            record["status"] = photom.get(STATUS_SCHEMA)
+            record["flux"] = photom.get(FLUX_SCHEMA)
+            record["flux_err"] = photom.get(FLUX_ERR_SCHEMA)
+            record["e1"] = photom.get(E1_SCHEMA)
+            record["e2"] = photom.get(E2_SCHEMA)
+            record["r"] = photom.get(RADIUS_SCHEMA)
+            ellipse = lsst.meas.multifit.EllipseCore(record["e1"], record["e2"], record["r"])
+            f = ellipse.getArea() / numpy.pi
+            record["integral"][:] = rawIntegral
+            record["integral"][:basisSize] *= f
             for i in range(basisSize):
-                partial[j, FIT_COEFF_START + i] = photom.get(i, COEFF_SCHEMA)
-        
-            if(fitDelta):
-                partial[j, FIT_COEFF_START + basisSize] = photom.get(basisSize, COEFF_SCHEMA)
+                record["coeff"][i] = photom.get(i, COEFF_SCHEMA)
+            if fitDelta:
+                record["coeff"][basisSize] = photom.get(basisSize, COEFF_SCHEMA)
+            altFlux = numpy.dot(record["integral"], record["coeff"])
+            if not numpy.allclose(altFlux, record["flux"]):
+                logging.warning("altFlux=%s, flux=%s" % (altFlux, record["flux"]))
+        tables.append(table)
 
-        if(full != None):
-            numpy.append(full, partial, 0)
-        else:
-            full = partial
+    return numpy.concatenate(tables)
 
-    return full
-
-def run():
-    full = fit();
-    if(len(sys.argv) > 1):
-        filename = sys.argv[1]
-    else filename = "catalog.pickle"
+def build(filename, *args, **kwds):
+    logging.basicConfig(level=logging.DEBUG)
+    full = fit(*args, **kwds)
     outfile = open(filename, 'wb')
-    pickle.dump(full, outfile)
+    pickle.dump(full, outfile, protocol=2)
     outfile.close()
 
-if __name__ == '__main__':
-    run()
+def load(filename, filter_status=True, filter_flux=True, dataset=None):
+    infile = open(filename, "rb")
+    table = pickle.load(infile)
+    if filter_status:
+        table = table[table["status"] == 0]
+    if filter_flux:
+        table = table[table["flux"] > 0]
+    if dataset is not None:
+        table = table[table["dataset"] == dataset]
+    return table
+
+def m_radius(table):
+    return (table["ixx"] + table["iyy"])**0.5
+
+def ellipticity(table):
+    return (table["e1"]**2 + table["e2"]**2)**0.5
 

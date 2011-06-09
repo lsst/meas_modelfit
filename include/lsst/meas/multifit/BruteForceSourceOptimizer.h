@@ -38,6 +38,7 @@ public:
 
     bool solve(Evaluator::Ptr const & evaluator, int n);
 
+    bool isBestSafe() const { return _bestIsSafe; }
     int getBestIndex() const { return _bestIndex; }
     double getBestObjectiveValue() const { return _objectiveValues[_bestIndex]; }
     lsst::ndarray::Array<double const,1,1> getBestParameters() const { return _parameters[_bestIndex]; }
@@ -48,6 +49,7 @@ public:
     lsst::ndarray::Array<double const,1,1> getObjectiveValues() const { return _objectiveValues; }
 
 private:
+    bool _bestIsSafe;
     int _bestIndex;
     lsst::ndarray::Array<double,2,2> _parameters;
     lsst::ndarray::Array<double,1,1> _objectiveValues;

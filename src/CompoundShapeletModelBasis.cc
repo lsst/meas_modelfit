@@ -119,6 +119,15 @@ Eigen::MatrixXd CompoundShapeletBase::computeInnerProductMatrix() const {
     return result;
 }
 
+void CompoundShapeletBase::integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+    vector.deep() = 0.0;
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        ndarray::Array<Pixel,1,1> front(ndarray::allocate(i->component->getSize()));
+        i->component->integrate(front);
+        ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->forward;
+    }
+}
+
 CompoundShapeletBase::Element::Element(
     ShapeletModelBasis::Ptr const & component_, 
     ndarray::Array<const Pixel,2,1> const & fullForward,
@@ -269,15 +278,6 @@ void CompoundShapeletModelBasis::_evaluate(
         ndarray::Array<Pixel,2,2> front(ndarray::allocate(footprint->getArea(), i->component->getSize()));
         i->component->evaluate(front, footprint, ellipse);
         ndarray::viewAsEigen(matrix) += ndarray::viewAsEigen(front) * i->forward;
-    }
-}
-
-void CompoundShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-    vector.deep() = 0.0;
-    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        ndarray::Array<Pixel,1,1> front(ndarray::allocate(i->component->getSize()));
-        i->component->integrate(front);
-        ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->forward;
     }
 }
 

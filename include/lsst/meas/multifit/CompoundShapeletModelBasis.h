@@ -49,6 +49,8 @@ public:
      */
     Eigen::MatrixXd computeInnerProductMatrix() const;
 
+    void integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+
 protected:
 
     typedef ndarray::EigenView<const Pixel,2,1> Matrix;
@@ -124,10 +126,16 @@ public:
     static Ptr load(std::string const & filename);
     void save(std::string const & filename);
 
+    void integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+        detail::CompoundShapeletBase::integrate(vector);
+    }
+
     virtual ~CompoundShapeletModelBasis() {}
 protected:
 
-    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+        detail::CompoundShapeletBase::integrate(vector);
+    }
 
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,

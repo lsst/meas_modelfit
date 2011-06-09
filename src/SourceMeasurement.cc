@@ -308,6 +308,9 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
         param = optimizer.getBestParameters();
         coeff = optimizer.getBestCoefficients();
         covar = optimizer.getCoefficientCovariance();
+        if (!optimizer.isBestSafe()) {
+            status |= UNSAFE_INVERSION;
+        }
     }
     else if (fitDeltaFunction) { 
         status |= GALAXY_MODEL_FAILED;

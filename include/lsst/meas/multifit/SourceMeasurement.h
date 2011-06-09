@@ -55,14 +55,15 @@ public:
     };
 
     enum {
-        NO_EXPOSURE=0x01, 
-        NO_PSF=0x02, 
-        NO_SOURCE=0x04, 
-        NO_BASIS=0x08,
-        NO_FOOTPRINT=0x10, 
-        BAD_INITIAL_MOMENTS=0x20, 
-        OPTIMIZER_FAILED=0x40,
-        GALAXY_MODEL_FAILED=0x80
+        NO_EXPOSURE=0x001, 
+        NO_PSF=0x002, 
+        NO_SOURCE=0x004, 
+        NO_BASIS=0x008,
+        NO_FOOTPRINT=0x010, 
+        BAD_INITIAL_MOMENTS=0x020, 
+        OPTIMIZER_FAILED=0x040,
+        GALAXY_MODEL_FAILED=0x080,
+        UNSAFE_INVERSION=0x100
     };
 
     virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
