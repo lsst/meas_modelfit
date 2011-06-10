@@ -246,11 +246,11 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
     CONST_PTR(afw::detection::Peak) peak,
     CONST_PTR(afw::detection::Source) source
 ) {
-    pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
-    log.debug(1, boost::format("Processing source %lld") % source->getSourceId());
     if (!source) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_SOURCE));
     }
+    pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
+    log.debug(1, boost::format("Processing source %lld") % source->getSourceId());
     if (!source->getFootprint()) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_FOOTPRINT));
     }
