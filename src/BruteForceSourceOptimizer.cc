@@ -77,9 +77,11 @@ bool BruteForceSourceOptimizer::solve(Evaluator::Ptr const & evaluator, int nTes
             _coefficientCovariance.deep() = evaluation.getCoefficientFisherMatrix();
         }
     }
-    Eigen::LDLT<Eigen::MatrixXd> ldlt(ndarray::viewAsTransposedEigen(_coefficientCovariance));
-    ndarray::viewAsTransposedEigen(_coefficientCovariance).setIdentity();
-    ldlt.solveInPlace(ndarray::viewAsTransposedEigen(_coefficientCovariance).setIdentity());
+    if (_bestIndex >= 0) {
+	Eigen::LDLT<Eigen::MatrixXd> ldlt(ndarray::viewAsTransposedEigen(_coefficientCovariance));
+	ndarray::viewAsTransposedEigen(_coefficientCovariance).setIdentity();
+	ldlt.solveInPlace(ndarray::viewAsTransposedEigen(_coefficientCovariance).setIdentity());
+    }
     return _bestIndex >= 0;
 }
 
