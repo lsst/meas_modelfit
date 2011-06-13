@@ -106,6 +106,8 @@ private:
     }
 };
 
+template <SharedElementType E> struct SharedElementTraits;
+
 template <>
 struct SharedElementTraits<POSITION> {
 
@@ -167,25 +169,7 @@ struct SharedElementTraits<ELLIPTICITY> {
     }
 };
 
-template <>
-struct SharedElementTraits<FLUX> {
-
-    typedef double Value;
-    typedef MinMaxConstraint Bounds;
-    static int const SIZE = 1;
-
-    static void readIter(double const * iter, Value & value) {
-        value = *iter;
-    }
-    static void writeIter(double * iter, Value const & value) {
-        *iter = value;
-    }
-    static void printValue(std::ostream & os, Value const & value) { os << value; }
-
-    static Bounds getDefaultBounds() { return Bounds(); }
-};
-
-template <SharedType E>
+template <SharedElementType E>
 class SharedElementBase {
 public:
 

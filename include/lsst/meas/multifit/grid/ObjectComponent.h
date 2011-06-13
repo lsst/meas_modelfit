@@ -126,7 +126,7 @@ public:
 
     /// @brief Fill the elements of a parameter vector with values from the given ellipse.
     void readEllipse(
-        lsst::ndarray::Array<double> const & parameters,
+        lsst::ndarray::Array<double,1,1> const & parameters,
         lsst::afw::geom::ellipses::Ellipse const & ellipse
     ) const;
 

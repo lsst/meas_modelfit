@@ -31,12 +31,86 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-class Evaluation;
+/**
+ *  @brief Represents a Bayesian prior on the coefficients given the parameters.
+ *
+ *  Priors on coefficients are represented as an unnormalized Gaussian factor multiplied
+ *  by a completely arbitrary function of the coefficients:
+ *  @f[
+ *     P(\mu|\phi) = e^{-\frac{1}{2}(\mu-y)^T\!F(\mu-y)} g(\mu)
+ *  @f]
+ *  where @f$\mu@f$ are the coefficients, @f$y@f$ and @f$F@f$ are the Gaussian vector and
+ *  matrix, and @f$g(\mu)@f$ is evaluated using operator()().
+ *
+ *  Note that the full prior must be normalized:
+ *  @f[
+ *     \int d\mu P(\mu|\phi) = 1
+ *  @f]
+ *  if the Bayesian evidence is to be computed correctly.  At the very least, the
+ *  normalization must not vary with @f$\phi@f$.
+ */
+class CoefficientPrior : private boost::noncopyable {
+public:
+
+    typedef boost::shared_ptr<CoefficientPrior> Ptr;
+    typedef boost::shared_ptr<CoefficientPrior const> ConstPtr;
+
+    /// @brief Mean vector of the Gaussian factor of the prior (@f$y@f$) .
+    Eigen::VectorXd const & getGaussianVector() const { return _gaussianVector; }
+
+    /// @brief Inverse of the covariance matrix of the Gaussian factor of the prior (@f$F@f$).
+    Eigen::MatrixXd const & getGaussianMatrix() const { return _gaussianMatrix; }
+
+    /// @brief Evaluate the general factor of the prior (@f$g(\mu)@f$).
+    virtual double operator()(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const = 0;
+
+    virtual ~CoefficientPrior() {}
+
+protected:
+    Eigen::VectorXd _gaussianVector;
+    Eigen::MatrixXd _gaussianMatrix;
+};
 
 /**
- *  @brief An abstract base class that combines a data vector and model(s),
- *         organizing the model as a parameterized matrix multiplied by a vector
- *         of linear coefficients.
+ *  @brief Code interface for nested linear models.
+ *
+ *  BaseEvaluator models an objective function of the form
+ *  @f[
+ *      q(\mu,\phi) = \frac{1}{2} (A\mu-x)^T\!(A\mu-x) 
+ *           + \frac{1}{2}\ln\left|2\pi\Sigma^{-1}\right|
+ *           + \frac{1}{2} (\mu-y)^T\!F(\mu-y)
+ *           - \ln g(\mu)
+ *  @f]
+ *  where
+ *   - @f$\mu@f$ are the linear parameters (called "coefficients") of the model
+ *   - @f$\phi@f$ are the nonlinear parameters (called simply "parameters") of the model.
+ *   - @f$A(\phi)@f$ is the model matrix that defines a linear model for the coefficients
+ *     given the parameters.  If per-pixel weights are used, @f$A@f$ should include them
+ *     (i.e. @f$A@f$ is the original model matrix with each row divided by the corresponding
+ *     pixel's uncertainty).
+ *   - @f$x@f$ is the data vector.  If per-pixel weights are used, @f$x@f$ includes them.
+ *   - @f$\Sigma@f$ is the pixel uncertainty covariance matrix, assumed to be diagonal.
+ *   - @f$y(\phi)@f$ is the mean of the Gaussian factor of a Bayesian prior on the coefficients.
+ *     (see CoefficientPrior).
+ *   - @f$F(\phi)@f$ is the inverse of the covariance matrix of the Gaussian factor of a 
+ *     Bayesian prior on the coefficients (see CoefficientPrior).
+ *   - @f$g(\mu,\phi)@f$ is the arbitrary factor in a Bayesian prior on the coefficents
+ *     (see CoefficientPrior).
+ *
+ *  Note that @f$A@f$, @f$y@f$, @f$F@f$, and @f$g@f$ are implicitly functions of $\phi$
+ *  in the above equation.
+ *
+ *  @f$q@f$ arises as the negative logarithm of the product of the likelihood and coefficient prior:
+ *  @f[
+ *      q(\mu,\phi) \equiv -\ln \left[ P(x|\mu,\phi) P(\mu|\phi) \right]
+ *  @f]
+ *  so
+ *  @f[
+ *      \int d\mu\,e^{-q(\mu,\phi)} = P(x|\phi)
+ *  @f]
+ *  The intent of the evaluator interface is thus to isolate the Gaussian or
+ *  nearly Gaussian dependency of the likelihood on the coefficients, allowing this integral
+ *  to be evaluated efficiently.
  *
  *  BaseEvaluator subclasses should be immutable.
  */
@@ -45,124 +119,98 @@ public:
 
     typedef boost::shared_ptr<BaseEvaluator> Ptr;
 
-    /// @brief Size of data vector (number of rows of matrix).
-    int getDataSize() const { return _dataVector.getSize<0>(); }
+    /// @brief Size of data vector (number of rows of model matrix).
+    virtual int getPixelCount() const = 0;
 
-    /// @brief Size of coefficient vector (number of colums of matrix).
-    int getCoefficientSize() const { return _coefficientSize; }
+    /// @brief Size of coefficient vector (number of colums of model matrix).
+    virtual int getCoefficientCount() const = 0;
 
     /// @brief Number of parameters.
-    int getParameterSize() const { return _parameterSize; }
-
-    /// @brief Number of coefficient inequality constraints.
-    int getConstraintSize() const { return _constraintVector.getSize<0>(); }
+    virtual int getParameterCount() const = 0;
 
     /**
-     *  @brief Clip the given parameter vector to the valid range and return a penalty
-     *         that scales with how far the parameter vector was beyond the constraints.
+     *  @brief Return the natural log of the normalization term of the Gaussian likelihood.
+     *
+     *  This is a constant that does not depend on the parameters or coefficients, and only
+     *  matters when the Bayesian evidence is computed.  For per-pixel uncertainties @f$\sigma_i@f$
+     *  or, equivalently, a diagonal covariance matrix @f$\Sigma@f$, the returned value is
+     *  @f[
+     *    \sum_i \ln \frac{2\pi}{\sigma_i} = \frac{1}{2}\ln \left|2\pi\Sigma^{-1}\right|
+     *  @f]
      */
-    virtual double clipToBounds(lsst::ndarray::Array<Pixel,1,1> const & parameters) const = 0;
+    virtual double getLogPixelErrorSum() const = 0;
 
     /**
      *  @brief Data vector.
      *
      *  If the data vector is weighted (divided by sigma) the evaluted model matrix should be as well.
      */
-    lsst::ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
+    virtual lsst::ndarray::Array<Pixel const,1,1> getDataVector() const = 0;
+
+    /// @brief Return true if all parameters are in-bounds.
+    bool checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const;
 
     /**
-     *  @brief Inequality constraint matrix.
-     *
-     *  This is the matrix @f$A@f$ in the constraint @f$Ax \ge b@f$.
+     *  @brief Clip the given parameter vector to the valid range and return a penalty
+     *         that scales with how far the parameter vector was beyond the constraints.
      */
-    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
+    double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const;
 
     /**
-     *  @brief Inequality constraint matrix.
+     *  @brief Evaluate the parameter-dependent products of the evaluator.
      *
-     *  This is the vector @f$b@f$ in the constraint @f$Ax \ge b@f$.
-     */
-    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
-
-    /**
-     *  @brief Evaluate the matrix with the given parameters.
+     *  @param[out] modelMatrix  The model matrix @f$A@f$; an array to fill with shape 
+     *                           (getDataSize(), getCoefficientSize().
+     *  @param[in]  parameters   The parameters @f$\phi@f$; an array of parameters with
+     *                           size getParameterSize().
      *
-     *  @param[out] matrix  An array to fill with shape (getDataSize(), getCoefficientSize()).
-     *  @param[in]  param   An array of parameters with size getParameterSize().
+     *  @returns The Bayesian prior on the coefficients given the parameters @f$P(\mu|\phi)@f$.  The
+     *           returned object may be invalidated or updated by a subsequent call to evaluate().
      *
      *  If the data vector is weighted, the output matrix should be as well (each row should be divided
      *  by the corresponding pixel sigma value).
      */
-    void evaluateModelMatrix(
-        lsst::ndarray::Array<Pixel,2,2> const & matrix,
-        lsst::ndarray::Array<Pixel const,1,1> const & param
+    CoefficientPrior::ConstPtr evaluate(
+        lsst::ndarray::Array<Pixel,2,2> const & modelMatrix,
+        lsst::ndarray::Array<double const,1,1> const & parameters
     ) const;
+
+    /// @brief Fill the given array with the initial parameter vector.
+    void writeInitialParameters(lsst::ndarray::Array<double,1,1> const & parameters) const;
 
     /**
-     *  @brief Evaluate the derivative of the matrix with respect to the parameters.
+     *  @brief Compute the integral @f$\int d\mu\,e^{-q(\mu,\phi)} = P(x|\phi)@f$.
      *
-     *  The first dimension of the array is the parameter dimension.
+     *  The integral is computed using importance sampling with a Gaussian distribution
+     *  formed from the product of the likelihood and the Gaussian factor of the coefficient
+     *  prior.
+     *  
+     *  @param[out] coefficients  (samples)x(coefficient count) array to fill with Monte Carlo samples.
+     *  @param[out] weights       Unnormalized weights corresponding to the Monte Carlo samples.
+     *  @param[in]  parameters    Parameter vector to evaluate at.
      *
-     *  The model matrix is guaranteed to be the result of _evaluateModelMatrix with the same
-     *  parameter vector.
+     *  @returns the sum of the weights array, an estimate of @f$P(x|\phi)@f$
      */
-    virtual void evaluateModelMatrixDerivative(
-        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
-        ndarray::Array<Pixel const,1,1> const & param
+    double integrate(
+        lsst::ndarray::Array<Pixel,2,2> const & coefficients,
+        lsst::ndarray::Array<Pixel,1,1> const & weights,
+        lsst::ndarray::Array<double const,1,1> const & parameters
     ) const;
-
-    void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & param) const;
 
     virtual ~BaseEvaluator() {}
 
 protected:
 
-    friend class Evaluation;
-
-    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize) :
-        _coefficientSize(coefficientSize),
-        _parameterSize(parameterSize),
-        _dataVector(ndarray::allocate(dataSize)),
-        _constraintVector(),
-        _constraintMatrix()
-    {}
-
-    BaseEvaluator(
-        ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize
-    ) :
-        _coefficientSize(coefficientSize),
-        _parameterSize(parameterSize),
-        _dataVector(data),
-        _constraintVector(),
-        _constraintMatrix()
-    {}
-
-    BaseEvaluator(BaseEvaluator const & other) :
-        _coefficientSize(other._coefficientSize), 
-        _parameterSize(other._parameterSize), 
-        _dataVector(other._dataVector),
-        _constraintVector(other._constraintVector),
-        _constraintMatrix(other._constraintMatrix)
-    {}
-
-    virtual void _evaluateModelMatrix(
+    virtual CoefficientPrior::ConstPtr _evaluate(
         ndarray::Array<Pixel,2,2> const & matrix,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<double const,1,1> const & parameters
     ) const = 0;
 
-    virtual void _evaluateModelMatrixDerivative(
-        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
-        ndarray::Array<Pixel const,2,2> const & modelMatrix,
-        ndarray::Array<Pixel const,1,1> const & param
-    ) const;
+    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & parameters) const = 0;
 
-    virtual void _writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const = 0;
+    virtual double _clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
 
-    int const _coefficientSize;
-    int const _parameterSize;
-    ndarray::Array<Pixel,1,1> _dataVector;
-    ndarray::Array<Pixel const,1,1> _constraintVector;
-    ndarray::Array<Pixel const,2,2> _constraintMatrix;
+    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const = 0;x
 
 private:
     void operator=(BaseEvaluator const &) {}

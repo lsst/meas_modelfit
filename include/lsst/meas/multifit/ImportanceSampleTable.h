@@ -25,15 +25,56 @@
 #define LSST_MEAS_MULTIFIT_ImportanceSampleTable
 
 #include "lsst/meas/multifit/NestedSampleTable.h"
-#include "lsst/meas/multifit/BaseDistribution.h"
 #include "lsst/meas/multifit/Evaluation.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
+template <typename T>
+class ImportanceDistribution {
+public:
+    typedef boost::shared_ptr<ImportanceDistribution> Ptr;
+    typedef boost::shared_ptr<ImportanceDistribution const> ConstPtr;
+
+    /**
+     *  @brief Deep-copy the distribution.
+     *
+     *  Subclasses should shadow this member function with another that static-downcasts the
+     *  protected implementation.
+     */
+    Ptr clone() const { return _clone(); }
+
+    /**
+     *  @brief Draw a set of parameter vector from the distribution and evaluate the distribution
+     *         at those points.
+     */
+    virtual void draw(
+        Random & engine,
+        lsst::ndarray::Array<T,2,2> const & parameters,
+        lsst::ndarray::Array<T,1,1> const & importance
+    ) const = 0;
+
+    /**
+     *  @brief Modify the distribution to match a set of importance or MCMC samples.
+     *
+     *  This will generally be used by adaptive importance sampling methods, and most
+     *  operations will match moments or minimize the Kullback-Leibler divergence.
+     *
+     *  The default implementation throws an exception.
+     */
+    virtual void update(
+        lsst::ndarray::Array<T const,2,1> const & parameters,
+        lsst::ndarray::Array<T const,1,1> const & weights
+    ) const = 0;
+
+protected:
+    virtual Ptr _clone() const = 0;
+};
+
 /**
  *  @brief A SampleTable for use in adaptive importance sampling algorithms.
  */
-class ImportanceSampleTable : public NestedSampleTable {
+template <typename T>
+class ImportanceSampleTable : public NestedSampleTable<T> {
 public:
 
     typedef boost::shared_ptr<ImportanceSampleTable> Ptr;
@@ -63,9 +104,9 @@ public:
     struct Iteration {
         int start;
         int stop;
-        BaseDistribution::ConstPtr distribution;
+        ImportanceDistribution::ConstPtr distribution;
 
-        Iteration(int start_, int stop_, BaseDistribution::ConstPtr const & distribution_) :
+        Iteration(int start_, int stop_, ImportanceDistribution::ConstPtr const & distribution_) :
             start(start_), stop(stop_), distribution(distribution_)
         {}
     };
@@ -75,7 +116,7 @@ public:
     /**
      *  @brief The Evaluation "objective value" at each sample point.
      */
-    lsst::ndarray::Array<Pixel const,1,1> getObjective() const {
+    lsst::ndarray::Array<T const,1,1> getObjective() const {
         return _objective[ndarray::view(0, getSize())];
     }
 
@@ -83,7 +124,7 @@ public:
      *  @brief The density of the distribution the sample was drawn from, multiplied by
      *         the total number of samples.
      */
-    lsst::ndarray::Array<Pixel const,1,1> getImportance() const {
+    lsst::ndarray::Array<T const,1,1> getImportance() const {
         return _importance[ndarray::view(0, getSize())];
     }
 
@@ -118,10 +159,8 @@ public:
     /**
      *  @brief Add an iteration of standard importance sampling using the given distribution.
      */
-    void run(int size, Random & random, BaseDistribution const & importance, 
+    void run(int size, Random & random, ImportanceDistribution const & importance, 
              BaseEvaluator::Ptr const & evaluator);
-    void run(int size, Random & random, BaseDistribution const & importance, 
-             BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior);
     //@}
 
     //@{
@@ -142,15 +181,12 @@ public:
      *
      *  In all cases, only the last iteration can be considered a fair sample.
      */
-    void run(int size, Random & random, AlgorithmEnum algorithm,
-             BaseEvaluator::Ptr const & evaluator);
-    void run(int size, Random & random, AlgorithmEnum algorithm, 
-             BaseEvaluator::Ptr const & evaluator, BaseDistribution const & prior);
+    void run(int size, Random & random, AlgorithmEnum algorithm, BaseEvaluator::Ptr const & evaluator);
     //@}
 
     /// @brief Construct with zero size and finite capacity.
     explicit ImportanceSampleTable(
-        int capacity, int dimensionality, int nestedDimensionality, NestedMatrixType nestedMatrixType
+        int capacity, int size, int nestedSize, int parameterCount, int coefficientCount
     );
 
     /// @brief Copy constructor.
@@ -161,18 +197,19 @@ protected:
 #ifndef SWIG
     class Editor : public NestedSampleTable::Editor {
     public:
-        void run(int size, Random & random, BaseDistribution const & importance, Evaluation & evaluator);
+        void run(int size, Random & random, ImportanceDistribution const & importance,
+                 Evaluation & evaluator);
         void run(int size, Random & random, AlgorithmEnum algorithm, Evaluation & evaluator);
 
         explicit Editor(ImportanceSampleTable * table) : NestedSampleTable::Editor(table) {}
 
     protected:
 
-        lsst::ndarray::Array<Pixel,1,1> const & getObjective() {
+        ndarray::Array<T,1,1> const & getObjective() {
             return getTable()._objective;
         }
 
-        lsst::ndarray::Array<Pixel,1,1> const & getImportance() {
+        ndarray::Array<T,1,1> const & getImportance() {
             return getTable()._importance;
         }
 
@@ -192,8 +229,8 @@ protected:
 
 private:
     std::vector<Iteration> _iterations;
-    lsst::ndarray::Array<Pixel,1,1> _objective;
-    lsst::ndarray::Array<Pixel,1,1> _importance;
+    ndarray::Array<T,1,1> _objective;
+    ndarray::Array<T,1,1> _importance;
 };
 
 }}} // namespace lsst::meas::multifit

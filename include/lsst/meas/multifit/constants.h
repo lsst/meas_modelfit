@@ -115,7 +115,6 @@ LSST_EXCEPTION_TYPE(DerivativeNotImplementedError,
 namespace definition {
 
 template <SharedElementType E> class SharedElement;
-class FluxElement;
 class ObjectComponent;
 class Frame;
 class Definition;

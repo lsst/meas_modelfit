@@ -1,80 +1,42 @@
-#include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
-#include "lsst/ndarray/eigen.h"
-#include <limits>
 
 namespace lsst { namespace meas { namespace multifit {
 
-void BaseEvaluator::evaluateModelMatrix(
+CoefficientPrior::ConstPtr BaseEvaluator::evaluate(
     ndarray::Array<Pixel,2,2> const & matrix,
-    ndarray::Array<Pixel const,1,1> const & param
+    ndarray::Array<double const,1,1> const & parameters
 ) const {
     detail::checkSize(
-        matrix.getSize<0>(), getDataSize(),
+        matrix.getSize<0>(), getPixelCount(),
         "Number of matrix rows (%d) does not match expected value (%d)."
     );
     detail::checkSize(
-        matrix.getSize<1>(), getCoefficientSize(),
+        matrix.getSize<1>(), getCoefficientCount(),
         "Number of matrix columns (%d) does not match expected value (%d)."
     );
     detail::checkSize(
-        param.getSize<0>(), getParameterSize(),
+        parameters.getSize<0>(), getParameterCount(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    _evaluateModelMatrix(matrix, param);
-}
-
-void BaseEvaluator::evaluateModelMatrixDerivative(
-    ndarray::Array<Pixel,3,3> const & derivative,
-    ndarray::Array<Pixel const,1,1> const & param
-) const {
-    detail::checkSize(
-        derivative.getSize<0>(), getParameterSize(),
-        "Size of derivative array first dimension (%d) does not match expected value (%d)."
-    );
-    detail::checkSize(
-        derivative.getSize<1>(), getDataSize(),
-        "Size of derivative array second dimension (%d) does not match expected value (%d)."
-    );
-    detail::checkSize(
-        derivative.getSize<2>(), getCoefficientSize(),
-        "Size of derivative array third (%d) does not match expected value (%d)."
-    );
-    detail::checkSize(
-        param.getSize<0>(), getParameterSize(),
-        "Parameter vector size (%d) does not match expected value (%d)."
-    );
-    ndarray::Array<Pixel,2,2> modelMatrix = ndarray::allocate(getDataSize(), getCoefficientSize());
-    _evaluateModelMatrix(modelMatrix, param);
-    _evaluateModelMatrixDerivative(derivative, modelMatrix, param);
-}
-
-void BaseEvaluator::_evaluateModelMatrixDerivative(
-    ndarray::Array<Pixel,3,3> const & derivative,
-    ndarray::Array<Pixel const,2,2> const & fiducial,
-    ndarray::Array<Pixel const,1,1> const & param
-) const {
-    static Pixel const epsilon = std::sqrt(
-        std::numeric_limits<Pixel>::epsilon()
-    );
-    ndarray::Array<Pixel, 1, 1> parameters(ndarray::copy(param));
-    for (int n = 0; n < _parameterSize; ++n) {
-        parameters[n] += epsilon;
-        _evaluateModelMatrix(derivative[n], parameters);
-        derivative[n] -= fiducial;
-        derivative[n] /= epsilon;
-        parameters[n] -= epsilon;
-    }
+    return _evaluate(matrix, parameters);
 }
 
 void BaseEvaluator::writeInitialParameters(
-    ndarray::Array<Pixel,1,1> const & param
+    ndarray::Array<double,1,1> const & parameters
 ) const {
     detail::checkSize(
-        param.getSize<0>(), getParameterSize(),
+        parameters.getSize<0>(), getParameterCount(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    _writeInitialParameters(param);
+    _writeInitialParameters(parameters);
+}
+
+double BaseEvaluator::clipToBounds(ndarray::Array<double,1,1> const & parameters) const {
+    detail::checkSize(
+        parameters.getSize<0>(), getParameterCount(),
+        "Parameter vector size (%d) does nto match expected value (%d)."
+    );
+    return _clipToBounds(parameters);
 }
 
 }}} // namespace lsst::meas::multifit

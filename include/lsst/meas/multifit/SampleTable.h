@@ -34,6 +34,7 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  A base class for tables of weighted samples of points in parameter space.
  */
+template <typename T>
 class SampleTable {
 public:
 
@@ -41,21 +42,21 @@ public:
     typedef boost::shared_ptr<SampleTable const> ConstPtr;
 
     /**
-     *  @brief The (samples)x(parameters) matrix of parameter values.
+     *  @brief The (size)x(parameter count) array of parameter values.
      */
-    lsst::ndarray::Array<Pixel const,2,2> getParameters() const {
+    lsst::ndarray::Array<T const,2,2> getParameters() const {
         return _parameters[ndarray::view(0, _size)];
     }
 
     /**
      *  @brief The weights corresponding to each sample.
      */
-    lsst::ndarray::Array<Pixel const,1,1> getWeights() const {
+    lsst::ndarray::Array<T const,1,1> getWeights() const {
         return _weights[ndarray::view(0, _size)];
     }
 
-    /// @brief Return the number of parameters in the sample table.
-    int getDimensionality() const { return _parameters.getSize<1>(); }
+    /// @brief Return the number of parameters.
+    int getParameterCount() const { return _parameters.getSize<1>(); }
 
     /// @brief Return the number of samples in the table.
     int getSize() const { return _size; }
@@ -94,11 +95,11 @@ protected:
 
         explicit Editor(SampleTable * table) : _table(table) {}
 
-        lsst::ndarray::Array<Pixel,1,1> const & getWeights() {
+        ndarray::Array<T,1,1> const & getWeights() {
             return getTable()._weights;
         }
 
-        lsst::ndarray::Array<Pixel,2,2> const & getParameters() {
+        ndarray::Array<T,2,2> const & getParameters() {
             return getTable()._parameters;
         }
 
@@ -111,8 +112,8 @@ protected:
     };
 #endif
 
-    /// @brief Construct with given capacity and dimensionality.
-    SampleTable(int capacity, int dimensionality);
+    /// @brief Construct with given capacity and parameter count.
+    SampleTable(int capacity, int parameterCount);
 
     /// @brief Copy constructor.
     SampleTable(SampleTable const & other);
@@ -174,8 +175,8 @@ private:
 
     int _size;
     Editor::Ptr _editor;
-    lsst::ndarray::Array<Pixel,2,2> _parameters;
-    lsst::ndarray::Array<Pixel,1,1> _weights;
+    ndarray::Array<T,2,2> _parameters;
+    ndarray::Array<T,1,1> _weights;
 };
 
 }}} // namespace lsst::meas::multifit

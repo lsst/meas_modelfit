@@ -87,8 +87,6 @@ public:
 
     int const getFilterCount() const { return _filterCount; }
     int const getCoefficientCount() const { return _coefficientCount; }
-    int const getFluxCoefficientCount() const { return _fluxCoefficientCount; }
-    int const getMorphologyCoefficientCount() const { return _morphologyCoefficientCount; }
     int const getPixelCount() const { return _pixelCount; }
     int const getParameterCount() const { return _parameterCount; }
     int const getConstraintCount() const { return _constraintCount; }
@@ -117,8 +115,6 @@ private:
 
     int _filterCount;
     int _coefficientCount;
-    int _fluxCoefficientCount;
-    int _morphologyCoefficientCount;
     int _pixelCount;
     int _parameterCount;
     int _constraintCount;

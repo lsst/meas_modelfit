@@ -61,12 +61,12 @@ typedef SharedElement<ELLIPTICITY> EllipticityElement;
 
 template <SharedElementType E>
 class ElementArray {
-    typedef boost::shared_ptr< SharedElement<T> > Ptr;
+    typedef boost::shared_ptr< SharedElement<E> > Ptr;
     typedef std::vector<Ptr> PtrVec;
     typedef typename PtrVec::const_iterator PtrIter;
 public:
 
-    typedef SharedElement<T> value_type;
+    typedef SharedElement<E> value_type;
     typedef Ptr pointer;
     typedef value_type const & reference;
     typedef reference const_reference;

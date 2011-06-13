@@ -1,10 +1,11 @@
 #include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/ndarray/eigen.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-void Evaluator::_evaluateModelMatrix(
+CoefficientPrior::ConstPtr Evaluator::_evaluate(
     ndarray::Array<Pixel,2,2> const & matrix,
-    ndarray::Array<Pixel const,1,1> const & param
+    ndarray::Array<double const,1,1> const & parameters
 ) const {
     matrix.deep() = 0.0;
     for (
@@ -12,7 +13,7 @@ void Evaluator::_evaluateModelMatrix(
         object != _grid->objects.end(); ++object
     ) {
         if (object->getBasis()) {
-            lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(param.getData());
+            lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(parameters);
             for (
                 Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end(); ++source
@@ -35,7 +36,7 @@ void Evaluator::_evaluateModelMatrix(
                 source->frame.applyWeights(block);
             }
         } else {
-            afw::geom::Point2D point = object->makePoint(param.getData());
+            afw::geom::Point2D point = object->makePoint(parameters);
             for (
                 Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
@@ -58,124 +59,13 @@ void Evaluator::_evaluateModelMatrix(
             }            
         }
     }
+    return CoefficientPrior::Ptr();
 }
-
-#if 0
-void Evaluator::_evaluateModelMatrixDerivative(
-    ndarray::Array<Pixel,3,3> const & derivative,
-    ndarray::Array<Pixel const,2,2> const & modelMatrix,
-    ndarray::Array<Pixel const,1,1> const & param
-) const {
-    derivative.deep() = 0.0;
-    for (
-        Grid::ObjectComponentArray::const_iterator object = _grid->objects.begin();
-        object != _grid->objects.end();
-        ++object
-    ) {
-        if (object->getBasis()) {
-            lsst::afw::geom::Ellipse ellipse = object->makeEllipse(param.getData());
-            for (
-                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
-                source != object->sources.end();
-                ++source
-            ) {
-                int coefficientOffset = source->getCoefficientOffset();
-                ndarray::Array<Pixel const,2,1> fiducial = modelMatrix[
-                    ndarray::view(
-                        source->frame.getPixelOffset(),
-                        source->frame.getPixelOffset() + source->frame.getPixelCount()
-                    )(
-                        coefficientOffset,
-                        coefficientOffset + source->getCoefficientCount()
-                    )
-                ];
-                ndarray::Array<Pixel,3,1> block = 
-                    derivative[
-                        ndarray::view(
-                        )(
-                            source->frame.getPixelOffset(), 
-                            source->frame.getPixelOffset() + source->frame.getPixelCount()
-                        )(
-                            coefficientOffset,
-                            coefficientOffset + source->getCoefficientCount()
-                        )
-                    ];
-                //TODO remove magic number 5 
-                //this is the number of ellipse parameters
-                for (int n = 0; n < 5; ++n) {
-                    std::pair<int,Pixel> p = object->perturbEllipse(ellipse, n);
-                    if (p.first < 0) continue;
-                    source->getBasis()->evaluate(
-                        block[p.first],                        
-                        source->frame.getFootprint(), 
-                        ellipse.transform(source->getTransform())
-                    );
-                    block[p.first] -= fiducial;
-                    block[p.first] /= p.second;
-                    object->unperturbEllipse(ellipse, n, p.second);
-                    source->frame.applyWeights(block[p.first]);
-                }
-            }
-        } else {
-            lsst::afw::geom::Point2D point = object->makePoint(param.getData());
-            for (
-                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
-                source != object->sources.end();
-                ++source
-            ) {
-                ndarray::Array<Pixel const,1,0> fiducial = modelMatrix[
-                    ndarray::view(
-                        source->frame.getPixelOffset(), 
-                        source->frame.getPixelOffset() + source->frame.getPixelCount()
-                    )(
-                        source->getCoefficientOffset()
-                    )                        
-                ];
-                ndarray::Array<Pixel,2,0> block = 
-                    derivative[
-                        ndarray::view(
-                        )(
-                            source->frame.getPixelOffset(), 
-                            source->frame.getPixelOffset() + source->frame.getPixelCount()
-                        )(
-                            source->getCoefficientOffset()
-                        )
-                    ];
-                for (int n = 0; n < grid::PositionElement::SIZE; ++n) {
-                    std::pair<int,Pixel> p = object->perturbPoint(point, n);
-                    if (p.first < 0) continue;
- 
-                    source->getLocalPsf()->evaluatePointSourceComponent(
-                        *source->frame.getFootprint(),
-                        block[p.first],
-                        source->getTransform()(point) - source->getReferencePoint()
-                    );
-                    block[p.first] -= fiducial;
-                    block[p.first] /= p.second;
-                    object->unperturbPoint(point, n, p.second);
-                    source->frame.applyWeights(block[p.first]);
-                }
-            }
-        }
-    }
-}
-
-#endif
 
 Evaluator::Evaluator(Grid::Ptr const & grid) :
-    BaseEvaluator(
-        grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount()
-    ),
-    _grid(grid)
+    _grid(grid), _logPixelErrorSum(0.0),
+    _dataVector(ndarray::allocate(grid->getPixelCount()))
 {
-    _initialize();
-}
-
-Evaluator::Evaluator(Evaluator const & other) : BaseEvaluator(other), _grid(other._grid) {
-    _initialize();
-}
-
-void Evaluator::_initialize() {
     for (
         Grid::FrameArray::const_iterator i = _grid->frames.begin();
         i != _grid->frames.end(); ++i
@@ -183,19 +73,22 @@ void Evaluator::_initialize() {
         _dataVector[
             ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] = i->getData();
-        
         if (!i->getWeights().empty()) {
             _dataVector[
                 ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] *= i->getWeights();
+            _logPixelErrorSum 
+                += (ndarray::viewAsEigen(i->getWeights()) * (2.0 * M_PI)).cwise().log().sum();
         }
     }
-    _constraintMatrix = _grid->getConstraintMatrix();
-    _constraintVector = _grid->getConstraintVector();
 }
 
-void Evaluator::_writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const {
-    _grid->writeParameters(param.getData());
+Evaluator::Evaluator(Evaluator const & other) :
+    _grid(other._grid), _logPixelErrorSum(other._logPixelErrorSum), _dataVector(other._dataVector)
+{}
+
+void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & parameters) const {
+    _grid->writeParameters(parameters);
 }
 
 }}} // namespace lsst::meas::multifit

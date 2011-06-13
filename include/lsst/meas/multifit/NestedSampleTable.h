@@ -29,50 +29,34 @@
 namespace lsst { namespace meas { namespace multifit {
 
 /**
- *  An intermediate base class SampleTable that adds a nested Gaussian at each sample point.
+ *  @brief An intermediate base class SampleTable that adds a nested table of weighted coefficient vectors
+ *         at each parameter point.
  *
- *  Each nested Gaussian is represented by an amplitude, a mean vector, and a matrix that
- *  may be the covariance matrix, its inverse, or the lower Cholesky factor of either.
+ *  
  */
-class NestedSampleTable : public SampleTable {
+template <typename T>
+class NestedSampleTable : public SampleTable<T> {
 public:
 
     typedef boost::shared_ptr<NestedSampleTable> Ptr;
     typedef boost::shared_ptr<NestedSampleTable const> ConstPtr;
 
-    enum NestedMatrixType {
-        COVARIANCE,     ///< Standard covariance matrix.
-        FISHER,         ///< Fisher information matrix == inverse of covariance.
-        COVARIANCE_LLT, ///< Lower-triangular Cholesky factor of the covariance.
-        FISHER_LLT      ///< Lower-triangular Cholesky factor of the Fisher matrix.
-    };
-
     /**
-     *  @brief The vector of nested amplitudes.
+     *  @brief The (size)x(nested size) array of nested weights for each coefficient vector.
      */
-    lsst::ndarray::Array<Pixel const,1,1> getNestedAmplitudes() const {
-        return _nestedAmplitudes[ndarray::view(0, getSize())];
+    lsst::ndarray::Array<T const,2,2> getNestedWeights() const {
+        return _nestedWeights[ndarray::view(0, getSize())];
     }
 
     /**
-     *  @brief The (samples)x(nested dim.) matrix of nested mean vectors.
+     *  @brief The (size)x(nested size)(coefficient count) array of nested coefficient values.
      */
-    lsst::ndarray::Array<Pixel const,2,2> getNestedMeans() const {
-        return _nestedMeans[ndarray::view(0, getSize())];
+    lsst::ndarray::Array<T const,3,3> getCoefficients() const {
+        return _coefficients[ndarray::view(0, getSize())];
     }
 
-    /**
-     *  @brief The (samples)x(nested dim.)x(nested dim.) tensor of nested matrices.
-     */
-    lsst::ndarray::Array<Pixel const,3,3> getNestedMatrices() const {
-        return _nestedMatrices[ndarray::view(0, getSize())];
-    }
-
-    /// @brief Return how the nested matrices should be interpreted.
-    NestedMatrixType getNestedMatrixType() const { return _nestedMatrixType; }
-
-    /// @brief Return the number of parameters for the nested Gaussian distributions.
-    int getNestedDimensionality() const { return _nestedMeans.getSize<1>(); }
+    /// @brief Return the number of nested coefficient samples for each parameter sample.
+    int getNestedSize() const { return _nestedWeights.getSize<1>(); }
 
     /**
      *  @brief Copy the table (shallow with copy-on-write).
@@ -90,16 +74,12 @@ protected:
 
         explicit Editor(NestedSampleTable * table) : SampleTable::Editor(table) {}
 
-        lsst::ndarray::Array<Pixel,1,1> const & getNestedAmplitudes() {
-            return getTable()._nestedAmplitudes;
+        ndarray::Array<T,2,2> const & getNestedWeights() const {
+            return getTable()._nestedWeights;
         }
 
-        lsst::ndarray::Array<Pixel,2,2> const & getNestedMeans() {
-            return getTable()._nestedMeans;
-        }
-
-        lsst::ndarray::Array<Pixel,3,3> const & getNestedMatrices() {
-            return getTable()._nestedMatrices;
+        ndarray::Array<T,3,3> const & getCoefficients() const {
+            return getTable()._coefficients;
         }
 
         NestedSampleTable & getTable() {
@@ -108,9 +88,8 @@ protected:
     };
 #endif
 
-    /// @brief Construct with given capacity and dimensionalities.
-    NestedSampleTable(int capacity, int dimensionality, int nestedDimensionality,
-                      NestedMatrixType nestedMatrixType);
+    /// @brief Construct with given capacity, nested sample size, parameter count, and coefficient count.
+    NestedSampleTable(int capacity, int nestedSize, int parameterCount, int coefficientCount);
 
     /// @brief Copy constructor.
     NestedSampleTable(NestedSampleTable const & other);
@@ -129,10 +108,8 @@ protected:
     virtual void copyForEdit(int capacity);
 
 private:
-    NestedMatrixType _nestedMatrixType;
-    lsst::ndarray::Array<Pixel,1,1> _nestedAmplitudes;
-    lsst::ndarray::Array<Pixel,2,2> _nestedMeans;
-    lsst::ndarray::Array<Pixel,3,3> _nestedMatrices;
+    ndarray::Array<T,2,2> _nestedWeights;
+    ndarray::Array<T,3,3> _coefficients;
 };
 
 

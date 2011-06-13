@@ -19,99 +19,80 @@ marks=true, ]{hyperref}
 \item $x$: weighted pixel vector
 \item $\Sigma$: pixel covariance matrix (assumed to be diagonal)
 \item $\phi$: nonlinear parameters
-\item $\alpha$: flux coefficients
-\item $\mu$: morphology parameters
-\item $y(\phi)$: morphology prior mean
-\item $F(\phi)$: morphology prior Fisher matrix
-\item $M(\phi)$: morphology model matrix
-\item $A(\phi)$: flux model matrix
-\item $s(\phi,\alpha,\mu) = (M\mu + A\alpha - x)$: residual vector
+\item $\mu$: linear parameters (coefficients)
 \end{itemize}
+
+The coefficient prior is defined as
+
+\begin{equation}
+  P(\mu|\phi) = e^{-\frac{1}{2}(\mu-y)^T F (\mu-y)} g(\mu)
+\end{equation}
+
+which must of course be normalized.
 
 \section{Bayesian Probabilities}
 
 \begin{eqnarray}
-  P(\phi,\alpha,\mu|x) &=& P(x|\phi,\alpha,\mu)
-  \frac{P(\phi,\alpha,\mu)}{P(x)} \\
-  P(\phi,\alpha|x)P(\mu|x,\phi,\alpha) &=&
-  P(x|\phi,\alpha,\mu)\frac{P(\mu|\phi,\alpha) P(\phi,\alpha)}{P(x)}
+  P(\phi,\mu|x) &=& P(x|\phi,\mu)
+  \frac{P(\phi,\mu)}{P(x)} \\
+  P(\phi|x)P(\mu|x,\phi) &=&
+  P(x|\phi,\mu)\frac{P(\mu|\phi) P(\phi)}{P(x)}
   \\
-  P(\phi,\alpha|x) &=& \frac{P(\phi,\alpha)}{P(x)}
-  \int d\mu P(\mu|\phi,\alpha) P(x|\phi,\alpha,\mu) \\
-  &=& \frac{P(\phi,\alpha)}{P(x)} P(x|\phi,\alpha)
+  P(\phi|x) &=& \frac{P(\phi)}{P(x)}
+  \int d\mu P(\mu|\phi) P(x|\phi,\mu) \\
+  &=& \frac{P(\phi)}{P(x)} P(x|\phi)
 \end{eqnarray}
 
-\section{Morphology Marginalization}
-
-($\phi$ dependence implicit in $A$, $M$, $F$, $y$, $s$)
+\section{Coefficient Marginalization}
 
 \begin{eqnarray}
-  q(\alpha,\mu) &\equiv& -\ln P(x|\phi,\alpha,\mu) 
-  - \ln P(\mu|\alpha) \\ &=& 
-  \frac{1}{2}||s(\alpha,\mu)||^2
+  q(\mu,\phi) &\equiv& -\ln P(x|\phi,\mu) 
+  - \ln P(\mu|\phi) \\ &=& 
+  \frac{1}{2}(A\mu - x)^T\!(A\mu - x)
   + \frac{1}{2} \left(\mu - y\right)^T\! 
-  F \left(\mu - y\right) \\
-  & & + \frac{1}{2}\ln\left|2\pi\Sigma\right|
-  + \frac{1}{2}\ln\left|2\pi F^{-1}\right| \\
-  \Dp{q}{\mu} &=& M^T\!s(\alpha,\mu) + F \left(\mu - y\right) \\
-  \Dp{^2q}{\mu^2} &=& M^T\!M + F \\
-  \Dp{q}{\alpha} &=& A^T\!s(\alpha,\mu) \\
-  \Dp{^2q}{\alpha^2} &=& A^T\!A \\
-  \Dp{^2q}{\alpha\partial\mu} &=& M^T\!A 
+  F \left(\mu - y\right) + \frac{1}{2}\ln\left|2\pi\Sigma\right|
+  - \ln g(\mu) \\
+  &=& s(\mu,\phi) - \ln g(r) \\
+  s(\mu,\phi) &\equiv& \frac{1}{2}(A\mu - x)^T\!(A\mu - x)
+  + \frac{1}{2} \left(\mu - y\right)^T\! 
+  F \left(\mu - y\right) + \frac{1}{2}\ln\left|2\pi\Sigma\right|
 \end{eqnarray}
 
 \begin{eqnarray}
-  \hat{\mu}(\alpha) &=& \left(M^T\!M + F\right)^{-1}
-  \left(M^T\!x - M^T\!A\alpha+ Fy\right) \\
-  &=& H^{-1} \left(M^T\!x - M^T\!A\alpha + Fy\right) \\
-  &=& b + B\alpha \\
-  B &\equiv& \Dp{\hat{\mu}}{\alpha} =  -H^{-1}M^T\!A \\
-  b &\equiv& H^{-1}\left(M^T\!x + Fy\right)
+  \Dp{s}{\mu} &=& A^T(A\mu-x) + F \left(\mu - y\right) \\
+  \Dp{^2s}{\mu^2} &=& A^T\!A + F \equiv H \\
+  \hat{\mu} &=& H^{-1}(A^T\!x + Fy)
 \end{eqnarray}
-
-\begin{equation}
-  q(\alpha,\mu) = q(\alpha,\hat{\mu}(\alpha)) +
-  \frac{1}{2}\left[\mu-\hat{\mu}(\alpha)\right]^T\!\left[M^T\!M + F\right]
-  \left[\mu-\hat{\mu}(\alpha)\right]
-\end{equation}
 
 \begin{eqnarray}
-  p(\alpha) &\equiv& -\ln\int_{K\mu > c}\!\!\!\!\!\!\!\!
-  e^{-q(\alpha,\mu)} d\mu \\
-  &=& -\ln P(x|\phi,\alpha) \\
-    &=& q(\alpha,\hat{\mu}(\alpha)) 
-  + \frac{1}{2}\ln\left|\frac{M^T\!M + F}{2\pi}\right|
-  - \ln r(\alpha)
+  s(\mu,\phi) &=& s(\hat{\mu},\phi) + \frac{1}{2}
+  \left(\mu - \hat{\mu}\right)^T\! H 
+  \left(\mu - \hat{\mu}\right) \\
+  q(\mu,\phi) &=& s(\hat{\mu},\phi) + \frac{1}{2}
+  \left(\mu - \hat{\mu}\right)^T\! H 
+  \left(\mu - \hat{\mu}\right) 
+  - \ln g(\mu) \\
+  q(\mu,\phi) &=& s(\hat{\mu},\phi) 
+  - \frac{1}{2}\ln\left|2\pi H^{-1}\right|
+  + \frac{1}{2}
+  \left(\mu - \hat{\mu}\right)^T\! H 
+  \left(\mu - \hat{\mu}\right) 
+  + \frac{1}{2}\ln\left|2\pi H^{-1}\right|
+  - \ln g(\mu)
 \end{eqnarray}
-
-where $r(\alpha)$ is the fraction of Monte Carlo samples drawn from a
-Gaussian with mean $\hat{\mu}$ and covariance $(M^T\!M + F)^{-1}$ that
-obey the inequality constraint $K\mu > c$.
 
 \begin{eqnarray}
-  \D{[q(\alpha,\hat{\mu}(\alpha))]}{\alpha} &=& \Dp{q}{\alpha} +
-  \Dp{\hat{\mu}}{\alpha}\Dp{q}{\mu} \\
-  &=& A^T\!s(\alpha,\hat{\mu}(\alpha)) 
-  + B^T M^Ts(\alpha,\hat{\mu}(\alpha)) \\
-  &=& \left(A + M B \right)^T s(\alpha,\hat{\mu}(\alpha)) \\
-  &=& \left(A + M B \right)^T \left(A\alpha + Mb + M B \alpha -
-  x\right) \\
-  &=& \left(A + M B \right)^T \left[\left(A + M B\right)\alpha + Mb -
-    x\right] \\
-  &=& (A+MB)^T\!(A+MB)\alpha + (A + MB)^T\!(Mb - x)\\
-  \D{^2[q(\alpha,\hat{\mu}(\alpha))]}{\alpha^2} &=& (A+MB)^T\!(A+MB) \equiv G
+  P(x|\phi) &=& \int\!e^{-q(\mu,\phi)}d\mu \\
+  &=& 
+  \left|\frac{H}{2\pi}\right|^{-1/2}\!e^{-s(\hat{\mu},\phi)}
+  \left[ \int\!\Phi\!\left(\mu|\hat{\mu},H^{-1}\right) g(\mu,\phi)\,d\mu \right] \\
+  &\approx&
+  \left|\frac{H}{2\pi}\right|^{-1/2}\!e^{-s(\hat{\mu},\phi)}
+  \left[\frac{1}{N}\sum_{n=1}^N g(\mu_n)\right]
+  \label{eqn:marginalization}
 \end{eqnarray}
 
-\begin{equation}
-  \hat{\alpha} = G^{-1}\!(A + MB)^T\!(x - Mb)
-\end{equation}
-
-\begin{eqnarray}
-  p(\alpha) = q(\hat{\alpha},\hat{\mu}(\hat{\alpha}))
-  + \frac{1}{2}\ln\left|\frac{M^T\!M + F}{2\pi}\right|
-  + \frac{1}{2}\left(\alpha - \hat{\alpha}\right)^T\!
-  G \left(\alpha - \hat{\alpha}\right)
-  - \ln r(\alpha)
-\end{eqnarray}
+where $\mu_n$ are drawn from a multivariate normal with mean
+$\hat{\mu}$ and covariance $H^{-1}$.
 
 \end{document}

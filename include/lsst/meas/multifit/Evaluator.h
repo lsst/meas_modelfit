@@ -36,47 +36,65 @@ public:
 
     typedef boost::shared_ptr<Evaluator> Ptr;
 
+    /// @brief Size of data vector (number of rows of model matrix).
+    virtual int getPixelCount() const { return _grid->getPixelCount(); }
+
+    /// @brief Size of coefficient vector (number of colums of model matrix).
+    virtual int getCoefficientCount() const { return _grid->getCoefficientCount(); }
+
+    /// @brief Number of parameters.
+    virtual int getParameterCount() const { return _grid->getParameterCount(); }
+
+    /**
+     *  @brief Return the natural log of the normalization term of the Gaussian likelihood.
+     *
+     *  This is a constant that does not depend on the parameters or coefficients, and only
+     *  matters when the Bayesian evidence is computed.  For per-pixel uncertainties @f$\sigma_i@f$
+     *  or, equivalently, a diagonal covariance matrix @f$\Sigma@f$, the returned value is
+     *  @f[
+     *    \sum_i \ln \frac{2\pi}{\sigma_i} = \frac{1}{2}\ln \left|2\pi\Sigma^{-1}\right|
+     *  @f]
+     */
+    virtual double getLogPixelErrorSum() const { return _logPixelErrorSum; }
+
+    /**
+     *  @brief Data vector.
+     *
+     *  If the data vector is weighted (divided by sigma) the evaluted model matrix should be as well.
+     */
+    virtual lsst::ndarray::Array<Pixel const,1,1> getDataVector() const { return _dataVector; }
+
     Grid::Ptr getGrid() const { return _grid; }
     
     static Ptr make(Grid::Ptr const & grid) {
-        return boost::make_shared<Evaluator>(grid);
+        return Ptr(new Evaluator(grid));
     }
     static Ptr make(Definition const & definition) {
-        return boost::make_shared<Evaluator>(Grid::make(definition));
-    }
-
-    virtual double clipToBounds(lsst::ndarray::Array<Pixel,1,1> const & parameters) const {
-        return _grid->clipToBounds(parameters.getData());
+        return Ptr(new Evaluator(Grid::make(definition)));
     }
 
 protected:
 
-    virtual void _evaluateModelMatrix(
+    virtual double _clipToBounds(ndarray::Array<double,1,1> const & parameters) const {
+        return _grid->clipToBounds(parameters);
+    }
+
+    virtual CoefficientPrior::ConstPtr _evaluate(
         ndarray::Array<Pixel,2,2> const & matrix,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<double const,1,1> const & parameters
     ) const;
 
-#if 0
-    virtual void _evaluateModelMatrixDerivative(
-        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
-        ndarray::Array<Pixel const,2,2> const & modelMatrix,
-        ndarray::Array<Pixel const,1,1> const & param
-    ) const;
-#endif
-
-    virtual void _writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const;
+    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & parameters) const;
 
 private:
-    
-    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid>);
 
     explicit Evaluator(Grid::Ptr const & grid);
 
     Evaluator(Evaluator const & other);
-    
-    void _initialize();
 
     Grid::Ptr _grid;
+    double _logPixelErrorSum;
+    ndarray::Array<Pixel,1,1> _dataVector;
 };
 
 }}} // namespace lsst::meas::multifit

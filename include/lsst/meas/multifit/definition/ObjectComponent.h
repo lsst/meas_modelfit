@@ -97,7 +97,7 @@ public:
 
     ObjectComponent(ObjectComponent const & other) :
         detail::ObjectComponentBase(other), _position(other._position), _radius(other._radius), 
-        _ellipticity(other._ellipticity), _flux(other._flux)
+        _ellipticity(other._ellipticity)
     {}
 
     static ObjectComponent makeStar(
