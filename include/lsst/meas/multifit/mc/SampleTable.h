@@ -21,20 +21,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_SampleTable
-#define LSST_MEAS_MULTIFIT_SampleTable
+#ifndef LSST_MEAS_MULTIFIT_MC_SampleTable
+#define LSST_MEAS_MULTIFIT_MC_SampleTable
 
 #include "lsst/ndarray.h"
 #include "lsst/meas/multifit/constants.h"
 #include "boost/shared_ptr.hpp"
 #include "boost/noncopyable.hpp"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace mc {
 
 /**
  *  A base class for tables of weighted samples of points in parameter space.
  */
-template <typename T>
 class SampleTable {
 public:
 
@@ -44,14 +43,14 @@ public:
     /**
      *  @brief The (size)x(parameter count) array of parameter values.
      */
-    lsst::ndarray::Array<T const,2,2> getParameters() const {
+    lsst::ndarray::Array<double const,2,2> getParameters() const {
         return _parameters[ndarray::view(0, _size)];
     }
 
     /**
      *  @brief The weights corresponding to each sample.
      */
-    lsst::ndarray::Array<T const,1,1> getWeights() const {
+    lsst::ndarray::Array<double const,1,1> getWeights() const {
         return _weights[ndarray::view(0, _size)];
     }
 
@@ -95,11 +94,11 @@ protected:
 
         explicit Editor(SampleTable * table) : _table(table) {}
 
-        ndarray::Array<T,1,1> const & getWeights() {
+        ndarray::Array<double,1,1> const & getWeights() {
             return getTable()._weights;
         }
 
-        ndarray::Array<T,2,2> const & getParameters() {
+        ndarray::Array<double,2,2> const & getParameters() {
             return getTable()._parameters;
         }
 
@@ -175,10 +174,10 @@ private:
 
     int _size;
     Editor::Ptr _editor;
-    ndarray::Array<T,2,2> _parameters;
-    ndarray::Array<T,1,1> _weights;
+    ndarray::Array<double,2,2> _parameters;
+    ndarray::Array<double,1,1> _weights;
 };
 
-}}} // namespace lsst::meas::multifit
+}}}} // namespace lsst::meas::multifit::mc
 
-#endif // !LSST_MEAS_MULTIFIT_SampleTable
+#endif // !LSST_MEAS_MULTIFIT_MC_SampleTable

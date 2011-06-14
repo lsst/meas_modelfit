@@ -19,12 +19,12 @@ namespace grid {
 class Initializer {
 public:
 
-    template <ParameterType E>
+    template <SharedElementType E>
     static void transferElements(
         Grid const & input, Definition & output, double const * paramIter
     ) {
-        typedef boost::shared_ptr< definition::ParameterElement<E> > DPtr;
-        typedef boost::shared_ptr< grid::ParameterElement<E> > GPtr;
+        typedef boost::shared_ptr< definition::SharedElement<E> > DPtr;
+        typedef boost::shared_ptr< grid::SharedElement<E> > GPtr;
         typedef std::map<GPtr,DPtr> Map;
         Map unique;
         Grid::ObjectComponentArray::const_iterator gi = input.objects.begin();
@@ -35,9 +35,9 @@ public:
             std::pair<GPtr,DPtr> item(gp, DPtr());
             std::pair<typename Map::iterator,bool> r = unique.insert(item);
             if (r.second) {
-                r.first->second = definition::ParameterElement<E>::make(gp->getValue(), gp->isActive());
+                r.first->second = definition::SharedElement<E>::make(gp->getValue(), gp->isActive());
                 if (paramIter != 0 && r.first->second->isActive()) {
-                    detail::ParameterElementTraits<E>::readParameters(
+                    detail::SharedElementTraits<E>::readIter(
                         paramIter + gp->offset,
                         r.first->second->getValue()
                     );
@@ -47,12 +47,12 @@ public:
         }
     }
 
-    template <ParameterType E, typename Container>
+    template <SharedElementType E, typename Container>
     static void transferElements(
         Definition const & input, Grid & output, Container & container, int & offset
     ) {
-        typedef boost::shared_ptr< definition::ParameterElement<E> > DPtr;
-        typedef boost::shared_ptr< grid::ParameterElement<E> > GPtr;
+        typedef boost::shared_ptr< definition::SharedElement<E> > DPtr;
+        typedef boost::shared_ptr< grid::SharedElement<E> > GPtr;
         typedef std::map<DPtr,GPtr> Map;
         Map unique;
         Definition::ObjectComponentSet::const_iterator di = input.objects.begin();
@@ -64,11 +64,11 @@ public:
             std::pair<typename Map::iterator,bool> r = unique.insert(item);
             if (r.second) {
                 if (dp->isActive()) {
-                    r.first->second.reset(new grid::ParameterElement<E>(*dp, offset));
-                    offset += grid::ParameterElement<E>::SIZE;
+                    r.first->second.reset(new grid::SharedElement<E>(*dp, offset));
+                    offset += grid::SharedElement<E>::SIZE;
                     container._ptrVec.push_back(r.first->second);
                 } else {
-                    r.first->second.reset(new grid::ParameterElement<E>(*dp, -1));
+                    r.first->second.reset(new grid::SharedElement<E>(*dp, -1));
                 }
             }
             GPtr const * gp;
@@ -132,13 +132,6 @@ public:
                 );
                 ++output.objects._last;
                 output._coefficientCount += newObjectComponent->getCoefficientCount();
-                if (newObjectComponent->getBasis()) {
-                    _constraintCount += newObjectComponent->getBasis()->getConstraintSize()
-                        * (newObjectComponent->getCoefficientCount()
-                           / newObjectComponent->getSourceCoefficientCount());
-                } else {
-                    ++_constraintCount;
-                }
             }
             transferElements<POSITION>(input, output, output.positions, output._parameterCount);
             transferElements<RADIUS>(input, output, output.radii, output._parameterCount);
@@ -185,18 +178,15 @@ Definition Grid::makeDefinition(lsst::ndarray::Array<double const,1,1> const & p
 Grid::Grid(Definition const & def) :
     _filterCount(0),
     _coefficientCount(0),
-x    _fluxCoefficientCount(0),
-    _morphologyCoefficientCount(0),
     _pixelCount(0),
     _parameterCount(0),
-    _constraintCount(0),
     _objectData(new char[sizeof(grid::ObjectComponent) * def.objects.size()]),
     _frameData(new char[sizeof(grid::Frame) * def.frames.size()]),
     _sourceData(new char[sizeof(grid::SourceComponent) * def.frames.size() * def.objects.size()]),
     _wcs()
 {
-    if (definition.getWcs()) _wcs = definition.getWcs()->clone();
-    Initializer::initializeGrid(definition, *this);
+    if (def.getWcs()) _wcs = def.getWcs()->clone();
+    Initializer::initializeGrid(def, *this);
 }
 
 Grid::~Grid() { Initializer::destroyGrid(*this); }

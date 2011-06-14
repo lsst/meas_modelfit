@@ -69,6 +69,8 @@ public:
     }
     //@}
 
+#endif
+
     /// @brief Throw an exception (LogicErrorException) if the object lacks a radius or ellipticity.
     void requireEllipse() const;
 
@@ -157,8 +159,6 @@ public:
      *  Unperturb a point by changing the nth position parameter.
      */
     void unperturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n, double perturbation) const;
-
-#endif
 
 private:
 

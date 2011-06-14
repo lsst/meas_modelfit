@@ -18,7 +18,6 @@ std::ostream & operator<<(std::ostream & os, SharedElement<E> const & element) {
 template std::ostream & operator<<(std::ostream &, SharedElement<POSITION> const &);
 template std::ostream & operator<<(std::ostream &, SharedElement<RADIUS> const &);
 template std::ostream & operator<<(std::ostream &, SharedElement<ELLIPTICITY> const &);
-template std::ostream & operator<<(std::ostream &, SharedElement<FLUX> const &);
 
 ObjectComponent::ObjectComponent(
     definition::ObjectComponent const & def, int coefficientOffset, int frameCount, int filterCount
@@ -70,7 +69,7 @@ void ObjectComponent::requireEllipse() const {
     }
 }
 
-afw::geom::Point2D ObjectComponent::makePoint(ndarray::Array<double const> const & parameters) const {
+afw::geom::Point2D ObjectComponent::makePoint(ndarray::Array<double const,1,1> const & parameters) const {
     afw::geom::Point2D result = getPositionElement()->getValue();
     if (getPositionElement()->isActive()) {
         double const * p = parameters.getData() + getPositionElement()->offset;
@@ -144,11 +143,12 @@ afw::geom::ellipses::Ellipse ObjectComponent::makeEllipse(
 }
 
 void ObjectComponent::readEllipse(
-    ndarray::Array<double,1,1> const & paramIter, 
+    ndarray::Array<double,1,1> const & parameters, 
     afw::geom::ellipses::Ellipse const & ellipse
 ) const {
+    double * paramIter = parameters.getData();
     requireEllipse();
-    readPoint(paramIter, ellipse.getCenter());
+    readPoint(parameters, ellipse.getCenter());
     EllipseCore core(ellipse.getCore());
     core.scale(1.0 / getRadiusFactor());
     if (getEllipticityElement()->isActive()) {

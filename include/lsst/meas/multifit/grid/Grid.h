@@ -59,7 +59,7 @@ public:
     int const getFilterIndex(FilterId filterId) const;
 
     /// @brief Return true if all parameters are in-bounds.
-    bool checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const;
+    bool checkBounds(lsst::ndarray::Array<double const,1,1> const & parameters) const;
 
     /**
      *  @brief Clip any out-of-bounds parameters to the bounds and return a positive number

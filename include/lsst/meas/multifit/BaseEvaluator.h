@@ -185,13 +185,15 @@ public:
      *  formed from the product of the likelihood and the Gaussian factor of the coefficient
      *  prior.
      *  
+     *  @param[in]  engine        Random number generator.
      *  @param[out] coefficients  (samples)x(coefficient count) array to fill with Monte Carlo samples.
-     *  @param[out] weights       Unnormalized weights corresponding to the Monte Carlo samples.
+     *  @param[out] weights       Normalized weights (sum to one) corresponding to the Monte Carlo samples.
      *  @param[in]  parameters    Parameter vector to evaluate at.
      *
-     *  @returns the sum of the weights array, an estimate of @f$P(x|\phi)@f$
+     *  @returns a Monte Carlo estimate of @f$P(x|\phi)@f$
      */
     double integrate(
+        Random & engine,
         lsst::ndarray::Array<Pixel,2,2> const & coefficients,
         lsst::ndarray::Array<Pixel,1,1> const & weights,
         lsst::ndarray::Array<double const,1,1> const & parameters
@@ -210,7 +212,7 @@ protected:
 
     virtual double _clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
 
-    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const = 0;x
+    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const = 0;
 
 private:
     void operator=(BaseEvaluator const &) {}

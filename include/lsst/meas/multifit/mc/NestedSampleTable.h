@@ -21,21 +21,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_NestedSampleTable
-#define LSST_MEAS_MULTIFIT_NestedSampleTable
+#ifndef LSST_MEAS_MULTIFIT_MC_NestedSampleTable
+#define LSST_MEAS_MULTIFIT_MC_NestedSampleTable
 
-#include "lsst/meas/multifit/SampleTable.h"
+#include "lsst/meas/multifit/mc/SampleTable.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace mc {
 
 /**
  *  @brief An intermediate base class SampleTable that adds a nested table of weighted coefficient vectors
  *         at each parameter point.
- *
- *  
  */
-template <typename T>
-class NestedSampleTable : public SampleTable<T> {
+class NestedSampleTable : public SampleTable {
 public:
 
     typedef boost::shared_ptr<NestedSampleTable> Ptr;
@@ -44,19 +41,22 @@ public:
     /**
      *  @brief The (size)x(nested size) array of nested weights for each coefficient vector.
      */
-    lsst::ndarray::Array<T const,2,2> getNestedWeights() const {
+    lsst::ndarray::Array<double const,2,2> getNestedWeights() const {
         return _nestedWeights[ndarray::view(0, getSize())];
     }
 
     /**
      *  @brief The (size)x(nested size)(coefficient count) array of nested coefficient values.
      */
-    lsst::ndarray::Array<T const,3,3> getCoefficients() const {
+    lsst::ndarray::Array<Pixel const,3,3> getCoefficients() const {
         return _coefficients[ndarray::view(0, getSize())];
     }
 
     /// @brief Return the number of nested coefficient samples for each parameter sample.
     int getNestedSize() const { return _nestedWeights.getSize<1>(); }
+
+    /// @brief Return the number of coefficients.
+    int getCoefficientCount() const { return _coefficients.getSize<2>(); }
 
     /**
      *  @brief Copy the table (shallow with copy-on-write).
@@ -74,11 +74,11 @@ protected:
 
         explicit Editor(NestedSampleTable * table) : SampleTable::Editor(table) {}
 
-        ndarray::Array<T,2,2> const & getNestedWeights() const {
+        ndarray::Array<double,2,2> const & getNestedWeights() {
             return getTable()._nestedWeights;
         }
 
-        ndarray::Array<T,3,3> const & getCoefficients() const {
+        ndarray::Array<Pixel,3,3> const & getCoefficients() {
             return getTable()._coefficients;
         }
 
@@ -108,11 +108,11 @@ protected:
     virtual void copyForEdit(int capacity);
 
 private:
-    ndarray::Array<T,2,2> _nestedWeights;
-    ndarray::Array<T,3,3> _coefficients;
+    ndarray::Array<double,2,2> _nestedWeights;
+    ndarray::Array<Pixel,3,3> _coefficients;
 };
 
 
-}}} // namespace lsst::meas::multifit
+}}}} // namespace lsst::meas::multifit::mc
 
-#endif // !LSST_MEAS_MULTIFIT_SampleTable
+#endif // !LSST_MEAS_MULTIFIT_MC_SampleTable

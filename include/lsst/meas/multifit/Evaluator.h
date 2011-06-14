@@ -79,6 +79,10 @@ protected:
         return _grid->clipToBounds(parameters);
     }
 
+    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const {
+        return _grid->checkBounds(parameters);
+    }
+
     virtual CoefficientPrior::ConstPtr _evaluate(
         ndarray::Array<Pixel,2,2> const & matrix,
         ndarray::Array<double const,1,1> const & parameters

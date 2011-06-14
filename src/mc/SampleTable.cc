@@ -1,12 +1,12 @@
-#include "lsst/meas/multifit/SampleTable.h"
+#include "lsst/meas/multifit/mc/SampleTable.h"
 #include "lsst/pex/exceptions.h"
 #include "boost/format.hpp"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace multifit { namespace mc {
 
-SampleTable::SampleTable(int capacity, int dimensionality) :
+SampleTable::SampleTable(int capacity, int parameterCount) :
     _size(0),
-    _parameters(ndarray::allocate(capacity, dimensionality)),
+    _parameters(ndarray::allocate(capacity, parameterCount)),
     _weights(ndarray::allocate(capacity))
 {}
 
@@ -48,4 +48,4 @@ void SampleTable::copyForEdit(int capacity) {
     copyArrayForEdit(_weights, capacity); 
 }
 
-}}} // namespace lsst::meas::multifit
+}}}} // namespace lsst::meas::multifit::mc

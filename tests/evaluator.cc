@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
 
     eval = makeEvaluator(*exp, fp, point, false, true);
     checkEvaluator(*eval, *fp, 1, 2, 1.0, 0.5);
-    ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterSize());
+    ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterCount());
     eval->writeInitialParameters(parameters);
 }
 
