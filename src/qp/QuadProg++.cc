@@ -10,6 +10,9 @@
  This file is part of QuadProg++: a C++ library implementing
  the algorithm of Goldfarb and Idnani for the solution of a (convex) 
  Quadratic Programming problem by means of an active-set dual method.
+
+ Modified for inclusion in the LSST software framework 2011 by Jim Bosch.
+
  Copyright (C) 2007-2009 Luca Di Gaspero.
  Copyright (C) 2009 Eric Moyer.  
  
@@ -67,7 +70,7 @@ void print_vector(const char* name, const Vector<T>& v, int n = -1);
 double solve_quadprog(Matrix<double>& G, Vector<double>& g0, 
                       const Matrix<double>& CE, const Vector<double>& ce0,  
                       const Matrix<double>& CI, const Vector<double>& ci0, 
-                      Vector<double>& x)
+                      Vector<double>& x, int maxIterations)
 {
   std::ostringstream msg;
   {
@@ -249,7 +252,7 @@ double solve_quadprog(Matrix<double>& G, Vector<double>& g0,
   for (i = 0; i < m; i++)
     iai[i] = i;
   
-l1:	iter++;
+l1:
 #ifdef TRACE_SOLVER
   print_vector("x", x);
 #endif
@@ -327,8 +330,11 @@ l2: /* Step 2: check for feasibility and determine a new S-pair */
 #endif
   
 l2a:/* Step 2a: determine step direction */
+  if (++iter > maxIterations) {
+      throw std::runtime_error("Exceeded maximum number of iterations");
+  }
     /* compute z = H np: the step direction in the primal space (through J, see the paper) */
-    compute_d(d, J, np);
+  compute_d(d, J, np);
   update_z(z, J, d, iq);
   /* compute N* np (if q > 0): the negative of the step direction in the dual space */
   update_r(R, r, d, iq);
@@ -722,7 +728,9 @@ void cholesky_decomposition(Matrix<double>& A)
         {
           std::ostringstream os;
           // raise error
+#ifdef TRACE_SOLVER
           print_matrix("A", A);
+#endif
           os << "Error in cholesky decomposition, sum: " << sum;
           throw std::logic_error(os.str());
           exit(-1);

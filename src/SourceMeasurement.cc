@@ -1,5 +1,6 @@
 #include "lsst/meas/multifit/SourceMeasurement.h"
 #include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/meas/multifit/SimpleInterpreter.h"
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #include "lsst/meas/algorithms/Measure.h"
@@ -7,47 +8,52 @@
 #include "lsst/utils/Utils.h"
 #include "lsst/utils/ieee.h"
 
+#define LSST_MAX_DEBUG 0
+#include "lsst/pex/logging/Debug.h"
+
 namespace lsst { namespace meas { namespace multifit {
 
+template <int basisSize>
+bool lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::usePixelWeights;
+template <int basisSize>
+lsst::afw::image::MaskPixel lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::bitmask;
+template <int basisSize>
+ModelBasis::Ptr lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::basis;
+template <int basisSize>
+int lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::nCoeff;
+template <int basisSize>
+bool lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::fitDeltaFunction;
+template <int basisSize>
+int lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::nGrowFp;
+template <int basisSize>
+bool lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::isEllipticityActive;
+template <int basisSize>
+bool lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::isRadiusActive;
+template <int basisSize>
+bool lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::isPositionActive;
 
-template <int nCoeff>
-lsst::afw::image::MaskPixel lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::bitmask;
-template <int nCoeff>
-ModelBasis::Ptr lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::basis;
-template <int nCoeff>
-int lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::nGrowFp;
-template <int nCoeff>
-bool lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::isEllipticityActive;
-template <int nCoeff>
-bool lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::isRadiusActive;
-template <int nCoeff>
-bool lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::isPositionActive;
 
-
-template <int nCoeff>
-int lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::nTestPoints;
+template <int basisSize>
+int lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::nTestPoints;
 
 #if 0 
 //these are needed for the GaussNewtonoptimizer
-template <int nCoeff>
-bool lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::retryWithSvd;
-template <int nCoeff>
-double lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::ftol;
-template <int nCoeff>
-double lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::gtol;
-template <int nCoeff>
-double lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::minStep;
-template <int nCoeff>
-double lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::tau;
-template <int nCoeff>
-int lsst::meas::multifit::ShapeletModelPhotometry<nCoeff>::maxIter;
+template <int basisSize>
+bool lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::retryWithSvd;
+template <int basisSize>
+double lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::ftol;
+template <int basisSize>
+double lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::gtol;
+template <int basisSize>
+double lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::minStep;
+template <int basisSize>
+double lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::tau;
+template <int basisSize>
+int lsst::meas::multifit::ShapeletModelPhotometry<basisSize>::maxIter;
 #endif
 
-
-
-
-template <int nCoeff>
-void ShapeletModelPhotometry<nCoeff>::defineSchema(lsst::afw::detection::Schema::Ptr schema) {
+template <int basisSize>
+void ShapeletModelPhotometry<basisSize>::defineSchema(lsst::afw::detection::Schema::Ptr schema) {
     schema->clear();
     schema->add(afw::detection::SchemaEntry("status",  STATUS,   afw::detection::Schema::INT, 1));
     schema->add(afw::detection::SchemaEntry("flux",    FLUX,     afw::detection::Schema::DOUBLE, 1));
@@ -61,8 +67,8 @@ void ShapeletModelPhotometry<nCoeff>::defineSchema(lsst::afw::detection::Schema:
 
 }
 
-template <int nCoeff>
-ShapeletModelPhotometry<nCoeff>::ShapeletModelPhotometry(
+template <int basisSize>
+ShapeletModelPhotometry<basisSize>::ShapeletModelPhotometry(
     int const status
 ) : lsst::afw::detection::Photometry() {
     init(); 
@@ -77,33 +83,68 @@ ShapeletModelPhotometry<nCoeff>::ShapeletModelPhotometry(
     }
 }
 
-template <int nCoeff>
-ShapeletModelPhotometry<nCoeff>::ShapeletModelPhotometry(
-    BruteForceSourceOptimizer const & optimizer,
-    Evaluator::Ptr const & evaluator
+template <int basisSize>
+ShapeletModelPhotometry<basisSize>::ShapeletModelPhotometry(
+    Evaluator::Ptr const & evaluator,
+    ndarray::Array<const double, 1, 1> const & param,
+    ndarray::Array<const double, 1, 1> const & coeff,
+    ndarray::Array<const double, 2, 1> const & covar,
+    int const status
 ) : afw::detection::Photometry() {
     init();
-    ndarray::Array<const double, 1, 1> param = optimizer.getBestParameters();
-    ndarray::Array<const double, 1, 1> coeff = optimizer.getBestCoefficients();
-    ndarray::Array<const double, 2, 1> covar = optimizer.getCoefficientCovariance();
-    double flux = evaluator->getGrid()->sources[0].computeFluxMean(param, coeff);
-    double fluxErr = sqrt(evaluator->getGrid()->sources[0].computeFluxVariance(param, covar));
-    afw::geom::ellipses::Ellipse ellipse = evaluator->getGrid()->objects[0].makeEllipse(param.begin());
-    set<STATUS>(0);
-    set<FLUX>(flux);
-    set<FLUX_ERR>(fluxErr);
-    EllipseCore core(ellipse.getCore());
-    set<RADIUS>(static_cast<double>(core.getRadius())); 
-    set<E1>(core.getE1());
-    set<E2>(core.getE2());        
-    for(int i = 0; i < nCoeff; ++i){
-        set<COEFFICIENTS>(i, coeff[i]);
+    
+    set<STATUS>(status);
+    if(status & OPTIMIZER_FAILED) {
+        set<FLUX>(std::numeric_limits<double>::quiet_NaN());
+        set<FLUX_ERR>(std::numeric_limits<double>::quiet_NaN());
+        set<E1>(std::numeric_limits<double>::quiet_NaN());
+        set<E2>(std::numeric_limits<double>::quiet_NaN());
+        set<RADIUS>(std::numeric_limits<double>::quiet_NaN());
+        for(int i = 0; i < nCoeff; ++i) {
+            set<COEFFICIENTS>(i, std::numeric_limits<double>::quiet_NaN());
+        }        
+        return;
     }
+    int starId=0; 
+    double flux=0, fluxVar=0;
+
+    if((status & GALAXY_MODEL_FAILED) == 0) {
+        starId = 1;
+        grid::Object const & object = evaluator->getGrid()->objects[0];
+        grid::Source const & source = evaluator->getGrid()->sources[0];
+        flux += source.computeFluxMean(param, coeff);
+        fluxVar += source.computeFluxVariance(param, covar);
+        afw::geom::ellipses::Ellipse ellipse = object.makeEllipse(param.begin());
+        EllipseCore core(ellipse.getCore());
+        set<RADIUS>(static_cast<double>(core.getRadius())); 
+        set<E1>(core.getE1());
+        set<E2>(core.getE2());       
+
+        for(int i = 0; i < basisSize; ++i) {
+            set<COEFFICIENTS>(i, coeff[i]);
+        }
+    } else {
+        set<RADIUS>(0.); 
+        set<E1>(0.);
+        set<E2>(0.);   
+        for(int i = 0; i < basisSize; ++i) {
+            set<COEFFICIENTS>(i, std::numeric_limits<double>::quiet_NaN());
+        }
+    }
+    if(fitDeltaFunction) {  
+        grid::Source const & star = evaluator->getGrid()->sources[starId];
+        flux += star.computeFluxMean(param, coeff);
+        fluxVar += star.computeFluxVariance(param, covar);        
+        set<COEFFICIENTS>(basisSize, coeff[star.getCoefficientOffset()]);
+    }
+    set<FLUX>(flux);
+    set<FLUX_ERR>(sqrt(fluxVar));
+
 }
 
 #if 0 
-template <int nCoeff>
-ShapeletModelPhotometry<nCoeff>::ShapeletModelPhotometry(
+template <int basisSize>
+ShapeletModelPhotometry<basisSize>::ShapeletModelPhotometry(
     GaussNewtonOptimizer & optimizer,
     BaseEvaluator::Ptr const &
 ) : afw::detection::Photometry() {
@@ -179,13 +220,13 @@ afw::image::MaskPixel makeBitMask(
     return bitmask;
 }
 
-std::string makeBasisPath(int nCoeff) {
+std::string makeBasisPath(int basisSize) {
     std::string file;
-    if(nCoeff == 2)
+    if(basisSize == 2)
         file = "ed+00:0000.boost";
-    else if(nCoeff == 8)
+    else if(basisSize == 8)
         file = "ed+06:2000.boost";
-    else if(nCoeff == 17)
+    else if(basisSize == 17)
         file = "ed+15:4000.boost";
     else {
         throw LSST_EXCEPT(
@@ -198,9 +239,9 @@ std::string makeBasisPath(int nCoeff) {
     return path.native_file_string();
 }
 
-template <int nCoeff>
+template <int basisSize>
 template <typename ExposureT>
-afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
+afw::detection::Photometry::Ptr ShapeletModelPhotometry<basisSize>::doMeasure(
     CONST_PTR(ExposureT) im,
     CONST_PTR(afw::detection::Peak) peak,
     CONST_PTR(afw::detection::Source) source
@@ -208,6 +249,8 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
     if (!source) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_SOURCE));
     }
+    pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
+    log.debug(1, boost::format("Processing source %lld") % source->getSourceId());
     if (!source->getFootprint()) {
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_FOOTPRINT));
     }
@@ -221,13 +264,6 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_PSF));
     }
 
-#if 0
-    if (source->getSourceId() != 2071) {
-        // Just to see if it's specifically this object that matters.
-        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_EXPOSURE));
-    }
-#endif
-
     afw::detection::Footprint::Ptr fp = afw::detection::growFootprint(
         *source->getFootprint(), nGrowFp
     );
@@ -240,28 +276,66 @@ afw::detection::Photometry::Ptr ShapeletModelPhotometry<nCoeff>::doMeasure(
         return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(BAD_INITIAL_MOMENTS));
     }
 
+    
+    Definition definition;
+    definition.frames.insert(definition::Frame::make(0, *im, fp, bitmask, usePixelWeights));
 
-    Definition definition = Definition::make(
-        *im, fp, basis, *ellipse, 
-        isEllipticityActive,
-        isRadiusActive,
-        isPositionActive,
-        bitmask
+    if (definition.frames[0].getFootprint()->getArea() == 0) {
+	return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(NO_FOOTPRINT));
+    }
+
+    //fit both a point source and galaxy model for the same object
+    definition::Object galaxy = definition::Object::makeGalaxy(
+        0, basis, *ellipse, 
+        isEllipticityActive, 
+        isRadiusActive, 
+        isPositionActive
     );
+    definition::Object star(1);
+    //link the position object of the two models
+    star.getPosition() = galaxy.getPosition();
+
+    definition.objects.insert(galaxy);
+    definition.objects.insert(star);
+
+    ndarray::Array<const double, 1, 1> param, coeff;
+    ndarray::Array<const double, 2, 1> covar;
+    int status = 0;
     Evaluator::Ptr evaluator = Evaluator::make(definition);
     BruteForceSourceOptimizer optimizer;
     bool success = optimizer.solve(evaluator, nTestPoints);
-    if(!success) {
-        return boost::make_shared<ShapeletModelPhotometry>(static_cast<int>(OPTIMIZER_FAILED));
+    if(success) {
+        param = optimizer.getBestParameters();
+        coeff = optimizer.getBestCoefficients();
+        covar = optimizer.getCoefficientCovariance();
+        if (!optimizer.isBestSafe()) {
+            status |= UNSAFE_INVERSION;
+        }
     }
-    return ShapeletModelPhotometry::Ptr(
-        new ShapeletModelPhotometry(optimizer, evaluator)
+    else if (fitDeltaFunction) { 
+        status |= GALAXY_MODEL_FAILED;
+
+        //try fitting just the point source model
+        definition.objects.erase(galaxy.id);
+        evaluator = Evaluator::make(definition);
+        Evaluation evaluation(evaluator);
+        try{
+            param = evaluation.getParameters();
+            coeff = evaluation.getCoefficients();
+            covar = evaluation.getCoefficientFisherMatrix();
+        }
+        catch (...){
+            status |= static_cast<int>(OPTIMIZER_FAILED);
+        }
+    }
+    return ShapeletModelPhotometry<basisSize>::Ptr(
+        new ShapeletModelPhotometry(evaluator, param, coeff, covar, status)
     ); 
 }
 
 
-template <int nCoeff>
-bool ShapeletModelPhotometry<nCoeff>::doConfigure(
+template <int basisSize>
+bool ShapeletModelPhotometry<basisSize>::doConfigure(
     lsst::pex::policy::Policy const & policy
 ) {   
     lsst::pex::policy::Policy local(policy);
@@ -276,7 +350,10 @@ bool ShapeletModelPhotometry<nCoeff>::doConfigure(
     isRadiusActive = local.getBool("isRadiusActive");
     isPositionActive = local.getBool("isPositionActive");
     bitmask = makeBitMask(local.getStringArray("maskPlaneName"));
-    
+    fitDeltaFunction = local.getBool("fitDeltaFunction");
+    nCoeff = fitDeltaFunction ? basisSize + 1: basisSize;
+
+    usePixelWeights = local.getBool("usePixelWeights");
     
     nTestPoints = local.getInt("nTestPoints");
     
@@ -289,7 +366,7 @@ bool ShapeletModelPhotometry<nCoeff>::doConfigure(
     retryWithSvd = local.getBool("retryWithSvd");
 #endif
 
-    basis = CompoundShapeletModelBasis::load(makeBasisPath(nCoeff));
+    basis = CompoundShapeletModelBasis::load(makeBasisPath(basisSize));
     ShapeletModelBasis::setPsfShapeletOrder(local.getInt("psfShapeletOrder"));
     return true;
 }

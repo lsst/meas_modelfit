@@ -11,6 +11,20 @@ definitions: {
         maxOccurs: 1
         default: true
     }
+    usePixelWeights: {
+        type: "bool"
+        description: "toggle on/off weighing the data by per-pixel variance"
+        minOccurs: 1
+        maxOccurs: 1
+        default: false
+    }
+    fitDeltaFunction: {
+        type: "bool"
+        description: "toggle on/off whether or not to fit a delta function"
+        minOccurs: 1
+        maxOccurs: 1
+        default: true
+    }
     nGrowFp:{
         type: "int"        
         description: "amount to grow input footprint"
@@ -39,14 +53,14 @@ definitions: {
         description: "if true will fit for radius"
         minOccurs: 1
         maxOccurs: 1
-        default: false
+        default: true
     }
     isEllipticityActive: {
         type: "bool"
         description: "if true will fit for ellipticity"
         minOccurs: 1
         maxOccurs: 1
-        default: false
+        default: true
     }
     maskPlaneName: {
         type: "string"

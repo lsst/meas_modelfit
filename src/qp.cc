@@ -26,6 +26,7 @@ QuadProgPP::Vector<double> makeVector(lsst::ndarray::Array<double const,1,0> con
 } // anonymous
 
 struct QPSolver::Data {
+    int maxIterations;
     QuadProgPP::Matrix<double> g;
     QuadProgPP::Vector<double> c;
     QuadProgPP::Matrix<double> ae;
@@ -56,6 +57,12 @@ QPSolver::QPSolver(
     _data->c = makeVector(c);
     _data->ae.resize(n, 0);
     _data->ai.resize(n, 0);
+    _data->maxIterations = 100;
+}
+
+QPSolver & QPSolver::maxIterations(int n) { 
+    _data->maxIterations = n;
+    return *this;
 }
 
 QPSolver & QPSolver::equality(
@@ -93,7 +100,8 @@ QPSolver & QPSolver::inequality(
 double QPSolver::solve(lsst::ndarray::Array<double,1,0> const & x) const {
     QuadProgPP::Vector<double> qp_x;
     double cost = QuadProgPP::solve_quadprog(
-        _data->g, _data->c, _data->ae, _data->be, _data->ai, _data->bi, qp_x
+        _data->g, _data->c, _data->ae, _data->be, _data->ai, _data->bi, qp_x,
+	_data->maxIterations
     );
     if (x.getSize<0>() != int(qp_x.size())) {
         throw LSST_EXCEPT(

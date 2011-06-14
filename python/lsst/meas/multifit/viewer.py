@@ -46,6 +46,8 @@ class Viewer(object):
         self.policy.add(self.photometryAlgorithm + ".isRadiusActive", True)
         self.policy.add(self.photometryAlgorithm + ".isEllipticityActive", True)
         self.policy.add(self.photometryAlgorithm + ".maskPlaneName", "BAD")
+        self.policy.add(self.photometryAlgorithm + ".usePixelWeights", False)
+        self.policy.add(self.photometryAlgorithm + ".fitDeltaFunction", True)
         if nCoeff == 2:
             self.basis = utils.loadBasis("ed+00:0000")
         elif nCoeff == 8:
@@ -97,8 +99,15 @@ class Viewer(object):
             policy.get(self.photometryAlgorithm + ".isEllipticityActive"),
             policy.get(self.photometryAlgorithm + ".isRadiusActive"),
             policy.get(self.photometryAlgorithm + ".isPositionActive"),
-            bitmask
+            bitmask,
+            policy.get(self.photometryAlgorithm + ".usePixelWeights")
             )
+        if(policy.get(self.photometryAlgorithm + ".fitDeltaFunction")):
+            deltaFunction = lsst.meas.multifit.definition.Object(1)
+            deltaFunction.setPosition(definition.objects[0].getPosition())
+            definition.objects.insert(deltaFunction)
+
+
         return lsst.meas.multifit.Grid.make(definition)
 
     def fit(self, index, mode=None):
@@ -148,9 +157,12 @@ class Viewer(object):
         for frame in definition.frames:
             bbox = frame.getFootprint().getBBox()
             for obj in fitDict["grid"].objects:
-                bounds = obj.makeEllipse(fitDict["evaluation"].getParameters())
-                bounds.scale(self.scaleFactor)
-                bbox.include(lsst.afw.geom.Box2I(bounds.computeEnvelope()))
+                try:
+                    bounds = obj.makeEllipse(fitDict["evaluation"].getParameters())
+                    bounds.scale(self.scaleFactor)
+                    bbox.include(lsst.afw.geom.Box2I(bounds.computeEnvelope()))
+                except:
+                    pass
             bbox.clip(self.exposure.getBBox(lsst.afw.image.PARENT))
             frame.setFootprint(lsst.afw.detection.Footprint(bbox))
             dataArray = numpy.zeros(frame.getFootprint().getArea(), dtype=float)

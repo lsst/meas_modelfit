@@ -80,7 +80,7 @@ namespace QuadProgPP{
   double solve_quadprog(Matrix<double>& G, Vector<double>& g0, 
 			const Matrix<double>& CE, const Vector<double>& ce0,  
 			const Matrix<double>& CI, const Vector<double>& ci0, 
-			Vector<double>& x);
+			Vector<double>& x, int maxIterations);
 }
 
 #endif // #define _QUADPROGPP

@@ -133,6 +133,9 @@ public:
                 if (newObject->getBasis()) {
                     constraintCount += newObject->getBasis()->getConstraintSize()
                         * (newObject->getCoefficientCount() / newObject->getSourceCoefficientCount());
+                } else {
+                    constraintCount += 
+                        (newObject->getCoefficientCount() / newObject->getSourceCoefficientCount());
                 }
             }
             transferComponents<POSITION>(input, output, output.positions);
@@ -141,6 +144,8 @@ public:
             if (constraintCount) {
                 output._constraintVector = ndarray::allocate(constraintCount);
                 output._constraintMatrix = ndarray::allocate(constraintCount, output._coefficientCount);
+                output._constraintVector.deep() = 0.0;
+                output._constraintMatrix.deep() = 0.0;
             }
             int constraintOffset = 0;
             for (
@@ -159,29 +164,45 @@ public:
                     ++output.sources._last;
                 }
                 i->sources._last = output.sources._last;
-                if (i->getBasis() && i->getBasis()->getConstraintSize()) {
-                    int nConstraints = i->getBasis()->getConstraintSize();
-                    int nSteps = output._filterCount;
-                    if (i->isVariable()) {
-                        nSteps = frameCount;
+                if (constraintCount) {
+                    ndarray::Array<Pixel,1,1> subConstraintVector;
+                    ndarray::Array<Pixel,2,1> subConstraintMatrix;
+                    int nObjConstraints = 0;
+                    if (i->getBasis() && i->getBasis()->getConstraintSize()) {
+                        nObjConstraints = i->getBasis()->getConstraintSize();
+                        subConstraintVector 
+                            = ndarray::const_array_cast<Pixel>(i->getBasis()->getConstraintVector());
+                        subConstraintMatrix
+                            = ndarray::const_array_cast<Pixel>(i->getBasis()->getConstraintMatrix());
+                    } else if (!i->getBasis()) {
+                        nObjConstraints = 1;
+                        subConstraintMatrix = ndarray::allocate(1,1);
+                        subConstraintMatrix.deep() = 1.0;
+                        subConstraintVector = ndarray::allocate(1);
+                        subConstraintVector.deep() = 0.0;
                     }
-                    for (int step = 0; step < nSteps; ++step) {
-                        output._constraintVector[
-                            ndarray::view(constraintOffset, constraintOffset + nConstraints)
-                        ] = i->getBasis()->getConstraintVector();
-                        output._constraintMatrix[
-                            ndarray::view(
-                                constraintOffset, constraintOffset + nConstraints
-                            ) (
-                                i->getCoefficientOffset() + step * i->getSourceCoefficientCount(),
-                                i->getCoefficientOffset() + (step + 1) * i->getSourceCoefficientCount()
-                            )
-                        ] = i->getBasis()->getConstraintMatrix();
-                        constraintOffset += nConstraints;
+                    if (nObjConstraints) {
+                        int nSteps = output._filterCount;
+                        if (i->isVariable()) {
+                            nSteps = frameCount;
+                        }
+                        for (int step = 0; step < nSteps; ++step) {
+                            output._constraintVector[
+                                ndarray::view(constraintOffset, constraintOffset + nObjConstraints)
+                            ] = subConstraintVector;
+                            output._constraintMatrix[
+                                ndarray::view(
+                                    constraintOffset, constraintOffset + nObjConstraints
+                                ) (
+                                    i->getCoefficientOffset() + step * i->getSourceCoefficientCount(),
+                                    i->getCoefficientOffset() + (step + 1) * i->getSourceCoefficientCount()
+                                )
+                            ] = subConstraintMatrix;
+                            constraintOffset += nObjConstraints;
+                        }
                     }
                 }
             }
-            
         } catch (...) {
             destroyGrid(output);
             throw;

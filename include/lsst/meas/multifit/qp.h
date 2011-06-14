@@ -27,6 +27,9 @@ public:
         lsst::ndarray::Array<double const,1,0> const & c
     );
 
+    /// @brief Set the maximum number of iterations.
+    QPSolver & maxIterations(int n);
+
     /**
      *  @brief Set the equality constraint for the solver.
      *
