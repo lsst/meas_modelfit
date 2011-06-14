@@ -26,15 +26,11 @@ def test():
         
         psf = butler.get("psf", id=i)
 
-        expD = butler.get("exp", id=i)
-        miD = expD.getMaskedImage()
-        miF = lsst.afw.image.MaskedImageF(miD.getImage().convertF(), miD.getMask(), miD.getVariance())
-
-        exposure = lsst.afw.image.ExposureF(miF, expD.getWcs())
-        exposure.setPsf(psf)
+        exp = butler.get("exp", id=i)
+        exp.setPsf(psf)
         sources = butler.get("src", id=i)
 
-        measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(exposure)
+        measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(exp)
         measurePhotometry.addAlgorithm(algorithm)
         measurePhotometry.configure(policy)
         
