@@ -68,18 +68,11 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, fitDelta=True):
         if not butler.datasetExists("src", id=d):
             continue
         psf = butler.get("psf", id=d)
-        expD = butler.get("exp", id=d)
-        miD = expD.getMaskedImage()
-        miF = lsst.afw.image.MaskedImageF(
-                miD.getImage().convertF(), 
-                miD.getMask(), 
-                miD.getVariance())
-
-        exposure = lsst.afw.image.ExposureF(miF, expD.getWcs())
-        exposure.setPsf(psf)
+        exp = butler.get("exp", id=d)
+        exp.setPsf(psf)
         sources = butler.get("src", id=d)
 
-        measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(exposure)
+        measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(exp)
         measurePhotometry.addAlgorithm(algorithm)
         measurePhotometry.configure(policy)
 
