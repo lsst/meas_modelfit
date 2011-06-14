@@ -4,6 +4,7 @@ import lsst.afw.image
 import lsst.meas.multifit
 import lsst.meas.algorithms
 import lsst.daf.persistence
+import lsst.meas.multifit.viewer
 import numpy
 import sys
 import logging
@@ -136,3 +137,13 @@ def m_radius(table):
 def ellipticity(table):
     return (table["e1"]**2 + table["e2"]**2)**0.5
 
+def mag(table):
+    return -2.5*numpy.log10(table["flux"])
+
+def psf_mag(table):
+    return -2.5*numpy.log10(table["psf_flux"])
+
+def view(record):
+    v = lsst.meas.multifit.viewer.Viewer(record['dataset'])
+    index = [s.getSourceId() for s in v.sources].index(record["id"])
+    v.plot(index, "photometry")
