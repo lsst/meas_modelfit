@@ -1,6 +1,7 @@
-#include "lsst/meas/multifit/NormConstrainedCoefficientPrior.h"
+#include "lsst/meas/multifit/BallCoefficientPrior.h"
 #include "lsst/ndarray/eigen.h"
-#include <Eigen/SVD>
+#include "Eigen/SVD"
+#include "boost/math/special_functions/gamma.hpp"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -36,11 +37,13 @@ void drawUniformOnSphere(
 
 } // anonymous
 
-struct NormConstrainedCoefficientPrior::SolveWorkspace {
-
+struct BallCoefficientPrior::SolveWorkspace {
+    typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor|Eigen::AutoAlign> Matrix;
+    Eigen::SVD<Matrix> svd;
+    Eigen::VectorXd scratch;
 };
 
-struct NormConstrainedCoefficientPrior::IntegrateWorkspace {
+struct BallCoefficientPrior::IntegrateWorkspace {
     int n1;
     int n2;
     double radiusSquared;
@@ -88,7 +91,15 @@ struct NormConstrainedCoefficientPrior::IntegrateWorkspace {
 
 };
 
-double NormConstrainedCoefficientPrior::integrate(
+double BallCoefficientPrior::operator()(
+    ndarray::Array<Pixel const,1,1> const & coefficients
+) const {
+    if (ndarray::viewAsEigen(coefficients).norm() < _radius)
+        return _normalization;
+    return 0.0;
+}
+
+double BallCoefficientPrior::integrate(
     Random & engine,
     ndarray::Array<Pixel,2,2> const & coefficients,
     ndarray::Array<Pixel,1,1> const & weights,
@@ -192,6 +203,49 @@ double NormConstrainedCoefficientPrior::integrate(
     }
 }
 
-NormConstrainedCoefficientPrior::~NormConstrainedCoefficientPrior() {}
+BallCoefficientPrior::~BallCoefficientPrior() {}
+
+double BallCoefficientPrior::computeVolume(int d, double radius, double factor) {
+    if (factor <= 0.0) {
+        factor = computeVolumeFactor(d);
+    }
+    return factor * std::pow(radius, d);
+}
+
+double BallCoefficientPrior::computeVolumeFactor(int d) {
+    return std::pow(M_PI, 0.5 * d) / boost::math::tgamma(0.5 * d + 1.0);
+}
+
+double BallCoefficientPrior::_solve(
+    Eigen::VectorXd & mu, Eigen::MatrixXd & q, Eigen::VectorXd & s, int & n1,
+    ndarray::Array<double const,2,2> const & modelMatrix,
+    ndarray::Array<double const,1,1> const & dataVector        
+) const {
+    static double const rcond = std::sqrt(std::numeric_limits<double>::epsilon());
+    if (!_solveWorkspace) {
+        _solveWorkspace.reset(new SolveWorkspace());
+    }
+    SolveWorkspace & ws = *_solveWorkspace; // just a short alias for legibility
+    ws.svd.compute(ndarray::viewAsEigen(modelMatrix));
+    ws.svd.sort();
+    s = ws.svd.singularValues();
+    q = ws.svd.matrixV();
+    ws.scratch.resize(s.size());
+    double sMin = s[0] * rcond;
+    for (n1 = 1; n1 < s.size(); ++n1) {
+        if (s.coeff(n1) <= sMin) {
+            break;
+        }
+    }
+    ws.scratch.segment(0, n1) = ws.svd.matrixU().block(0, 0, ws.svd.matrixU().rows(), n1).transpose() 
+        * ndarray::viewAsEigen(dataVector);
+    double result = 0.5 * (
+        ws.svd.matrixU().block(0, 0, ws.svd.matrixU().rows(), n1) * ws.scratch.segment(0, n1)
+        - ndarray::viewAsEigen(dataVector)
+    ).squaredNorm();
+    ws.scratch.segment(0, n1).cwise() /= s.segment(0, n1);
+    mu = q.block(0, 0, q.rows(), n1) * ws.scratch;
+    return result;
+}
 
 }}} // namespace lsst::meas::multifit

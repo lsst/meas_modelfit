@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_NormConstrainedCoefficientPrior
-#define LSST_MEAS_MULTIFIT_NormConstrainedCoefficientPrior
+#ifndef LSST_MEAS_MULTIFIT_BallCoefficientPrior
+#define LSST_MEAS_MULTIFIT_BallCoefficientPrior
 
 #include "lsst/meas/multifit/CoefficientPrior.h"
 
@@ -31,14 +31,14 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief A subclass of CoefficientPrior that sets a bound on a weighted L2 norm of the coefficient vector.
  *
- *  A prior that subclasses NormConstrainedCoefficientPrior may be more sophisticated than the simple
+ *  A prior that subclasses BallCoefficientPrior may be more sophisticated than the simple
  *  L2 constraint, but it must evaluate to zero outside the constraint.
  */
-class NormConstrainedCoefficientPrior : public CoefficientPrior {
+class BallCoefficientPrior : public CoefficientPrior {
 public:
 
-    typedef boost::shared_ptr<NormConstrainedCoefficientPrior> Ptr;
-    typedef boost::shared_ptr<NormConstrainedCoefficientPrior const> ConstPtr;
+    typedef boost::shared_ptr<BallCoefficientPrior> Ptr;
+    typedef boost::shared_ptr<BallCoefficientPrior const> ConstPtr;
 
     /// @brief Evaluate the value of the prior for a given coefficient vector.
     virtual double operator()(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const;
@@ -70,15 +70,15 @@ public:
         lsst::ndarray::Array<double const,1,1> const & dataVector
     ) const;
 
-    NormConstrainedCoefficientPrior(int d, double radius) :
+    BallCoefficientPrior(int d, double radius) :
         _radius(radius), _normalization(computeVolume(d, radius))
     {}
 
-    virtual ~NormConstrainedCoefficientPrior();
+    virtual ~BallCoefficientPrior();
 
 protected:
 
-    NormConstrainedCoefficientPrior(int d, double radius, double normalization) :
+    BallCoefficientPrior(int d, double radius, double normalization) :
         _radius(radius), _normalization(normalization)
     {}
 
@@ -104,7 +104,7 @@ protected:
      *  @param[out]  mu           maximum-likelihood coefficient vector @f$\hat{\mu}@f$
      *  @param[out]  q            orthogonal matrix @f$Q@f$
      *  @param[out]  s            diagonal of matrix @f$S@f$
-     *  @param[out]  nNonzero     number of nonzero elements of s; these must be the first elements
+     *  @param[out]  n1           number of nonzero elements of s; these must be the first elements
      *  @param[in]   modelMatrix  model matrix @f$A@f$
      *  @param[in]   dataVector   data vector @f$x@f$
      *
@@ -113,7 +113,7 @@ protected:
      *  This function is virtual so subclasses with a Gaussian factor in the prior can override.
      */
     virtual double _solve(
-        Eigen::VectorXd & mu, Eigen::MatrixXd & q, Eigen::VectorXd & s, int & nNonzero,
+        Eigen::VectorXd & mu, Eigen::MatrixXd & q, Eigen::VectorXd & s, int & n1,
         lsst::ndarray::Array<double const,2,2> const & modelMatrix,
         lsst::ndarray::Array<double const,1,1> const & dataVector        
     ) const;
