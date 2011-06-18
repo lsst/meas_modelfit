@@ -24,52 +24,9 @@
 #ifndef LSST_MEAS_MULTIFIT_BaseEvaluator
 #define LSST_MEAS_MULTIFIT_BaseEvaluator
 
-#include "lsst/ndarray.h"
-#include "lsst/meas/multifit/constants.h"
-#include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include "lsst/meas/multifit/CoefficientPrior.h"
 
 namespace lsst { namespace meas { namespace multifit {
-
-/**
- *  @brief Represents a Bayesian prior on the coefficients given the parameters.
- *
- *  Priors on coefficients are represented as an unnormalized Gaussian factor multiplied
- *  by a completely arbitrary function of the coefficients:
- *  @f[
- *     P(\mu|\phi) = e^{-\frac{1}{2}(\mu-y)^T\!F(\mu-y)} g(\mu)
- *  @f]
- *  where @f$\mu@f$ are the coefficients, @f$y@f$ and @f$F@f$ are the Gaussian vector and
- *  matrix, and @f$g(\mu)@f$ is evaluated using operator()().
- *
- *  Note that the full prior must be normalized:
- *  @f[
- *     \int d\mu P(\mu|\phi) = 1
- *  @f]
- *  if the Bayesian evidence is to be computed correctly.  At the very least, the
- *  normalization must not vary with @f$\phi@f$.
- */
-class CoefficientPrior : private boost::noncopyable {
-public:
-
-    typedef boost::shared_ptr<CoefficientPrior> Ptr;
-    typedef boost::shared_ptr<CoefficientPrior const> ConstPtr;
-
-    /// @brief Mean vector of the Gaussian factor of the prior (@f$y@f$) .
-    Eigen::VectorXd const & getGaussianVector() const { return _gaussianVector; }
-
-    /// @brief Inverse of the covariance matrix of the Gaussian factor of the prior (@f$F@f$).
-    Eigen::MatrixXd const & getGaussianMatrix() const { return _gaussianMatrix; }
-
-    /// @brief Evaluate the general factor of the prior (@f$g(\mu)@f$).
-    virtual double operator()(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const = 0;
-
-    virtual ~CoefficientPrior() {}
-
-protected:
-    Eigen::VectorXd _gaussianVector;
-    Eigen::MatrixXd _gaussianMatrix;
-};
 
 /**
  *  @brief Code interface for nested linear models.
@@ -78,8 +35,7 @@ protected:
  *  @f[
  *      q(\mu,\phi) = \frac{1}{2} (A\mu-x)^T\!(A\mu-x) 
  *           + \frac{1}{2}\ln\left|2\pi\Sigma^{-1}\right|
- *           + \frac{1}{2} (\mu-y)^T\!F(\mu-y)
- *           - \ln g(\mu)
+ *           - \ln P(\mu|\phi)
  *  @f]
  *  where
  *   - @f$\mu@f$ are the linear parameters (called "coefficients") of the model
@@ -90,27 +46,9 @@ protected:
  *     pixel's uncertainty).
  *   - @f$x@f$ is the data vector.  If per-pixel weights are used, @f$x@f$ includes them.
  *   - @f$\Sigma@f$ is the pixel uncertainty covariance matrix, assumed to be diagonal.
- *   - @f$y(\phi)@f$ is the mean of the Gaussian factor of a Bayesian prior on the coefficients.
- *     (see CoefficientPrior).
- *   - @f$F(\phi)@f$ is the inverse of the covariance matrix of the Gaussian factor of a 
- *     Bayesian prior on the coefficients (see CoefficientPrior).
- *   - @f$g(\mu,\phi)@f$ is the arbitrary factor in a Bayesian prior on the coefficents
- *     (see CoefficientPrior).
+ *   - @f$P(\mu|\phi)@f$ is a Bayesian prior on the coefficents (see CoefficientPrior).
  *
- *  Note that @f$A@f$, @f$y@f$, @f$F@f$, and @f$g@f$ are implicitly functions of $\phi$
- *  in the above equation.
- *
- *  @f$q@f$ arises as the negative logarithm of the product of the likelihood and coefficient prior:
- *  @f[
- *      q(\mu,\phi) \equiv -\ln \left[ P(x|\mu,\phi) P(\mu|\phi) \right]
- *  @f]
- *  so
- *  @f[
- *      \int d\mu\,e^{-q(\mu,\phi)} = P(x|\phi)
- *  @f]
- *  The intent of the evaluator interface is thus to isolate the Gaussian or
- *  nearly Gaussian dependency of the likelihood on the coefficients, allowing this integral
- *  to be evaluated efficiently.
+ *  Note that @f$A@f$, is implicitly a function of $\phi$ in the above equation.
  *
  *  BaseEvaluator subclasses should be immutable.
  */
@@ -179,16 +117,15 @@ public:
     void writeInitialParameters(lsst::ndarray::Array<double,1,1> const & parameters) const;
 
     /**
-     *  @brief Compute the integral @f$\int d\mu\,e^{-q(\mu,\phi)} = P(x|\phi)@f$.
+     *  @brief Compute the Monte Carlo integral @f$\int d\mu\,P(x|\mu,\phi)\,P(\mu|\phi) = P(x|\phi)@f$.
      *
-     *  The integral is computed using importance sampling with a Gaussian distribution
-     *  formed from the product of the likelihood and the Gaussian factor of the coefficient
-     *  prior.
+     *  This delegates to CoefficientPrior::integrate and multiplies by the constant pixel 
+     *  covariance factor.
      *  
      *  @param[in]  engine        Random number generator.
      *  @param[out] coefficients  (samples)x(coefficient count) array to fill with Monte Carlo samples.
-     *  @param[out] weights       Normalized weights (sum to one) corresponding to the Monte Carlo samples.
-     *  @param[in]  parameters    Parameter vector to evaluate at.
+     *  @param[out] weights       (samples) array of normalized weights (sum to one).
+     *  @param[in]  parameters    (parameter count) array of parameters @f$\phi@f$.
      *
      *  @returns a Monte Carlo estimate of @f$P(x|\phi)@f$
      */

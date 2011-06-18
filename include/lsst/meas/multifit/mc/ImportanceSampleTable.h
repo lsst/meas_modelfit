@@ -25,55 +25,10 @@
 #define LSST_MEAS_MULTIFIT_MC_ImportanceSampleTable
 
 #include "lsst/meas/multifit/mc/NestedSampleTable.h"
+#include "lsst/meas/multifit/mc/ImportanceDistribution.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace mc {
-
-class ImportanceDistribution {
-public:
-    typedef boost::shared_ptr<ImportanceDistribution> Ptr;
-
-    /**
-     *  @brief Draw a set of parameter vector from the distribution and evaluate the distribution
-     *         at those points.
-     *
-     *  @param[in]   engine      Generic random number generator.
-     *  @param[out]  parameters  (sample size)x(parameter count) array to fill with vectors drawn
-     *                           from the distribution.
-     *  @param[out]  importance  Density of the distribution.
-     */
-    virtual void draw(
-        Random & engine,
-        lsst::ndarray::Array<double,2,2> const & parameters,
-        lsst::ndarray::Array<double,1,1> const & importance
-    ) const = 0;
-
-    /**
-     *  @brief Evaluate the distribution at the given parameter values.
-     *
-     *  @param[in]   parameters  (sample size)x(parameter count) array to evaluate at.
-     *  @param[out]  output      (sample size) output array; the density times the given 
-     *                           multiplicative factor is added to this array.
-     *  @param[in]   factor      Multiplicative factor.
-     */
-    virtual void evaluate(
-        lsst::ndarray::Array<double const,2,2> const & parameters,
-        lsst::ndarray::Array<double,1,1> const & output,
-        double factor = 1.0
-    ) const = 0;
-
-    /**
-     *  @brief Return a new distribution that has been modified match a set of importance or MCMC samples.
-     *
-     *  This will generally be used by adaptive importance sampling methods, and most
-     *  operations will match moments or minimize the Kullback-Leibler divergence.
-     */
-    virtual Ptr adapt(
-        lsst::ndarray::Array<double const,2,1> const & parameters,
-        lsst::ndarray::Array<double const,1,1> const & weights
-    ) const = 0;
-
-};
 
 /**
  *  @brief A SampleTable for use in adaptive importance sampling algorithms.

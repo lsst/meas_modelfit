@@ -20,79 +20,198 @@ marks=true, ]{hyperref}
 \item $\Sigma$: pixel covariance matrix (assumed to be diagonal)
 \item $\phi$: nonlinear parameters
 \item $\mu$: linear parameters (coefficients)
+\item $N$: number of coefficients
 \end{itemize}
 
 The coefficient prior is defined as
 
 \begin{equation}
-  P(\mu|\phi) = e^{-\frac{1}{2}(\mu-y)^T F (\mu-y)} g(\mu)
+  P(\mu|\phi) = g(\mu)
 \end{equation}
 
-which must of course be normalized.
+with the additional constraint $g(\mu) = 0$ for all $\mu$ such that
+$\mu^T B^{-1} \mu > 1$, where $B$ is a diagonal matrix.
 
 \section{Bayesian Probabilities}
 
 \begin{eqnarray}
-  P(\phi,\mu|x) &=& P(x|\phi,\mu)
-  \frac{P(\phi,\mu)}{P(x)} \\
+  P(\mu,\phi|x) &=& P(x|\mu,\phi)
+  \frac{P(\mu,\phi)}{P(x)} \\
   P(\phi|x)P(\mu|x,\phi) &=&
-  P(x|\phi,\mu)\frac{P(\mu|\phi) P(\phi)}{P(x)}
+  P(x|\mu,\phi)\frac{P(\mu|\phi) P(\phi)}{P(x)}
   \\
   P(\phi|x) &=& \frac{P(\phi)}{P(x)}
-  \int d\mu P(\mu|\phi) P(x|\phi,\mu) \\
+  \int d\mu P(\mu|\phi) P(x|\mu,\phi) \\
   &=& \frac{P(\phi)}{P(x)} P(x|\phi)
 \end{eqnarray}
 
 \section{Coefficient Marginalization}
 
 \begin{eqnarray}
-  q(\mu,\phi) &\equiv& -\ln P(x|\phi,\mu) 
-  - \ln P(\mu|\phi) \\ &=& 
-  \frac{1}{2}(A\mu - x)^T\!(A\mu - x)
-  + \frac{1}{2} \left(\mu - y\right)^T\! 
-  F \left(\mu - y\right) + \frac{1}{2}\ln\left|2\pi\Sigma\right|
-  - \ln g(\mu) \\
-  &=& s(\mu,\phi) - \ln g(r) \\
-  s(\mu,\phi) &\equiv& \frac{1}{2}(A\mu - x)^T\!(A\mu - x)
-  + \frac{1}{2} \left(\mu - y\right)^T\! 
-  F \left(\mu - y\right) + \frac{1}{2}\ln\left|2\pi\Sigma\right|
+  -\ln P(x|\mu,\phi) &=& \frac{1}{2}(A\mu-x)^T(A\mu-x)
+  +\frac{1}{2}\ln\left|2\pi\Sigma\right| \\
+  &=& \frac{1}{2}(A\hat{\mu}-x)^T(A\hat{\mu}-x)
+  +\frac{1}{2}\ln\left|2\pi\Sigma\right| 
+  +\frac{1}{2}(\mu - \hat{\mu})^T\!A^T\!A\,(\mu-\hat{\mu})
 \end{eqnarray}
 
-\begin{eqnarray}
-  \Dp{s}{\mu} &=& A^T(A\mu-x) + F \left(\mu - y\right) \\
-  \Dp{^2s}{\mu^2} &=& A^T\!A + F \equiv H \\
-  \hat{\mu} &=& H^{-1}(A^T\!x + Fy)
-\end{eqnarray}
+with $\hat{\mu}$ the minimum-norm maximum least-squares solution:
+
+\begin{equation}
+  A^T A \hat{\mu} = A^T x
+\end{equation}
+
+Because $A$ may not have full rank, we will assume the $\hat{\mu}$
+will be accomplished by a singular value decomposition of $A$ (or
+equivalently, a spectral decomposition of $A^T\!A$):
 
 \begin{eqnarray}
-  s(\mu,\phi) &=& s(\hat{\mu},\phi) + \frac{1}{2}
-  \left(\mu - \hat{\mu}\right)^T\! H 
-  \left(\mu - \hat{\mu}\right) \\
-  q(\mu,\phi) &=& s(\hat{\mu},\phi) + \frac{1}{2}
-  \left(\mu - \hat{\mu}\right)^T\! H 
-  \left(\mu - \hat{\mu}\right) 
-  - \ln g(\mu) \\
-  q(\mu,\phi) &=& s(\hat{\mu},\phi) 
-  - \frac{1}{2}\ln\left|2\pi H^{-1}\right|
-  + \frac{1}{2}
-  \left(\mu - \hat{\mu}\right)^T\! H 
-  \left(\mu - \hat{\mu}\right) 
-  + \frac{1}{2}\ln\left|2\pi H^{-1}\right|
-  - \ln g(\mu)
-\end{eqnarray}
-
-\begin{eqnarray}
-  P(x|\phi) &=& \int\!e^{-q(\mu,\phi)}d\mu \\
+  A &=& U S Q^T \\
   &=& 
-  \left|\frac{H}{2\pi}\right|^{-1/2}\!e^{-s(\hat{\mu},\phi)}
-  \left[ \int\!\Phi\!\left(\mu|\hat{\mu},H^{-1}\right) g(\mu,\phi)\,d\mu \right] \\
-  &\approx&
-  \left|\frac{H}{2\pi}\right|^{-1/2}\!e^{-s(\hat{\mu},\phi)}
-  \left[\frac{1}{N}\sum_{n=1}^N g(\mu_n)\right]
-  \label{eqn:marginalization}
+  \left[\begin{array}{ c c }
+      U _1 & U_2
+      \end{array}\right]
+  \left[\begin{array}{ c c }
+      S_1 & 0 \\
+      0 & 0
+    \end{array}\right]
+  \left[\begin{array}{ c }
+      Q_1^T \\
+      Q_2^T
+    \end{array}\right]
+  \\
+  A^T\!A &=& Q S^2 Q^T \\
+  &=& 
+  \left[\begin{array}{ c c }
+      Q_1 & Q_2
+    \end{array}\right]
+  \left[\begin{array}{ c c }
+      S_1^2 & 0 \\
+      0 & 0
+    \end{array}\right]
+  \left[\begin{array}{ c }
+      Q_1^T \\
+      Q_2^T
+    \end{array}\right]  
 \end{eqnarray}
 
-where $\mu_n$ are drawn from a multivariate normal with mean
-$\hat{\mu}$ and covariance $H^{-1}$.
+\begin{eqnarray}
+  P(x|\phi) &=& \int P(x|\mu,\phi)\,P(\mu|\phi)\,d\mu \\
+  &=& 
+  \frac{e^{-\frac{1}{2}(A\hat{\mu}-x)^T(A\hat{\mu}-x)}}
+       {\sqrt{\left|2\pi\Sigma\right|}}
+  \int_{\lVert\mu\rVert \le r} \!\!\!\!\!\!\!\!\!\!\!\!
+  e^{-\frac{1}{2}(\mu-\hat{\mu})^T\!A^T\!A\,(\mu-\hat{\mu})}\,g(\mu)\,d\mu
+\end{eqnarray}
+
+\subsection{Case 1: $A$ has full rank}
+
+\begin{equation}
+  \hat{\mu} = Q S^{-1} U^T x
+\end{equation}
+
+The likelihood is a well-defined Gaussian.  We draw $M_{\mathrm{total}}$
+samples $\mu_i$ from a normal distribution with mean $\hat{\mu}$ and
+covariance $Q S^{2} Q^T$ until we have $M_{\mathrm{valid}}$ samples that meet
+the constraint $\lVert \mu \rVert \le r$:
+
+\begin{eqnarray}
+  P(x|\phi) &\approx& 
+  \frac{e^{-\frac{1}{2}(A\hat{\mu}-x)^T(A\hat{\mu}-x)}}
+       {\sqrt{\left|2\pi\Sigma\right|}}
+  \frac{\sqrt{\left|2\pi S^{-1}\right|}}{M_{\mathrm{total}}}
+  \sum_{i=1}^{M_{\mathrm{valid}}} g(\mu_i)
+\end{eqnarray}
+
+\subsection{Case 2: $A$ is rank-deficient}
+
+\begin{equation}
+  \hat{\mu} = Q_1 S_1^{-1} U_1^T x
+\end{equation}
+
+We change integration variables from $\mu$ to 
+
+\begin{equation}
+  \nu = 
+  \left[\begin{array}{ c }
+      \nu_1 \\
+      \nu_2
+    \end{array}\right]
+  =
+  \left[\begin{array}{ c }
+      Q_1^T\mu \\
+      Q_2^T\mu
+    \end{array}\right]
+  =
+  Q^T \mu
+\end{equation}
+
+with inverse
+
+\begin{equation}
+  \mu = Q\nu = Q_1\nu_1 + Q_2\nu_2
+\end{equation}
+
+\begin{eqnarray}
+  P(x|\phi) &=&
+  \frac{e^{-\frac{1}{2}(A\hat{\mu}-x)^T(A\hat{\mu}-x)}}
+       {\sqrt{\left|2\pi\Sigma\right|}}
+  \int_{\lVert\nu\rVert \le r} \!\!\!\!\!\!\!\!\!\!\!\!
+  e^{-\frac{1}{2}(\nu-\hat{\nu_1})^T\!S_1\,(\nu_1-\hat{\nu_1})}\,g(Q\nu)\,d\nu
+\end{eqnarray}
+
+We then draw from a hybrid normal/uniform distribution $f(\nu)$ with
+the following procedure:
+\begin{enumerate}
+\item Draw $M_{\mathrm{total}}$ samples $\nu_{1,i}$ from a normal
+  distribution with mean $\hat{\nu}_1$ and diagonal covariance
+  $S_1^{-1}$.  Keep only the $M_{\mathrm{valid}}$ samples that satisfy
+  $\lVert \nu_{1,i} \rVert \le r$.
+\item For each $\nu_{1,i}$ draw $\nu_{2,i}$ from a uniform distribution on a 
+  hypersphere with radius $\sqrt{r^2 - \lVert \nu_1 \rVert^2}$
+\end{enumerate}
+
+This distribution has the density
+
+\begin{equation}
+  f(\nu) = \frac{M_{\mathrm{valid}}}{M_{\mathrm{total}}}
+  \frac{e^{-\frac{1}{2}(\nu_1-\hat{\nu}_1)^T S_1^{-1} (\nu_1-\hat{\nu}_1)}}
+       {\sqrt{\lvert 2\pi S_1^{-1} \rvert}
+         \;\;V\!\left(\sqrt{r^2 - \lVert \nu_1 \rVert^2}, N_2\right)}
+\end{equation}
+
+where $V(r,d)$ is the volume of a hypersphere of dimension $d$ and
+radii $r$:
+
+\begin{equation}
+  \frac{\pi^{d/2}r^d}{\Gamma(\frac{d}{2} + 1)}
+\end{equation}
+
+The integral estimator is then
+
+\begin{eqnarray}
+  P(x|\phi) &\approx& 
+  \frac{e^{-\frac{1}{2}(A\hat{\mu}-x)^T(A\hat{\mu}-x)}}
+       {\sqrt{\left|2\pi\Sigma\right|}}
+  \frac{\sqrt{\left|2\pi S_1^{-1}\right|}}{M_{\mathrm{total}}}
+  \sum_{i=1}^{M_{\mathrm{valid}}} g(Q\nu_i)\;
+  V\!\left(\sqrt{r^2 - \lVert \nu_{1,i} \rVert^2}, N_2\right)
+\end{eqnarray}
+
+\subsection{Case 3: Low Overlap}
+
+If $r \lvert S_1 \rvert^{1/N_1}$ or
+$\frac{M_{\mathrm{valid}}}{M_{\mathrm{total}}}$ is small 
+in either of the above cases (where $S_1=S$ and $N_1=N$ in case 1),
+drawing samples from a uniform distribution on a hypersphere with
+radius $r$ and dimension $N$ may provide an estimator with reduced variance:
+
+\begin{eqnarray}
+  P(x|\phi) &\approx& 
+  \frac{e^{-\frac{1}{2}(A\hat{\mu}-x)^T(A\hat{\mu}-x)}}
+       {\sqrt{\left|2\pi\Sigma\right|}}
+  \frac{V(r,N)}{M}
+  \sum_{i=1}^{M} e^{-\frac{1}{2}(\mu_i-\hat{\mu})^T\!A^T\!A\,(\mu_i-\hat{\mu})}\,g(\mu_i)
+\end{eqnarray}
 
 \end{document}

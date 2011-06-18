@@ -180,7 +180,6 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %include "definition.i"
 %include "grid.i"
-%include "distribution.i"
 
 %{ 
 #include "lsst/meas/multifit/SourceMeasurement.h"
