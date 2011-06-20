@@ -62,7 +62,30 @@ public:
     virtual Eigen::MatrixXd computeInnerProductMatrix(
         lsst::afw::geom::ellipses::BaseCore const & ellipse
     ) const {
-        return Eigen::MatrixXd::Identity(getSize(), getSize());
+        Eigen::MatrixXd result = Eigen::MatrixXd::Zero(getSize(), getSize());
+        for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+            afw::geom::Ellipse frontEllipse1(ellipse);
+            frontEllipse1.scale(i->component->getScale());
+            Eigen::MatrixXd p1 = i->forward.transpose() 
+                * ndarray::viewAsTransposedEigen(i->component->getConvolution()->evaluate(frontEllipse1));
+            double r1 = frontEllipse1.getCore().getDeterminantRadius();
+            for (ElementVector::const_iterator j = _elements.begin(); j != _elements.end(); ++j) {
+                afw::geom::Ellipse frontEllipse2(ellipse);
+                frontEllipse2.scale(j->component->getScale());
+                Eigen::MatrixXd p2 = 
+                    ndarray::viewAsEigen(j->component->getConvolution()->evaluate(frontEllipse2))
+                    * j->forward;
+                double r2 = frontEllipse2.getCore().getDeterminantRadius();
+                Eigen::MatrixXd m = afwShapelets::HermiteEvaluator::computeInnerProductMatrix(
+                    i->component->getConvolution()->getRowOrder(), 
+                    j->component->getConvolution()->getRowOrder(), 
+                    1.0 / r1, 1.0 / r2
+                );
+                m /= i->component->getScale() * j->component->getScale();
+                result += p1 * m * p2;
+            }
+        }
+        return result;
     }
 
     typedef std::vector<Element> ElementVector;
@@ -315,7 +338,18 @@ CompoundShapeletModelBasis::CompoundShapeletModelBasis(
 Eigen::MatrixXd CompoundShapeletModelBasis::computeInnerProductMatrix(
     lsst::afw::geom::ellipses::BaseCore const & ellipse
 ) const {
-    return Eigen::MatrixXd::Identity(getSize(), getSize());
+    Eigen::MatrixXd result = Eigen::MatrixXd::Zero(_forward.getSize<1>(), _forward.getSize<1>());
+    double r = ellipse.getDeterminantRadius();
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        for (ElementVector::const_iterator j = _elements.begin(); j != _elements.end(); ++j) {
+            Eigen::MatrixXd m = afwShapelets::HermiteEvaluator::computeInnerProductMatrix(
+                i->component->getOrder(), j->component->getOrder(),
+                1.0 / (r * i->component->getScale()), 1.0 / (r * j->component->getScale())
+            );
+            result += i->forward.transpose() * m * j->forward;
+        }
+    }
+    return result;
 }
 
 CompoundShapeletBuilder::CompoundShapeletBuilder(

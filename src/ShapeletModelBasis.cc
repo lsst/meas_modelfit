@@ -66,13 +66,14 @@ void ConvolvedShapeletModelBasis::_evaluate(
 Eigen::MatrixXd ConvolvedShapeletModelBasis::computeInnerProductMatrix(
     lsst::afw::geom::ellipses::BaseCore const & ellipse
 ) const {
-    afw::geom::Ellipse e(ellipse);
-    ndarray::Array<Pixel const,2,2> c = _convolution->evaluate(e);
+    afw::geom::Ellipse frontEllipse(ellipse);
+    frontEllipse.scale(_scale);
+    ndarray::Array<Pixel const,2,2> c = _convolution->evaluate(frontEllipse);
+    double r = frontEllipse.getCore().getDeterminantRadius();
     Eigen::MatrixXd m = afw::math::shapelets::HermiteEvaluator::computeInnerProductMatrix(
-        _frontBasis->getOrder(), _frontBasis->getOrder(),
-        1.0 / _frontBasis->getScale(), 1.0 / _frontBasis->getScale()
+        _frontBasis->getOrder(), _frontBasis->getOrder(), 1.0 / r, 1.0 / r
     );
-    m *= (e.getCore().getArea() / M_PI);
+    m /= _scale * _scale;
     return ndarray::viewAsTransposedEigen(c) * m * ndarray::viewAsEigen(c);
 }
 
@@ -84,7 +85,7 @@ int & ShapeletModelBasis::getPsfShapeletOrderRef() {
 Eigen::MatrixXd ShapeletModelBasis::computeInnerProductMatrix(
     lsst::afw::geom::ellipses::BaseCore const & ellipse
 ) const {
-    double r = ellipse.getTraceRadius() * getScale();
+    double r = ellipse.getDeterminantRadius() * getScale();
     Eigen::MatrixXd m = afw::math::shapelets::HermiteEvaluator::computeInnerProductMatrix(
         getOrder(), getOrder(), 1.0 / r, 1.0 / r
     );
