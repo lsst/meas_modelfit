@@ -40,10 +40,13 @@ public:
 
     struct Element {
 
-        ModelBasis::Ptr component;
+        ConvolvedShapeletModelBasis::Ptr component;
         ndarray::EigenView<const Pixel,2,1> forward;
 
-        Element(ModelBasis::Ptr const & component_, ndarray::EigenView<const Pixel,2,1> const & forward_) :
+        Element(
+            ConvolvedShapeletModelBasis::Ptr const & component_, 
+            ndarray::EigenView<const Pixel,2,1> const & forward_
+        ) :
             component(component_), forward(forward_)
         {}
 
@@ -55,6 +58,12 @@ public:
             return *this;
         }
     };
+
+    virtual Eigen::MatrixXd computeInnerProductMatrix(
+        lsst::afw::geom::ellipses::BaseCore const & ellipse
+    ) const {
+        return Eigen::MatrixXd::Identity(getSize(), getSize());
+    }
 
     typedef std::vector<Element> ElementVector;
 
@@ -108,7 +117,7 @@ Eigen::MatrixXd CompoundShapeletBase::computeInnerProductMatrix() const {
     Eigen::MatrixXd result = Eigen::MatrixXd::Zero(_forward.getSize<1>(), _forward.getSize<1>());
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
         for (ElementVector::const_iterator j = _elements.begin(); j != _elements.end(); ++j) {
-            Eigen::MatrixXd m = afwShapelets::detail::HermiteEvaluator::computeInnerProductMatrix(
+            Eigen::MatrixXd m = afwShapelets::HermiteEvaluator::computeInnerProductMatrix(
                 i->component->getOrder(), j->component->getOrder(),
                 1.0 / i->component->getScale(), 1.0 / j->component->getScale()
             );
@@ -301,6 +310,12 @@ CompoundShapeletModelBasis::CompoundShapeletModelBasis(
     if (builder._constraintMatrix.getSize<0>() > 0) {
         attachConstraint(builder._constraintMatrix, builder._constraintVector);
     }
+}
+
+Eigen::MatrixXd CompoundShapeletModelBasis::computeInnerProductMatrix(
+    lsst::afw::geom::ellipses::BaseCore const & ellipse
+) const {
+    return Eigen::MatrixXd::Identity(getSize(), getSize());
 }
 
 CompoundShapeletBuilder::CompoundShapeletBuilder(

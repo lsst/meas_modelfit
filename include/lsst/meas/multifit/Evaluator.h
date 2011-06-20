@@ -79,7 +79,7 @@ protected:
         return _grid->clipToBounds(parameters);
     }
 
-    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const {
+    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> const & parameters) const {
         return _grid->checkBounds(parameters);
     }
 

@@ -65,6 +65,11 @@ public:
         lsst::ndarray::Array<Pixel const,1,1> const & radii
     ) const;
 
+    /// @brief Return a matrix of integral inner products of the basis functions.
+    virtual Eigen::MatrixXd computeInnerProductMatrix(
+        lsst::afw::geom::ellipses::BaseCore const & ellipse
+    ) const = 0;
+
     /// @brief Return the number of inequality constraints.
     int getConstraintSize() const { return _constraintMatrix.getSize<0>(); }
 

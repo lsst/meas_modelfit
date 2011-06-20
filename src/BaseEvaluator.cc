@@ -41,6 +41,14 @@ double BaseEvaluator::clipToBounds(ndarray::Array<double,1,1> const & parameters
     return _clipToBounds(parameters);
 }
 
+bool BaseEvaluator::checkBounds(ndarray::Array<double const,1,1> const & parameters) const {
+    detail::checkSize(
+        parameters.getSize<0>(), getParameterCount(),
+        "Parameter vector size (%d) does nto match expected value (%d)."
+    );
+    return _checkBounds(parameters);
+}
+
 double BaseEvaluator::integrate(
     Random & engine,
     ndarray::Array<Pixel,2,2> const & coefficients,

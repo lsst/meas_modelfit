@@ -129,6 +129,8 @@ def version(HeadURL = r"$HeadURL$"):
 SWIG_SHARED_PTR(ModelBasisPtr, lsst::meas::multifit::ModelBasis);
 SWIG_SHARED_PTR_DERIVED(ShapeletModelBasisPtr, lsst::meas::multifit::ModelBasis,
         lsst::meas::multifit::ShapeletModelBasis);
+SWIG_SHARED_PTR_DERIVED(ConvolvedShapeletModelBasisPtr, lsst::meas::multifit::ModelBasis,
+        lsst::meas::multifit::ConvolvedShapeletModelBasis);
 SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::ModelBasis,
         lsst::meas::multifit::CompoundShapeletModelBasis);
 

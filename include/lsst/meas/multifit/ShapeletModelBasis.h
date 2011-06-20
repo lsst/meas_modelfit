@@ -26,8 +26,52 @@
 
 #include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/afw/math/shapelets.h"
+#include "lsst/afw/math/shapelets/HermiteConvolution.h"
 
 namespace lsst { namespace meas { namespace multifit {
+
+class ShapeletModelBasis;
+
+class ConvolvedShapeletModelBasis : public ModelBasis {
+public:
+
+    typedef boost::shared_ptr<ConvolvedShapeletModelBasis> Ptr;
+    typedef afw::math::shapelets::HermiteConvolution Convolution;
+
+    /// @brief Order of the shapelet expansion.
+    int getOrder() const { return _convolution->getColOrder(); }
+
+    /// @brief Order of the shapelet expansion.
+    double getScale() const { return _scale; }
+
+    /// @brief Return the convolution matrix generator.
+    Convolution::Ptr getConvolution() const { return _convolution; }
+
+    /// @brief Return a matrix of integral inner products of the basis functions.
+    virtual Eigen::MatrixXd computeInnerProductMatrix(
+        lsst::afw::geom::ellipses::BaseCore const & ellipse
+    ) const;
+
+    explicit ConvolvedShapeletModelBasis(
+        ShapeletModelBasis const & basis,
+        lsst::afw::math::shapelets::ShapeletFunction const & psf
+    );
+
+protected:
+
+    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+
+    virtual void _evaluate(
+        ndarray::Array<Pixel, 2, 1> const & matrix,
+        CONST_PTR(Footprint) const & footprint,
+        afw::geom::Ellipse const & ellipse
+    ) const;
+
+private:
+    Convolution::Ptr _convolution;
+    boost::shared_ptr<ShapeletModelBasis> _frontBasis;
+    double _scale;
+};
 
 /**
  *  @brief An ModelBasis subclass for a single, scaled shapelet expansion.
@@ -52,7 +96,8 @@ public:
      *  @brief Convolve the basis with the given ShapeletFunction, returning a new basis with the same
      *         parametrization.
      */
-    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
+    ConvolvedShapeletModelBasis::Ptr 
+    convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
 
     /**
      *  @brief Convolve the basis with the given MultiShapeletFunction, returning a new basis with the same
@@ -65,6 +110,11 @@ public:
 
     /// @brief Order of the shapelet expansion.
     double getScale() const { return _scale; };
+
+    /// @brief Return a matrix of integral inner products of the basis functions.
+    virtual Eigen::MatrixXd computeInnerProductMatrix(
+        lsst::afw::geom::ellipses::BaseCore const & ellipse
+    ) const;
 
     static Ptr make(int order, double scale=1.0) {
         return boost::make_shared<ShapeletModelBasis>(order, scale);

@@ -86,7 +86,7 @@ public:
     virtual lsst::ndarray::Array<Pixel const,1,1> getDataVector() const = 0;
 
     /// @brief Return true if all parameters are in-bounds.
-    bool checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const;
+    bool checkBounds(lsst::ndarray::Array<double const,1,1> const & parameters) const;
 
     /**
      *  @brief Clip the given parameter vector to the valid range and return a penalty
@@ -149,7 +149,7 @@ protected:
 
     virtual double _clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
 
-    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> & parameters) const = 0;
+    virtual bool _checkBounds(lsst::ndarray::Array<double const,1,1> const & parameters) const = 0;
 
 private:
     void operator=(BaseEvaluator const &) {}

@@ -26,15 +26,11 @@ from .multifitLib import (
     Grid,
     Definition,
     Evaluator,
-    Evaluation,
     ModelBasis,
     ShapeletModelBasis,
+    ConvolvedShapeletModelBasis,
     CompoundShapeletModelBasis,
     CompoundShapeletBuilder,
-    BaseDistribution,
-    SimpleDistribution,
-    StudentDistribution,
-    GaussianDistribution,
     )
 from . import multifitLib
 from . import definition

@@ -121,6 +121,13 @@ public:
      */
     ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
 
+    /// @brief Return a matrix of integral inner products of the basis functions.
+    virtual Eigen::MatrixXd computeInnerProductMatrix(
+        lsst::afw::geom::ellipses::BaseCore const & ellipse
+    ) const;
+
+    using detail::CompoundShapeletBase::computeInnerProductMatrix;
+
     static Ptr load(std::string const & filename);
     void save(std::string const & filename);
 

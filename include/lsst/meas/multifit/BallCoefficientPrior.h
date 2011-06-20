@@ -40,6 +40,15 @@ public:
     typedef boost::shared_ptr<BallCoefficientPrior> Ptr;
     typedef boost::shared_ptr<BallCoefficientPrior const> ConstPtr;
 
+    struct Constraint {
+        int offset;
+        int size;
+        double radius;
+    };
+
+    typedef std::vector<Constraint> ConstraintVector;
+    typedef ConstraintVector::const_iterator ConstraintIter;
+
     /// @brief Evaluate the value of the prior for a given coefficient vector.
     virtual double operator()(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const;
 
@@ -70,70 +79,31 @@ public:
         lsst::ndarray::Array<double const,1,1> const & dataVector
     ) const;
 
-    BallCoefficientPrior(int d, double radius) :
-        _radius(radius), _normalization(computeVolume(d, radius))
-    {}
-
     virtual ~BallCoefficientPrior();
 
 protected:
 
-    BallCoefficientPrior(int d, double radius, double normalization) :
-        _radius(radius), _normalization(normalization)
-    {}
+    explicit BallCoefficientPrior(ConstraintVector const & constraints);
+
+    /// @brief Like operator(), but does not check constraints.  Used to implement operator().
+    virtual double evaluate(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const = 0;
 
     /// @brief Return the volume of a hypersphere of dimension d with the given radius.
-    static double computeVolume(int d, double radius, double factor = -1);
+    static double computeVolume(int d, double radius);
     
     /// @brief Return the volume of a hypersphere of dimension d with unit radius.
     static double computeVolumeFactor(int d);
 
     /**
-     *  @brief Solve for the maximum-likelihood coefficients using an eigensystem or SVD.
+     *  @brief Vector of constraints.
      *
-     *  Given a model matrix @f$A@f$, this computes the decomposition
-     *  @f[
-     *      Q S^2 Q^T = A^T A
-     *  @f]
-     *  where @f$S@f$ is diagonal, and computes the minimum norm solution @f$\hat{\mu}@f$ to 
-     *  the normal equations
-     *  @f[
-     *      (A^T A)\hat{\mu} = A^T x
-     *  @f]
-     *
-     *  @param[out]  mu           maximum-likelihood coefficient vector @f$\hat{\mu}@f$
-     *  @param[out]  q            orthogonal matrix @f$Q@f$
-     *  @param[out]  s            diagonal of matrix @f$S@f$
-     *  @param[out]  n1           number of nonzero elements of s; these must be the first elements
-     *  @param[in]   modelMatrix  model matrix @f$A@f$
-     *  @param[in]   dataVector   data vector @f$x@f$
-     *
-     *  @returns the residual: @f$ \frac{1}{2}(A\hat{\mu} - x)^T (A\hat{\mu} - x) @f$
-     *
-     *  This function is virtual so subclasses with a Gaussian factor in the prior can override.
+     *  Subclasses may modify the radii of the constraints but not the other members.
      */
-    virtual double _solve(
-        Eigen::VectorXd & mu, Eigen::MatrixXd & q, Eigen::VectorXd & s, int & n1,
-        lsst::ndarray::Array<double const,2,2> const & modelMatrix,
-        lsst::ndarray::Array<double const,1,1> const & dataVector        
-    ) const;
-
-    /**
-     *  Evaluate the prior at the given coefficients, correcting for any non-likelihood terms included 
-     *  in the Gaussian distribution defined by a custom implementation of _solve().
-     */
-    virtual double _evaluate(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const {
-        return _normalization;
-    }
-
-    double _radius;
-    double _normalization;
+    ConstraintVector _constraints;
 
 private:
-    struct IntegrateWorkspace;
-    struct SolveWorkspace;
-    mutable boost::scoped_ptr<IntegrateWorkspace> _integrateWorkspace;
-    mutable boost::scoped_ptr<SolveWorkspace> _solveWorkspace;
+    class Impl;
+    boost::scoped_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::meas::multifit
