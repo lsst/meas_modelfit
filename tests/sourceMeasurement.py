@@ -70,15 +70,11 @@ class GaussianPsfTestCase(unittest.TestCase):
         self.source.setFootprint(afwDetection.Footprint(ellipse))
 
         self.mp = measAlgorithms.makeMeasurePhotometry(self.exp)
-        self.mp.addAlgorithm("SHAPELET_MODEL_8")
-        self.mp.addAlgorithm("SHAPELET_MODEL_2")
-        self.mp.addAlgorithm("SHAPELET_MODEL_17")
+        self.mp.addAlgorithm("SHAPELET_MODEL")
 
         self.pol = policy.Policy(policy.PolicyString(
             """#<?cfg paf policy?>
-            SHAPELET_MODEL_2.enabled: true
-            SHAPELET_MODEL_8.enabled: true
-            SHAPELET_MODEL_17.enabled: true
+            SHAPELET_MODEL.enabled: true
             """ 
             ))
         self.mp.configure(self.pol)        
@@ -92,10 +88,9 @@ class GaussianPsfTestCase(unittest.TestCase):
     def testBadInput(self):
         #no Source
         meas = self.mp.measure(afwDetection.Peak(), None)        
-        for i in [2,8,17]:
-            photom = meas.find("SHAPELET_MODEL_%d"%i)
-            status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
-            self.assertTrue(status & 0x004)
+        photom = meas.find("SHAPELET_MODEL")
+        status = int(photom.get("status"))
+        self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_SOURCE)
 
         #bad sources
         noFp = afwDetection.Source()
@@ -105,32 +100,28 @@ class GaussianPsfTestCase(unittest.TestCase):
         noFp.setIyy(self.source.getIyy())
         noFp.setIxy(self.source.getIxy())
         meas=self.mp.measure(afwDetection.Peak(), noFp)
-        for i in [2,8,17]:
-            photom = meas.find("SHAPELET_MODEL_%d"%i)
-            status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
-            self.assertTrue(status & 0x010)
+        photom = meas.find("SHAPELET_MODEL")
+        status = int(photom.get("status"))
+        self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_FOOTPRINT)
 
         badMoments = afwDetection.Source(self.source)
         badMoments.setIxx(float('nan'))
         meas=self.mp.measure(afwDetection.Peak(), badMoments)
-        for i in [2,8,17]:
-            photom = meas.find("SHAPELET_MODEL_%d"%i)
-            status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
-            self.assertTrue(status & 0x020)
+        photom = meas.find("SHAPELET_MODEL")
+        status = int(photom.get("status"))
+        self.assertTrue(status & measAlgorithms.Flags.SHAPELET_PHOTOM_BAD_MOMENTS)
 
         #badMoments.setIxx(float('inf'))
         #meas=self.mp.measure(afwDetection.Peak(), badMoments)
-        #for i in [2,8,17]:
-        #    photom = meas.find("SHAPELET_MODEL_%d"%i)
-        #    status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
-        #    self.assertTrue(status & 0x020)
+        #photom = meas.find("SHAPELET_MODEL")
+        #status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
+        #self.assertTrue(status & 0x020)
 
         badMoments.setIxx(100000.0)
         meas=self.mp.measure(afwDetection.Peak(), badMoments)
-        for i in [2,8,17]:
-            photom = meas.find("SHAPELET_MODEL_%d"%i)
-            status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
-            self.assertTrue(status & 0x020)
+        photom = meas.find("SHAPELET_MODEL")
+        status = int(photom.get("status"))
+        self.assertTrue(status & measAlgorithms.Flags.SHAPELET_PHOTOM_BAD_MOMENTS)
 
         #no psf
         badExp = self.exp.Factory(self.exp, True)
@@ -138,15 +129,12 @@ class GaussianPsfTestCase(unittest.TestCase):
 
         mp = measAlgorithms.makeMeasurePhotometry(badExp)
         mp.configure(self.pol)
-        mp.addAlgorithm("SHAPELET_MODEL_8")
-        mp.addAlgorithm("SHAPELET_MODEL_2")
-        mp.addAlgorithm("SHAPELET_MODEL_17")
+        mp.addAlgorithm("SHAPELET_MODEL")
 
         meas =mp.measure(afwDetection.Peak(), self.source)        
-        for i in [2,8,17]:
-            photom = meas.find("SHAPELET_MODEL_%d"%i)
-            status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
-            self.assertTrue(status & 0x002)
+        photom = meas.find("SHAPELET_MODEL")
+        status = int(photom.get("status"))
+        self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_PSF)
    
         #No pixels
         badExp.setPsf(self.exp.getPsf())
@@ -155,10 +143,9 @@ class GaussianPsfTestCase(unittest.TestCase):
         
         mp.setImage(badExp)
         meas =mp.measure(afwDetection.Peak(), self.source)        
-        for i in [2,8,17]:
-            photom = meas.find("SHAPELET_MODEL_%d"%i)
-            status = int(photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT)))
-            self.assertTrue(status & 0x010)
+        photom = meas.find("SHAPELET_MODEL")
+        status = int(photom.get("status"))
+        self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_FOOTPRINT)
 
     def testPsfFlux(self):
         """Test that fluxes are measured correctly"""
@@ -166,15 +153,14 @@ class GaussianPsfTestCase(unittest.TestCase):
         # Various algorithms
         #
         meas = self.mp.measure(afwDetection.Peak(self.xc, self.yc), self.source)
-        for i in [2,8,17]:
-            print "SHAPELE_MODEL_%d"%i
-            photom = meas.find("SHAPELET_MODEL_%d"%i)
-            print >> sys.stderr, "flux:", photom.get(afwDetection.Schema("FLUX", 0, afwDetection.Schema.DOUBLE))
-            print >> sys.stderr, "fluxErr:",photom.get(afwDetection.Schema("FLUX_ERR", 1, afwDetection.Schema.DOUBLE))
-            print >> sys.stderr, "status:",photom.get(afwDetection.Schema("STATUS", 2, afwDetection.Schema.INT))
-            print >> sys.stderr, "e1:",photom.get(afwDetection.Schema("E1", 3, afwDetection.Schema.DOUBLE))
-            print >> sys.stderr, "e2:", photom.get(afwDetection.Schema("E2", 4, afwDetection.Schema.DOUBLE))
-            print >> sys.stderr, "radius",photom.get(afwDetection.Schema("RADIUS", 5, afwDetection.Schema.DOUBLE))
+        print "SHAPELET_MODEL"
+        photom = meas.find("SHAPELET_MODEL")
+        print >> sys.stderr, "flux:", photom.get("flux")
+        print >> sys.stderr, "fluxErr:",photom.get("fluxErr")
+        print >> sys.stderr, "status:", int(photom.get("status"))
+        print >> sys.stderr, "e1:",photom.get("e1")
+        print >> sys.stderr, "e2:", photom.get("e2")
+        print >> sys.stderr, "radius",photom.get("radius")
 
 class MultifitDataTestCase(unittest.TestCase):
     def setUp(self):
@@ -182,9 +168,7 @@ class MultifitDataTestCase(unittest.TestCase):
         self.butler = bf.create()
         self.pol = policy.Policy(policy.PolicyString(
             """#<?cfg paf policy?>
-            SHAPELET_MODEL_2.enabled: true
-            SHAPELET_MODEL_8.enabled: true
-            SHAPELET_MODEL_17.enabled: true
+            SHAPELET_MODEL.enabled: true
             """ 
             ))
 
@@ -200,9 +184,7 @@ class MultifitDataTestCase(unittest.TestCase):
             sources = self.butler.get('src', id=i)
 
             mp = measAlgorithms.makeMeasurePhotometry(exp)
-            mp.addAlgorithm("SHAPELET_MODEL_8")
-            mp.addAlgorithm("SHAPELET_MODEL_2")
-            mp.addAlgorithm("SHAPELET_MODEL_17")
+            mp.addAlgorithm("SHAPELET_MODEL")
             mp.configure(self.pol)
 
             for s in sources:

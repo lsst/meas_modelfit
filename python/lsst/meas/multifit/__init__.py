@@ -27,6 +27,7 @@ from .multifitLib import (
     Definition,
     Evaluator,
     Evaluation,
+    SourceMeasurement,
     ModelBasis,
     ShapeletModelBasis,
     CompoundShapeletModelBasis,
@@ -47,7 +48,6 @@ from .multifitLib import (
 from . import multifitLib
 from . import definition
 from . import grid
-from . import utils
 
 import os
 import eups

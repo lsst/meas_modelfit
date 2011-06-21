@@ -25,6 +25,13 @@ definitions: {
         maxOccurs: 1
         default: true
     }
+    basisSize: {
+        type: "int"
+        description: "number of basis function in shapelet expansion"
+        minOccurs: 1
+        maxOccurs: 1
+       default: 8
+    }
     nGrowFp:{
         type: "int"        
         description: "amount to grow input footprint"
@@ -34,7 +41,7 @@ definitions: {
     }
     psfShapeletOrder:{
         type: "int"
-        description: "Desired shapelet order when converting to
+        description: "Desired shapelet order when converting 
                      a non-shapelet psf to a shapelet psf"
         minOccurs: 1
         maxOccurs: 1
@@ -66,59 +73,13 @@ definitions: {
         type: "string"
         description: "list of planes to consider when masking the footprint"
         minOccurs: 1        
-        default: "BAD" "SAT" "CR" "EDGE"
+        default: "BAD" "SAT" "CR" "EDGE" "INTRP"
     }
     nTestPoints: {
         type: "int"
-        description: "number of parameter points to evaluate in BruteForceSourceOptimizer"
+        description: "number of parameter points to evaluate"
         minOccurs: 1
         maxOccurs: 1
         default: 5
     }
-
-    maxIter: {
-        type: "int"
-        description: "maximum iterations to perform in optimizer"
-        minOccurs: 0
-        maxOccurs: 1
-        default: 200
-    }
-    retryWithSvd: {
-        type: "bool"     
-        description: "if true will use SVD in optimizer"
-        minOccurs: 0
-        maxOccurs: 1
-        default: false
-    }
-    
-    ftol: {
-        type: "double"
-        description: "convergence tolerance for optimizer"
-        minOccurs: 0
-        maxOccurs: 1
-        default: 1e-8
-    }
-    gtol: {
-        type: "double"
-        description: "convergence tolerance for optimizer"
-        minOccurs: 0
-        maxOccurs: 1
-        default: 1e-8
-    }
-    minStep: {
-        type: "double"
-        description: "minimum allowed step size for optimizer"
-        minOccurs: 0
-        maxOccurs: 1
-        default: 1e-3
-    }
-    tau: {
-        type: "double"
-        description: "good-ness of initial parameters for optimizer"
-        minOccurs: 0
-        maxOccurs: 1
-        default: 1e-3
-    }
-
-
 }

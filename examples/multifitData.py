@@ -11,9 +11,9 @@ def test():
     bf = ButlerFactory(mapper=DatasetMapper())
     butler = bf.create()
 
-    algorithm = "SHAPELET_MODEL_8"
+    algorithm = "SHAPELET_MODEL"
     policy = Policy()
-    policy.add(algorithm + ".fitDeltaFunction", True)
+    policy.add(algorithm + ".enabled", true)
 
 
     results = []
@@ -37,7 +37,7 @@ def test():
         for j, s in enumerate(sources):
 
             photom = measurePhotometry.measure(lsst.afw.detection.Peak(), s).find(algorithm)
-            status = photom.get(lsst.afw.detection.Schema("Status", 2, lsst.afw.detection.Schema.INT))
+            status = int(photom.get("status"))
 
             print >> sys.stderr, "source:", j, "flux:", photom.getFlux(), "status:", status
 

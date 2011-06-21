@@ -42,9 +42,9 @@ bool BruteForceSourceOptimizer::solve(Evaluator::Ptr const & evaluator, int nTes
         minIyy = SQRT_EPS;
         minIxy = 0.0;
     }
-    double dIxx = (fullMoments.getIXX() - minIxx) / (nTestPoints + 1);
-    double dIyy = (fullMoments.getIYY() - minIyy) / (nTestPoints + 1);
-    double dIxy = (fullMoments.getIXY() - minIxy) / (nTestPoints + 1);
+    double dIxx = 2*(fullMoments.getIXX() - minIxx) / (nTestPoints + 1);
+    double dIyy = 2*(fullMoments.getIYY() - minIyy) / (nTestPoints + 1);
+    double dIxy = 2*(fullMoments.getIXY() - minIxy) / (nTestPoints + 1);
     Evaluation evaluation(evaluator);
     _bestIndex = -1;
     double bestValue = std::numeric_limits<double>::infinity();

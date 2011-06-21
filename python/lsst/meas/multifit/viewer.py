@@ -28,7 +28,6 @@ import lsst.afw.image
 import lsst.afw.geom.ellipses
 import lsst.meas.multifit
 import numpy
-from . import utils
 from matplotlib import pyplot
 from lsst.meas.multifitData import DatasetMapper
 from lsst.daf.persistence import ButlerFactory
@@ -37,38 +36,36 @@ import lsst.meas.algorithms
 
 class Viewer(object):
 
-    def __init__(self, dataset, nCoeff=2):
-        self.photometryAlgorithm = "SHAPELET_MODEL_%d" % nCoeff
+    def __init__(self, dataset, basisSize=8):
+        self.photometryAlgorithm = "SHAPELET_MODEL"
         self.policy = Policy()
         self.policy.add(self.photometryAlgorithm + ".enabled", True)
         self.policy.add(self.photometryAlgorithm + ".nGrowFp", 3)
+        self.policy.add(self.photometryAlgorithm + ".basisSize", basisSize)
         self.policy.add(self.photometryAlgorithm + ".isPositionActive", False)
         self.policy.add(self.photometryAlgorithm + ".isRadiusActive", True)
         self.policy.add(self.photometryAlgorithm + ".isEllipticityActive", True)
         self.policy.add(self.photometryAlgorithm + ".maskPlaneName", "BAD")
+        self.policy.add(self.photometryAlgorithm + ".maskPlaneName", "CR")
+        self.policy.add(self.photometryAlgorithm + ".maskPlaneName", "INTRP")
+        self.policy.add(self.photometryAlgorithm + ".maskPlaneName", "EDGE")
+        self.policy.add(self.photometryAlgorithm + ".maskPlaneName", "SAT")    
         self.policy.add(self.photometryAlgorithm + ".usePixelWeights", False)
         self.policy.add(self.photometryAlgorithm + ".fitDeltaFunction", True)
-        if nCoeff == 2:
-            self.basis = utils.loadBasis("ed+00:0000")
-        elif nCoeff == 8:
-            self.basis = utils.loadBasis("ed+06:2000")
-        elif nCoeff == 17:
-            self.basis = utils.loadBasis("ed+15:4000")
+        self.policy.add(self.photometryAlgorithm + ".psfShapeletOrder", 4)
+        self.basis = lsst.meas.multifit.SourceMeasurement.loadBasis(basiSize)
         self.nTestPoints = 5
+        self.policy.add(self.photometryAlgorithm + ".nTestPoints", nTestPoints)
 
         bf = ButlerFactory(mapper=DatasetMapper())
         butler = bf.create()
         self.psf = butler.get("psf", id=dataset)
 
-        expD = butler.get("exp", id=dataset)
-        miD = expD.getMaskedImage()
-        miF = lsst.afw.image.MaskedImageF(miD.getImage().convertF(), miD.getMask(), miD.getVariance())
-
-        self.exposure = lsst.afw.image.ExposureF(miF, expD.getWcs())
+        self.exposure = butler.get("exp", id=dataset)
         self.exposure.setPsf(self.psf)
         self.sources = butler.get("src", id=dataset)
-        self.bitmask = self.makeBitMask(self.exposure.getMaskedImage().getMask(),
-                                        self.policy.getArray(self.photometryAlgorithm + ".maskPlaneName"))
+        self.bitmask = lsst.afw.image.MaskU.getPlaneBitMask(
+            self.policy.getArray(self.photometryAlgorithm + ".maskPlaneName"))
         self.optimizer = lsst.meas.multifit.BruteForceSourceOptimizer()
         self.measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(self.exposure)
         self.measurePhotometry.addAlgorithm(self.photometryAlgorithm)
@@ -78,13 +75,6 @@ class Viewer(object):
         self.fits = {}
         self.plots = {}
     
-    @staticmethod
-    def makeBitMask(mask, maskPlaneNames):
-        bitmask=0
-        for name in maskPlaneNames:
-            bitmask |= mask.getPlaneBitMask(name)    
-        return bitmask
-
     def makeGrid(self, exposure, source, basis, bitmask, policy):
         quadrupole = lsst.afw.geom.ellipses.Quadrupole(source.getIxx(), source.getIyy(), source.getIxy())
         ellipse = lsst.afw.geom.ellipses.Ellipse(
@@ -123,11 +113,10 @@ class Viewer(object):
             nCoeff = d["evaluator"].getCoefficientSize()
             coefficients = numpy.zeros(nCoeff, dtype=float)
             for i in range(nCoeff):
-                coefficients[i] = photom.get(i, lsst.afw.detection.Schema("COEFFICIENTS", 6, 
-                                                                          lsst.afw.detection.Schema.DOUBLE))
-            e1 = photom.get(lsst.afw.detection.Schema("E1", 3, lsst.afw.detection.Schema.DOUBLE))
-            e2 = photom.get(lsst.afw.detection.Schema("E2", 4, lsst.afw.detection.Schema.DOUBLE))
-            r = photom.get(lsst.afw.detection.Schema("R", 5, lsst.afw.detection.Schema.DOUBLE))
+                coefficients[i] = photom.get(i, "coefficients")
+            e1 = photom.get("e1")
+            e2 = photom.get("e2")
+            r = photom.get("radius")
             core = lsst.meas.multifit.EllipseCore(e1, e2, r)
             ellipse = lsst.afw.geom.ellipses.Ellipse(core, d["grid"].objects[0].getPosition().getValue())
             parameters = numpy.zeros(d["grid"].getParameterCount(), dtype=float)

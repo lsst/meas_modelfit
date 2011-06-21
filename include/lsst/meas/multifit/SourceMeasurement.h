@@ -23,7 +23,7 @@
 
 #ifndef LSST_MEAS_MULTIFIT_SOURCE_MEASUREMENT_H
 #define LSST_MEAS_MULTIFIT_SOURCE_MEASUREMENT_H
-
+#include "boost/cstdint.hpp"
 #include "lsst/afw/detection/Measurement.h"
 #include "lsst/afw/detection/Photometry.h"
 #include "lsst/afw/detection/Astrometry.h"
@@ -36,24 +36,9 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
-template <
-    int basisSize ///< Number of basis functions; instantiated for 2, 8, and 17 to match persisted basis sets.
-    >
-class ShapeletModelPhotometry : public lsst::afw::detection::Photometry {
+
+class SourceMeasurement {
 public:
-    typedef lsst::afw::detection::Schema Schema;
-    typedef lsst::afw::detection::SchemaEntry SchemaEntry;
-    typedef lsst::afw::detection::Photometry Base;
-    typedef lsst::afw::detection::Measurement<Base> Measurement;
-
-    enum {
-        FLUX = Base::FLUX,
-        FLUX_ERR,
-        STATUS,
-        E1, E2, RADIUS, 
-        COEFFICIENTS
-    };
-
     enum {
         NO_EXPOSURE=0x001, 
         NO_PSF=0x002, 
@@ -65,58 +50,79 @@ public:
         GALAXY_MODEL_FAILED=0x080,
         UNSAFE_INVERSION=0x100
     };
+    SourceMeasurement(int basis, int psfShapeletOrder,
+                      int nTestPoints, int nGrowFp, 
+                      bool usePixelWeights, bool fitDeltaFunction,
+                      bool isEllipticityActive, 
+                      bool isRadiusActive, 
+                      bool isPositionActive,
+                      std::vector<std::string> const & maskPlaneNames);
 
-    virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
+    SourceMeasurement(ModelBasis::Ptr basis, int psfShapeletOrder,
+                      int nTestPoints, int nGrowFp, 
+                      bool usePixelWeights, bool fitDeltaFunction,
+                      bool isEllipticityActive, 
+                      bool isRadiusActive, 
+                      bool isPositionActive,
+                      lsst::afw::image::MaskPixel bitmask);
 
-    static bool doConfigure(lsst::pex::policy::Policy const& policy);
 
+    static ModelBasis::Ptr loadBasis(int basisSize);
+    static lsst::afw::geom::ellipses::Ellipse makeEllipse(
+        lsst::afw::detection::Source const & source,
+        lsst::afw::detection::Footprint const & fp
+    );
+     
     template <typename ExposureT>
-    static Photometry::Ptr doMeasure(CONST_PTR(ExposureT) im,
-                                     CONST_PTR(afw::detection::Peak),
-                                     CONST_PTR(afw::detection::Source)
-                                    );
-    ShapeletModelPhotometry(int const status);
-#if 0
-    ShapeletModelPhotometry(
-        GaussNewtonOptimizer & optimizer,
-        BaseEvaluator::Ptr const & evaluator
-    );
-#endif
-    ShapeletModelPhotometry(
-        Evaluator::Ptr const & evaluator,
-        ndarray::Array<double const, 1,1> const & param,
-        ndarray::Array<double const, 1,1> const & coeff,
-        ndarray::Array<double const, 2,1> const & covar,
-        int const status
-    );
+    int measure(
+        CONST_PTR(ExposureT) exp,
+        CONST_PTR(lsst::afw::detection::Source)
+    ); 
+   
+    CONST_PTR(Evaluator) getEvaluator() const {return _evaluator;}
+    CONST_PTR(lsst::afw::detection::Footprint) getFootprint() const {return _fp;}
+    ndarray::Array<double const, 1 ,1> getParam() const{return _param;}
+    ndarray::Array<double const, 1, 1> getCoeff() const{return _coeff;}
+    ndarray::Array<double const, 1, 1> getBasisCoeff() const {return _coeff[ndarray::view(0,getBasisSize())];}
+    double getFlux() const {return _flux;}
+    double getFluxErr() const {return _fluxErr;}
+    Ellipse::ConstPtr getEllipse() const {return _ellipse;}
+    boost::int64_t getStatus() const {return _status;}
 
-    static bool usePixelWeights;
-    static bool fitDeltaFunction;
-    static bool isEllipticityActive, isRadiusActive, isPositionActive;
-    static lsst::afw::image::MaskPixel bitmask;
-    static int nGrowFp;
-    static int nCoeff;
-    static ModelBasis::Ptr basis;
 
-    static int nTestPoints;
-#if 0
-    static int maxIter
-    static double ftol, gtol, minStep, tau;
-    static bool retryWithSvd;
-#endif
+    //examine configuration bits
+    CONST_PTR(ModelBasis) getBasis() const {return _basis;} 
+    lsst::afw::image::MaskPixel getBitmask() const {return _bitmask;}
+    int getNGrowFp() const {return _nGrowFp;}
+    int getBasisSize() const {return _basis->getSize();}
+    int getCoefficientSize() const {return _coeff.getSize<0>();}
+    bool usePixelWeights() const {return _usePixelWeights;}
+    bool fitDeltaFunction() const {return _fitDeltaFunction;}
+    bool isEllipticityActive() const {return _isEllipticityActive;} 
+    bool isRadiusActive() const {return _isRadiusActive;} 
+    bool isPositionActive() const {return _isPositionActive;} 
 
 private:
+    bool _usePixelWeights;
+    bool _fitDeltaFunction;
+    bool _isEllipticityActive, _isRadiusActive, _isPositionActive;
+    lsst::afw::image::MaskPixel _bitmask;
+    int _nTestPoints;
+    int _nGrowFp;
+    int _psfShapeletOrder;
+    ModelBasis::Ptr _basis;
 
+    double _flux, _fluxErr;
+    Ellipse::Ptr _ellipse;
+    Evaluator::Ptr _evaluator;
+    CONST_PTR(lsst::afw::detection::Footprint) _fp;
+    ndarray::Array<double, 1, 1> _param, _coeff;
+    boost::int64_t _status;
 
-
-    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() {init();}
-    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
+    static ID const GALAXY_ID=0;
+    static ID const STAR_ID=1;
 };
 
 }}}
-
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::ShapeletModelPhotometry<2>);
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::ShapeletModelPhotometry<8>);
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::ShapeletModelPhotometry<17>);
 
 #endif

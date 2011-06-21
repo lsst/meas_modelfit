@@ -14,14 +14,6 @@ try:
 except ImportError:
     import pickle
 
-FLUX_SCHEMA = lsst.afw.detection.Schema("Flux", 0, lsst.afw.detection.Schema.DOUBLE)
-FLUX_ERR_SCHEMA = lsst.afw.detection.Schema("FluxErr", 1, lsst.afw.detection.Schema.DOUBLE)
-STATUS_SCHEMA = lsst.afw.detection.Schema("Status", 2, lsst.afw.detection.Schema.INT)
-E1_SCHEMA = lsst.afw.detection.Schema("E1", 3, lsst.afw.detection.Schema.DOUBLE)
-E2_SCHEMA = lsst.afw.detection.Schema("E2", 4, lsst.afw.detection.Schema.DOUBLE)
-RADIUS_SCHEMA = lsst.afw.detection.Schema("R", 5, lsst.afw.detection.Schema.DOUBLE)
-COEFF_SCHEMA = lsst.afw.detection.Schema("COEFFICIENTS", 6, lsst.afw.detection.Schema.DOUBLE)
-
 fields = (("dataset", int),
           ("id", numpy.int64),
           ("psf_flux", float), 
@@ -38,26 +30,37 @@ fields = (("dataset", int),
           ("e2", float),
           ("r", float),
           ("pixels", int),
+          ("used_pixels", int),
+          ("src_flags", int),
           )
 
 
-def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, fitDelta=True):
+def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, 
+        fitDelta=True, usePixelWeights=False,
+        nTestPoints=5, nGrowFp=3, psfShapeletOrder=4, 
+        isPositionActive=False, isRadiusActive=True, isEllipticityActive=True):
     bf = lsst.daf.persistence.ButlerFactory( \
         mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
-    algorithm = "SHAPELET_MODEL_%d" % basisSize
+    algorithm = "SHAPELET_MODEL"
     policy = lsst.pex.policy.Policy()
     policy.add(algorithm + ".enabled", True)
+    policy.add(algorithm + ".basisSize", basisSize)
     policy.add(algorithm + ".fitDeltaFunction", fitDelta)
+    policy.add(algorithm + ".usePixelWeights", usePixelWeights)
+    policy.add(algorithm + ".nGrowFp", nGrowFp)
+    policy.add(algorithm + ".nTestPoints", nTestPoints)
+    policy.add(algorithm + ".psfShapeletOrder", psfShapeletOrder)
+    policy.add(algorithm + ".isPositionActive", isPositionActive)
+    policy.add(algorithm + ".isRadiusActive", isRadiusActive)
+    policy.add(algorithm + ".isEllipticityActive", isEllipticityActive)
+
+    bitmask = lsst.afw.image.MaskU.getPlaneBitMask(["BAD", "SAT", "INTRP", "EDGE", "CR"])
     nCoeffs = basisSize
     if fitDelta:
         nCoeffs += 1
-    if basisSize == 2:
-        basis = lsst.meas.multifit.utils.loadBasis("ed+02:0000")
-    elif basisSize == 8:
-        basis = lsst.meas.multifit.utils.loadBasis("ed+06:2000")
-    elif basisSize == 17:
-        basis = lsst.meas.multifit.utils.loadBasis("ed+15:4000")
+
+    basis = lsst.meas.multifit.SourceMeasurement.loadBasis(basisSize)
     rawIntegral = numpy.zeros(nCoeffs, dtype=float)
     basis.integrate(rawIntegral[:basisSize])
     if fitDelta:
@@ -90,22 +93,26 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, fitDelta=True):
             record["ixx"] = src.getIxx()
             record["iyy"] = src.getIyy()
             record["ixy"] = src.getIxy()
+            record["src_flags"] = src.getFlagForDetection()
             record["pixels"] = src.getFootprint().getArea()
+            fp = lsst.afw.detection.growFootprint(src.getFootprint(), nGrowFp)
+            lsst.afw.detection.Footprint.intersectMask(fp, exp.getMaskedImage().getMask(),bitmask) 
+            record["used_pixels"] =  fp.getArea()
             photom = measurePhotometry.measure(lsst.afw.detection.Peak(), src).find(algorithm)
-            record["status"] = photom.get(STATUS_SCHEMA)
-            record["flux"] = photom.get(FLUX_SCHEMA)
-            record["flux_err"] = photom.get(FLUX_ERR_SCHEMA)
-            record["e1"] = photom.get(E1_SCHEMA)
-            record["e2"] = photom.get(E2_SCHEMA)
-            record["r"] = photom.get(RADIUS_SCHEMA)
+            record["status"] = photom.getFlag()
+            record["flux"] = photom.getFlux()
+            record["flux_err"] = photom.getFluxErr()
+            record["e1"] = photom.get("e1")
+            record["e2"] = photom.get("e2")
+            record["r"] = photom.get("radius")
             ellipse = lsst.meas.multifit.EllipseCore(record["e1"], record["e2"], record["r"])
             f = ellipse.getArea() / numpy.pi
             record["integral"][:] = rawIntegral
             record["integral"][:basisSize] *= f
             for i in range(basisSize):
-                record["coeff"][i] = photom.get(i, COEFF_SCHEMA)
+                record["coeff"][i] = photom.get(i, "coefficients")
             if fitDelta:
-                record["coeff"][basisSize] = photom.get(basisSize, COEFF_SCHEMA)
+                record["coeff"][basisSize] = photom.get(basisSize, "coefficients")
             altFlux = numpy.dot(record["integral"], record["coeff"])
             if not numpy.allclose(altFlux, record["flux"]):
                 logging.warning("altFlux=%s, flux=%s" % (altFlux, record["flux"]))

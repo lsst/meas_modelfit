@@ -1,5 +1,4 @@
 import lsst.meas.multifit
-import lsst.meas.multifit.utils
 import lsst.afw.geom.ellipses
 import lsst.afw.detection
 import numpy
