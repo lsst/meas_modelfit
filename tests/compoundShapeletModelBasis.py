@@ -26,7 +26,6 @@ import lsst.afw.detection as afwDetection
 import lsst.afw.geom as afwGeom
 import lsst.afw.geom.ellipses as geomEllipses
 import lsst.meas.multifit as mf
-import lsst.meas.multifit.utils as mfUtils
 import lsst.afw.math.shapelets as shapelets
 
 import lsst.utils.tests as utilsTests

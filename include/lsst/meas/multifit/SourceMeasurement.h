@@ -67,6 +67,7 @@ public:
                       lsst::afw::image::MaskPixel bitmask);
 
 
+    static ModelBasis::Ptr loadBasis(std::string const & name);
     static ModelBasis::Ptr loadBasis(int basisSize);
     static lsst::afw::geom::ellipses::Ellipse makeEllipse(
         lsst::afw::detection::Source const & source,

@@ -46,24 +46,36 @@ afw::geom::ellipses::Ellipse SourceMeasurement::makeEllipse(
     return afw::geom::ellipses::Ellipse(axes, center);
 }
 
+ModelBasis::Ptr SourceMeasurement::loadBasis(std::string const & name) {
+    fs::path path(utils::eups::productDir("meas_multifit"));
+    path /= fs::path("data");
+    path /= name;
+    if(!fs::exists(path)) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::InvalidParameterException,
+            "No corresponding basis exists on file"
+        );
+    }
+
+    return CompoundShapeletModelBasis::load(path.native_file_string());
+}
+
 ModelBasis::Ptr SourceMeasurement::loadBasis(int basisSize) {
-    std::string file;
+    std::string name;
     if(basisSize == 2)
-        file = "ed+00:0000.boost";
+        name = "ed+00:0000.boost";
     else if(basisSize == 8)
-        file = "ed+06:2000.boost";
+        name = "ed+06:2000.boost";
     else if(basisSize == 17)
-        file = "ed+15:4000.boost";
+        name = "ed+15:4000.boost";
     else {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::InvalidParameterException,
-            "Unsupported number of coefficients. No corresponding basis exists on file"
+            "No corresponding basis exists on file"
         );
     }
-    fs::path path(utils::eups::productDir("meas_multifit"));
-    path /= fs::path("data");
-    path /= file;
-    return CompoundShapeletModelBasis::load(path.native_file_string());
+
+    return loadBasis(name);
 }
 
 SourceMeasurement::SourceMeasurement(
