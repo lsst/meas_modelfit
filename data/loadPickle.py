@@ -10,7 +10,7 @@ for k, v in s.iteritems():
         [lsst.meas.multifit.ShapeletModelBasis.make(order, scale) for order, scale in items]
         )
     builder = lsst.meas.multifit.CompoundShapeletBuilder(components)
-    builder.setMapping(forward, reverse)
+    builder.setMapping(forward)
     if builder.getSize() > 2:
         assert(builder.getSize() != 3)
         constraint = numpy.zeros((4, builder.getSize()), dtype=float)

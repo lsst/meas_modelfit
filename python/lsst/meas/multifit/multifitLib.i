@@ -139,12 +139,8 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 
 
 %extend lsst::meas::multifit::CompoundShapeletModelBasis {
-    %feature("shadow") _getForward %{
-        def getForward(self):
-            return $action(self)
-    %}
-    %feature("shadow") _getReverse %{
-        def getReverse(self):
+    %feature("shadow") _getMapping %{
+        def getMapping(self):
             return $action(self)
     %}
     %feature("shadow") _extractComponents %{
@@ -153,16 +149,15 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
     %}
 
 
-    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getForward() const {
-        return self->getForward();
-    }
-    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getReverse() const {
-        return self->getReverse();
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getMapping() const {
+        return self->getMapping();
     }
     lsst::meas::multifit::CompoundShapeletModelBasis::ComponentVector _extractComponents() const {
         return self->extractComponents();
     }
 };
+
+SWIG_SHARED_PTR(ProfileFunctionPtr, lsst::meas::multifit::ProfileFunction);
 
 %include "lsst/meas/multifit/ModelBasis.h"
 %include "lsst/meas/multifit/ShapeletModelBasis.h"

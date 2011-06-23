@@ -53,9 +53,9 @@ class Viewer(object):
         self.policy.add(self.photometryAlgorithm + ".usePixelWeights", False)
         self.policy.add(self.photometryAlgorithm + ".fitDeltaFunction", True)
         self.policy.add(self.photometryAlgorithm + ".psfShapeletOrder", 4)
-        self.basis = lsst.meas.multifit.SourceMeasurement.loadBasis(basiSize)
+        self.basis = lsst.meas.multifit.SourceMeasurement.loadBasis(basisSize)
         self.nTestPoints = 5
-        self.policy.add(self.photometryAlgorithm + ".nTestPoints", nTestPoints)
+        self.policy.add(self.photometryAlgorithm + ".nTestPoints", self.nTestPoints)
 
         bf = ButlerFactory(mapper=DatasetMapper())
         butler = bf.create()

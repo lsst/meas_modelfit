@@ -40,9 +40,8 @@ public:
     
     ComponentVector extractComponents() const;
 
-    lsst::ndarray::Array<Pixel const,2,1> getForward() const { return _forward; }
-
-    lsst::ndarray::Array<Pixel const,2,1> getReverse() const { return _reverse; }
+    /// @brief Return the mapping from Shapelet components (rows) to compound basis functions (columns).
+    lsst::ndarray::Array<Pixel const,2,1> getMapping() const { return _mapping; }
 
     /**
      *  @brief Return a matrix of inner products that can be used to orthogonalize the basis.
@@ -53,18 +52,15 @@ public:
 
 protected:
 
-    typedef ndarray::EigenView<const Pixel,2,1> Matrix;
-    typedef ndarray::TransposedEigenView<const Pixel,2,1> MatrixT;
+    typedef ndarray::EigenView<Pixel,2,1> Matrix;
 
     struct Element {
         ShapeletModelBasis::Ptr component;
-        Matrix forward;
-        MatrixT reverse;
+        Matrix mapping;
 
         Element(
             ShapeletModelBasis::Ptr const & component_, 
-            ndarray::Array<const Pixel,2,1> const & fullForward,
-            ndarray::Array<const Pixel,2,1> const & fullReverse,
+            ndarray::Array<Pixel,2,1> const & fullMapping,
             int offset
         );
 
@@ -75,8 +71,7 @@ protected:
 
     CompoundShapeletBase(
         ComponentVector const & components,
-        ndarray::Array<const Pixel,2,1> const & forward,
-        ndarray::Array<const Pixel,2,1> const & reverse
+        ndarray::Array<Pixel,2,1> const & mapping
     );
     
     explicit CompoundShapeletBase(ComponentVector const & components);
@@ -89,8 +84,7 @@ protected:
     static ndarray::Array<Pixel,2,2> _makeIdentity(int size);
 
     ElementVector _elements;
-    ndarray::Array<Pixel const,2,1> _forward;
-    ndarray::Array<Pixel const,2,1> _reverse;
+    ndarray::Array<Pixel,2,1> _mapping;
 };
 
 } // namespace detail
@@ -155,28 +149,58 @@ private:
 };
 
 /**
+ *  @brief A simple 1d function class for use with CompoundShapeletBuilder::approximate.
+ */
+class ProfileFunction {
+public:
+    typedef boost::shared_ptr<ProfileFunction> Ptr;
+
+    virtual double operator()(double radius) const = 0;
+    virtual ~ProfileFunction() {}
+
+    /// @brief A truncated de Vaucouleur profile (the SDSS prescription) to use with approximate().
+    static Ptr makeTruncatedDeVaucouleur();
+
+    /// @brief A truncated exponential profile (the SDSS prescription) to use with approximate().
+    static Ptr makeTruncatedExponential();
+};
+
+/**
  *  @brief A builder class for CompoundShapeletModelBasis.
  */
 class CompoundShapeletBuilder : public detail::CompoundShapeletBase {
 public:
 
-    explicit CompoundShapeletBuilder(ComponentVector const & components);
+    explicit CompoundShapeletBuilder(
+        ComponentVector const & components,
+        lsst::afw::math::shapelets::BasisTypeEnum basisType = lsst::afw::math::shapelets::HERMITE,
+        bool radialOnly = false
+    );
 
     explicit CompoundShapeletBuilder(
         ComponentVector const & components,
-        lsst::ndarray::Array<Pixel const,2,1> const & forward,
-        lsst::ndarray::Array<Pixel const,2,1> const & reverse
+        lsst::ndarray::Array<Pixel const,2,1> const & mapping
+    );
+
+    /**
+     *  @brief Create a builder with one basis function that approximates the given profile.
+     */
+    static CompoundShapeletBuilder approximate(
+        ProfileFunction const & profile,
+        ComponentVector const & components,
+        double sersicRadius,
+        double maxRadius,
+        lsst::ndarray::Array<Pixel const,1,1> const & matchRadii
     );
 
     void orthogonalize();
 
     void slice(int start, int stop);
 
-    int getSize() const { return _forward.getSize<1>(); }
+    int getSize() const { return _mapping.getSize<1>(); }
 
     void setMapping(
-        lsst::ndarray::Array<Pixel const,2,1> const & forward,
-        lsst::ndarray::Array<Pixel const,2,1> const & reverse
+        lsst::ndarray::Array<Pixel const,2,1> const & mapping
     );
 
     void setConstraint(
@@ -186,10 +210,13 @@ public:
 
     CompoundShapeletModelBasis::Ptr build() const;
 
+    lsst::ndarray::Array<Pixel,2,2> dataImage;
+    lsst::ndarray::Array<Pixel,3,3> modelImages;
+
 private:
 
     friend class CompoundShapeletModelBasis;
-    
+
     ndarray::Array<Pixel,2,1> _constraintMatrix;
     ndarray::Array<Pixel,1,1> _constraintVector;
 };

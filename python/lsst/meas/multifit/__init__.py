@@ -30,6 +30,7 @@ from .multifitLib import (
     SourceMeasurement,
     ModelBasis,
     ShapeletModelBasis,
+    ProfileFunction,
     CompoundShapeletModelBasis,
     CompoundShapeletBuilder,
     BaseDistribution,

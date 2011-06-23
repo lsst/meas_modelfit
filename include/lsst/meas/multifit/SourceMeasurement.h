@@ -30,6 +30,7 @@
 #include "lsst/afw/detection/Shape.h"
 #include "lsst/meas/multifit/GaussNewtonOptimizer.h"
 #include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #include <Eigen/Core>
 
 namespace lsst {
@@ -67,8 +68,10 @@ public:
                       lsst::afw::image::MaskPixel bitmask);
 
 
-    static ModelBasis::Ptr loadBasis(std::string const & name);
-    static ModelBasis::Ptr loadBasis(int basisSize);
+    static CompoundShapeletModelBasis::Ptr loadBasis(int basisSize);
+
+    static CompoundShapeletModelBasis::Ptr loadBasis(std::string const & name);
+
     static lsst::afw::geom::ellipses::Ellipse makeEllipse(
         lsst::afw::detection::Source const & source,
         lsst::afw::detection::Footprint const & fp
