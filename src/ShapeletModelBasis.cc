@@ -72,7 +72,7 @@ protected:
             _convolution->evaluate(frontEllipse);
         _frontBasis->evaluate(frontMatrix, footprint, frontEllipse);
         ndarray::viewAsEigen(matrix) = 
-            ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix) / _scale;
+            ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix);
     }
 
 private:
