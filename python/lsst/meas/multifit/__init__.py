@@ -43,8 +43,7 @@ from .multifitLib import (
     SimpleInterpreter,
     UnifiedSimpleInterpreter,
     NestedSimpleInterpreter,
-    GaussNewtonOptimizer,
-    BruteForceSourceOptimizer
+    GaussNewtonOptimizer
     )
 from . import multifitLib
 from . import definition

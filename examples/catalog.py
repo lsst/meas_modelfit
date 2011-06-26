@@ -29,43 +29,21 @@ fields = (("dataset", int),
           ("e1", float),
           ("e2", float),
           ("r", float),
-          ("pixels", int),
-          ("used_pixels", int),
-          ("src_flags", int),
+          ("src_flags", numpy.int64),
           )
 
 
-def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, 
-        fitDelta=True, usePixelWeights=False,
-        nTestPoints=5, nGrowFp=3, psfShapeletOrder=4, 
-        isPositionActive=False, isRadiusActive=True, isEllipticityActive=True):
+def fit(datasets=(0,1,2,3,4,5,6,7,8,9)):
     bf = lsst.daf.persistence.ButlerFactory( \
         mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
-    algorithm = "SHAPELET_MODEL"
     policy = lsst.pex.policy.Policy()
-    policy.add(algorithm + ".enabled", True)
-    policy.add(algorithm + ".basisSize", basisSize)
-    policy.add(algorithm + ".fitDeltaFunction", fitDelta)
-    policy.add(algorithm + ".usePixelWeights", usePixelWeights)
-    policy.add(algorithm + ".nGrowFp", nGrowFp)
-    policy.add(algorithm + ".nTestPoints", nTestPoints)
-    policy.add(algorithm + ".psfShapeletOrder", psfShapeletOrder)
-    policy.add(algorithm + ".isPositionActive", isPositionActive)
-    policy.add(algorithm + ".isRadiusActive", isRadiusActive)
-    policy.add(algorithm + ".isEllipticityActive", isEllipticityActive)
-
-    bitmask = lsst.afw.image.MaskU.getPlaneBitMask(["BAD", "SAT", "INTRP", "EDGE", "CR"])
-    nCoeffs = basisSize
-    if fitDelta:
-        nCoeffs += 1
-
-    basis = lsst.meas.multifit.SourceMeasurement.loadBasis(basisSize)
-    rawIntegral = numpy.zeros(nCoeffs, dtype=float)
-    basis.integrate(rawIntegral[:basisSize])
-    if fitDelta:
-        rawIntegral[-1] = 1.0
-    dtype = numpy.dtype(list(fields) + [("integral", float, nCoeffs), ("coeff", float, nCoeffs)])
+    algorithm = "SHAPELET_MODEL"
+    policy.add("%s.enabled" % algorithm, True)
+    options = lsst.meas.multifit.SourceMeasurement.readPolicy(policy.get(algorithm))
+    measurement = lsst.meas.multifit.SourceMeasurement(options)
+    nCoeff = measurement.getCoefficientSize()
+    dtype = numpy.dtype(list(fields) + [("coeff", float, nCoeff)])
     tables = []
     for d in datasets:
         logging.info("Processing dataset %d" % d)
@@ -94,10 +72,6 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8,
             record["iyy"] = src.getIyy()
             record["ixy"] = src.getIxy()
             record["src_flags"] = src.getFlagForDetection()
-            record["pixels"] = src.getFootprint().getArea()
-            fp = lsst.afw.detection.growFootprint(src.getFootprint(), nGrowFp)
-            lsst.afw.detection.Footprint.intersectMask(fp, exp.getMaskedImage().getMask(),bitmask) 
-            record["used_pixels"] =  fp.getArea()
             photom = measurePhotometry.measure(lsst.afw.detection.Peak(), src).find(algorithm)
             record["status"] = photom.getFlag()
             record["flux"] = photom.getFlux()
@@ -105,17 +79,8 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8,
             record["e1"] = photom.get("e1")
             record["e2"] = photom.get("e2")
             record["r"] = photom.get("radius")
-            ellipse = lsst.meas.multifit.EllipseCore(record["e1"], record["e2"], record["r"])
-            f = ellipse.getArea() / numpy.pi
-            record["integral"][:] = rawIntegral
-            record["integral"][:basisSize] *= f
-            for i in range(basisSize):
+            for i in range(nCoeff):
                 record["coeff"][i] = photom.get(i, "coefficients")
-            if fitDelta:
-                record["coeff"][basisSize] = photom.get(basisSize, "coefficients")
-            altFlux = numpy.dot(record["integral"], record["coeff"])
-            if not numpy.allclose(altFlux, record["flux"]):
-                logging.warning("altFlux=%s, flux=%s" % (altFlux, record["flux"]))
         tables.append(table)
 
     return numpy.concatenate(tables)
@@ -127,7 +92,7 @@ def build(filename, *args, **kwds):
     pickle.dump(full, outfile, protocol=2)
     outfile.close()
 
-def load(filename, filter_status=True, filter_flux=True, dataset=None):
+def load(filename, filter_status=True, filter_flux=True, filter_flags=True, dataset=None):
     infile = open(filename, "rb")
     table = pickle.load(infile)
     if filter_status:
@@ -136,6 +101,8 @@ def load(filename, filter_status=True, filter_flux=True, dataset=None):
         table = table[table["flux"] > 0]
     if dataset is not None:
         table = table[table["dataset"] == dataset]
+    if filter_flags:
+        table = table[numpy.logical_not(table["src_flags"] & lsst.meas.algorithms.Flags.BAD)]
     return table
 
 def m_radius(table):

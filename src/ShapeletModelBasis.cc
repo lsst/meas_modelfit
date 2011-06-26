@@ -52,10 +52,10 @@ public:
 protected:
 
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Cannot integrate convolved basis."
-        );      
+        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(getOrder());
+        vector.deep() = 0.0;
+        shapeletEvaluator.fillIntegration(vector);
+        vector.deep() *= _scale * _scale;
     }
 
     virtual void _evaluate(
@@ -72,7 +72,8 @@ protected:
             _convolution->evaluate(frontEllipse);
         _frontBasis->evaluate(frontMatrix, footprint, frontEllipse);
         ndarray::viewAsEigen(matrix) = 
-            ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix) / _scale;
+            ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix);
+        matrix.deep() *= frontEllipse.getCore().getArea() / ellipse.getCore().getArea();
     }
 
 private:
@@ -85,6 +86,30 @@ private:
 } // anonymous
 
 }}} // namespace lsst::meas::multifit
+
+mf::ShapeletModelBasis::ShapeletModelBasis(int order, double scale, ConstraintType constraintType) 
+    : ModelBasis(afw::math::shapelets::computeSize(order)),
+      _order(order), _scale(scale)
+{
+    if (constraintType == COMBINED || (constraintType == SEPARATE && _order < 2)) {
+        ndarray::Array<Pixel,2,2> constraintMatrix(ndarray::allocate(1, getSize()));
+        constraintMatrix.deep() = 0.0;
+        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
+        shapeletEvaluator.fillIntegration(constraintMatrix[0]);
+        ndarray::Array<Pixel,1,1> constraintVector(ndarray::allocate(1));
+        constraintVector[0] = 0.0;
+        attachConstraint(constraintMatrix, constraintVector);
+    } else if (constraintType == SEPARATE) {
+        ndarray::Array<Pixel,2,2> constraintMatrix(ndarray::allocate(2, getSize()));
+        constraintMatrix.deep() = 0.0;
+        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
+        shapeletEvaluator.fillIntegration(constraintMatrix[1]);
+        std::swap(constraintMatrix[0][0], constraintMatrix[1][0]);
+        ndarray::Array<Pixel,1,1> constraintVector(ndarray::allocate(2));
+        constraintVector.deep() = 0.0;
+        attachConstraint(constraintMatrix, constraintVector);
+    }
+}
 
 int & mf::ShapeletModelBasis::getPsfShapeletOrderRef() {
     static int v = 4;
@@ -116,6 +141,7 @@ void mf::ShapeletModelBasis::_evaluate(
             shapeletEvaluator.fillEvaluation(*pixelIter, transform(afw::geom::Point2D(x, span.getY())));
         }
     }
+    matrix.deep() *= (M_PI / ellipse.getCore().getArea());
 }
 
 void mf::ShapeletModelBasis::_evaluateRadialProfile(
@@ -166,7 +192,7 @@ mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     afwShapelets::MultiShapeletFunction const & psf
 ) const {
     CompoundShapeletModelBasis::ComponentVector components;
-    components.push_back(boost::make_shared<ShapeletModelBasis>(_order, _scale));
+    components.push_back(Ptr(new ShapeletModelBasis(_order, _scale, ConstraintType(getConstraintSize()))));
     CompoundShapeletModelBasis::Ptr asCompound = CompoundShapeletBuilder(components).build();
     return asCompound->convolve(psf);
 }

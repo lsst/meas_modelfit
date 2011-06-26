@@ -69,10 +69,12 @@ public:
 protected:
 
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Cannot integrate convolved basis."
-        );      
+        vector.deep() = 0.0;
+        for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+            ndarray::Array<Pixel,1,1> front(ndarray::allocate(i->component->getSize()));
+            i->component->integrate(front);
+            ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->mapping;
+        }
     }
 
     virtual void _evaluate(
@@ -593,6 +595,11 @@ CompoundShapeletBuilder CompoundShapeletBuilder::approximate(
         i->component = ShapeletModelBasis::make(i->component->getOrder(), 
                                                 i->component->getScale() / sersicRadius);
     }
+
+    builder._constraintMatrix = ndarray::allocate(1, 1);
+    builder._constraintMatrix[0] = 1.0;
+    builder._constraintVector = ndarray::allocate(1);
+    builder._constraintVector[0] = 0.0;
 
     return builder;
 }

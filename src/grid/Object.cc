@@ -266,25 +266,47 @@ std::ostream & operator<<(std::ostream & os, Object const & obj) {
     return os;
 }
 
-double Source::computeFluxMean(
-    lsst::ndarray::Array<double const,1,1> const & parameters,
-    lsst::ndarray::Array<double const,1,1> const & coefficients
+void Source::fillIntegration(lsst::ndarray::Array<Pixel,1,1> const & integration) const {
+    if (object.getBasis()) {
+        object.getBasis()->integrate(
+            integration[ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())]
+        );
+    } else {
+        integration[getCoefficientOffset()] = 1.0;
+    }
+}
+
+double Source::computeFlux(
+    lsst::ndarray::Array<Pixel const,1,1> const & integration,
+    lsst::ndarray::Array<Pixel const,1,1> const & coefficients
+) {
+    return ndarray::viewAsEigen(integration).dot(ndarray::viewAsEigen(coefficients));
+}
+
+double Source::computeFluxVariance(
+    lsst::ndarray::Array<double const,1,1> const & integration,
+    lsst::ndarray::Array<double const,2,1> const & covariance
+) {
+    return ndarray::viewAsEigen(integration).dot(
+        ndarray::viewAsEigen(covariance) * ndarray::viewAsEigen(integration)
+    );
+}
+
+double Source::computeFlux(
+    lsst::ndarray::Array<Pixel const,1,1> const & coefficients
 ) const {
     if (object.getBasis()) {
-        Ellipse ellipse(object.makeEllipse(parameters.getData()));
         ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
         object.getBasis()->integrate(integration);
-        return (ellipse.getCore().getArea() / M_PI)
-            * ndarray::viewAsEigen(
-                coefficients[
-                    ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())
-                ]).dot(ndarray::viewAsEigen(integration));
+        return ndarray::viewAsEigen(
+            coefficients[
+                ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())
+            ]).dot(ndarray::viewAsEigen(integration));
     }
     return coefficients[getCoefficientOffset()];
 }
 
 double Source::computeFluxVariance(
-    lsst::ndarray::Array<double const,1,1> const & parameters,
     lsst::ndarray::Array<double const,2,1> const & covariance
 ) const {
     if (object.getBasis()) {
@@ -294,12 +316,9 @@ double Source::computeFluxVariance(
             getCoefficientCount(),
             getCoefficientCount()
         );
-        Ellipse ellipse(object.makeEllipse(parameters.getData()));
         ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
         object.getBasis()->integrate(integration);
-        double result = ellipse.getCore().getArea() / M_PI; result *= result;
-        result *= ndarray::viewAsEigen(integration).dot(sigma * ndarray::viewAsEigen(integration));
-        return result;
+        return ndarray::viewAsEigen(integration).dot(sigma * ndarray::viewAsEigen(integration));
     }
     return covariance[getCoefficientOffset()][getCoefficientOffset()];
 }

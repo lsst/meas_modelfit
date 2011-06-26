@@ -100,6 +100,8 @@ public:
 
     bool empty() const { return _ptrVec.empty(); }
 
+    ParameterComponent<E> const & operator[](int n) const { return *_ptrVec[n]; }
+
 private:
 
     friend class Initializer;

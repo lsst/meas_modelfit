@@ -59,7 +59,6 @@ def makeExponential():
     components.push_back(lsst.meas.multifit.ShapeletModelBasis.make(0, 4.0))
     components.push_back(lsst.meas.multifit.ShapeletModelBasis.make(0, 10.00))
     components.push_back(lsst.meas.multifit.ShapeletModelBasis.make(0, 20.00))
-    shapeletRadius = 10.0
     sersicRadius = 20.0
     maxRadius = 100.0
     matchRadii = numpy.array([0.0])
@@ -97,6 +96,7 @@ def main():
     plotBasis(expBasis, exp_profile)
     plotBasis(devBasis, deV_profile)
     pyplot.show()
+    return expBasis, devBasis
 
 if __name__ == "__main__":
-    main()
+    expBasis, devBasis = main()
