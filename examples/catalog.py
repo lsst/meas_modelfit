@@ -117,3 +117,4 @@ def view(record):
     v = viewer.Viewer(record['dataset'])
     index = [s.getSourceId() for s in v.sources].index(record["id"])
     v.plot(index)
+    v.plotProfile(index)

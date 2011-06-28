@@ -172,6 +172,7 @@ class Viewer(object):
         d["fp"] = fitFp
         d["bbox"] = bbox
         d["ellipse"] = ellipse
+        d["coefficients"] = coeff
         d["evaluator"] = evaluator
         d["evaluation"] = evaluation
         d["images"] = [mi, modelMi, residualMi]
@@ -208,5 +209,78 @@ class Viewer(object):
             
             psfMosaic = self.m.makeMosaic(d["psf_images"], frame=1)
             self.m.drawLabels(d["psf_labels"], frame=1)        
-
             ds9.show(frame=0)
+
+    def plotProfile(self, index):
+        self.fit(index)
+        d = self.fits[index]
+        radii = numpy.linspace(0.0, 5.0, 200)
+        fullProfile = numpy.zeros((radii.size, d['evaluator'].getCoefficientSize()), dtype=float)
+        allProfiles = {"full":fullProfile, "psf": fullProfile.copy()}
+        v = d["coefficients"] * self.sourceMeasurement.getIntegration()
+        v /= v.sum()
+        allFractions = {}
+        offset = 0
+        order = []
+        if self.sourceMeasurement.getOptions().fitDeltaFunction:
+            allFractions["psf"] = v[offset]
+            order.append("psf")
+            offset += 1
+        if self.sourceMeasurement.getOptions().fitExponential:
+            expProfile = numpy.zeros(fullProfile.shape, dtype=float)
+            self.sourceMeasurement.getExponentialBasis().evaluateRadialProfile(
+                expProfile[:,offset:offset+1], radii
+                )
+            allProfiles["exp"] = expProfile
+            allFractions["exp"] = v[offset]
+            order.append("exp")
+            fullProfile += expProfile
+            offset += 1
+        if self.sourceMeasurement.getOptions().fitDeVaucouleur:
+            devProfile = numpy.zeros(fullProfile.shape, dtype=float)
+            self.sourceMeasurement.getDeVaucouleurBasis().evaluateRadialProfile(
+                devProfile[:,offset:offset+1], radii
+                )
+            allProfiles["dev"] = devProfile
+            allFractions["dev"] = v[offset]
+            order.append("dev")
+            fullProfile += devProfile
+            offset += 1
+        if self.sourceMeasurement.getOptions().shapeletOrder >= 0:
+            shpProfile = numpy.zeros(fullProfile.shape, dtype=float)
+            self.sourceMeasurement.getShapeletBasis().evaluateRadialProfile(
+                shpProfile[:,offset:], radii
+                )
+            allProfiles["shp"] = shpProfile
+            allFractions["shp"] = v[offset:].sum()
+            order.append("shp")
+            fullProfile += shpProfile
+        f = d["ellipse"].getCore().getArea() / numpy.pi
+        r = d["ellipse"].getCore().getDeterminantRadius()
+        colors = {"full": "k", "exp":"b", "dev":"r", "shp":"g", "psf":"y"}
+        pyplot.figure()
+        ax1 = pyplot.axes([0.1, 0.1, 0.6, 0.38])
+        ax1.plot(radii * r, numpy.dot(fullProfile, d["coefficients"]) / f, "k", label="combined")
+        for k in order:
+            if k not in allProfiles: continue
+            v = allProfiles[k]
+            ax1.plot(radii * r, numpy.dot(v, d["coefficients"]) / f, colors[k], label=k)
+            pyplot.xlabel("radius (pixels)")
+        pyplot.legend()
+        ax2 = pyplot.axes([0.1, 0.52, 0.6, 0.38], sharex=ax1)
+        ax2.semilogy(radii * r, numpy.dot(fullProfile, d["coefficients"]) / f, "k", label="combined")
+        for k in order:
+            if k not in allProfiles: continue
+            v = allProfiles[k]
+            ax2.semilogy(radii * r, numpy.dot(v, d["coefficients"]) / f, colors[k], label=k)
+        ax2.set_xticklabels([])
+        pyplot.title("ellipse-averaged radial profile")
+        order.reverse()
+        ax3 = pyplot.axes([0.75, 0.1, 0.2, 0.8])
+        ax3.barh(numpy.arange(0, len(order)), [allFractions[k] for k in order], 
+                 color=[colors[k] for k in order])
+        pyplot.ylim(-0.2, len(order))
+        pyplot.title("flux fraction")
+        ax3.set_yticklabels([])
+        pyplot.xlim(0, 1.0)
+        pyplot.show()
