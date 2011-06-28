@@ -40,17 +40,7 @@ namespace multifit {
 
 class SourceMeasurement {
 public:
-    enum {
-        NO_EXPOSURE=0x001, 
-        NO_PSF=0x002, 
-        NO_SOURCE=0x004, 
-        NO_BASIS=0x008,
-        NO_FOOTPRINT=0x010, 
-        BAD_INITIAL_MOMENTS=0x020, 
-        OPTIMIZER_FAILED=0x040,
-        GALAXY_MODEL_FAILED=0x080,
-        UNSAFE_INVERSION=0x100
-    };
+
     SourceMeasurement(int basis, int psfShapeletOrder,
                       int nTestPoints, int nGrowFp, 
                       bool usePixelWeights, bool fitDeltaFunction,
@@ -76,18 +66,36 @@ public:
         lsst::afw::detection::Source const & source,
         lsst::afw::detection::Footprint const & fp
     );
-     
+    template <typename ExposureT>
+    int measure(
+        PTR(ExposureT) exp,
+        PTR(lsst::afw::detection::Source) src
+    ) {
+        CONST_PTR(ExposureT) const_exp(exp);
+        CONST_PTR(lsst::afw::detection::Source) const_src(src);
+        return measure(const_exp, const_src);
+    }
+
+#ifndef SWIG
     template <typename ExposureT>
     int measure(
         CONST_PTR(ExposureT) exp,
         CONST_PTR(lsst::afw::detection::Source)
     ); 
+#endif
+    int measure(
+        Psf::ConstPtr const & psf,
+        ndarray::Array<Pixel , 1, 1> data,
+        ndarray::Array<Pixel , 1, 1> weights,
+        Ellipse const& ellipse,
+        Footprint::Ptr const & fp
+    );
    
     CONST_PTR(Evaluator) getEvaluator() const {return _evaluator;}
     CONST_PTR(lsst::afw::detection::Footprint) getFootprint() const {return _fp;}
-    ndarray::Array<double const, 1 ,1> getParam() const{return _param;}
-    ndarray::Array<double const, 1, 1> getCoeff() const{return _coeff;}
-    ndarray::Array<double const, 1, 1> getBasisCoeff() const {return _coeff[ndarray::view(0,getBasisSize())];}
+    lsst::ndarray::Array<double const, 1 ,1> getParam() const{return _param;}
+    lsst::ndarray::Array<double const, 1, 1> getCoeff() const{return _coeff;}
+    lsst::ndarray::Array<double const, 1, 1> getBasisCoeff() const {return _coeff[ndarray::view(0,getBasisSize())];}
     double getFlux() const {return _flux;}
     double getFluxErr() const {return _fluxErr;}
     Ellipse::ConstPtr getEllipse() const {return _ellipse;}
@@ -100,6 +108,7 @@ public:
     int getNGrowFp() const {return _nGrowFp;}
     int getBasisSize() const {return _basis->getSize();}
     int getCoefficientSize() const {return _coeff.getSize<0>();}
+    int getPsfShapeletOrder() const {return _psfShapeletOrder;}
     bool usePixelWeights() const {return _usePixelWeights;}
     bool fitDeltaFunction() const {return _fitDeltaFunction;}
     bool isEllipticityActive() const {return _isEllipticityActive;} 
@@ -119,7 +128,7 @@ private:
     double _flux, _fluxErr;
     Ellipse::Ptr _ellipse;
     Evaluator::Ptr _evaluator;
-    CONST_PTR(lsst::afw::detection::Footprint) _fp;
+    Footprint::Ptr _fp;
     ndarray::Array<double, 1, 1> _param, _coeff;
     boost::int64_t _status;
 

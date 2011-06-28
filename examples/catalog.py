@@ -4,7 +4,7 @@ import lsst.afw.image
 import lsst.meas.multifit
 import lsst.meas.algorithms
 import lsst.daf.persistence
-import lsst.meas.multifit.viewer
+import viewer
 import numpy
 import sys
 import logging
@@ -37,23 +37,11 @@ fields = (("dataset", int),
 
 def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, 
         fitDelta=True, usePixelWeights=False,
-        nTestPoints=5, nGrowFp=3, psfShapeletOrder=4, 
+        nTestPoints=5, nGrowFp=3, psfShapeletOrder=4,
         isPositionActive=False, isRadiusActive=True, isEllipticityActive=True):
     bf = lsst.daf.persistence.ButlerFactory( \
         mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
-    algorithm = "SHAPELET_MODEL"
-    policy = lsst.pex.policy.Policy()
-    policy.add(algorithm + ".enabled", True)
-    policy.add(algorithm + ".basisSize", basisSize)
-    policy.add(algorithm + ".fitDeltaFunction", fitDelta)
-    policy.add(algorithm + ".usePixelWeights", usePixelWeights)
-    policy.add(algorithm + ".nGrowFp", nGrowFp)
-    policy.add(algorithm + ".nTestPoints", nTestPoints)
-    policy.add(algorithm + ".psfShapeletOrder", psfShapeletOrder)
-    policy.add(algorithm + ".isPositionActive", isPositionActive)
-    policy.add(algorithm + ".isRadiusActive", isRadiusActive)
-    policy.add(algorithm + ".isEllipticityActive", isEllipticityActive)
 
     bitmask = lsst.afw.image.MaskU.getPlaneBitMask(["BAD", "SAT", "INTRP", "EDGE", "CR"])
     nCoeffs = basisSize
@@ -151,6 +139,6 @@ def psf_mag(table):
     return -2.5*numpy.log10(table["psf_flux"])
 
 def view(record):
-    v = lsst.meas.multifit.viewer.Viewer(record['dataset'])
+    v = viewer.Viewer(record['dataset'])
     index = [s.getSourceId() for s in v.sources].index(record["id"])
     v.plot(index, "photometry")

@@ -200,7 +200,7 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %include "lsst/meas/multifit/SourceMeasurement.h"
 
-%extent lsst::meas::multifit::SourceMeasurement {
-    %template(measure) lsst::meas::multifit::SourceMeasurement::measure<float>;
-    %template(measure) lsst::meas::multifit::SourceMeasurement::measure<double>;
+%extend lsst::meas::multifit::SourceMeasurement {
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure<lsst::afw::image::Exposure<float> >;
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure<lsst::afw::image::Exposure<double> >;
 }

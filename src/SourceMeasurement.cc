@@ -9,6 +9,7 @@
 
 #define LSST_MAX_DEBUG 0
 #include "lsst/pex/logging/Debug.h"
+#include <iostream>
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -122,42 +123,73 @@ int SourceMeasurement::measure(
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
     }
-    if (!_basis) {
-        _status |= algorithms::Flags::SHAPELET_PHOTOM_NO_BASIS;
-        return _status;
-    }
-    if (!exp->getPsf()) {
+    if(!exp->getPsf()) {
         _status |= algorithms::Flags::PHOTOM_NO_PSF;
         return _status;
     }
 
-    ShapeletModelBasis::setPsfShapeletOrder(_psfShapeletOrder);
+    boost::scoped_ptr<afw::geom::ellipses::Ellipse> ellipse;
 
+    ShapeletModelBasis::setPsfShapeletOrder(_psfShapeletOrder);
+    
     afw::detection::Footprint::Ptr fp = afw::detection::growFootprint(
         *source->getFootprint(), _nGrowFp
     );
 
-    boost::scoped_ptr<afw::geom::ellipses::Ellipse> ellipse;
+    definition::Frame frame = definition::Frame::make(0, *exp, fp, _bitmask, _usePixelWeights);
 
+    fp = frame.getFootprint();
+    if (fp->getArea() == 0) {
+        _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
+        return _status;
+    }
     try{
         ellipse.reset(new Ellipse(makeEllipse(*source, *fp)));
     } catch(lsst::pex::exceptions::InvalidParameterException e) {
         _status |= algorithms::Flags::SHAPELET_PHOTOM_BAD_MOMENTS;
         return _status;
     }
+    return measure(exp->getPsf(), frame.getData(), frame.getWeights(), *ellipse, fp);
+}
 
-    Definition definition;
-    definition.frames.insert(definition::Frame::make(0, *exp, fp, _bitmask, _usePixelWeights));
-
-    _fp = definition.frames[0].getFootprint();
-    if (_fp->getArea() == 0) {
+int SourceMeasurement::measure(
+    Psf::ConstPtr const & psf,
+    ndarray::Array<Pixel, 1, 1> data,
+    ndarray::Array<Pixel, 1, 1> weights,
+    Ellipse const& ellipse,
+    Footprint::Ptr const & fp
+){
+    if (!_basis) {
+        _status |= algorithms::Flags::SHAPELET_PHOTOM_NO_BASIS;
+        return _status;
+    }
+    if (!psf) {
+        _status |= algorithms::Flags::PHOTOM_NO_PSF;
+        return _status;
+    }
+    if (!fp) {
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
     }
 
+    if (fp->getArea() == 0) {
+        _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
+        return _status;
+    }
+    _fp = fp;
+    Definition definition;
+
+    if (!_usePixelWeights)
+        weights = ndarray::Array<Pixel, 1,1> ();
+    
+    definition::Frame frame(0, fp, data, weights);
+    frame.getPsf() = psf->clone();
+
+    definition.frames.insert(frame);
+
     //fit both a point source and galaxy model for the same object
     definition::Object galaxy = definition::Object::makeGalaxy(
-        GALAXY_ID, _basis, *ellipse, 
+        GALAXY_ID, _basis, ellipse, 
         _isEllipticityActive, 
         _isRadiusActive, 
         _isPositionActive
@@ -195,7 +227,6 @@ int SourceMeasurement::measure(
     }
     else if (_fitDeltaFunction) { 
         _status |= algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
-        _status |= GALAXY_MODEL_FAILED;        
         //try fitting just the point source model
         definition.objects.erase(GALAXY_ID);
         _evaluator = Evaluator::make(definition);
@@ -233,16 +264,16 @@ int SourceMeasurement::measure(
     }
     _fluxErr = sqrt(fluxVar);
     return _status;
-}
 
+}
 template int SourceMeasurement::measure(
-    CONST_PTR(afw::image::Exposure<float>) exp,
-    CONST_PTR(afw::detection::Source) source
+    PTR(afw::image::Exposure<float>) exp,
+    PTR(afw::detection::Source) source
 );
 
 template int SourceMeasurement::measure(
-    CONST_PTR(afw::image::Exposure<double>) exp,
-    CONST_PTR(afw::detection::Source) source
+    PTR(afw::image::Exposure<double>) exp,
+    PTR(afw::detection::Source) source
 );
 
 }}}

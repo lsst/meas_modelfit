@@ -145,6 +145,7 @@ class GaussianPsfTestCase(unittest.TestCase):
         meas =mp.measure(afwDetection.Peak(), self.source)        
         photom = meas.find("SHAPELET_MODEL")
         status = int(photom.get("status"))
+        print status
         self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_FOOTPRINT)
 
     def testPsfFlux(self):
