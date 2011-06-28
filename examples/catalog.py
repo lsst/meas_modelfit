@@ -4,7 +4,7 @@ import lsst.afw.image
 import lsst.meas.multifit
 import lsst.meas.algorithms
 import lsst.daf.persistence
-import lsst.meas.multifit.viewer
+import viewer
 import numpy
 import sys
 import logging
@@ -33,18 +33,11 @@ fields = (("dataset", int),
           )
 algorithm = "SHAPELET_MODEL"
 
-def makeSourceMeasurement():
-    policy = lsst.pex.policy.Policy()
-    policy.add("%s.enabled" % algorithm, True)
-    options = lsst.meas.multifit.SourceMeasurement.readPolicy(policy.get(algorithm))
-    measurement = lsst.meas.multifit.SourceMeasurement(options)
-    return policy, measurement
-
-def fit(datasets=(0,1,2,3,4,5,6,7,8,9)):
+def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
     bf = lsst.daf.persistence.ButlerFactory( \
         mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
-    policy, measurement = makeSourceMeasurement()
+    measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
     nCoeff = measurement.getCoefficientSize()
     dtype = numpy.dtype(list(fields) + [("coeff", float, nCoeff)])
     tables = []
@@ -121,6 +114,6 @@ def psf_mag(table):
     return -2.5*numpy.log10(table["psf_flux"])
 
 def view(record):
-    v = lsst.meas.multifit.viewer.Viewer(record['dataset'])
+    v = viewer.Viewer(record['dataset'])
     index = [s.getSourceId() for s in v.sources].index(record["id"])
-    v.plot(index, "photometry")
+    v.plot(index)

@@ -43,7 +43,9 @@ from .multifitLib import (
     SimpleInterpreter,
     UnifiedSimpleInterpreter,
     NestedSimpleInterpreter,
-    GaussNewtonOptimizer
+    GaussNewtonOptimizer,
+    version,
+    makeSourceMeasurement
     )
 from . import multifitLib
 from . import definition

@@ -11,6 +11,7 @@
 
 #define LSST_MAX_DEBUG 0
 #include "lsst/pex/logging/Debug.h"
+#include <iostream>
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -235,6 +236,7 @@ void SourceMeasurement::solve(double e1, double e2, double radius, double & best
         //} else {
         //    _status &= ~algorithms::Flags::SHAPELET_PHOTOM_INVERSION_UNSAFE;
         // }
+        _parameters.deep() = parameters;
         _coefficients.deep() = evaluation.getCoefficients();
         _covariance.deep() = evaluation.getCoefficientFisherMatrix();
         best = objective;
@@ -329,8 +331,8 @@ int SourceMeasurement::measure(
     optimize(*ellipse);
 
     return _status;
-}
 
+}
 template int SourceMeasurement::measure(
     CONST_PTR(afw::image::Exposure<float>) exp,
     CONST_PTR(afw::detection::Source) source

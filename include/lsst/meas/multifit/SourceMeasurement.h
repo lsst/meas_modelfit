@@ -105,9 +105,21 @@ public:
 
     template <typename ExposureT>
     int measure(
+        PTR(ExposureT) exp,
+        PTR(lsst::afw::detection::Source) src
+    ) {
+        CONST_PTR(ExposureT) const_exp(exp);
+        CONST_PTR(lsst::afw::detection::Source) const_src(src);
+        return measure(const_exp, const_src);
+    }
+
+#ifndef SWIG
+    template <typename ExposureT>
+    int measure(
         CONST_PTR(ExposureT) exp,
         CONST_PTR(lsst::afw::detection::Source)
-    ); 
+    );
+#endif
 
     Evaluator::Ptr getEvaluator() const { return _evaluator; }
     lsst::afw::detection::Footprint::Ptr getFootprint() const { return _fp; }
