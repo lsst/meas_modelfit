@@ -55,7 +55,7 @@ class Viewer(object):
         self.plots = {}
     
         self.m = lsst.afw.display.utils.Mosaic()
-        self.gutter = 10
+        self.gutter = 3
         self.m.setGutter(self.gutter)
         self.m.setBackground(0)
         self.m.setMode("x")
@@ -123,11 +123,13 @@ class Viewer(object):
                 self.exposure.getMaskedImage().getImage(), 
                 bbox, lsst.afw.image.PARENT)        
         img = lsst.afw.image.ImageD(bbox)        
-        msk = lsst.afw.image.MaskU(bbox)        
-        img.getArray()[:,:] = original.getArray().astype(numpy.float)[:,:]
+        msk = lsst.afw.image.MaskU(bbox)    
+        msk.addMaskPlane("multifit")
+        bitmask = msk.getPlaneBitMask("multifit")
+        lsst.afw.detection.setMaskFromFootprint(msk, fitFp, bitmask)
+        msk.getArray()[:,:] = numpy.logical_not(msk.getArray() == bitmask)*bitmask
 
-        ones = numpy.ones(fitFp.getArea(), dtype=int)
-        lsst.afw.detection.expandArray(fitFp, ones, msk.getArray(), bbox.getMin())
+        img.getArray()[:,:] = original.getArray().astype(numpy.float)[:,:]
         mi = lsst.afw.image.makeMaskedImage(img, msk)
 
         modelArray = evaluation.getModelVector().astype(img.getArray().dtype)
@@ -178,27 +180,33 @@ class Viewer(object):
         d["psf_labels"] = ["psf", "ShapeletLocalPsf model", "residuals"]
         self.fits[index] = d
 
-    def plot(self, index):
+    def plot(self, index, mode="ds9"):
         self.fit(index)
         d = self.fits[index]
         bbox = d["bbox"]
         ellipse = d["ellipse"]
         q = lsst.afw.geom.ellipses.Quadrupole(ellipse.getCore())
-
-        center = ellipse.getCenter() - lsst.afw.geom.ExtentD(bbox.getMin())
-
-        mosaic = self.m.makeMosaic(d["images"], frame=0)
-        self.m.drawLabels(d["image_labels"], frame=0)
         
-        ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
-        ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
-        center += lsst.afw.geom.ExtentD(bbox.getDimensions() + lsst.afw.geom.ExtentI(self.gutter - 2))
-        ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
-        ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
-        center += lsst.afw.geom.ExtentD(bbox.getDimensions() + lsst.afw.geom.ExtentI(self.gutter - 2))
-        ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
-        ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
-        
-        psfMosaic = self.m.makeMosaic(d["psf_images"], frame=1)
-        self.m.drawLabels(d["psf_labels"], frame=1)        
+        center = lsst.afw.geom.Point2D(ellipse.getCenter().getX() - bbox.getMinX(), ellipse.getCenter().getY() - bbox.getMinY())
 
+        if(mode=="ds9"):
+            mosaic = self.m.makeMosaic(d["images"], frame=0)
+            self.m.drawLabels(d["image_labels"], frame=0)
+            ds9.setMaskTransparency(75)
+
+            #image
+            ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+            ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
+            #model
+            center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter , 0)
+            ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+            ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
+            #residual
+            center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter, 0)
+            ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+            ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
+            
+            psfMosaic = self.m.makeMosaic(d["psf_images"], frame=1)
+            self.m.drawLabels(d["psf_labels"], frame=1)        
+
+            ds9.show(frame=0)
