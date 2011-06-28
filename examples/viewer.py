@@ -82,9 +82,7 @@ class Viewer(object):
         bbox.grow(10)
         bbox.clip(self.exposure.getBBox(lsst.afw.image.PARENT))
         fp = lsst.afw.detection.Footprint(bbox)       
-
-
-
+        
         #generate a new evalution of the fitted model over this larger fp
         definition = self.sourceMeasurement.getEvaluator().getGrid().makeDefinition()
         dataArray = numpy.zeros(fp.getArea(), dtype=numpy.float32)
@@ -127,7 +125,6 @@ class Viewer(object):
         img = lsst.afw.image.ImageD(bbox)        
         msk = lsst.afw.image.MaskU(bbox)        
         img.getArray()[:,:] = original.getArray().astype(numpy.float)[:,:]
-        ds9.mtv(img, frame = 5)
 
         ones = numpy.ones(fitFp.getArea(), dtype=int)
         lsst.afw.detection.expandArray(fitFp, ones, msk.getArray(), bbox.getMin())
@@ -138,13 +135,11 @@ class Viewer(object):
 
         model = img.Factory(bbox)
         lsst.afw.detection.expandArray(fp, modelArray, model.getArray(), bbox.getMin())
-        ds9.mtv(model, frame = 3)
         modelMi = mi.Factory(model, msk)
 
 
         residual = img.Factory(bbox)
         lsst.afw.detection.expandArray(fp, residualArray, residual.getArray(), bbox.getMin())    
-        ds9.mtv(residual, frame= 4)
         residualMi = mi.Factory(residual, msk)
 
       

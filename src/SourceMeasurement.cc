@@ -314,6 +314,7 @@ int SourceMeasurement::measure(
     boost::scoped_ptr<afw::geom::ellipses::Ellipse> ellipse;
     try{
         ellipse.reset(new Ellipse(makeEllipse(*source, *fp)));
+        _ellipse.setCenter(ellipse->getCenter());
     } catch(lsst::pex::exceptions::InvalidParameterException e) {
         _status |= algorithms::Flags::SHAPELET_PHOTOM_BAD_MOMENTS;
         return _status;
