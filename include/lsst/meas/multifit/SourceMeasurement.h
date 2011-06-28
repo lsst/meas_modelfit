@@ -87,9 +87,9 @@ public:
     static CompoundShapeletModelBasis::Ptr getExponentialBasis();
     static CompoundShapeletModelBasis::Ptr getDeVaucouleurBasis();
 
-    static void addObjectsToDefinition(
-        Definition & definition, lsst::afw::geom::ellipses::Ellipse const & ellipse, Options const & options
-    );
+    void addObjectsToDefinition(
+        Definition & definition, lsst::afw::geom::ellipses::Ellipse const & ellipse
+    ) const;
 
     static Options readPolicy(lsst::pex::policy::Policy const & policy);
 
@@ -114,6 +114,7 @@ public:
     lsst::ndarray::Array<double const,1,1> getParameters() const { return _parameters; }
     lsst::ndarray::Array<double const,1,1> getCoefficients() const { return _coefficients; }
     lsst::ndarray::Array<double const,2,2> getCovariance() const { return _covariance; }
+    lsst::ndarray::Array<double const,1,1> getIntegration() const { return _integration; }
 
     int getCoefficientSize() const { return _coefficients.getSize<0>(); }
 
@@ -139,7 +140,7 @@ public:
     Ellipse const & getEllipse() const { return _ellipse; }
     boost::int64_t getStatus() const { return _status; }
 
-    ShapeletModelBasis::Ptr getShapeletBasis() const { return _shapeletBasis; } 
+    CompoundShapeletModelBasis::Ptr getShapeletBasis() const { return _shapeletBasis; } 
     lsst::afw::image::MaskPixel getBitmask() const { return _bitmask; }
     Options const & getOptions() const { return _options; }
 
@@ -154,7 +155,7 @@ private:
 
     Options _options;
     lsst::afw::image::MaskPixel _bitmask;
-    ShapeletModelBasis::Ptr _shapeletBasis;
+    CompoundShapeletModelBasis::Ptr _shapeletBasis;
 
     double _flux, _fluxErr;
     Ellipse _ellipse;

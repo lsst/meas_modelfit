@@ -9,7 +9,7 @@
 
 #include "Eigen/Cholesky"
 
-#define LSST_MAX_DEBUG 10
+#define LSST_MAX_DEBUG 0
 #include "lsst/pex/logging/Debug.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -110,15 +110,42 @@ afw::geom::ellipses::Ellipse SourceMeasurement::makeEllipse(
 SourceMeasurement::SourceMeasurement(Options const & options) : 
     _options(options),
     _bitmask(afw::image::Mask<afw::image::MaskPixel>::getPlaneBitMask(options.maskPlaneNames)),
-    _shapeletBasis(),
     _ellipse(EllipseCore())
 {
     int coefficientSize = computeCoefficientSize(options);
-    if (options.shapeletOrder >= 0) _shapeletBasis = ShapeletModelBasis::make(options.shapeletOrder);
     _integration = ndarray::allocate(coefficientSize);
     _coefficients = ndarray::allocate(coefficientSize);
     _covariance = ndarray::allocate(coefficientSize, coefficientSize);
     _parameters = ndarray::allocate(3);
+    _integration.deep() = 0.0;
+    int offset = 0;
+    if (_options.fitDeltaFunction) {
+        _integration[offset] = 1.0;
+        ++offset;
+    }
+    if (_options.fitExponential) {
+        getExponentialBasis()->integrate(_integration[ndarray::view(offset, offset+1)]);
+        ++offset;
+    }
+    if (_options.fitDeVaucouleur) {
+        getDeVaucouleurBasis()->integrate(_integration[ndarray::view(offset, offset+1)]);
+        ++offset;
+    }
+    if (_options.shapeletOrder >= 0) {
+        CompoundShapeletBuilder::ComponentVector components;
+        components.push_back(ShapeletModelBasis::make(_options.shapeletOrder));
+        CompoundShapeletBuilder builder(components);
+        builder.normalizeFlux(0);
+        ndarray::Array<Pixel,2,2> constraintMatrix(ndarray::allocate(2, builder.getSize()));
+        constraintMatrix.deep() = 0.0;
+        builder.integrate(constraintMatrix[1]);
+        std::swap(constraintMatrix[1][0], constraintMatrix[0][0]);
+        ndarray::Array<Pixel,1,1> constraintVector(ndarray::allocate(2));
+        constraintVector.deep() = 0.0;
+        builder.setConstraint(constraintMatrix, constraintVector);
+        _shapeletBasis = builder.build();
+        _shapeletBasis->integrate(_integration[ndarray::view(offset, offset + _shapeletBasis->getSize())]);
+    }
 }
 
 CompoundShapeletModelBasis::Ptr SourceMeasurement::loadBasis(std::string const & name) {
@@ -139,8 +166,8 @@ CompoundShapeletModelBasis::Ptr SourceMeasurement::getDeVaucouleurBasis() {
 }
 
 void SourceMeasurement::addObjectsToDefinition(
-    Definition & def, lsst::afw::geom::ellipses::Ellipse const & ellipse, Options const & options
-) {
+    Definition & def, lsst::afw::geom::ellipses::Ellipse const & ellipse
+) const {
     definition::PositionComponent::Ptr position = definition::PositionComponent::make(
         ellipse.getCenter(), false
     );
@@ -151,12 +178,12 @@ void SourceMeasurement::addObjectsToDefinition(
     definition::EllipticityComponent::Ptr ellipticity = definition::EllipticityComponent::make(
         ellipseCore.getEllipticity(), true
     );
-    if (options.fitDeltaFunction) {
+    if (_options.fitDeltaFunction) {
         definition::Object obj(DELTAFUNCTION_ID);
         obj.getPosition() = position;
         def.objects.insert(obj);
     }
-    if (options.fitExponential) {
+    if (_options.fitExponential) {
         definition::Object obj(EXPONENTIAL_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
@@ -165,7 +192,7 @@ void SourceMeasurement::addObjectsToDefinition(
         def.objects.insert(obj);
 
     }
-    if (options.fitDeVaucouleur) {
+    if (_options.fitDeVaucouleur) {
         definition::Object obj(DEVAUCOULEUR_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
@@ -173,12 +200,12 @@ void SourceMeasurement::addObjectsToDefinition(
         obj.setBasis(getDeVaucouleurBasis());
         def.objects.insert(obj);
     }
-    if (options.shapeletOrder >= 0) {
+    if (_options.shapeletOrder >= 0) {
         definition::Object obj(SHAPELET_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
-        obj.setBasis(ShapeletModelBasis::make(options.shapeletOrder, 1.0, ShapeletModelBasis::SEPARATE));
+        obj.setBasis(_shapeletBasis);
         def.objects.insert(obj);
     }
 }
@@ -211,6 +238,7 @@ void SourceMeasurement::solve(double e1, double e2, double radius, double & best
         _coefficients.deep() = evaluation.getCoefficients();
         _covariance.deep() = evaluation.getCoefficientFisherMatrix();
         best = objective;
+        _ellipse.getCore() = EllipseCore(e1, e2, radius);
     }
 }
 
@@ -255,19 +283,6 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
     Grid::Ptr grid = _evaluator->getGrid();
     _flux = grid::Source::computeFlux(_integration, _coefficients);
     _fluxErr = std::sqrt(grid::Source::computeFluxVariance(_integration, _covariance));
-    if (_options.shapeletOrder >= 0) {
-        grid::Object const & obj = grid::find(grid->objects, SHAPELET_ID);
-        _ellipse = obj.makeEllipse(_parameters.getData());
-        _shapeletBasis = boost::static_pointer_cast<ShapeletModelBasis>(obj.getBasis());
-    } else if (_options.fitExponential) {
-        _ellipse = grid::find(grid->objects, EXPONENTIAL_ID).makeEllipse(_parameters.getData());
-    } else if (_options.fitDeVaucouleur) {
-        _ellipse = grid::find(grid->objects, DEVAUCOULEUR_ID).makeEllipse(_parameters.getData());
-    } else {
-        _ellipse = afw::geom::ellipses::Ellipse(
-            EllipseCore(), grid::find(grid->objects, DELTAFUNCTION_ID).makePoint(_parameters.getData())
-        );
-    }
 }
 
 template <typename ExposureT>
@@ -308,16 +323,8 @@ int SourceMeasurement::measure(
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
     }
-    addObjectsToDefinition(def, *ellipse, _options);
+    addObjectsToDefinition(def, *ellipse);
     _evaluator = Evaluator::make(def);
-    _integration.deep() = 0.0;
-    for (
-        Grid::SourceArray::const_iterator i = _evaluator->getGrid()->sources.begin();
-        i != _evaluator->getGrid()->sources.end();
-        ++i
-    ) {
-        i->fillIntegration(_integration);
-    }
 
     optimize(*ellipse);
 

@@ -51,7 +51,7 @@ definitions: {
         description: "amount to grow input footprint"
         minOccurs: 1
         maxOccurs: 1
-        default: 3
+        default: 2
     }
     psfShapeletOrder:{
         type: "int"

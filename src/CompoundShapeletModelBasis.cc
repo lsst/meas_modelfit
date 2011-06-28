@@ -431,6 +431,17 @@ void CompoundShapeletBuilder::orthogonalize() {
     _resetElements();
 }
 
+void CompoundShapeletBuilder::normalizeFlux(int n) {
+    ndarray::Array<Pixel,1,1> integral(ndarray::allocate(getSize()));
+    integral.deep() = 0.0;
+    integrate(integral);
+    if (_constraintMatrix.getSize<0>() > 0) {
+        _constraintMatrix = ndarray::copy(_constraintMatrix / integral[n]);
+    }
+    _mapping = ndarray::copy(_mapping / integral[n]);
+    _resetElements();
+}
+
 void CompoundShapeletBuilder::slice(int start, int stop) {
     _mapping = _mapping[ndarray::view()(start, stop)];
     _constraintMatrix = _constraintMatrix[ndarray::view()(start, stop)];

@@ -193,6 +193,9 @@ public:
         lsst::ndarray::Array<Pixel const,1,1> const & matchRadii
     );
 
+    /// @brief Normalize the basis so the flux of the nth basis function is one.
+    void normalizeFlux(int n);
+
     void orthogonalize();
 
     void slice(int start, int stop);

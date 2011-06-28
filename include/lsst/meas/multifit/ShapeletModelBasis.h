@@ -39,8 +39,6 @@ public:
 
     typedef boost::shared_ptr<ShapeletModelBasis> Ptr;
 
-    enum ConstraintType { NONE=0, COMBINED=1, SEPARATE=2 };
-
     static void setPsfShapeletOrder(int order) { getPsfShapeletOrderRef() = order; }
     static int getPsfShapeletOrder() { return getPsfShapeletOrderRef(); }
 
@@ -68,8 +66,8 @@ public:
     /// @brief Order of the shapelet expansion.
     double getScale() const { return _scale; };
 
-    static Ptr make(int order, double scale=1.0, ConstraintType constraintType=NONE) {
-        return Ptr(new ShapeletModelBasis(order, scale, constraintType));
+    static Ptr make(int order, double scale=1.0) {
+        return Ptr(new ShapeletModelBasis(order, scale));
     }
 
 protected:
@@ -89,7 +87,7 @@ protected:
 
 private:
 
-    ShapeletModelBasis(int order, double scale, ConstraintType constraintType);
+    ShapeletModelBasis(int order, double scale);
 
     static int & getPsfShapeletOrderRef();
 

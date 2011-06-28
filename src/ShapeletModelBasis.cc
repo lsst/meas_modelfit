@@ -87,28 +87,10 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
-mf::ShapeletModelBasis::ShapeletModelBasis(int order, double scale, ConstraintType constraintType) 
+mf::ShapeletModelBasis::ShapeletModelBasis(int order, double scale) 
     : ModelBasis(afw::math::shapelets::computeSize(order)),
       _order(order), _scale(scale)
 {
-    if (constraintType == COMBINED || (constraintType == SEPARATE && _order < 2)) {
-        ndarray::Array<Pixel,2,2> constraintMatrix(ndarray::allocate(1, getSize()));
-        constraintMatrix.deep() = 0.0;
-        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
-        shapeletEvaluator.fillIntegration(constraintMatrix[0]);
-        ndarray::Array<Pixel,1,1> constraintVector(ndarray::allocate(1));
-        constraintVector[0] = 0.0;
-        attachConstraint(constraintMatrix, constraintVector);
-    } else if (constraintType == SEPARATE) {
-        ndarray::Array<Pixel,2,2> constraintMatrix(ndarray::allocate(2, getSize()));
-        constraintMatrix.deep() = 0.0;
-        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
-        shapeletEvaluator.fillIntegration(constraintMatrix[1]);
-        std::swap(constraintMatrix[0][0], constraintMatrix[1][0]);
-        ndarray::Array<Pixel,1,1> constraintVector(ndarray::allocate(2));
-        constraintVector.deep() = 0.0;
-        attachConstraint(constraintMatrix, constraintVector);
-    }
 }
 
 int & mf::ShapeletModelBasis::getPsfShapeletOrderRef() {
@@ -192,7 +174,7 @@ mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     afwShapelets::MultiShapeletFunction const & psf
 ) const {
     CompoundShapeletModelBasis::ComponentVector components;
-    components.push_back(Ptr(new ShapeletModelBasis(_order, _scale, ConstraintType(getConstraintSize()))));
+    components.push_back(Ptr(new ShapeletModelBasis(_order, _scale)));
     CompoundShapeletModelBasis::Ptr asCompound = CompoundShapeletBuilder(components).build();
     return asCompound->convolve(psf);
 }

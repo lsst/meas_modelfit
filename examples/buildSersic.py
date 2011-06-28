@@ -14,7 +14,7 @@ EXPFAC = -1.67835
 EXPOUT = 4.0
 EXPCUT = 3.0
 
-def deV_profile(r):
+def devProfile(r):
     """Truncated de Vaucouleur - copied from SDSS"""
     p = numpy.exp(DEFAC * ((r**2 + 0.0004)**0.125 - 1.0))
     big = r > DEVCUT
@@ -24,7 +24,7 @@ def deV_profile(r):
     p[r > DEVOUT] = 0.0
     return p
 
-def exp_profile(r):
+def expProfile(r):
     """Truncated exponential - copied from SDSS"""
     p = numpy.exp(EXPFAC * (r - 1.0))
     big = r > EXPCUT
@@ -36,19 +36,20 @@ def exp_profile(r):
 
 # ----------------------------------------------------------------------------------------------------
 
-def plotBasis(basis, func):
+def plotBasis(basis, func, factor):
     pyplot.figure()
     radii = numpy.linspace(0, 4, 500)
     profile = numpy.zeros((radii.size, basis.getSize()), dtype=float)
     basis.evaluateRadialProfile(profile, radii)
+    f = func(radii) / factor
     pyplot.subplot(3, 1, 1)
     pyplot.plot(radii, profile[:,0], 'k-')
-    pyplot.plot(radii, func(radii), 'r--')
+    pyplot.plot(radii, f, 'r--')
     pyplot.subplot(3, 1, 2)
     pyplot.semilogy(radii, profile[:,0], 'k-')
-    pyplot.semilogy(radii, func(radii), 'r--')
+    pyplot.semilogy(radii, f, 'r--')
     pyplot.xlabel("r / r_e")
-    pyplot.ylim(1E-4, func(radii).max())
+    pyplot.ylim(1E-4, f.max())
     pyplot.subplot(3, 1, 3)
     pyplot.bar(range(basis.getMapping().shape[0]), basis.getMapping()[:,0])
     pyplot.axis("off")
@@ -69,7 +70,10 @@ def makeExponential():
         maxRadius,
         matchRadii
         )
-    return builder.build()
+    integral = numpy.zeros(1, dtype=float)
+    builder.integrate(integral)
+    builder.setMapping(builder.getMapping() / integral[0])
+    return builder.build(), integral[0]
 
 def makeDeVaucouleur():
     components = lsst.meas.multifit.CompoundShapeletBuilder.ComponentVector()
@@ -87,14 +91,17 @@ def makeDeVaucouleur():
         maxRadius,
         matchRadii
         )
-    return builder.build()
+    integral = numpy.zeros(1, dtype=float)
+    builder.integrate(integral)
+    builder.setMapping(builder.getMapping() / integral[0])
+    return builder.build(), integral[0]
 
 def main():
     numpy.set_printoptions(suppress=True, linewidth=180)
-    expBasis = makeExponential()
-    devBasis = makeDeVaucouleur()
-    plotBasis(expBasis, exp_profile)
-    plotBasis(devBasis, deV_profile)
+    expBasis, expIntegral = makeExponential()
+    devBasis, devIntegral = makeDeVaucouleur()
+    plotBasis(expBasis, expProfile, expIntegral)
+    plotBasis(devBasis, devProfile, devIntegral)
     pyplot.show()
     return expBasis, devBasis
 

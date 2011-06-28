@@ -31,17 +31,20 @@ fields = (("dataset", int),
           ("r", float),
           ("src_flags", numpy.int64),
           )
+algorithm = "SHAPELET_MODEL"
 
+def makeSourceMeasurement():
+    policy = lsst.pex.policy.Policy()
+    policy.add("%s.enabled" % algorithm, True)
+    options = lsst.meas.multifit.SourceMeasurement.readPolicy(policy.get(algorithm))
+    measurement = lsst.meas.multifit.SourceMeasurement(options)
+    return policy, measurement
 
 def fit(datasets=(0,1,2,3,4,5,6,7,8,9)):
     bf = lsst.daf.persistence.ButlerFactory( \
         mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
-    policy = lsst.pex.policy.Policy()
-    algorithm = "SHAPELET_MODEL"
-    policy.add("%s.enabled" % algorithm, True)
-    options = lsst.meas.multifit.SourceMeasurement.readPolicy(policy.get(algorithm))
-    measurement = lsst.meas.multifit.SourceMeasurement(options)
+    policy, measurement = makeSourceMeasurement()
     nCoeff = measurement.getCoefficientSize()
     dtype = numpy.dtype(list(fields) + [("coeff", float, nCoeff)])
     tables = []
