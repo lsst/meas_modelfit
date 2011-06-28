@@ -15,6 +15,7 @@ except ImportError:
     import pickle
 
 fields = (("dataset", int),
+          ("dataset_index", int),
           ("id", numpy.int64),
           ("psf_flux", float), 
           ("psf_flux_err", float),
@@ -45,21 +46,20 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
         logging.info("Processing dataset %d" % d)
         if not butler.datasetExists("src", id=d):
             continue
+
+
         psf = butler.get("psf", id=d)
         exp = butler.get("exp", id=d)
         exp.setPsf(psf)
         sources = butler.get("src", id=d)
 
-        measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(exp)
-        measurePhotometry.addAlgorithm(algorithm)
-        measurePhotometry.configure(policy)
-
         table = numpy.zeros((len(sources)), dtype=dtype)
         table["dataset"] = d
-        for j, src in enumerate(sources):
+        for j, src in enumerate(sources):            
             logging.debug("Fitting source %d (%d/%d)" % (src.getId(), j+1, len(sources)))
             record = table[j]
             record["id"] = src.getId()
+            record["dataset_index"] = j
             record["psf_flux"] = src.getPsfFlux()
             record["psf_flux_err"] = src.getPsfFluxErr()
             record["x"] = src.getXAstrom()
@@ -68,15 +68,16 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
             record["iyy"] = src.getIyy()
             record["ixy"] = src.getIxy()
             record["src_flags"] = src.getFlagForDetection()
-            photom = measurePhotometry.measure(lsst.afw.detection.Peak(), src).find(algorithm)
-            record["status"] = photom.getFlag()
-            record["flux"] = photom.getFlux()
-            record["flux_err"] = photom.getFluxErr()
-            record["e1"] = photom.get("e1")
-            record["e2"] = photom.get("e2")
-            record["r"] = photom.get("radius")
-            for i in range(nCoeff):
-                record["coeff"][i] = photom.get(i, "coefficients")
+            status = measurement.measure(exp, src)
+            record["status"] = status
+            record["flux"] = measurement.getFlux()
+            record["flux_err"] = measurement.getFluxErr()
+            ellipse = measurement.getEllipse()
+            core = ellipse.getCore()
+            record["e1"] = core.getE1()
+            record["e2"] = core.getE2()
+            record["r"] = core.getRadius()
+            record["coeff"] = measurement.getCoefficients()
         tables.append(table)
 
     return numpy.concatenate(tables)
@@ -115,6 +116,6 @@ def psf_mag(table):
 
 def view(record):
     v = viewer.Viewer(record['dataset'])
-    index = [s.getSourceId() for s in v.sources].index(record["id"])
+    index = record["dataset_index"]
     v.plot(index)
     v.plotProfile(index)
