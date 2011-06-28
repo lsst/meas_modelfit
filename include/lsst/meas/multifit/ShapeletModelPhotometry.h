@@ -32,6 +32,7 @@
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/detection/Peak.h"
 #include "lsst/meas/multifit/ModelBasis.h"
+#include "lsst/meas/multifit/SourceMeasurement.h"
 
 namespace lsst {
 namespace meas {
@@ -69,17 +70,8 @@ public:
         ndarray::Array<double const, 1,1> coeff
     );
 
-
-    static bool usePixelWeights;
-    static bool fitDeltaFunction;
-    static bool isEllipticityActive, isRadiusActive, isPositionActive;
-    static lsst::afw::image::MaskPixel bitmask;
-    static int nGrowFp;
+    static SourceMeasurement::Options options;
     static int nCoeff;
-    static int basisSize;
-    static int nTestPoints;
-    static int psfShapeletOrder;
-    static ModelBasis::Ptr basis;
 
 private:
     boost::int64_t _flag;

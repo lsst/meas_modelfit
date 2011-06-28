@@ -46,21 +46,37 @@ public:
     Object const & object;
 
     /**
-     *  @brief Return the mean flux of the object on this frame, given parameter and coefficient vectors.
+     *  @brief Set the elements of an integration vector that correspond to this source.
+     *
+     *  By calling fillIntegration on several sources with the same array, an integration
+     *  vector can be constructed that computes the sum of the fluxes of those sources.
+     *
+     *  The full vector should be set to zero; fillIntegration only operates on a segment.
+     *  If fillIntegration is called on the same Source multiple times (or on multiple sources
+     *  with the same coefficient offsets), 
      */
-    double computeFluxMean(
-        lsst::ndarray::Array<double const,1,1> const & parameters,
-        lsst::ndarray::Array<double const,1,1> const & coefficients
-    ) const;
+    void fillIntegration(lsst::ndarray::Array<Pixel,1,1> const & integration) const;
+
+    /// @brief Compute the flux defined by a custom integration vector.
+    static double computeFlux(
+        lsst::ndarray::Array<Pixel const,1,1> const & integration,
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients
+    );
+
+    /// @brief Compute the variance of the flux defined by a custom integration vector.
+    static double computeFluxVariance(
+        lsst::ndarray::Array<Pixel const,1,1> const & integration,
+        lsst::ndarray::Array<Pixel const,2,1> const & covariance
+    );
+
+    /// @brief Return the flux of the object on this frame, given a coefficient vector.
+    double computeFlux(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const;
 
     /**
-     *  @brief Return the variance of the flux of the object on this frame, given a parameter vector
-     *         and the coefficient covariance matrix.
+     *  @brief Return the variance of the flux of the object on this frame, given a coefficient 
+     *         covariance matrix.
      */
-    double computeFluxVariance(
-        lsst::ndarray::Array<double const,1,1> const & parameters,
-        lsst::ndarray::Array<double const,2,1> const & covariance
-    ) const;
+    double computeFluxVariance(lsst::ndarray::Array<Pixel const,2,1> const & covariance) const;
 
     int const getCoefficientOffset() const;
 

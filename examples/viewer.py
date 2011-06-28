@@ -37,16 +37,8 @@ import lsst.meas.algorithms
 
 class Viewer(object):
 
-    def __init__(self, dataset, basisSize=8, psfShapeletOrder=4, nTestPoints=5, nGrowFp=1, 
-                usePixelWeights=False, fitDeltaFunction=True, 
-                isEllipticityActive=True, isRadiusActive=True, isPositionActive=False,
-                maskPlaneNames=["BAD", "INTRP", "EDGE", "CR", "SAT"]):
-        self.basis = lsst.meas.multifit.SourceMeasurement.loadBasis(basisSize)
-        
-        self.sourceMeasurement = lsst.meas.multifit.SourceMeasurement(basisSize, psfShapeletOrder,
-                nTestPoints, nGrowFp, usePixelWeights, fitDeltaFunction, 
-                isEllipticityActive, isRadiusActive, isPositionActive,
-                maskPlaneNames)
+    def __init__(self, dataset, **kw):
+        self.sourceMeasurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
 
         bf = ButlerFactory(mapper=DatasetMapper())
         butler = bf.create()
@@ -55,7 +47,9 @@ class Viewer(object):
         self.exposure = butler.get("exp", id=dataset)
         self.exposure.setPsf(self.psf)
         self.sources = butler.get("src", id=dataset)
-        self.bitmask = lsst.afw.image.MaskU.getPlaneBitMask(maskPlaneNames)
+        self.bitmask = lsst.afw.image.MaskU.getPlaneBitMask(
+            self.sourceMeasurement.getOptions().maskPlaneNames
+            )
         self.scaleFactor = 5
         self.fits = {}
         self.plots = {}
@@ -78,8 +72,8 @@ class Viewer(object):
         fitFp = self.sourceMeasurement.getFootprint()
         ellipse = self.sourceMeasurement.getEllipse()
         core = ellipse.getCore()
-        coeff = self.sourceMeasurement.getCoeff()
-        param = self.sourceMeasurement.getParam()
+        coeff = self.sourceMeasurement.getCoefficients()
+        param = self.sourceMeasurement.getParameters()
         #generate a larger, unmasked fp
         bbox = fitFp.getBBox()
         bounds = lsst.afw.geom.ellipses.Ellipse(ellipse)
@@ -105,7 +99,7 @@ class Viewer(object):
         definition.frames[0].setFootprint(fp)
         definition.frames[0].setData(dataArray)
 
-        if self.sourceMeasurement.usePixelWeights():
+        if self.sourceMeasurement.getOptions().usePixelWeights:
             weightArray = numpy.ones_like(dataArray)
             lsst.afw.detection.flattenArray(
                 fp,
@@ -114,7 +108,8 @@ class Viewer(object):
                 self.exposure.getXY0()
             )
             definition.frames[0].setWeights(weightArray)
-        
+        else:
+            definition.frames[0].setWeights(numpy.array([], dtype=float))
         evaluator = lsst.meas.multifit.Evaluator.make(definition)
         evaluation = lsst.meas.multifit.Evaluation(evaluator)
         evaluation.update(
@@ -164,7 +159,7 @@ class Viewer(object):
         localPsfData = source.getLocalPsf()
         shapelet = localPsfData.computeShapelet(
             lsst.afw.math.shapelets.HERMITE,
-            self.sourceMeasurement.getPsfShapeletOrder()
+            self.sourceMeasurement.getOptions().psfShapeletOrder
         )
         multiShapelet = lsst.afw.math.shapelets.MultiShapeletFunction(shapelet)
         localPsfModel = lsst.afw.detection.ShapeletLocalPsf(localPsfData.getPoint(), multiShapelet)

@@ -6,22 +6,8 @@ namespace lsst {
 namespace meas {
 namespace multifit {
 
-
-
-lsst::afw::image::MaskPixel ShapeletModelPhotometry::bitmask;
-ModelBasis::Ptr ShapeletModelPhotometry::basis;
-
-bool ShapeletModelPhotometry::usePixelWeights;
-bool ShapeletModelPhotometry::fitDeltaFunction;
-bool ShapeletModelPhotometry::isEllipticityActive;
-bool ShapeletModelPhotometry::isRadiusActive;
-bool ShapeletModelPhotometry::isPositionActive;
-
-int ShapeletModelPhotometry::psfShapeletOrder;
-int ShapeletModelPhotometry::nCoeff;
-int ShapeletModelPhotometry::nGrowFp;
-int ShapeletModelPhotometry::nTestPoints;
-
+SourceMeasurement::Options ShapeletModelPhotometry::options;
+int ShapeletModelPhotometry::nCoeff = 0;
 
 void ShapeletModelPhotometry::defineSchema(lsst::afw::detection::Schema::Ptr schema) {
     schema->clear();
@@ -34,7 +20,6 @@ void ShapeletModelPhotometry::defineSchema(lsst::afw::detection::Schema::Ptr sch
                                             "pixels"));
     schema->add(afw::detection::SchemaEntry("coefficients", COEFFICIENTS, afw::detection::Schema::DOUBLE,
                                             nCoeff));
-
 }
 
 ShapeletModelPhotometry::ShapeletModelPhotometry(
@@ -82,11 +67,7 @@ ShapeletModelPhotometry::Photometry::Ptr ShapeletModelPhotometry::doMeasure(
     CONST_PTR(afw::detection::Peak) peak,
     CONST_PTR(afw::detection::Source) source
 ) {
-    SourceMeasurement measurement(basis, psfShapeletOrder, 
-        nTestPoints, nGrowFp, usePixelWeights, fitDeltaFunction,
-        isEllipticityActive, isRadiusActive, isPositionActive,
-        bitmask
-    );
+    SourceMeasurement measurement(options);
 
     int status = measurement.measure(exp, source); 
     if (status & algorithms::Flags::SHAPELET_PHOTOM_BAD) {
@@ -95,14 +76,13 @@ ShapeletModelPhotometry::Photometry::Ptr ShapeletModelPhotometry::doMeasure(
         );
     }
 
-    afw::geom::ellipses::Ellipse::ConstPtr ellipse(measurement.getEllipse());
-    EllipseCore const & core(ellipse->getCore());
+    EllipseCore const & core(measurement.getEllipse().getCore());
     return ShapeletModelPhotometry::Ptr(
-        new ShapeletModelPhotometry(            
+        new ShapeletModelPhotometry(
             status,
             measurement.getFlux(), measurement.getFluxErr(),
             core.getE1(), core.getE2(), static_cast<double>(core.getRadius()),
-            measurement.getCoeff()
+            measurement.getCoefficients()
         )
     );
 }
@@ -110,31 +90,8 @@ ShapeletModelPhotometry::Photometry::Ptr ShapeletModelPhotometry::doMeasure(
 bool ShapeletModelPhotometry::doConfigure(
     lsst::pex::policy::Policy const & policy
 ) {   
-    lsst::pex::policy::Policy local(policy);
-    lsst::pex::policy::Policy dict;
-    lsst::pex::policy::DefaultPolicyFile file("meas_multifit", "ShapeletModelPhotometryDict.paf", "policy");
-    file.load(dict);
-
-    local.mergeDefaults(dict);
-
-    nGrowFp = local.getInt("nGrowFp");
-    isEllipticityActive = local.getBool("isEllipticityActive");
-    isRadiusActive = local.getBool("isRadiusActive");
-    isPositionActive = local.getBool("isPositionActive");
-    bitmask = lsst::afw::image::Mask<lsst::afw::image::MaskPixel>::getPlaneBitMask(
-        local.getStringArray("maskPlaneName")
-    );
-    fitDeltaFunction = local.getBool("fitDeltaFunction");
-
-    int basisSize = local.getInt("basisSize");
-    basis = SourceMeasurement::loadBasis(basisSize);
-    nCoeff = fitDeltaFunction ? basisSize + 1: basisSize;
-
-    usePixelWeights = local.getBool("usePixelWeights");
-    
-    nTestPoints = local.getInt("nTestPoints");
-    psfShapeletOrder = local.getInt("psfShapeletOrder");
-    
+    options = SourceMeasurement::readPolicy(policy);
+    nCoeff = SourceMeasurement::computeCoefficientSize(options);
     return true;
 }
 

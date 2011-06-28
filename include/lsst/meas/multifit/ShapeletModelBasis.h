@@ -67,7 +67,7 @@ public:
     double getScale() const { return _scale; };
 
     static Ptr make(int order, double scale=1.0) {
-        return boost::make_shared<ShapeletModelBasis>(order, scale);
+        return Ptr(new ShapeletModelBasis(order, scale));
     }
 
 protected:
@@ -87,12 +87,7 @@ protected:
 
 private:
 
-    FRIEND_MAKE_SHARED_2(ShapeletModelBasis, int, double);
-
-    ShapeletModelBasis(int order, double scale) 
-        : ModelBasis(afw::math::shapelets::computeSize(order)),
-          _order(order), _scale(scale)
-    {}
+    ShapeletModelBasis(int order, double scale);
 
     static int & getPsfShapeletOrderRef();
 

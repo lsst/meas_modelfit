@@ -100,6 +100,17 @@ def version(HeadURL = r"$HeadURL$"):
         return version_svn
     else:
         return "%s (setup: %s)" % (version_svn, version_eups)
+
+def makeSourceMeasurement(**kw):
+    policy = lsst.pex.policy.Policy()
+    algorithm = "SHAPELET_MODEL"
+    policy.add("%s.enabled" % algorithm, True)
+    for k in kw:
+        policy.add("%s.%s" % (algorithm, k), kw[k])
+    options = lsst.meas.multifit.SourceMeasurement.readPolicy(policy.get(algorithm))
+    measurement = lsst.meas.multifit.SourceMeasurement(options)
+    return measurement, policy
+
 %}
 
 %include "lsst/ndarray/ndarray.i"
@@ -188,12 +199,6 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %include "lsst/meas/multifit/GaussNewtonOptimizer.h"
 
 %{ 
-#include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
-%}
-
-%include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
-
-%{ 
 #include "lsst/meas/multifit/SourceMeasurement.h"
 %}
 
@@ -201,6 +206,6 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %include "lsst/meas/multifit/SourceMeasurement.h"
 
 %extend lsst::meas::multifit::SourceMeasurement {
-    %template(measure) lsst::meas::multifit::SourceMeasurement::measure<lsst::afw::image::Exposure<float> >;
-    %template(measure) lsst::meas::multifit::SourceMeasurement::measure<lsst::afw::image::Exposure<double> >;
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<float> >;
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<double> >;
 }

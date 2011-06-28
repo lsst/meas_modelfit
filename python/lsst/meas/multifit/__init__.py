@@ -44,7 +44,8 @@ from .multifitLib import (
     UnifiedSimpleInterpreter,
     NestedSimpleInterpreter,
     GaussNewtonOptimizer,
-    BruteForceSourceOptimizer
+    version,
+    makeSourceMeasurement
     )
 from . import multifitLib
 from . import definition
