@@ -122,6 +122,10 @@ def psf_mag(table):
 def subset(table, x=None, y=None):
     """Use the current matplotlib plot limits to extract a subset from
     the given table."""
+    if x is None:
+        x = psf_mag(table)
+    if y is None:
+        y = psf_mag(table) - mag(table)
     xmin, xmax = pyplot.xlim()
     ymin, ymax = pyplot.ylim()
     return table[numpy.logical_and(
@@ -129,46 +133,55 @@ def subset(table, x=None, y=None):
 	numpy.logical_and(y >= ymin, y <= ymax)
 	)]
 
-def comparePsfMod(table, alpha=0.3, **kw):
+def plotPsfMagComparsion(table, alpha=0.5):
+    pyplot.figure()
+    pyplot.scatter(psf_mag(table), psf_mag(table)-mag(table), alpha=alpha, linewidth=0)
+    pyplot.axhline(0, color='k')
+    pyplot.xlabel("psf")
+    pyplot.ylabel("psf - mod")
+
+def plotFluxFractions(table, alpha=0.3, **kw):
     measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
     integration = measurement.getIntegration()
-    print integration
     fractions = integration[numpy.newaxis,:] * table["coeff"]
     fractions /= table["flux"][:,numpy.newaxis]
     offset = 0
     def doPlot(color):
-	pyplot.figure()
+        color[color < 0.0] = 0.0
+        color[color > 1.0] = 1.0
 	pyplot.scatter(psf_mag(table), psf_mag(table)-mag(table),
 		       c=color, alpha=alpha, linewidth=0)
-	pyplot.colorbar()
 	pyplot.axhline(0, color='k')
-	pyplot.xlabel("psf")
-	pyplot.ylabel("psf - mod")
-    doPlot(table["r"])
-    pyplot.title("radius (pixels)")
+	#pyplot.xlabel("psf")
+	#pyplot.ylabel("psf - mod")
+        pyplot.ylim(-2, 8)
+    pyplot.figure(figsize=(10, 10))
+    ax = pyplot.subplot(2, 2, 1)
     if measurement.getOptions().fitDeltaFunction:
 	f = fractions[:,offset]
 	doPlot(f)
-	print "psf component fraction:", f.min(), f.max()
-	pyplot.title("psf component fraction")
+	pyplot.title("psf component")
 	offset += 1
+    pyplot.subplot(2, 2, 3, sharex=ax, sharey=ax)
     if measurement.getOptions().fitExponential:
 	f = fractions[:,offset]
 	doPlot(f)
-	print "exponential component fraction:", f.min(), f.max()
-	pyplot.title("exponential component fraction")
-	offset += 1
+	pyplot.title("exponential component")
+        offset += 1
+    pyplot.subplot(2, 2, 4, sharex=ax, sharey=ax)
     if measurement.getOptions().fitDeVaucouleur:
 	f = fractions[:,offset]
 	doPlot(f)
-	print "de Vaucouleur component fraction:", f.min(), f.max()
-	pyplot.title("de Vaucouleur component fraction")
+	pyplot.title("de Vaucouleur component")
 	offset += 1
-    if measurement.getOptions().shapeletOrder >= 0:
+    pyplot.subplot(2, 2, 2, sharex=ax, sharey=ax)
+    if measurement.getOptions().shapeletOrder >= 0:    
 	f = fractions[:,offset:].sum(axis=1)
 	doPlot(f)
-	print "shapelet component fraction", f.min(), f.max()
-	pyplot.title("shapelet component fraction")
+	pyplot.title("shapelet component")
+    cax = pyplot.axes([0.93, 0.05, 0.02, 0.9])
+    pyplot.colorbar(cax=cax)
+    pyplot.suptitle("FRACTION OF TOTAL FLUX BY COMPONENT")
     pyplot.show()
 
 def view(record):
