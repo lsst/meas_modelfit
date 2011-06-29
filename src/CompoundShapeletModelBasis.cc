@@ -76,6 +76,7 @@ protected:
             ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->mapping;
         }
     }
+    virtual void _evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const;
 
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
@@ -134,6 +135,10 @@ void CompoundShapeletBase::integrate(lsst::ndarray::Array<Pixel, 1, 1> const & v
         i->component->integrate(front);
         ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->mapping;
     }
+}
+
+void CompoundShapeletBase::evaluateMultipoleMatri(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const {
+    matrix.deep() = 0.0;
 }
 
 CompoundShapeletBase::Element::Element(

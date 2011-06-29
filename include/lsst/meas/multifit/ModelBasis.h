@@ -59,6 +59,8 @@ public:
     /// @brief Evaluate the integral of each basis function (with unit circle parameters).
     void integrate(lsst::ndarray::Array<Pixel,1,1> const & vector) const;
 
+    void evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 2, 1> const & matrix) const;
+
     /// @brief Fill a matrix that evaluates the radial profile of a basis expansion.
     void evaluateRadialProfile(
         lsst::ndarray::Array<Pixel,2,1> const & profile,
@@ -96,6 +98,8 @@ protected:
     );
 
     virtual void _integrate(lsst::ndarray::Array<Pixel,1,1> const & vector) const = 0;
+
+    virtual void _evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const = 0;
 
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,

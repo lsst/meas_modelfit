@@ -50,6 +50,7 @@ public:
     {}
 
 protected:
+    virtual void _evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const;
 
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
         afwShapelets::detail::HermiteEvaluator shapeletEvaluator(getOrder());
@@ -103,6 +104,15 @@ void mf::ShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const 
     vector.deep() = 0.0;
     shapeletEvaluator.fillIntegration(vector);
     vector.deep() *= _scale * _scale;
+}
+
+void mf::ShapeletModelBasis::_evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1,1> const & matrix) const {
+    afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
+    matrix.deep() = 0.0;
+    shapeletEvaluator.fillIntegration(matrix[0]);
+
+    matrix.deep() *= _scale * _scale;
+
 }
 
 void mf::ShapeletModelBasis::_evaluate(
