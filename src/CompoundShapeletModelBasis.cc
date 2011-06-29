@@ -41,11 +41,11 @@ public:
     struct Element {
 
         ConvolvedShapeletModelBasis::Ptr component;
-        ndarray::EigenView<const Pixel,2,1> forward;
+        ndarray::EigenView<Pixel,2,1> forward;
 
         Element(
             ConvolvedShapeletModelBasis::Ptr const & component_, 
-            ndarray::EigenView<const Pixel,2,1> const & forward_
+            ndarray::EigenView<Pixel,2,1> const & forward_
         ) :
             component(component_), forward(forward_)
         {}
@@ -126,64 +126,114 @@ private:
 
 namespace detail {
 
-CompoundShapeletBase::ComponentVector 
-CompoundShapeletBase::extractComponents() const {
-    ComponentVector result;
-    result.reserve(_elements.size());
-    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        result.push_back(i->component);
-    }
-    return result;
-}
+class CompoundShapeletImpl {
+public:
 
-Eigen::MatrixXd CompoundShapeletBase::computeInnerProductMatrix() const {
-    Eigen::MatrixXd result = Eigen::MatrixXd::Zero(_forward.getSize<1>(), _forward.getSize<1>());
-    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        for (ElementVector::const_iterator j = _elements.begin(); j != _elements.end(); ++j) {
-            Eigen::MatrixXd m = afwShapelets::HermiteEvaluator::computeInnerProductMatrix(
-                i->component->getOrder(), j->component->getOrder(),
-                1.0 / i->component->getScale(), 1.0 / j->component->getScale()
-            );
-            m /= (i->component->getScale() * j->component->getScale());
-            result += i->forward.transpose() * m * j->forward;
+    typedef boost::shared_ptr<CompoundShapeletImpl> Ptr;
+    typedef std::vector<ShapeletModelBasis::Ptr> ComponentVector;
+
+    CompoundShapeletImpl(
+        ComponentVector const & components,
+        ndarray::Array<Pixel,2,1> const & forward,
+        ndarray::Array<Pixel,2,1> const & reverse
+    );
+    
+    explicit CompoundShapeletImpl(ComponentVector const & components);
+
+    CompoundShapeletImpl(CompoundShapeletImpl const & other);
+    
+    ComponentVector extractComponents() const;
+
+    lsst::ndarray::Array<Pixel,2,1> getForward() const { return _forward; }
+    lsst::ndarray::Array<Pixel,2,1> getReverse() const { return _reverse; }
+
+    int getSize() const { return _forward.getSize<1>(); }
+
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::ShapeletFunction const & psf) const;
+    ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
+    
+    void integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
+
+    void evaluate(
+        lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
+        CONST_PTR(Footprint) const & footprint,
+        lsst::afw::geom::Ellipse const & ellipse
+    ) const;
+
+    void evaluateRadialProfile(
+        lsst::ndarray::Array<Pixel,2,1> const & profile,
+        lsst::ndarray::Array<Pixel const,1,1> const & radii
+    ) const;
+
+    Eigen::MatrixXd computeInnerProductMatrix(
+        lsst::afw::geom::ellipses::BaseCore const & ellipse
+    ) const;
+
+    Eigen::MatrixXd computeInnerProductMatrix() const;
+
+    void normalize();
+
+    void orthogonalize();
+
+    void slice(int start, int stop);
+
+    void setMapping(
+        lsst::ndarray::Array<Pixel const,2,1> const & forward,
+        lsst::ndarray::Array<Pixel const,2,1> const & reverse
+    );
+
+    static Ptr load(std::string const & filename);
+    void save(std::string const & filename);
+
+protected:
+
+    typedef ndarray::EigenView<Pixel,2,1> Matrix;
+    typedef ndarray::TransposedEigenView<Pixel,2,1> MatrixT;
+
+    struct Element {
+        ShapeletModelBasis::Ptr component;
+        Matrix forward;
+        MatrixT reverse;
+
+        Element(
+            ShapeletModelBasis::Ptr const & component_, 
+            ndarray::Array<Pixel,2,1> const & fullForward,
+            ndarray::Array<Pixel,2,1> const & fullReverse,
+            int offset
+        ) :
+            component(component_),
+            forward(fullForward[ndarray::view(offset, offset + component->getSize())()]),
+            reverse(fullReverse[ndarray::view(offset, offset + component->getSize())()])
+        {}
+
+        Element & operator=(Element const & other) {
+            if (&other != this) {
+                component = other.component;
+                forward.setArray(other.forward.getArray());
+                reverse.setArray(other.reverse.getArray());
+            }
+            return *this;
         }
-    }
-    return result;
-}
+    };
 
-CompoundShapeletBase::Element::Element(
-    ShapeletModelBasis::Ptr const & component_, 
-    ndarray::Array<const Pixel,2,1> const & fullForward,
-    ndarray::Array<const Pixel,2,1> const & fullReverse,
-    int offset
-) : 
-    component(component_),
-    forward(fullForward[ndarray::view(offset, offset + component->getSize())()]),
-    reverse(fullReverse[ndarray::view(offset, offset + component->getSize())()])
-{}
+    typedef std::vector<Element> ElementVector;
 
-CompoundShapeletBase::Element & 
-CompoundShapeletBase::Element::operator=(Element const & other) {
-    if (&other != this) {
-        component = other.component;
-        forward.setArray(other.forward.getArray());
-        reverse.setArray(other.reverse.getArray());
-    }
-    return *this;
-}
+    void _fillElements(ComponentVector const & components);
+    void _resetElements();
 
-CompoundShapeletBase::CompoundShapeletBase(ComponentVector const & components) :
-    _elements(),
-    _forward(_makeIdentity(_computeSize(components))),
-    _reverse(ndarray::copy(_forward))
-{
-    _fillElements(components);
-}
+    static int _computeSize(ComponentVector const & components);
 
-CompoundShapeletBase::CompoundShapeletBase(
+    static ndarray::Array<Pixel,2,2> _makeIdentity(int size);
+
+    ElementVector _elements;
+    ndarray::Array<Pixel,2,1> _forward;
+    ndarray::Array<Pixel,2,1> _reverse;
+};
+
+CompoundShapeletImpl::CompoundShapeletImpl(
     ComponentVector const & components, 
-    ndarray::Array<const Pixel,2,1> const & fullForward,
-    ndarray::Array<const Pixel,2,1> const & fullReverse
+    ndarray::Array<Pixel,2,1> const & fullForward,
+    ndarray::Array<Pixel,2,1> const & fullReverse
 ) :
     _elements(),
     _forward(fullForward),
@@ -204,138 +254,48 @@ CompoundShapeletBase::CompoundShapeletBase(
     _fillElements(components);
 }
 
-void CompoundShapeletBase::_fillElements(ComponentVector const & components) {
-    _elements.reserve(components.size());
-    ComponentVector::const_iterator i = components.begin();
-    for (int offset = 0; i != components.end(); ++i) {
-        _elements.push_back(Element(*i, _forward, _reverse, offset));
-        offset += (**i).getSize();
-    }
+CompoundShapeletImpl::CompoundShapeletImpl(ComponentVector const & components) :
+    _elements(),
+    _forward(_makeIdentity(_computeSize(components))),
+    _reverse(ndarray::copy(_forward))
+{
+    _fillElements(components);
 }
 
-void CompoundShapeletBase::_resetElements() {
-    ElementVector new_elements;
-    new_elements.reserve(_elements.size());
-    ElementVector::const_iterator i = _elements.begin();
-    for (int offset = 0; i != _elements.end(); ++i) {
-        new_elements.push_back(Element(i->component, _forward, _reverse, offset));
-        offset += i->component->getSize();
-    }
-    _elements.swap(new_elements);
+CompoundShapeletImpl::CompoundShapeletImpl(CompoundShapeletImpl const & other) :
+    _elements(other._elements),
+    _forward(ndarray::copy(other._forward)),
+    _reverse(ndarray::copy(other._reverse))
+{
+    _resetElements();
 }
 
-int CompoundShapeletBase::_computeSize(ComponentVector const & components) {
-    int size = 0;
-    for (ComponentVector::const_iterator i = components.begin(); i != components.end(); ++i) {
-        size += (**i).getSize();
+CompoundShapeletImpl::ComponentVector 
+CompoundShapeletImpl::extractComponents() const {
+    ComponentVector result;
+    result.reserve(_elements.size());
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        result.push_back(i->component);
     }
-    return size;
-}
-
-ndarray::Array<Pixel,2,2> CompoundShapeletBase::_makeIdentity(int size) {
-    ndarray::Array<Pixel,2,2> result(ndarray::allocate(size, size));
-    ndarray::viewAsEigen(result).setIdentity();
     return result;
 }
 
-} //namespace detail
-
-
-ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
-    LocalPsf::ConstPtr const & psf
-) const {
-    if (psf->hasNativeShapelet()) {
-        afwShapelets::MultiShapeletFunction s = psf->getNativeShapelet(afwShapelets::HERMITE);
-        s.shiftInPlace(-afw::geom::Extent2D(psf->getPoint()));
-        return convolve(s);
-    } else {
-        afwShapelets::ShapeletFunction s = 
-            psf->computeShapelet(afwShapelets::HERMITE, ShapeletModelBasis::getPsfShapeletOrder());
-        s.getEllipse().getCenter() -= afw::geom::Extent2D(psf->getPoint());
-        return convolve(s);
-    }
-}
-
-ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
-    afwShapelets::ShapeletFunction const & psf
-) const {
-    ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
-    convolvedElements.reserve(_elements.size());
+Eigen::MatrixXd CompoundShapeletImpl::computeInnerProductMatrix() const {
+    Eigen::MatrixXd result = Eigen::MatrixXd::Zero(_forward.getSize<1>(), _forward.getSize<1>());
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        convolvedElements.push_back(
-            ConvolvedCompoundShapeletModelBasis::Element(i->component->convolve(psf), i->forward)
-        );
-    }
-    return boost::make_shared<ConvolvedCompoundShapeletModelBasis>(
-        this->getSize(), boost::ref(convolvedElements)
-    );
-}
-
-ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
-    afwShapelets::MultiShapeletFunction const & psf
-) const {
-    ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
-    convolvedElements.reserve(_elements.size() * psf.getElements().size());
-    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        for (LocalPsf::MultiShapelet::ElementList::const_iterator j = psf.getElements().begin(); 
-             j != psf.getElements().end();
-             ++j
-        ) {
-            convolvedElements.push_back(
-                ConvolvedCompoundShapeletModelBasis::Element(i->component->convolve(*j), i->forward)
+        for (ElementVector::const_iterator j = _elements.begin(); j != _elements.end(); ++j) {
+            Eigen::MatrixXd m = afwShapelets::HermiteEvaluator::computeInnerProductMatrix(
+                i->component->getOrder(), j->component->getOrder(),
+                1.0 / i->component->getScale(), 1.0 / j->component->getScale()
             );
+            m /= (i->component->getScale() * j->component->getScale());
+            result += i->forward.transpose() * m * j->forward;
         }
     }
-    return boost::make_shared<ConvolvedCompoundShapeletModelBasis>(
-        this->getSize(), boost::ref(convolvedElements)
-    );
+    return result;
 }
 
-void CompoundShapeletModelBasis::_evaluate(
-    ndarray::Array<Pixel, 2, 1> const & matrix,
-    CONST_PTR(Footprint) const & footprint,
-    afw::geom::Ellipse const & ellipse
-) const {
-    matrix.deep() = 0.0;
-    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        ndarray::Array<Pixel,2,2> front(ndarray::allocate(footprint->getArea(), i->component->getSize()));
-        i->component->evaluate(front, footprint, ellipse);
-        ndarray::viewAsEigen(matrix) += ndarray::viewAsEigen(front) * i->forward;
-    }
-}
-
-void CompoundShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-    vector.deep() = 0.0;
-    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        ndarray::Array<Pixel,1,1> front(ndarray::allocate(i->component->getSize()));
-        i->component->integrate(front);
-        ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->forward;
-    }
-}
-
-void CompoundShapeletModelBasis::_evaluateRadialProfile(
-    lsst::ndarray::Array<Pixel,2,1> const & profile,
-    lsst::ndarray::Array<Pixel const,1,1> const & radii
-) const {
-    profile.deep() = 0.0;
-    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
-        ndarray::Array<Pixel,2,2> front(ndarray::allocate(radii.getSize<0>(), i->component->getSize()));
-        i->component->evaluateRadialProfile(front, radii);
-        ndarray::viewAsEigen(profile) += ndarray::viewAsEigen(front) * i->forward;
-    }
-}
-
-CompoundShapeletModelBasis::CompoundShapeletModelBasis(
-    CompoundShapeletBuilder const & builder
-) : ModelBasis(builder.getSize()),
-    detail::CompoundShapeletBase(builder)
-{
-    if (builder._constraintMatrix.getSize<0>() > 0) {
-        attachConstraint(builder._constraintMatrix, builder._constraintVector);
-    }
-}
-
-Eigen::MatrixXd CompoundShapeletModelBasis::computeInnerProductMatrix(
+Eigen::MatrixXd CompoundShapeletImpl::computeInnerProductMatrix(
     lsst::afw::geom::ellipses::BaseCore const & ellipse
 ) const {
     Eigen::MatrixXd result = Eigen::MatrixXd::Zero(_forward.getSize<1>(), _forward.getSize<1>());
@@ -352,88 +312,144 @@ Eigen::MatrixXd CompoundShapeletModelBasis::computeInnerProductMatrix(
     return result;
 }
 
-CompoundShapeletBuilder::CompoundShapeletBuilder(
-    ComponentVector const & components
-) :
-    detail::CompoundShapeletBase(components)
-{}
+ModelBasis::Ptr CompoundShapeletImpl::convolve(
+    afwShapelets::ShapeletFunction const & psf
+) const {
+    ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
+    convolvedElements.reserve(_elements.size());
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        convolvedElements.push_back(
+            ConvolvedCompoundShapeletModelBasis::Element(i->component->convolve(psf), i->forward)
+        );
+    }
+    return ModelBasis::Ptr(
+        new ConvolvedCompoundShapeletModelBasis(this->getSize(), boost::ref(convolvedElements))
+    );
+}
 
-CompoundShapeletBuilder::CompoundShapeletBuilder(
-    ComponentVector const & components,
-    ndarray::Array<Pixel const,2,1> const & forward,
-    ndarray::Array<Pixel const,2,1> const & reverse
-) : 
-    detail::CompoundShapeletBase(components, forward, reverse) 
-{}
+ModelBasis::Ptr CompoundShapeletImpl::convolve(
+    afwShapelets::MultiShapeletFunction const & psf
+) const {
+    ConvolvedCompoundShapeletModelBasis::ElementVector convolvedElements;
+    convolvedElements.reserve(_elements.size() * psf.getElements().size());
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        for (LocalPsf::MultiShapelet::ElementList::const_iterator j = psf.getElements().begin(); 
+             j != psf.getElements().end();
+             ++j
+        ) {
+            convolvedElements.push_back(
+                ConvolvedCompoundShapeletModelBasis::Element(i->component->convolve(*j), i->forward)
+            );
+        }
+    }
+    return ModelBasis::Ptr(
+        new ConvolvedCompoundShapeletModelBasis(this->getSize(), boost::ref(convolvedElements))
+    );
+}
 
-void CompoundShapeletBuilder::orthogonalize() {
+void CompoundShapeletImpl::evaluate(
+    ndarray::Array<Pixel, 2, 1> const & matrix,
+    CONST_PTR(Footprint) const & footprint,
+    afw::geom::Ellipse const & ellipse
+) const {
+    matrix.deep() = 0.0;
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        ndarray::Array<Pixel,2,2> front(ndarray::allocate(footprint->getArea(), i->component->getSize()));
+        i->component->evaluate(front, footprint, ellipse);
+        ndarray::viewAsEigen(matrix) += ndarray::viewAsEigen(front) * i->forward;
+    }
+}
+
+void CompoundShapeletImpl::integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+    vector.deep() = 0.0;
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        ndarray::Array<Pixel,1,1> front(ndarray::allocate(i->component->getSize()));
+        i->component->integrate(front);
+        ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->forward;
+    }
+}
+
+void CompoundShapeletImpl::evaluateRadialProfile(
+    lsst::ndarray::Array<Pixel,2,1> const & profile,
+    lsst::ndarray::Array<Pixel const,1,1> const & radii
+) const {
+    profile.deep() = 0.0;
+    for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
+        ndarray::Array<Pixel,2,2> front(ndarray::allocate(radii.getSize<0>(), i->component->getSize()));
+        i->component->evaluateRadialProfile(front, radii);
+        ndarray::viewAsEigen(profile) += ndarray::viewAsEigen(front) * i->forward;
+    }
+}
+
+void CompoundShapeletImpl::normalize() {
+    Eigen::MatrixXd v = computeInnerProductMatrix();
+    for (int n = 0; n < getSize(); ++n) {
+        double s = std::sqrt(v(n, n));
+        ndarray::viewAsEigen(_forward).col(n) /= s;
+        ndarray::viewAsEigen(_reverse).col(n) *= s;
+    }
+}
+
+void CompoundShapeletImpl::orthogonalize() {
     Eigen::MatrixXd v = computeInnerProductMatrix();
     Eigen::LLT<Eigen::MatrixXd> cholesky(v);
     Eigen::MatrixXd m = Eigen::MatrixXd::Identity(v.rows(), v.cols());
     cholesky.matrixL().transpose().solveTriangularInPlace(m);
-    Matrix newForward(ndarray::allocate(_forward.getShape()));
-    MatrixT newReverse(ndarray::allocate(_reverse.getShape()));
-    newForward = ndarray::viewAsEigen(_forward) * m;
-    newReverse = cholesky.matrixL().transpose() * ndarray::viewAsEigen(_reverse);
-    if (_constraintMatrix.getSize<0>() > 0) {
-        ndarray::Array<Pixel,2,2> newConstraintMatrix = ndarray::allocate(_constraintMatrix.getShape());
-        ndarray::viewAsEigen(newConstraintMatrix) = ndarray::viewAsEigen(_constraintMatrix) * m;
-    }
-    _forward = newForward.getArray();
-    _reverse = newReverse.getArray();
-    _resetElements();
+    ndarray::viewAsEigen(_forward) = ndarray::viewAsEigen(_forward) * m.part<Eigen::LowerTriangular>();
+    ndarray::viewAsTransposedEigen(_reverse) 
+        = cholesky.matrixL().transpose() * ndarray::viewAsEigen(_reverse);
 }
 
-void CompoundShapeletBuilder::slice(int start, int stop) {
+void CompoundShapeletImpl::slice(int start, int stop) {
     _forward = _forward[ndarray::view()(start, stop)];
     _reverse = _reverse[ndarray::view()(start, stop)];
-    _constraintMatrix = _constraintMatrix[ndarray::view()(start, stop)];
     _resetElements();
-
 }
 
-void CompoundShapeletBuilder::setMapping(
+void CompoundShapeletImpl::setMapping(
     ndarray::Array<Pixel const,2,1> const & forward,
     ndarray::Array<Pixel const,2,1> const & reverse
 ) {
-    detail::checkSize(
-        _forward.getSize<0>(), forward.getSize<0>(),
-        "Aggregate component shapelet basis size (%d) does not match forward mapping rows (%d)."
-    );
-    detail::checkSize(
-        reverse.getSize<0>(), forward.getSize<0>(),
-        "Reverse mapping rows (%d) does not match forward mapping rows (%d)."
-    );
-    detail::checkSize(
-       reverse.getSize<1>(), forward.getSize<1>(),
-        "Reverse mapping columns (%d) does not match forward mapping columns (%d)."
-    );
     _forward = ndarray::copy(forward);
     _reverse = ndarray::copy(reverse);
     _resetElements();
 }
 
-void CompoundShapeletBuilder::setConstraint(
-    ndarray::Array<Pixel const,2,1> const & matrix,
-    ndarray::Array<Pixel const,1,1> const & vector
-) {
-    detail::checkSize(
-        matrix.getSize<0>(), vector.getSize<0>(),
-        "Number of constraints in matrix (%d) do not match number of constraints in vector (%d)."
-    );
-    detail::checkSize(
-        matrix.getSize<1>(), getSize(),
-        "Incorrect number of columns (%d) in constraint matrix (expected %d)."
-    );
-    _constraintMatrix = ndarray::copy(matrix);
-    _constraintVector = ndarray::copy(vector);
+void CompoundShapeletImpl::_fillElements(ComponentVector const & components) {
+    _elements.reserve(components.size());
+    ComponentVector::const_iterator i = components.begin();
+    for (int offset = 0; i != components.end(); ++i) {
+        _elements.push_back(Element(*i, _forward, _reverse, offset));
+        offset += (**i).getSize();
+    }
 }
 
-CompoundShapeletModelBasis::Ptr CompoundShapeletBuilder::build() const {
-    return boost::make_shared<CompoundShapeletModelBasis>(*this);
+void CompoundShapeletImpl::_resetElements() {
+    ElementVector new_elements;
+    new_elements.reserve(_elements.size());
+    ElementVector::const_iterator i = _elements.begin();
+    for (int offset = 0; i != _elements.end(); ++i) {
+        new_elements.push_back(Element(i->component, _forward, _reverse, offset));
+        offset += i->component->getSize();
+    }
+    _elements.swap(new_elements);
 }
 
-CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
+int CompoundShapeletImpl::_computeSize(ComponentVector const & components) {
+    int size = 0;
+    for (ComponentVector::const_iterator i = components.begin(); i != components.end(); ++i) {
+        size += (**i).getSize();
+    }
+    return size;
+}
+
+ndarray::Array<Pixel,2,2> CompoundShapeletImpl::_makeIdentity(int size) {
+    ndarray::Array<Pixel,2,2> result(ndarray::allocate(size, size));
+    ndarray::viewAsEigen(result).setIdentity();
+    return result;
+}
+
+CompoundShapeletImpl::Ptr CompoundShapeletImpl::load(
     std::string const & filename
 ) {
     std::ifstream ifs(filename.c_str());
@@ -461,20 +477,10 @@ CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
         ndarray::makeVector(height, width)
     );
     ar >> boost::serialization::make_array(reverse.getData(), size);
-    int constraintSize;
-    ar >> constraintSize;
-    CompoundShapeletBuilder builder(components, forward, reverse);
-    if (constraintSize > 0) {
-        ndarray::Array<Pixel,2,2> cMatrix = ndarray::allocate(constraintSize, width);
-        ndarray::Array<Pixel,1,1> cVector = ndarray::allocate(constraintSize);
-        ar >> boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());
-        ar >> boost::serialization::make_array(cVector.getData(), cVector.getNumElements());
-        builder.setConstraint(cMatrix, cVector);
-    }
-    return builder.build();
+    return CompoundShapeletImpl::Ptr(new CompoundShapeletImpl(components, forward, reverse));
 }
 
-void CompoundShapeletModelBasis::save(std::string const & filename) {
+void CompoundShapeletImpl::save(std::string const & filename) {
     std::ofstream ofs(filename.c_str());
     boost::archive::text_oarchive ar(ofs);
 
@@ -494,14 +500,177 @@ void CompoundShapeletModelBasis::save(std::string const & filename) {
     ar << width;
     ar << boost::serialization::make_array(forward.getData(), size);
     ar << boost::serialization::make_array(reverse.getData(), size);
-    int constraintSize = getConstraintSize();
-    ar << constraintSize;
-    if (constraintSize > 0) {
-        ndarray::Array<Pixel,2,2> cMatrix = ndarray::copy(getConstraintMatrix());
-        ndarray::Array<Pixel,1,1> cVector = ndarray::copy(getConstraintVector());
-        ar << boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());
-        ar << boost::serialization::make_array(cVector.getData(), cVector.getNumElements());
+}
+
+} //namespace detail
+
+CompoundShapeletModelBasis::ComponentVector CompoundShapeletModelBasis::extractComponents() const {
+    return _impl->extractComponents();
+}
+
+ndarray::Array<Pixel const,2,1> CompoundShapeletModelBasis::getForward() const {
+    return _impl->getForward();
+}
+
+ndarray::Array<Pixel const,2,1> CompoundShapeletModelBasis::getReverse() const {
+    return _impl->getReverse();
+}
+
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
+    LocalPsf::ConstPtr const & psf
+) const {
+    if (psf->hasNativeShapelet()) {
+        afwShapelets::MultiShapeletFunction s = psf->getNativeShapelet(afwShapelets::HERMITE);
+        s.shiftInPlace(-afw::geom::Extent2D(psf->getPoint()));
+        return convolve(s);
+    } else {
+        afwShapelets::ShapeletFunction s = 
+            psf->computeShapelet(afwShapelets::HERMITE, ShapeletModelBasis::getPsfShapeletOrder());
+        s.getEllipse().getCenter() -= afw::geom::Extent2D(psf->getPoint());
+        return convolve(s);
     }
 }
+
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
+    afwShapelets::ShapeletFunction const & psf
+) const {
+    return _impl->convolve(psf);
+}
+
+ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
+    afwShapelets::MultiShapeletFunction const & psf
+) const {
+    return _impl->convolve(psf);
+}
+
+Eigen::MatrixXd CompoundShapeletModelBasis::computeInnerProductMatrix() const {
+    return _impl->computeInnerProductMatrix();
+}
+
+Eigen::MatrixXd CompoundShapeletModelBasis::computeInnerProductMatrix(
+    lsst::afw::geom::ellipses::BaseCore const & ellipse
+) const {
+    return _impl->computeInnerProductMatrix(ellipse);
+}
+
+void CompoundShapeletModelBasis::_evaluate(
+    ndarray::Array<Pixel, 2, 1> const & matrix,
+    CONST_PTR(Footprint) const & footprint,
+    afw::geom::Ellipse const & ellipse
+) const {
+    _impl->evaluate(matrix, footprint, ellipse);
+}
+
+void CompoundShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
+    _impl->integrate(vector);
+}
+
+void CompoundShapeletModelBasis::_evaluateRadialProfile(
+    lsst::ndarray::Array<Pixel,2,1> const & profile,
+    lsst::ndarray::Array<Pixel const,1,1> const & radii
+) const {
+    _impl->evaluateRadialProfile(profile, radii);
+}
+
+CompoundShapeletModelBasis::CompoundShapeletModelBasis(
+    detail::CompoundShapeletImpl::Ptr const & impl
+) : ModelBasis(impl->getSize()), _impl(impl)
+{}
+
+CompoundShapeletModelBasis::~CompoundShapeletModelBasis() {}
+
+CompoundShapeletBuilder::CompoundShapeletBuilder(
+    ComponentVector const & components
+) : _impl(new detail::CompoundShapeletImpl(components))
+{}
+
+CompoundShapeletBuilder::CompoundShapeletBuilder(
+    ComponentVector const & components,
+    ndarray::Array<Pixel const,2,1> const & forward,
+    ndarray::Array<Pixel const,2,1> const & reverse
+) : _impl(new detail::CompoundShapeletImpl(components, ndarray::copy(forward), ndarray::copy(reverse)))
+{}
+
+CompoundShapeletBuilder::ComponentVector CompoundShapeletBuilder::extractComponents() const {
+    return _impl->extractComponents();
+}
+
+ndarray::Array<Pixel const,2,1> CompoundShapeletBuilder::getForward() const {
+    return _impl->getForward();
+}
+
+ndarray::Array<Pixel const,2,1> CompoundShapeletBuilder::getReverse() const {
+    return _impl->getReverse();
+}
+
+int CompoundShapeletBuilder::getSize() const {
+    return _impl->getSize();
+}
+
+Eigen::MatrixXd CompoundShapeletBuilder::computeInnerProductMatrix() const {
+    return _impl->computeInnerProductMatrix();
+}
+
+void CompoundShapeletBuilder::edit() {
+    if (!_impl.unique()) {
+        detail::CompoundShapeletImpl::Ptr impl(new detail::CompoundShapeletImpl(*_impl));
+        _impl.swap(impl);
+    }
+}
+
+void CompoundShapeletBuilder::normalize() {
+    edit();
+    _impl->normalize();
+}
+
+void CompoundShapeletBuilder::orthogonalize() {
+    edit();
+    _impl->orthogonalize();    
+}
+
+void CompoundShapeletBuilder::slice(int start, int stop) {
+    edit();
+    _impl->slice(start, stop);
+}
+
+void CompoundShapeletBuilder::setMapping(
+    ndarray::Array<Pixel const,2,1> const & forward,
+    ndarray::Array<Pixel const,2,1> const & reverse
+) {
+    detail::checkSize(
+        getForward().getSize<0>(), forward.getSize<0>(),
+        "Aggregate component shapelet basis size (%d) does not match forward mapping rows (%d)."
+    );
+    detail::checkSize(
+        reverse.getSize<0>(), forward.getSize<0>(),
+        "Reverse mapping rows (%d) does not match forward mapping rows (%d)."
+    );
+    detail::checkSize(
+       reverse.getSize<1>(), forward.getSize<1>(),
+        "Reverse mapping columns (%d) does not match forward mapping columns (%d)."
+    );
+    edit();
+    _impl->setMapping(forward, reverse);
+}
+
+CompoundShapeletModelBasis::Ptr CompoundShapeletBuilder::build() const {
+    return CompoundShapeletModelBasis::Ptr(new CompoundShapeletModelBasis(_impl));
+}
+
+CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
+    std::string const & filename
+) {
+    return CompoundShapeletModelBasis::Ptr(
+        new CompoundShapeletModelBasis(
+            detail::CompoundShapeletImpl::load(filename)
+        )
+    );
+}
+
+void CompoundShapeletModelBasis::save(std::string const & filename) {
+    _impl->save(filename);
+}
+
+CompoundShapeletBuilder::~CompoundShapeletBuilder() {}
 
 }}} //end namespace lsst::meas::multifit

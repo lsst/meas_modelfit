@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_CoefficientPrior
-#define LSST_MEAS_MULTIFIT_CoefficientPrior
+#ifndef LSST_MEAS_MULTIFIT_BaseCoefficientPrior
+#define LSST_MEAS_MULTIFIT_BaseCoefficientPrior
 
 #include "lsst/ndarray.h"
 #include "lsst/meas/multifit/constants.h"
@@ -34,7 +34,7 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief Represents a Bayesian prior on the coefficients given the parameters.
  *
- *  A CoefficientPrior may be constructed at a particular parameter vector, but it
+ *  A BaseCoefficientPrior may be constructed at a particular parameter vector, but it
  *  is not required to store that parameter vector or be able to return it to the
  *  user; this allows the same object to be reused when the prior is independent
  *  of the parameters.
@@ -46,11 +46,11 @@ namespace lsst { namespace meas { namespace multifit {
  *  if the Bayesian evidence is to be computed correctly.  At the very least, the
  *  normalization must not vary with @f$\phi@f$.
  */
-class CoefficientPrior : private boost::noncopyable {
+class BaseCoefficientPrior : private boost::noncopyable {
 public:
 
-    typedef boost::shared_ptr<CoefficientPrior> Ptr;
-    typedef boost::shared_ptr<CoefficientPrior const> ConstPtr;
+    typedef boost::shared_ptr<BaseCoefficientPrior> Ptr;
+    typedef boost::shared_ptr<BaseCoefficientPrior const> ConstPtr;
 
     /// @brief Evaluate the value of the prior for a given coefficient vector.
     virtual double operator()(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const = 0;
@@ -82,10 +82,10 @@ public:
         lsst::ndarray::Array<double const,1,1> const & dataVector
     ) const = 0;
 
-    virtual ~CoefficientPrior() {}
+    virtual ~BaseCoefficientPrior() {}
 
 };
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_BaseEvaluator
+#endif // !LSST_MEAS_MULTIFIT_BaseCoefficientPrior

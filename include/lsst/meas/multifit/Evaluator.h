@@ -83,7 +83,7 @@ protected:
         return _grid->checkBounds(parameters);
     }
 
-    virtual CoefficientPrior::ConstPtr _evaluate(
+    virtual BaseCoefficientPrior::ConstPtr _evaluate(
         ndarray::Array<Pixel,2,2> const & matrix,
         ndarray::Array<double const,1,1> const & parameters
     ) const;

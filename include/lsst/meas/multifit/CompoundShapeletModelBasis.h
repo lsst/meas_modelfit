@@ -33,75 +33,25 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace detail {
 
-class CompoundShapeletBase {
+class CompoundShapeletImpl;
+
+} // namespace detail
+
+/**
+ *  @brief An ModelBasis subclass for a multi-scale shapelet expansion.
+ */
+class CompoundShapeletModelBasis : public ModelBasis {
 public:
+
+    typedef boost::shared_ptr<CompoundShapeletModelBasis> Ptr;
 
     typedef std::vector<ShapeletModelBasis::Ptr> ComponentVector;
     
     ComponentVector extractComponents() const;
 
-    lsst::ndarray::Array<Pixel const,2,1> getForward() const { return _forward; }
+    lsst::ndarray::Array<Pixel const,2,1> getForward() const;
 
-    lsst::ndarray::Array<Pixel const,2,1> getReverse() const { return _reverse; }
-
-    /**
-     *  @brief Return a matrix of inner products that can be used to orthogonalize the basis.
-     */
-    Eigen::MatrixXd computeInnerProductMatrix() const;
-
-protected:
-
-    typedef ndarray::EigenView<const Pixel,2,1> Matrix;
-    typedef ndarray::TransposedEigenView<const Pixel,2,1> MatrixT;
-
-    struct Element {
-        ShapeletModelBasis::Ptr component;
-        Matrix forward;
-        MatrixT reverse;
-
-        Element(
-            ShapeletModelBasis::Ptr const & component_, 
-            ndarray::Array<const Pixel,2,1> const & fullForward,
-            ndarray::Array<const Pixel,2,1> const & fullReverse,
-            int offset
-        );
-
-        Element & operator=(Element const & other);
-    };
-
-    typedef std::vector<Element> ElementVector;
-
-    CompoundShapeletBase(
-        ComponentVector const & components,
-        ndarray::Array<const Pixel,2,1> const & forward,
-        ndarray::Array<const Pixel,2,1> const & reverse
-    );
-    
-    explicit CompoundShapeletBase(ComponentVector const & components);
-    void _fillElements(ComponentVector const & components);
-
-    void _resetElements();
-
-    static int _computeSize(ComponentVector const & components);
-
-    static ndarray::Array<Pixel,2,2> _makeIdentity(int size);
-
-    ElementVector _elements;
-    ndarray::Array<Pixel const,2,1> _forward;
-    ndarray::Array<Pixel const,2,1> _reverse;
-};
-
-} // namespace detail
-
-class CompoundShapeletBuilder;
-
-/**
- *  @brief An ModelBasis subclass for a multi-scale shapelet expansion.
- */
-class CompoundShapeletModelBasis : public ModelBasis, public detail::CompoundShapeletBase {
-public:
-
-    typedef boost::shared_ptr<CompoundShapeletModelBasis> Ptr;
+    lsst::ndarray::Array<Pixel const,2,1> getReverse() const;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
@@ -126,12 +76,16 @@ public:
         lsst::afw::geom::ellipses::BaseCore const & ellipse
     ) const;
 
-    using detail::CompoundShapeletBase::computeInnerProductMatrix;
+    /**
+     *  @brief Return a matrix of inner products that can be used to orthogonalize the basis.
+     */
+    Eigen::MatrixXd computeInnerProductMatrix() const;
 
     static Ptr load(std::string const & filename);
     void save(std::string const & filename);
 
-    virtual ~CompoundShapeletModelBasis() {}
+    virtual ~CompoundShapeletModelBasis();
+
 protected:
 
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
@@ -148,16 +102,20 @@ protected:
     ) const;
 
 private:
-    FRIEND_MAKE_SHARED_1(CompoundShapeletModelBasis, lsst::meas::multifit::CompoundShapeletBuilder);
+    friend class CompoundShapeletBuilder;
 
-    explicit CompoundShapeletModelBasis(CompoundShapeletBuilder const &);
+    explicit CompoundShapeletModelBasis(boost::shared_ptr<detail::CompoundShapeletImpl> const & impl);
+
+    boost::shared_ptr<detail::CompoundShapeletImpl> _impl;
 };
 
 /**
  *  @brief A builder class for CompoundShapeletModelBasis.
  */
-class CompoundShapeletBuilder : public detail::CompoundShapeletBase {
+class CompoundShapeletBuilder {
 public:
+
+    typedef std::vector<ShapeletModelBasis::Ptr> ComponentVector;
 
     explicit CompoundShapeletBuilder(ComponentVector const & components);
 
@@ -166,31 +124,38 @@ public:
         lsst::ndarray::Array<Pixel const,2,1> const & forward,
         lsst::ndarray::Array<Pixel const,2,1> const & reverse
     );
+    
+    ComponentVector extractComponents() const;
+
+    lsst::ndarray::Array<Pixel const,2,1> getForward() const;
+
+    lsst::ndarray::Array<Pixel const,2,1> getReverse() const;
+
+    /**
+     *  @brief Return a matrix of inner products that can be used to orthogonalize the basis.
+     */
+    Eigen::MatrixXd computeInnerProductMatrix() const;
 
     void orthogonalize();
 
-    void slice(int start, int stop);
+    void normalize();
 
-    int getSize() const { return _forward.getSize<1>(); }
+    int getSize() const;
+
+    void slice(int start, int stop);
 
     void setMapping(
         lsst::ndarray::Array<Pixel const,2,1> const & forward,
         lsst::ndarray::Array<Pixel const,2,1> const & reverse
     );
 
-    void setConstraint(
-        lsst::ndarray::Array<Pixel const,2,1> const & matrix,
-        lsst::ndarray::Array<Pixel const,1,1> const & vector
-    );
-
     CompoundShapeletModelBasis::Ptr build() const;
 
-private:
+    ~CompoundShapeletBuilder();
 
-    friend class CompoundShapeletModelBasis;
-    
-    ndarray::Array<Pixel,2,1> _constraintMatrix;
-    ndarray::Array<Pixel,1,1> _constraintVector;
+private:
+    void edit();
+    boost::shared_ptr<detail::CompoundShapeletImpl> _impl;
 };
 
 }}} // namespace lsst::meas::multifit

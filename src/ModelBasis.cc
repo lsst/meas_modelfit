@@ -49,20 +49,4 @@ ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
                       "ModelBasis subclass does not support convolution.");
 }
 
-void ModelBasis::attachConstraint(
-    lsst::ndarray::Array<Pixel,2,1> const & matrix,
-    lsst::ndarray::Array<Pixel,1,1> const & vector
-) {
-    detail::checkSize(
-        matrix.getSize<0>(), vector.getSize<0>(),
-        "Number of constraints in matrix (%d) do not match number of constraints in vector (%d)."
-    );
-    detail::checkSize(
-        matrix.getSize<1>(), _size,
-        "Incorrect number of columns (%d) in constraint matrix (expected %d)."
-    );
-    _constraintMatrix = matrix;
-    _constraintVector = vector;
-}
-
 }}} // namespace lsst::meas::multifit

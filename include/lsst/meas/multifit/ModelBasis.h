@@ -70,15 +70,6 @@ public:
         lsst::afw::geom::ellipses::BaseCore const & ellipse
     ) const = 0;
 
-    /// @brief Return the number of inequality constraints.
-    int getConstraintSize() const { return _constraintMatrix.getSize<0>(); }
-
-    /// @brief Return the inequality constraint matrix.
-    lsst::ndarray::Array<Pixel const,2,1> getConstraintMatrix() const { return _constraintMatrix; }
-
-    /// @brief Return the inequality constraint vector.
-    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
-
     virtual ~ModelBasis() {}
 
 protected:
@@ -86,19 +77,6 @@ protected:
     explicit ModelBasis(int size) : _size(size) {}
 
     ModelBasis(ModelBasis const & other) : _size(other._size) {}
-
-    /**
-     *  @brief Attach a linear inequality constraint to the basis.
-     *
-     *  The constraint has the form @f$ Ax >= b @f$, where @f$A@f$ is the constraint matrix,
-     *  @f$ b @f$ is the constraint vector, and @f$ x @f$ is the coefficient vector.
-     *
-     *  Should only be called by subclasses upon construction.
-     */
-    void attachConstraint(
-        lsst::ndarray::Array<Pixel,2,1> const & matrix,
-        lsst::ndarray::Array<Pixel,1,1> const & vector
-    );
 
     virtual void _integrate(lsst::ndarray::Array<Pixel,1,1> const & vector) const = 0;
 
@@ -119,10 +97,7 @@ protected:
     }
 
 private:
-
     int const _size;
-    ndarray::Array<Pixel,2,1> _constraintMatrix;
-    ndarray::Array<Pixel,1,1> _constraintVector;
 };
 
 }}} // namespace lsst::meas::multifit

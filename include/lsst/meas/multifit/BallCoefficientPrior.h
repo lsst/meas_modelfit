@@ -24,7 +24,8 @@
 #ifndef LSST_MEAS_MULTIFIT_BallCoefficientPrior
 #define LSST_MEAS_MULTIFIT_BallCoefficientPrior
 
-#include "lsst/meas/multifit/CoefficientPrior.h"
+#include "lsst/meas/multifit/BaseCoefficientPrior.h"
+#include <list>
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -34,7 +35,7 @@ namespace lsst { namespace meas { namespace multifit {
  *  A prior that subclasses BallCoefficientPrior may be more sophisticated than the simple
  *  L2 constraint, but it must evaluate to zero outside the constraint.
  */
-class BallCoefficientPrior : public CoefficientPrior {
+class BallCoefficientPrior : public BaseCoefficientPrior {
 public:
 
     typedef boost::shared_ptr<BallCoefficientPrior> Ptr;
@@ -46,8 +47,8 @@ public:
         double radius;
     };
 
-    typedef std::vector<Constraint> ConstraintVector;
-    typedef ConstraintVector::const_iterator ConstraintIter;
+    typedef std::list<Constraint> ConstraintList;
+    typedef ConstraintList::const_iterator ConstraintIter;
 
     /// @brief Evaluate the value of the prior for a given coefficient vector.
     virtual double operator()(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const;
@@ -83,7 +84,7 @@ public:
 
 protected:
 
-    explicit BallCoefficientPrior(ConstraintVector const & constraints);
+    explicit BallCoefficientPrior(ConstraintList const & constraints);
 
     /// @brief Like operator(), but does not check constraints.  Used to implement operator().
     virtual double evaluate(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) const = 0;
@@ -99,7 +100,7 @@ protected:
      *
      *  Subclasses may modify the radii of the constraints but not the other members.
      */
-    ConstraintVector _constraints;
+    ConstraintList _constraints;
 
 private:
     class Impl;
@@ -108,4 +109,4 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_BaseEvaluator
+#endif // !LSST_MEAS_MULTIFIT_BallCoefficientPrior

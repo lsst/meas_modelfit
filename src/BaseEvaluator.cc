@@ -4,7 +4,7 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-CoefficientPrior::ConstPtr BaseEvaluator::evaluate(
+BaseCoefficientPrior::ConstPtr BaseEvaluator::evaluate(
     ndarray::Array<Pixel,2,2> const & matrix,
     ndarray::Array<double const,1,1> const & parameters
 ) const {
@@ -56,7 +56,7 @@ double BaseEvaluator::integrate(
     ndarray::Array<double const,1,1> const & parameters
 ) const {
     ndarray::Array<Pixel,2,2> modelMatrix(ndarray::allocate(getPixelCount(), getCoefficientCount()));
-    CoefficientPrior::ConstPtr prior = _evaluate(modelMatrix, parameters);
+    BaseCoefficientPrior::ConstPtr prior = _evaluate(modelMatrix, parameters);
     double result = prior->integrate(engine, coefficients, weights, modelMatrix, getDataVector());
     result *= std::exp(getLogPixelErrorSum());
     return result;

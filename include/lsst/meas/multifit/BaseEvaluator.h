@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_BaseEvaluator
 #define LSST_MEAS_MULTIFIT_BaseEvaluator
 
-#include "lsst/meas/multifit/CoefficientPrior.h"
+#include "lsst/meas/multifit/BaseCoefficientPrior.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -108,7 +108,7 @@ public:
      *  If the data vector is weighted, the output matrix should be as well (each row should be divided
      *  by the corresponding pixel sigma value).
      */
-    CoefficientPrior::ConstPtr evaluate(
+    BaseCoefficientPrior::ConstPtr evaluate(
         lsst::ndarray::Array<Pixel,2,2> const & modelMatrix,
         lsst::ndarray::Array<double const,1,1> const & parameters
     ) const;
@@ -119,7 +119,7 @@ public:
     /**
      *  @brief Compute the Monte Carlo integral @f$\int d\mu\,P(x|\mu,\phi)\,P(\mu|\phi) = P(x|\phi)@f$.
      *
-     *  This delegates to CoefficientPrior::integrate and multiplies by the constant pixel 
+     *  This delegates to BaseCoefficientPrior::integrate and multiplies by the constant pixel 
      *  covariance factor.
      *  
      *  @param[in]  engine        Random number generator.
@@ -140,7 +140,7 @@ public:
 
 protected:
 
-    virtual CoefficientPrior::ConstPtr _evaluate(
+    virtual BaseCoefficientPrior::ConstPtr _evaluate(
         ndarray::Array<Pixel,2,2> const & matrix,
         ndarray::Array<double const,1,1> const & parameters
     ) const = 0;

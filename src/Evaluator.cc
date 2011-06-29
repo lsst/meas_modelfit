@@ -3,7 +3,7 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-CoefficientPrior::ConstPtr Evaluator::_evaluate(
+BaseCoefficientPrior::ConstPtr Evaluator::_evaluate(
     ndarray::Array<Pixel,2,2> const & matrix,
     ndarray::Array<double const,1,1> const & parameters
 ) const {
@@ -59,7 +59,7 @@ CoefficientPrior::ConstPtr Evaluator::_evaluate(
             }            
         }
     }
-    return CoefficientPrior::Ptr();
+    return BaseCoefficientPrior::Ptr();
 }
 
 Evaluator::Evaluator(Grid::Ptr const & grid) :

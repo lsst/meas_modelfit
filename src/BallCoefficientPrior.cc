@@ -139,7 +139,7 @@ public:
     );
 
 private:
-    ConstraintVector const & _constraints;
+    ConstraintList const & _constraints;
     int _n_a;
     int _n_b;
     Vector _s;
