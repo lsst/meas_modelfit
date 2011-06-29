@@ -194,11 +194,16 @@ class Viewer(object):
         src = self.sources[index]
 
         if(mode=="ds9"):
+            #one frame for psf mosaic
+            psfMosaic = self.m.makeMosaic(d["psf_images"], frame=1)
+            self.m.drawLabels(d["psf_labels"], frame=1)  
+
+            #another for the model mosaic
             mosaic = self.m.makeMosaic(d["images"], frame=0)
             self.m.drawLabels(d["image_labels"], frame=0)
             ds9.setMaskTransparency(75)
 
-            #plot initial, and fit ellipses
+            #plot initial, and fit ellipses over model mosaic
             #image
             #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
             ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
@@ -214,12 +219,8 @@ class Viewer(object):
             ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
             ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=0, ctype=ds9.BLUE)
             
-            
-
-
-            psfMosaic = self.m.makeMosaic(d["psf_images"], frame=1)
-            self.m.drawLabels(d["psf_labels"], frame=1)        
-            ds9.show(frame=0)
+            ds9.ds9Cmd("tile mode row")
+            ds9.ds9Cmd("tile yes")
 
     def plotProfile(self, index):
         self.fit(index)
