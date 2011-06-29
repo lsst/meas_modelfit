@@ -69,14 +69,14 @@ private:
 };
 
 
-typedef SharedElement<POSITION> PositionComponent;
-typedef SharedElement<RADIUS> RadiusComponent;
-typedef SharedElement<ELLIPTICITY> EllipticityComponent;
+typedef SharedElement<POSITION> PositionElement;
+typedef SharedElement<RADIUS> RadiusElement;
+typedef SharedElement<ELLIPTICITY> EllipticityElement;
 
 #ifndef SWIG
 
 template <SharedElementType E>
-class ComponentArray {
+class ElementArray {
     typedef typename SharedElement<E>::Ptr Ptr;
     typedef std::vector<Ptr> PtrVec;
     typedef typename PtrVec::const_iterator PtrIter;
@@ -91,7 +91,7 @@ public:
     typedef boost::indirect_iterator<PtrIter> iterator;
     typedef iterator const_iterator;
 
-    ComponentArray() : _ptrVec() {}
+    ElementArray() : _ptrVec() {}
 
     const_iterator begin() const { return _ptrVec.begin(); }
     const_iterator end() const { return _ptrVec.end(); }

@@ -141,7 +141,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                             source->getCoefficientOffset()
                         )
                     ];
-                for (int n = 0; n < grid::PositionComponent::SIZE; ++n) {
+                for (int n = 0; n < grid::PositionElement::SIZE; ++n) {
                     std::pair<int,double> p = object->perturbPoint(point, n);
                     if (p.first < 0) continue;
  

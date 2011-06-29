@@ -30,7 +30,7 @@ public:
         Grid::ObjectComponentArray::const_iterator gi = input.objects.begin();
         Definition::ObjectComponentSet::iterator di = output.objects.begin();
         for (; gi != input.objects.end(); ++gi, ++di) {
-            GPtr gp = gi->template getComponent<E>();
+            GPtr gp = gi->template getElement<E>();
             if (!gp) continue;
             std::pair<GPtr,DPtr> item(gp, DPtr());
             std::pair<typename Map::iterator,bool> r = unique.insert(item);
@@ -43,7 +43,7 @@ public:
                     );
                 }
             }
-            di->template getComponent<E>() = r.first->second;
+            di->template getElement<E>() = r.first->second;
         }
     }
 
@@ -58,7 +58,7 @@ public:
         Definition::ObjectComponentSet::const_iterator di = input.objects.begin();
         Grid::ObjectComponentArray::const_iterator gi = output.objects.begin();
         for (; gi != output.objects.end(); ++gi, ++di) {
-            DPtr dp = di->template getComponent<E>();
+            DPtr dp = di->template getElement<E>();
             if (!dp) continue;
             std::pair<DPtr,GPtr> item(dp, GPtr());
             std::pair<typename Map::iterator,bool> r = unique.insert(item);
@@ -72,7 +72,7 @@ public:
                 }
             }
             GPtr const * gp;
-            gi->getComponentImpl(gp);
+            gi->getElementImpl(gp);
             const_cast<GPtr &>(*gp) = r.first->second;
         }
     }

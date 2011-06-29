@@ -57,14 +57,14 @@ public:
 #ifndef SWIG
     //@{
     /// @brief Return the parameter components.
-    PositionComponent::Ptr const getPosition() const { return _position; }
-    RadiusComponent::Ptr const getRadius() const { return _radius; }
-    EllipticityComponent::Ptr const getEllipticity() const { return _ellipticity; }
+    PositionElement::Ptr const getPosition() const { return _position; }
+    RadiusElement::Ptr const getRadius() const { return _radius; }
+    EllipticityElement::Ptr const getEllipticity() const { return _ellipticity; }
 
     template <SharedElementType E>
-    typename SharedElement<E>::Ptr const getComponent() const {
+    typename SharedElement<E>::Ptr const getElement() const {
         typename SharedElement<E>::Ptr const * p;
-        getComponentImpl(p);
+        getElementImpl(p);
         return *p;
     }
     //@}
@@ -156,19 +156,21 @@ private:
 
     friend class grid::Initializer;
 
-    ObjectComponent(definition::ObjectComponent const & def, int coefficientOffset, int filterCount, int frameCount);
+    ObjectComponent(
+        definition::ObjectComponent const & def, int coefficientOffset, int filterCount, int frameCount
+    );
 
     void validate() const;
 
-    void getComponentImpl(PositionComponent::Ptr const * & p) const { p = &_position; }
-    void getComponentImpl(RadiusComponent::Ptr const * & p) const { p = &_radius; }
-    void getComponentImpl(EllipticityComponent::Ptr const * & p) const { p = &_ellipticity; }
+    void getElementImpl(PositionElement::Ptr const * & p) const { p = &_position; }
+    void getElementImpl(RadiusElement::Ptr const * & p) const { p = &_radius; }
+    void getElementImpl(EllipticityElement::Ptr const * & p) const { p = &_ellipticity; }
 
     int _coefficientOffset;
     int _coefficientCount;
-    PositionComponent::Ptr _position;
-    RadiusComponent::Ptr _radius;
-    EllipticityComponent::Ptr _ellipticity;
+    PositionElement::Ptr _position;
+    RadiusElement::Ptr _radius;
+    EllipticityElement::Ptr _ellipticity;
 };
 
 #ifndef SWIG

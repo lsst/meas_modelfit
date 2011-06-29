@@ -46,9 +46,9 @@ public:
     typedef grid::Array<Frame> FrameArray;
     typedef grid::Array<SourceComponent> SourceComponentArray;
 
-    typedef grid::ComponentArray<POSITION> PositionArray;
-    typedef grid::ComponentArray<RADIUS> RadiusArray;
-    typedef grid::ComponentArray<ELLIPTICITY> EllipticityArray;
+    typedef grid::ElementArray<POSITION> PositionArray;
+    typedef grid::ElementArray<RADIUS> RadiusArray;
+    typedef grid::ElementArray<ELLIPTICITY> EllipticityArray;
 
     Definition makeDefinition() const;
 
