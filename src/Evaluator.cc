@@ -8,13 +8,13 @@ void Evaluator::_evaluateModelMatrix(
 ) const {
     matrix.deep() = 0.0;
     for (
-        Grid::ObjectArray::const_iterator object = _grid->objects.begin();
+        Grid::ObjectComponentArray::const_iterator object = _grid->objects.begin();
         object != _grid->objects.end(); ++object
     ) {
         if (object->getBasis()) {
             lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end(); ++source
             ) {
                 int coefficientOffset = source->getCoefficientOffset();
@@ -37,7 +37,7 @@ void Evaluator::_evaluateModelMatrix(
         } else {
             afw::geom::Point2D point = object->makePoint(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
                 ++source
             ) {
@@ -68,14 +68,14 @@ void Evaluator::_evaluateModelMatrixDerivative(
 ) const {
     derivative.deep() = 0.0;
     for (
-        Grid::ObjectArray::const_iterator object = _grid->objects.begin();
+        Grid::ObjectComponentArray::const_iterator object = _grid->objects.begin();
         object != _grid->objects.end();
         ++object
     ) {
         if (object->getBasis()) {
             lsst::afw::geom::Ellipse ellipse = object->makeEllipse(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
                 ++source
             ) {
@@ -119,7 +119,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
         } else {
             lsst::afw::geom::Point2D point = object->makePoint(param.getData());
             for (
-                Grid::SourceArray::const_iterator source = object->sources.begin();
+                Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
                 ++source
             ) {

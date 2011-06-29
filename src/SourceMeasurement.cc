@@ -180,12 +180,12 @@ void SourceMeasurement::addObjectsToDefinition(
         ellipseCore.getEllipticity(), true
     );
     if (_options.fitDeltaFunction) {
-        definition::Object obj(DELTAFUNCTION_ID);
+        definition::ObjectComponent obj(DELTAFUNCTION_ID);
         obj.getPosition() = position;
         def.objects.insert(obj);
     }
     if (_options.fitExponential) {
-        definition::Object obj(EXPONENTIAL_ID);
+        definition::ObjectComponent obj(EXPONENTIAL_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
@@ -194,7 +194,7 @@ void SourceMeasurement::addObjectsToDefinition(
 
     }
     if (_options.fitDeVaucouleur) {
-        definition::Object obj(DEVAUCOULEUR_ID);
+        definition::ObjectComponent obj(DEVAUCOULEUR_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
@@ -202,7 +202,7 @@ void SourceMeasurement::addObjectsToDefinition(
         def.objects.insert(obj);
     }
     if (_options.shapeletOrder >= 0) {
-        definition::Object obj(SHAPELET_ID);
+        definition::ObjectComponent obj(SHAPELET_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
@@ -229,7 +229,7 @@ void SourceMeasurement::solve(double e1, double e2, double radius, double & best
     }
     if (objective < best) {
         _status &= ~algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
-        //double flux = grid::Source::computeFlux(_integration, evaluation.getCoefficients());
+        //double flux = grid::SourceComponent::computeFlux(_integration, evaluation.getCoefficients());
         //double condition = flux / ndarray::viewAsEigen(evaluation.getCoefficients()).norm();
         //if (condition < 1E-10) {
         //    if (!(_status & algorithms::Flags::SHAPELET_PHOTOM_INVERSION_UNSAFE)) return;
@@ -283,8 +283,8 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
     ndarray::viewAsTransposedEigen(_covariance).setIdentity();
     ldlt.solveInPlace(ndarray::viewAsTransposedEigen(_covariance).setIdentity());
     Grid::Ptr grid = _evaluator->getGrid();
-    _flux = grid::Source::computeFlux(_integration, _coefficients);
-    _fluxErr = std::sqrt(grid::Source::computeFluxVariance(_integration, _covariance));
+    _flux = grid::SourceComponent::computeFlux(_integration, _coefficients);
+    _fluxErr = std::sqrt(grid::SourceComponent::computeFluxVariance(_integration, _covariance));
 }
 
 template <typename ExposureT>

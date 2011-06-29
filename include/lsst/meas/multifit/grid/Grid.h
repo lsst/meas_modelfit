@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_Grid
 
 #include "lsst/meas/multifit/grid/Frame.h"
-#include "lsst/meas/multifit/grid/Object.h"
+#include "lsst/meas/multifit/grid/ObjectComponent.h"
 #include "lsst/meas/multifit/grid/Array.h"
 #include "lsst/meas/multifit/definition/Definition.h"
 
@@ -38,13 +38,13 @@ class Grid {
 public:
     typedef boost::shared_ptr<Grid> Ptr;
 
-    typedef grid::Object Object;
+    typedef grid::ObjectComponent ObjectComponent;
     typedef grid::Frame Frame;
-    typedef grid::Source Source;
+    typedef grid::SourceComponent SourceComponent;
 
-    typedef grid::Array<Object> ObjectArray;
+    typedef grid::Array<ObjectComponent> ObjectComponentArray;
     typedef grid::Array<Frame> FrameArray;
-    typedef grid::Array<Source> SourceArray;
+    typedef grid::Array<SourceComponent> SourceComponentArray;
 
     typedef grid::ComponentArray<POSITION> PositionArray;
     typedef grid::ComponentArray<RADIUS> RadiusArray;
@@ -77,13 +77,13 @@ public:
 
     ~Grid();
 
-    ObjectArray objects;
+    ObjectComponentArray objects;
     FrameArray frames;
-    SourceArray sources;
+    SourceComponentArray sources;
 
 #ifndef SWIG
     //@{
-    /// Arrays of all active parameter components (inactive ones are still held by the Objects). 
+    /// Arrays of all active parameter components (inactive ones are still held by the ObjectComponents). 
     PositionArray positions;
     RadiusArray radii;
     EllipticityArray ellipticities;
@@ -115,9 +115,9 @@ private:
 
     void _destroy();
 
-    template <typename ObjectIterator, typename FrameIterator>
+    template <typename ObjectComponentIterator, typename FrameIterator>
     void _initialize(
-        ObjectIterator const & objectBegin, ObjectIterator const & objectEnd,
+        ObjectComponentIterator const & objectBegin, ObjectComponentIterator const & objectEnd,
         FrameIterator const & frameBegin, FrameIterator const & frameEnd
     );
 

@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_GRID_Source
-#define LSST_MEAS_MULTIFIT_GRID_Source
+#ifndef LSST_MEAS_MULTIFIT_GRID_SourceComponent
+#define LSST_MEAS_MULTIFIT_GRID_SourceComponent
 
 #include "lsst/afw/geom/AffineTransform.h"
 #include "lsst/meas/multifit/ModelBasis.h"
@@ -30,20 +30,20 @@
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 class Frame;
-class Object;
+class ObjectComponent;
 
-class Source {
+class SourceComponent {
 public:
 
-    Source(
-        Frame const & frame, Object const & object, 
+    SourceComponent(
+        Frame const & frame, ObjectComponent const & object, 
         CONST_PTR(afw::image::Wcs) const & wcs
     );
 
     afw::geom::Point2D const getReferencePoint() const;
 
     Frame const & frame;
-    Object const & object;
+    ObjectComponent const & object;
 
     /**
      *  @brief Set the elements of an integration vector that correspond to this source.
@@ -52,7 +52,7 @@ public:
      *  vector can be constructed that computes the sum of the fluxes of those sources.
      *
      *  The full vector should be set to zero; fillIntegration only operates on a segment.
-     *  If fillIntegration is called on the same Source multiple times (or on multiple sources
+     *  If fillIntegration is called on the same SourceComponent multiple times (or on multiple sources
      *  with the same coefficient offsets), 
      */
     void fillIntegration(lsst::ndarray::Array<Pixel,1,1> const & integration) const;

@@ -21,19 +21,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_DEFINITION_Object
-#define LSST_MEAS_MULTIFIT_DEFINITION_Object
+#ifndef LSST_MEAS_MULTIFIT_DEFINITION_ObjectComponent
+#define LSST_MEAS_MULTIFIT_DEFINITION_ObjectComponent
 
 
-#include "lsst/meas/multifit/definition/parameters.h"
+#include "lsst/meas/multifit/definition/SharedElement.h"
 #include "lsst/meas/multifit/ModelBasis.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 namespace detail {
 
-/// @brief Utility (nonpolymorphic) base class for definition::Object and grid::Object.
-class ObjectBase {
+/// @brief Utility (nonpolymorphic) base class for definition::ObjectComponent and grid::ObjectComponent.
+class ObjectComponentBase {
 public:
 
     ID const id;
@@ -52,14 +52,14 @@ public:
 
 protected:
     
-    ObjectBase(
+    ObjectComponentBase(
         ID const id_, 
         double const radiusFactor,
         bool const variable,
         ModelBasis::Ptr const & basis = ModelBasis::Ptr()
     ) : id(id_), _radiusFactor(radiusFactor), _variable(variable), _basis(basis) {}
 
-    ObjectBase(ObjectBase const & other) : 
+    ObjectComponentBase(ObjectComponentBase const & other) : 
         id(other.id), _radiusFactor(other._radiusFactor), _variable(other._variable), _basis(other._basis)
     {}
 
@@ -76,34 +76,34 @@ namespace definition {
 /**
  *  @brief An astronomical object in a multifit definition.
  *
- *  An Object will typically represent a point source or elliptical source.  For the former, the
+ *  An ObjectComponent will typically represent a point source or elliptical source.  For the former, the
  *  radius, ellipticity, and basis pointers will be empty, while they will all be non-empty for the latter.
  *
- *  Most of the accessors of object return by non-const reference, reflecting that Object is essentially
+ *  Most of the accessors of object return by non-const reference, reflecting that ObjectComponent is essentially
  *  a struct that is validated only when a Grid is constructed from the Definition.  We have used accessors
- *  rather than public data members so the interface is similar to that of grid::Object, which behaves
- *  like a const version of definition::Object.
+ *  rather than public data members so the interface is similar to that of grid::ObjectComponent, which behaves
+ *  like a const version of definition::ObjectComponent.
  *
- *  In Python, accessors of Object will be wrapped both with "get/set" methods and as Python properties.
+ *  In Python, accessors of ObjectComponent will be wrapped both with "get/set" methods and as Python properties.
  */
-class Object : public detail::ObjectBase {
+class ObjectComponent : public detail::ObjectComponentBase {
 public:
 
-    explicit Object(ID id_) : detail::ObjectBase(id_, 1.0, false) {}
+    explicit ObjectComponent(ID id_) : detail::ObjectComponentBase(id_, 1.0, false) {}
 
-    Object(Object const & other) :
-        detail::ObjectBase(other),
+    ObjectComponent(ObjectComponent const & other) :
+        detail::ObjectComponentBase(other),
         _position(other._position), _radius(other._radius), _ellipticity(other._ellipticity)
     {}
 
-    static Object makeStar(
+    static ObjectComponent makeStar(
         ID const id, 
         lsst::afw::geom::Point2D const & position, 
         bool const isVariable = false,
         bool const isPositionActive=false
     );
 
-    static Object makeGalaxy(
+    static ObjectComponent makeGalaxy(
         ID const id,
         ModelBasis::Ptr const & basis,
         lsst::afw::geom::ellipses::Ellipse const & ellipse,
@@ -125,16 +125,16 @@ public:
     RadiusComponent::Ptr const getRadius() const { return _radius; }
     EllipticityComponent::Ptr const getEllipticity() const { return _ellipticity; }
 
-    template <ParameterType E>
-    typename ParameterComponent<E>::Ptr & getComponent() {
-        typename ParameterComponent<E>::Ptr const * p;
+    template <SharedElementType E>
+    typename SharedElement<E>::Ptr & getComponent() {
+        typename SharedElement<E>::Ptr const * p;
         getComponentImpl(p);
-        return const_cast<typename ParameterComponent<E>::Ptr &>(*p);
+        return const_cast<typename SharedElement<E>::Ptr &>(*p);
     }
 
-    template <ParameterType E>
-    typename ParameterComponent<E>::Ptr const getComponent() const {
-        typename ParameterComponent<E>::Ptr const * p;
+    template <SharedElementType E>
+    typename SharedElement<E>::Ptr const getComponent() const {
+        typename SharedElement<E>::Ptr const * p;
         getComponentImpl(p);
         return *p;
     }
@@ -154,9 +154,9 @@ public:
 
 #endif
 
-    using detail::ObjectBase::getBasis;
-    using detail::ObjectBase::getRadiusFactor;
-    using detail::ObjectBase::isVariable;
+    using detail::ObjectComponentBase::getBasis;
+    using detail::ObjectComponentBase::getRadiusFactor;
+    using detail::ObjectComponentBase::isVariable;
 
     //@{
     /**
@@ -174,7 +174,7 @@ private:
 
     friend class grid::Initializer;
 
-    explicit Object(detail::ObjectBase const & other) : detail::ObjectBase(other) {}
+    explicit ObjectComponent(detail::ObjectComponentBase const & other) : detail::ObjectComponentBase(other) {}
 
     void getComponentImpl(PositionComponent::Ptr const * & p) const { p = &_position; }
     void getComponentImpl(RadiusComponent::Ptr const * & p) const { p = &_radius; }
@@ -186,9 +186,9 @@ private:
 };
 
 #ifndef SWIG
-std::ostream & operator<<(std::ostream & os, Object const & obj);
+std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj);
 #endif
 
 }}}} // namespace lsst::meas::multifit::definition
 
-#endif // !LSST_MEAS_MULTIFIT_DEFINITION_Object
+#endif // !LSST_MEAS_MULTIFIT_DEFINITION_ObjectComponent

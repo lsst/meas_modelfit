@@ -76,12 +76,12 @@ inline void checkSize(int actualSize, int expectedSize, char const * message) {
 typedef boost::int64_t ID;
 typedef int FilterId;
 
-enum ParameterType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
+enum SharedElementType { POSITION=0, RADIUS=1, ELLIPTICITY=2 };
 
 /**
  *  These set the what parameters are used to define an ellipse throughout the package,
- *  but they can't just be changed here: the implementations of the ParameterComponent,
- *  grid::Object, and SimpleDistribution assume the types here in setting bounds and
+ *  but they can't just be changed here: the implementations of the SharedElement,
+ *  grid::ObjectComponent, and SimpleDistribution assume the types here in setting bounds and
  *  converting between parameter vectors and covariance matrices and ellipses.
  */
 ///@{
@@ -114,8 +114,8 @@ LSST_EXCEPTION_TYPE(DerivativeNotImplementedError,
 
 namespace definition {
 
-template <ParameterType E> class ParameterComponent;
-class Object;
+template <SharedElementType E> class SharedElement;
+class ObjectComponent;
 class Frame;
 class Definition;
 
@@ -123,10 +123,10 @@ class Definition;
 
 namespace grid {
 
-template <ParameterType E> class ParameterComponent;
-class Object;
+template <SharedElementType E> class SharedElement;
+class ObjectComponent;
 class Frame;
-class Source;
+class SourceComponent;
 class Grid;
 class Initializer;
 

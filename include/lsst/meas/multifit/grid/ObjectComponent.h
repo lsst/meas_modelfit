@@ -21,27 +21,27 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_GRID_Object
-#define LSST_MEAS_MULTIFIT_GRID_Object
+#ifndef LSST_MEAS_MULTIFIT_GRID_ObjectComponent
+#define LSST_MEAS_MULTIFIT_GRID_ObjectComponent
 
 #include "lsst/afw/geom/ellipses.h"
-#include "lsst/meas/multifit/definition/Object.h"
-#include "lsst/meas/multifit/grid/parameters.h"
+#include "lsst/meas/multifit/definition/ObjectComponent.h"
+#include "lsst/meas/multifit/grid/SharedElement.h"
 #include "lsst/meas/multifit/grid/Array.h"
-#include "lsst/meas/multifit/grid/Source.h"
+#include "lsst/meas/multifit/grid/SourceComponent.h"
 #include "lsst/meas/multifit/grid/Frame.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 /**
- *  @brief An immutable and expanded version of definition::Object used in a multifit Grid.
+ *  @brief An immutable and expanded version of definition::ObjectComponent used in a multifit Grid.
  */
-class Object : public detail::ObjectBase, private boost::noncopyable {
+class ObjectComponent : public detail::ObjectComponentBase, private boost::noncopyable {
 public:
 
-    typedef Array<Source> SourceArray;
+    typedef Array<SourceComponent> SourceComponentArray;
 
-    SourceArray sources;
+    SourceComponentArray sources;
 
     /// @brief The number of coefficients for this object per Frame.
     int const getSourceCoefficientCount() const {
@@ -61,9 +61,9 @@ public:
     RadiusComponent::Ptr const getRadius() const { return _radius; }
     EllipticityComponent::Ptr const getEllipticity() const { return _ellipticity; }
 
-    template <ParameterType E>
-    typename ParameterComponent<E>::Ptr const getComponent() const {
-        typename ParameterComponent<E>::Ptr const * p;
+    template <SharedElementType E>
+    typename SharedElement<E>::Ptr const getComponent() const {
+        typename SharedElement<E>::Ptr const * p;
         getComponentImpl(p);
         return *p;
     }
@@ -156,7 +156,7 @@ private:
 
     friend class grid::Initializer;
 
-    Object(definition::Object const & def, int coefficientOffset, int filterCount, int frameCount);
+    ObjectComponent(definition::ObjectComponent const & def, int coefficientOffset, int filterCount, int frameCount);
 
     void validate() const;
 
@@ -172,23 +172,23 @@ private:
 };
 
 #ifndef SWIG
-std::ostream & operator<<(std::ostream & os, Object const & obj);
+std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj);
 
-inline afw::geom::Point2D const Source::getReferencePoint() const {
+inline afw::geom::Point2D const SourceComponent::getReferencePoint() const {
     return _transform(object.getPosition()->getValue());
 }
 
-inline int const Source::getCoefficientOffset() const {
+inline int const SourceComponent::getCoefficientOffset() const {
     return object.getCoefficientOffset()
         + object.getSourceCoefficientCount()
         * (object.isVariable() ? frame.getFrameIndex() : frame.getFilterIndex());
 }
 
-inline int const Source::getCoefficientCount() const {
+inline int const SourceComponent::getCoefficientCount() const {
     return object.getSourceCoefficientCount();
 }
 #endif
 
 }}}} // namespace lsst::meas::multifit::grid
 
-#endif // !LSST_MEAS_MULTIFIT_GRID_Object
+#endif // !LSST_MEAS_MULTIFIT_GRID_ObjectComponent

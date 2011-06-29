@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_GRID_parameters
 #define LSST_MEAS_MULTIFIT_GRID_parameters
 
-#include "lsst/meas/multifit/definition/parameters.h"
+#include "lsst/meas/multifit/definition/SharedElement.h"
 
 #include <boost/iterator/indirect_iterator.hpp>
 #include <vector>
@@ -33,13 +33,13 @@
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
-template <ParameterType E>
-class ParameterComponent : public detail::ParameterComponentBase<E>, private boost::noncopyable {
+template <SharedElementType E>
+class SharedElement : public detail::SharedElementBase<E>, private boost::noncopyable {
 public:
     
     // No ConstPtr typedef to make it clear that this class is strictly immutable.
-    typedef boost::shared_ptr< ParameterComponent<E> > Ptr;
-    typedef typename detail::ParameterComponentTraits<E>::Value Value;
+    typedef boost::shared_ptr< SharedElement<E> > Ptr;
+    typedef typename detail::SharedElementTraits<E>::Value Value;
 
     int const offset;
 
@@ -63,26 +63,26 @@ private:
 
     friend class Initializer;
 
-    ParameterComponent(definition::ParameterComponent<E> const & definition, int offset_) : 
-        detail::ParameterComponentBase<E>(definition), offset(offset_) {}
+    SharedElement(definition::SharedElement<E> const & definition, int offset_) : 
+        detail::SharedElementBase<E>(definition), offset(offset_) {}
 
 };
 
 
-typedef ParameterComponent<POSITION> PositionComponent;
-typedef ParameterComponent<RADIUS> RadiusComponent;
-typedef ParameterComponent<ELLIPTICITY> EllipticityComponent;
+typedef SharedElement<POSITION> PositionComponent;
+typedef SharedElement<RADIUS> RadiusComponent;
+typedef SharedElement<ELLIPTICITY> EllipticityComponent;
 
 #ifndef SWIG
 
-template <ParameterType E>
+template <SharedElementType E>
 class ComponentArray {
-    typedef typename ParameterComponent<E>::Ptr Ptr;
+    typedef typename SharedElement<E>::Ptr Ptr;
     typedef std::vector<Ptr> PtrVec;
     typedef typename PtrVec::const_iterator PtrIter;
 public:
 
-    typedef ParameterComponent<E> value_type;
+    typedef SharedElement<E> value_type;
     typedef Ptr pointer;
     typedef value_type const & reference;
     typedef reference const_reference;
@@ -100,7 +100,7 @@ public:
 
     bool empty() const { return _ptrVec.empty(); }
 
-    ParameterComponent<E> const & operator[](int n) const { return *_ptrVec[n]; }
+    SharedElement<E> const & operator[](int n) const { return *_ptrVec[n]; }
 
 private:
 
@@ -110,8 +110,8 @@ private:
 
 };
 
-template <ParameterType E>
-std::ostream & operator<<(std::ostream & os, ParameterComponent<E> const & component);
+template <SharedElementType E>
+std::ostream & operator<<(std::ostream & os, SharedElement<E> const & component);
 
 #endif
 
