@@ -14,6 +14,11 @@ try:
 except ImportError:
     import pickle
 
+try:
+    from matplotlib import pyplot
+except ImportError:
+    pass
+
 fields = (("dataset", int),
           ("dataset_index", int),
           ("id", numpy.int64),
@@ -113,6 +118,58 @@ def mag(table):
 
 def psf_mag(table):
     return -2.5*numpy.log10(table["psf_flux"])
+
+def subset(table, x=None, y=None):
+    """Use the current matplotlib plot limits to extract a subset from
+    the given table."""
+    xmin, xmax = pyplot.xlim()
+    ymin, ymax = pyplot.ylim()
+    return table[numpy.logical_and(
+	numpy.logical_and(x >= xmin, x <= xmax),
+	numpy.logical_and(y >= ymin, y <= ymax)
+	)]
+
+def comparePsfMod(table, alpha=0.3, **kw):
+    measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
+    integration = measurement.getIntegration()
+    print integration
+    fractions = integration[numpy.newaxis,:] * table["coeff"]
+    fractions /= table["flux"][:,numpy.newaxis]
+    offset = 0
+    def doPlot(color):
+	pyplot.figure()
+	pyplot.scatter(psf_mag(table), psf_mag(table)-mag(table),
+		       c=color, alpha=alpha, linewidth=0)
+	pyplot.colorbar()
+	pyplot.axhline(0, color='k')
+	pyplot.xlabel("psf")
+	pyplot.ylabel("psf - mod")
+    doPlot(table["r"])
+    pyplot.title("radius (pixels)")
+    if measurement.getOptions().fitDeltaFunction:
+	f = fractions[:,offset]
+	doPlot(f)
+	print "psf component fraction:", f.min(), f.max()
+	pyplot.title("psf component fraction")
+	offset += 1
+    if measurement.getOptions().fitExponential:
+	f = fractions[:,offset]
+	doPlot(f)
+	print "exponential component fraction:", f.min(), f.max()
+	pyplot.title("exponential component fraction")
+	offset += 1
+    if measurement.getOptions().fitDeVaucouleur:
+	f = fractions[:,offset]
+	doPlot(f)
+	print "de Vaucouleur component fraction:", f.min(), f.max()
+	pyplot.title("de Vaucouleur component fraction")
+	offset += 1
+    if measurement.getOptions().shapeletOrder >= 0:
+	f = fractions[:,offset:].sum(axis=1)
+	doPlot(f)
+	print "shapelet component fraction", f.min(), f.max()
+	pyplot.title("shapelet component fraction")
+    pyplot.show()
 
 def view(record):
     v = viewer.Viewer(record['dataset'])

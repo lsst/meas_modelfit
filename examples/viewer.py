@@ -266,6 +266,7 @@ class Viewer(object):
             v = allProfiles[k]
             ax1.plot(radii * r, numpy.dot(v, d["coefficients"]) / f, colors[k], label=k)
             pyplot.xlabel("radius (pixels)")
+	pyplot.axvline(r, color="k", linestyle=":")
         pyplot.legend()
         ax2 = pyplot.axes([0.1, 0.52, 0.6, 0.38], sharex=ax1)
         ax2.semilogy(radii * r, numpy.dot(fullProfile, d["coefficients"]) / f, "k", label="combined")
@@ -273,8 +274,8 @@ class Viewer(object):
             if k not in allProfiles: continue
             v = allProfiles[k]
             ax2.semilogy(radii * r, numpy.dot(v, d["coefficients"]) / f, colors[k], label=k)
-        ax2.set_xticklabels([])
-        pyplot.title("ellipse-averaged radial profile")
+	pyplot.axvline(r, color="k", linestyle=":")
+        pyplot.title("deconvolved radial profile")
         order.reverse()
         ax3 = pyplot.axes([0.75, 0.1, 0.2, 0.8])
         ax3.barh(numpy.arange(0, len(order)), [allFractions[k] for k in order], 
