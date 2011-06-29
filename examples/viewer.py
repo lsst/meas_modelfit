@@ -142,7 +142,9 @@ class Viewer(object):
 
         residual = img.Factory(bbox)
         lsst.afw.detection.expandArray(fp, residualArray, residual.getArray(), bbox.getMin())    
+        residual.getArray()[:,:] *= -1
         residualMi = mi.Factory(residual, msk)
+        
 
       
         psfImg = lsst.afw.image.ImageD(bbox)
@@ -189,24 +191,32 @@ class Viewer(object):
         q = lsst.afw.geom.ellipses.Quadrupole(ellipse.getCore())
         
         center = lsst.afw.geom.Point2D(ellipse.getCenter().getX() - bbox.getMinX(), ellipse.getCenter().getY() - bbox.getMinY())
+        src = self.sources[index]
 
         if(mode=="ds9"):
             mosaic = self.m.makeMosaic(d["images"], frame=0)
             self.m.drawLabels(d["image_labels"], frame=0)
             ds9.setMaskTransparency(75)
 
+            #plot initial, and fit ellipses
             #image
-            ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+            #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
             ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
+            ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=0, ctype=ds9.BLUE)
             #model
             center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter , 0)
-            ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+            #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
             ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
+            ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=0, ctype=ds9.BLUE)
             #residual
             center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter, 0)
-            ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+            #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
             ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
+            ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=0, ctype=ds9.BLUE)
             
+            
+
+
             psfMosaic = self.m.makeMosaic(d["psf_images"], frame=1)
             self.m.drawLabels(d["psf_labels"], frame=1)        
             ds9.show(frame=0)
