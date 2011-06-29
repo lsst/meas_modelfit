@@ -3,7 +3,7 @@
 namespace lsst { namespace meas { namespace multifit {
 
 void Evaluator::_evaluateModelMatrix(
-    ndarray::Array<double,2,2> const & matrix,
+    ndarray::Array<Pixel,2,2> const & matrix,
     ndarray::Array<double const,1,1> const & param
 ) const {
     matrix.deep() = 0.0;
@@ -18,7 +18,7 @@ void Evaluator::_evaluateModelMatrix(
                 source != object->sources.end(); ++source
             ) {
                 int coefficientOffset = source->getCoefficientOffset();
-                lsst::ndarray::Array<double,2,1> block = matrix[
+                lsst::ndarray::Array<Pixel,2,1> block = matrix[
                     lsst::ndarray::view(
                         source->frame.getPixelOffset(), 
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -41,7 +41,7 @@ void Evaluator::_evaluateModelMatrix(
                 source != object->sources.end();
                 ++source
             ) {
-                ndarray::Array<double,1,0> block = matrix[
+                ndarray::Array<Pixel,1,0> block = matrix[
                     lsst::ndarray::view(
                         source->frame.getPixelOffset(), 
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -62,8 +62,8 @@ void Evaluator::_evaluateModelMatrix(
 
 #if 0
 void Evaluator::_evaluateModelMatrixDerivative(
-    ndarray::Array<double,3,3> const & derivative,
-    ndarray::Array<double const,2,2> const & modelMatrix,
+    ndarray::Array<Pixel,3,3> const & derivative,
+    ndarray::Array<Pixel const,2,2> const & modelMatrix,
     ndarray::Array<double const,1,1> const & param
 ) const {
     derivative.deep() = 0.0;
@@ -80,7 +80,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                 ++source
             ) {
                 int coefficientOffset = source->getCoefficientOffset();
-                ndarray::Array<double const,2,1> fiducial = modelMatrix[
+                ndarray::Array<Pixel const,2,1> fiducial = modelMatrix[
                     ndarray::view(
                         source->frame.getPixelOffset(),
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -89,7 +89,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                         coefficientOffset + source->getCoefficientCount()
                     )
                 ];
-                ndarray::Array<double,3,1> block = 
+                ndarray::Array<Pixel,3,1> block = 
                     derivative[
                         ndarray::view(
                         )(
@@ -123,7 +123,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                 source != object->sources.end();
                 ++source
             ) {
-                ndarray::Array<double const,1,0> fiducial = modelMatrix[
+                ndarray::Array<Pixel const,1,0> fiducial = modelMatrix[
                     ndarray::view(
                         source->frame.getPixelOffset(), 
                         source->frame.getPixelOffset() + source->frame.getPixelCount()
@@ -131,7 +131,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                         source->getCoefficientOffset()
                     )                        
                 ];
-                ndarray::Array<double,2,0> block = 
+                ndarray::Array<Pixel,2,0> block = 
                     derivative[
                         ndarray::view(
                         )(

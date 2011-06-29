@@ -222,13 +222,13 @@ Frame::Frame(definition::Frame const & def, int pixelOffset, int filterIndex, in
     _filterIndex(filterIndex), _frameIndex(frameIndex)
 {}
 
-void Frame::applyWeights(ndarray::Array<double,2,1> const & matrix) const {
+void Frame::applyWeights(ndarray::Array<Pixel,2,1> const & matrix) const {
     if (!_weights.empty()) {
         matrix.deep() *= _weights;
     }
 }
 
-void Frame::applyWeights(ndarray::Array<double,1,0> const & vector) const {
+void Frame::applyWeights(ndarray::Array<Pixel,1,0> const & vector) const {
     if (!_weights.empty()) {
         vector.deep() *= _weights;
     }

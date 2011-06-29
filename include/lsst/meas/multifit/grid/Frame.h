@@ -38,9 +38,9 @@ public:
     int const getFilterIndex() const { return _filterIndex; }
     int const getFrameIndex() const { return _frameIndex; }
 
-    void applyWeights(ndarray::Array<double,2,1> const & matrix) const;
+    void applyWeights(ndarray::Array<Pixel,2,1> const & matrix) const;
 
-    void applyWeights(ndarray::Array<double,1,0> const & vector) const;
+    void applyWeights(ndarray::Array<Pixel,1,0> const & vector) const;
 
 private:
 

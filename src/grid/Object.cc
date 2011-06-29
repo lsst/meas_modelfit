@@ -284,8 +284,8 @@ double Source::computeFlux(
 }
 
 double Source::computeFluxVariance(
-    lsst::ndarray::Array<double const,1,1> const & integration,
-    lsst::ndarray::Array<double const,2,1> const & covariance
+    lsst::ndarray::Array<Pixel const,1,1> const & integration,
+    lsst::ndarray::Array<Pixel const,2,1> const & covariance
 ) {
     return ndarray::viewAsEigen(integration).dot(
         ndarray::viewAsEigen(covariance) * ndarray::viewAsEigen(integration)
@@ -307,7 +307,7 @@ double Source::computeFlux(
 }
 
 double Source::computeFluxVariance(
-    lsst::ndarray::Array<double const,2,1> const & covariance
+    lsst::ndarray::Array<Pixel const,2,1> const & covariance
 ) const {
     if (object.getBasis()) {
         Eigen::MatrixXd sigma = ndarray::viewAsEigen(covariance).block(

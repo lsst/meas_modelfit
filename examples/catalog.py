@@ -77,7 +77,7 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
             record["e1"] = core.getE1()
             record["e2"] = core.getE2()
             record["r"] = core.getRadius()
-            record["coeff"] = measurement.getCoefficients()
+            record["coeff"][:] = measurement.getCoefficients()
         tables.append(table)
 
     return numpy.concatenate(tables)

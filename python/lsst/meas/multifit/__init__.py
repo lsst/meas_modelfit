@@ -33,17 +33,6 @@ from .multifitLib import (
     ProfileFunction,
     CompoundShapeletModelBasis,
     CompoundShapeletBuilder,
-    BaseDistribution,
-    SimpleDistribution,
-    StudentDistribution,
-    GaussianDistribution,
-    BaseInterpreter,
-    UnifiedInterpreter,
-    NestedInterpreter,
-    SimpleInterpreter,
-    UnifiedSimpleInterpreter,
-    NestedSimpleInterpreter,
-    GaussNewtonOptimizer,
     version,
     makeSourceMeasurement
     )

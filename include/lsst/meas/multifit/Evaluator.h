@@ -52,14 +52,14 @@ public:
 protected:
 
     virtual void _evaluateModelMatrix(
-        ndarray::Array<double,2,2> const & matrix,
+        ndarray::Array<Pixel,2,2> const & matrix,
         ndarray::Array<double const,1,1> const & param
     ) const;
 
 #if 0
     virtual void _evaluateModelMatrixDerivative(
-        ndarray::Array<double,3,3> const & modelMatrixDerivative,
-        ndarray::Array<double const,2,2> const & modelMatrix,
+        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
+        ndarray::Array<Pixel const,2,2> const & modelMatrix,
         ndarray::Array<double const,1,1> const & param
     ) const;
 #endif

@@ -56,10 +56,10 @@ public:
      *  @param[out]    coefficients  Vector @f$x@f$.
      */
     virtual void solve(
-        ndarray::EigenView<double const,2,2> const & modelMatrix,
-        ndarray::EigenView<double const,2,2> const & fisherMatrix,
-        ndarray::EigenView<double const,1,1> const & data,
-        ndarray::EigenView<double,1,1> coefficients
+        ndarray::EigenView<Pixel const,2,2> const & modelMatrix,
+        ndarray::EigenView<Pixel const,2,2> const & fisherMatrix,
+        ndarray::EigenView<Pixel const,1,1> const & data,
+        ndarray::EigenView<Pixel,1,1> coefficients
     ) = 0;
 
     virtual ~LinearSolver() {}
@@ -69,10 +69,10 @@ class Evaluation::CholeskySolver : public Evaluation::LinearSolver {
 public:
 
     virtual void solve(
-        ndarray::EigenView<double const,2,2> const & modelMatrix,
-        ndarray::EigenView<double const,2,2> const & fisherMatrix,
-        ndarray::EigenView<double const,1,1> const & data,
-        ndarray::EigenView<double,1,1> coefficients
+        ndarray::EigenView<Pixel const,2,2> const & modelMatrix,
+        ndarray::EigenView<Pixel const,2,2> const & fisherMatrix,
+        ndarray::EigenView<Pixel const,1,1> const & data,
+        ndarray::EigenView<Pixel,1,1> coefficients
     ) {
         coefficients = (modelMatrix.transpose() * data).lazy();
         Eigen::LDLT<MatrixRM> ldlt(fisherMatrix);
@@ -85,24 +85,24 @@ class Evaluation::ConstrainedSolver : public Evaluation::LinearSolver {
 public:
 
     virtual void solve(
-        ndarray::EigenView<double const,2,2> const & modelMatrix,
-        ndarray::EigenView<double const,2,2> const & fisherMatrix,
-        ndarray::EigenView<double const,1,1> const & data,
-        ndarray::EigenView<double,1,1> coefficients
+        ndarray::EigenView<Pixel const,2,2> const & modelMatrix,
+        ndarray::EigenView<Pixel const,2,2> const & fisherMatrix,
+        ndarray::EigenView<Pixel const,1,1> const & data,
+        ndarray::EigenView<Pixel,1,1> coefficients
     ) {
         ndarray::viewAsEigen(_rhs) = -(modelMatrix.transpose() * data).lazy();
         QPSolver(fisherMatrix.getArray(), _rhs).inequality(_matrix, _vector).solve(coefficients.getArray());
     }
 
     ConstrainedSolver(
-        ndarray::Array<double const,2,1> const & matrix,
-        ndarray::Array<double const,1,1> const & vector
+        ndarray::Array<Pixel const,2,1> const & matrix,
+        ndarray::Array<Pixel const,1,1> const & vector
     ) : _rhs(ndarray::allocate(matrix.getSize<1>())), _matrix(matrix), _vector(vector) {}
 
 private:
-    ndarray::Array<double,1,1> _rhs;
-    ndarray::Array<double const,2,1> _matrix;
-    ndarray::Array<double const,1,1> _vector;
+    ndarray::Array<Pixel,1,1> _rhs;
+    ndarray::Array<Pixel const,2,1> _matrix;
+    ndarray::Array<Pixel const,1,1> _vector;
 };
 
 Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator) : 
@@ -114,7 +114,7 @@ Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator) :
 
 Evaluation::Evaluation(
     BaseEvaluator::Ptr const & evaluator,
-    lsst::ndarray::Array<double const,1,1> const & parameters
+    lsst::ndarray::Array<Pixel const,1,1> const & parameters
 ) : 
     _status(0), _evaluator(evaluator), _parameters(ndarray::copy(parameters))
 {
@@ -144,7 +144,7 @@ void Evaluation::update(Eigen::VectorXd const & parameters) {
     
 void Evaluation::update(
     lsst::ndarray::Array<double const,1,1> const & parameters, 
-    lsst::ndarray::Array<double const,1,1> const & coefficients
+    lsst::ndarray::Array<Pixel const,1,1> const & coefficients
 ) {
     update(parameters);
     setCoefficients(coefficients);
@@ -158,7 +158,7 @@ void Evaluation::update(
     setCoefficients(coefficients);
 }
 
-void Evaluation::setCoefficients(lsst::ndarray::Array<double const,1,1> const & coefficients) {
+void Evaluation::setCoefficients(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) {
     assert(coefficients.size() == _evaluator->getCoefficientSize());
     if (_coefficients.getData() == 0) {
         _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
@@ -212,10 +212,10 @@ void Evaluation::ensureCoefficients() const {
         _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
     }
     _solver->solve(
-        ndarray::EigenView<double const,2,2>(_modelMatrix),
-        ndarray::EigenView<double const,2,2>(_coefficientFisherMatrix),
-        ndarray::EigenView<double const,1,1>(_evaluator->getDataVector()),
-        ndarray::EigenView<double,1,1>(_coefficients)
+        ndarray::EigenView<Pixel const,2,2>(_modelMatrix),
+        ndarray::EigenView<Pixel const,2,2>(_coefficientFisherMatrix),
+        ndarray::EigenView<Pixel const,1,1>(_evaluator->getDataVector()),
+        ndarray::EigenView<Pixel,1,1>(_coefficients)
     );
     Bit<COEFFICIENTS>::set(_status);
 }
@@ -252,8 +252,8 @@ void Evaluation::ensureResidualsJacobian() const {
             _evaluator->getDataSize(), _evaluator->getParameterSize()
         );
     }
-    ndarray::EigenView<double,1,1> coeffVec(_coefficients);
-    ndarray::EigenView<double,2,2> jac(_residualsJacobian);
+    ndarray::EigenView<Pixel,1,1> coeffVec(_coefficients);
+    ndarray::EigenView<Pixel,2,2> jac(_residualsJacobian);
     for (int n = 0; n < jac.cols(); ++n) {
         jac.col(n) = ndarray::viewAsEigen(_modelMatrixDerivative[n]) * coeffVec;
     }

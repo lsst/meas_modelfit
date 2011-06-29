@@ -124,23 +124,23 @@ public:
     Evaluator::Ptr getEvaluator() const { return _evaluator; }
     lsst::afw::detection::Footprint::Ptr getFootprint() const { return _fp; }
     lsst::ndarray::Array<double const,1,1> getParameters() const { return _parameters; }
-    lsst::ndarray::Array<double const,1,1> getCoefficients() const { return _coefficients; }
-    lsst::ndarray::Array<double const,2,2> getCovariance() const { return _covariance; }
-    lsst::ndarray::Array<double const,1,1> getIntegration() const { return _integration; }
+    lsst::ndarray::Array<Pixel const,1,1> getCoefficients() const { return _coefficients; }
+    lsst::ndarray::Array<Pixel const,2,2> getCovariance() const { return _covariance; }
+    lsst::ndarray::Array<Pixel const,1,1> getIntegration() const { return _integration; }
 
     int getCoefficientSize() const { return _coefficients.getSize<0>(); }
 
-    double getDeltaFunctionCoefficients() const {
+    Pixel getDeltaFunctionCoefficient() const {
         return _coefficients[getCoefficientOffset(DELTAFUNCTION_ID)];
     }
-    double getExponentialCoefficients() const {
+    Pixel getExponentialCoefficient() const {
         return _coefficients[getCoefficientOffset(EXPONENTIAL_ID)];
     }
-    double getDeVaucouleurCoefficients() const {
+    Pixel getDeVaucouleurCoefficient() const {
         return _coefficients[getCoefficientOffset(DEVAUCOULEUR_ID)];
     }
 
-    lsst::ndarray::Array<double const,1,1> getShapeletCoefficients() const {
+    lsst::ndarray::Array<Pixel const,1,1> getShapeletCoefficients() const {
         int offset = getCoefficientOffset(SHAPELET_ID);
         return _coefficients[
             ndarray::view(offset, offset + afw::math::shapelets::computeSize(_options.shapeletOrder))
@@ -174,9 +174,9 @@ private:
     Evaluator::Ptr _evaluator;
     lsst::afw::detection::Footprint::Ptr _fp;
     ndarray::Array<double,1,1> _parameters;
-    ndarray::Array<double,1,1> _coefficients;
-    ndarray::Array<double,2,2> _covariance;
-    ndarray::Array<double,1,1> _integration;
+    ndarray::Array<Pixel,1,1> _coefficients;
+    ndarray::Array<Pixel,2,2> _covariance;
+    ndarray::Array<Pixel,1,1> _integration;
     boost::int64_t _status;
 
     static ID const DELTAFUNCTION_ID=0;
