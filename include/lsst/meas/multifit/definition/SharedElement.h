@@ -293,9 +293,9 @@ private:
 
 };
 
-typedef SharedElement<POSITION> PositionComponent;
-typedef SharedElement<RADIUS> RadiusComponent;
-typedef SharedElement<ELLIPTICITY> EllipticityComponent;
+typedef SharedElement<POSITION> PositionElement;
+typedef SharedElement<RADIUS> RadiusElement;
+typedef SharedElement<ELLIPTICITY> EllipticityElement;
 
 #ifndef SWIG
 template <SharedElementType E>

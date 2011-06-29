@@ -28,15 +28,12 @@
 #include "lsst/meas/multifit/definition/SharedElement.h"
 %}
 
-SWIG_SHARED_PTR(grid_PositionComponentPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::POSITION>);
-SWIG_SHARED_PTR(grid_RadiusComponentPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::RADIUS>);
-SWIG_SHARED_PTR(grid_EllipticityComponentPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
-
-%define %AddComponentAccessors(TITLE, LOWER, UPPER)
-%enddef
+SWIG_SHARED_PTR(grid_PositionElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::POSITION>);
+SWIG_SHARED_PTR(grid_RadiusElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::RADIUS>);
+SWIG_SHARED_PTR(grid_EllipticityElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
 
 %define %DeclareGridSharedElement(TITLE, LOWER, UPPER, CONSTRAINT)
-%template(grid_##TITLE##Component)
+%template(grid_##TITLE##Element)
 lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>;
 %PointerEQ(lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>)
 %AddStreamRepr(lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>)

@@ -70,7 +70,7 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
     def testComponents(self):
         position1 = mf.Position(4.3, 2.0)
         position2 = mf.Position(-2.1, 0.5)
-        p = mf.definition.PositionComponent.make(position1)
+        p = mf.definition.PositionElement.make(position1)
         self.assert_(p.isActive())
         self.assertEqual(p.getValue(), position1)
         p.setValue(position2)
@@ -84,7 +84,7 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
 
         ellipticity1 = mf.Ellipticity(0.6, -0.1)
         ellipticity2 = mf.Ellipticity(-0.25, 0.3)
-        e = mf.definition.EllipticityComponent.make(ellipticity1, False)
+        e = mf.definition.EllipticityElement.make(ellipticity1, False)
         self.assertEqual(e.getValue().getE1(), ellipticity1.getE1())
         self.assertEqual(e.getValue().getE2(), ellipticity1.getE2())
         self.assertFalse(e.isActive())
@@ -98,7 +98,7 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
         
         radius1 = mf.Radius(2.3)
         radius2 = mf.Radius(1.6)
-        r = mf.definition.RadiusComponent.make(radius1, True)
+        r = mf.definition.RadiusElement.make(radius1, True)
         self.assertEqual(float(r.getValue()), float(radius1))
         self.assert_(r.isActive())
         r.setValue(radius2)

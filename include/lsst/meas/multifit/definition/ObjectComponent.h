@@ -114,28 +114,28 @@ public:
 
     //@{
     /**
-     *  @brief Return and/or set the parameter components.
+     *  @brief Return and/or set the parameter element.
      */
 #ifndef SWIG
-    PositionComponent::Ptr & getPosition() { return _position; }
-    RadiusComponent::Ptr & getRadius() { return _radius; }
-    EllipticityComponent::Ptr & getEllipticity() { return _ellipticity; }
+    PositionElement::Ptr & getPosition() { return _position; }
+    RadiusElement::Ptr & getRadius() { return _radius; }
+    EllipticityElement::Ptr & getEllipticity() { return _ellipticity; }
 
-    PositionComponent::Ptr const getPosition() const { return _position; }
-    RadiusComponent::Ptr const getRadius() const { return _radius; }
-    EllipticityComponent::Ptr const getEllipticity() const { return _ellipticity; }
+    PositionElement::Ptr const getPosition() const { return _position; }
+    RadiusElement::Ptr const getRadius() const { return _radius; }
+    EllipticityElement::Ptr const getEllipticity() const { return _ellipticity; }
 
     template <SharedElementType E>
-    typename SharedElement<E>::Ptr & getComponent() {
+    typename SharedElement<E>::Ptr & getElement() {
         typename SharedElement<E>::Ptr const * p;
-        getComponentImpl(p);
+        getElementImpl(p);
         return const_cast<typename SharedElement<E>::Ptr &>(*p);
     }
 
     template <SharedElementType E>
-    typename SharedElement<E>::Ptr const getComponent() const {
+    typename SharedElement<E>::Ptr const getElement() const {
         typename SharedElement<E>::Ptr const * p;
-        getComponentImpl(p);
+        getElementImpl(p);
         return *p;
     }
     //@}
@@ -174,15 +174,16 @@ private:
 
     friend class grid::Initializer;
 
-    explicit ObjectComponent(detail::ObjectComponentBase const & other) : detail::ObjectComponentBase(other) {}
+    explicit ObjectComponent(detail::ObjectComponentBase const & other) : 
+        detail::ObjectComponentBase(other) {}
 
-    void getComponentImpl(PositionComponent::Ptr const * & p) const { p = &_position; }
-    void getComponentImpl(RadiusComponent::Ptr const * & p) const { p = &_radius; }
-    void getComponentImpl(EllipticityComponent::Ptr const * & p) const { p = &_ellipticity; }
+    void getElementImpl(PositionElement::Ptr const * & p) const { p = &_position; }
+    void getElementImpl(RadiusElement::Ptr const * & p) const { p = &_radius; }
+    void getElementImpl(EllipticityElement::Ptr const * & p) const { p = &_ellipticity; }
 
-    PositionComponent::Ptr _position;
-    RadiusComponent::Ptr _radius;
-    EllipticityComponent::Ptr _ellipticity;
+    PositionElement::Ptr _position;
+    RadiusElement::Ptr _radius;
+    EllipticityElement::Ptr _ellipticity;
 };
 
 #ifndef SWIG

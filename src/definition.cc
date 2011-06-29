@@ -47,7 +47,7 @@ ObjectComponent ObjectComponent::makeStar(
     bool const isPositionActive
 ) {
     ObjectComponent r(id);
-    r.getPosition() = PositionComponent::make(position, isPositionActive);
+    r.getPosition() = PositionElement::make(position, isPositionActive);
     r.isVariable() = isVariable;    
     return r;
 }
@@ -62,9 +62,9 @@ ObjectComponent ObjectComponent::makeGalaxy(
 ) {
     ObjectComponent r(id);
     EllipseCore core(ellipse.getCore());
-    r.getPosition() = PositionComponent::make(ellipse.getCenter(), isPositionActive);
-    r.getEllipticity() = EllipticityComponent::make(core.getEllipticity(), isEllipticityActive);
-    r.getRadius() = RadiusComponent::make(core.getRadius(), isRadiusActive);
+    r.getPosition() = PositionElement::make(ellipse.getCenter(), isPositionActive);
+    r.getEllipticity() = EllipticityElement::make(core.getEllipticity(), isEllipticityActive);
+    r.getRadius() = RadiusElement::make(core.getRadius(), isRadiusActive);
     r.getBasis() = basis;
     return r;
 }

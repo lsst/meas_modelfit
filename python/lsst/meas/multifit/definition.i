@@ -57,15 +57,12 @@
 #include "lsst/meas/multifit/definition/SharedElement.h"
 %}
 
-SWIG_SHARED_PTR(definition_PositionComponentPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::POSITION>);
-SWIG_SHARED_PTR(definition_RadiusComponentPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::RADIUS>);
-SWIG_SHARED_PTR(definition_EllipticityComponentPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
-
-%define %AddComponentAccessors(TITLE, LOWER, UPPER)
-%enddef
+SWIG_SHARED_PTR(definition_PositionElementPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::POSITION>);
+SWIG_SHARED_PTR(definition_RadiusElementPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::RADIUS>);
+SWIG_SHARED_PTR(definition_EllipticityElementPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
 
 %define %DeclareDefinitionSharedElement(TITLE, LOWER, UPPER, CONSTRAINT)
-%template(definition_##TITLE##Component)
+%template(definition_##TITLE##Element)
 lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::UPPER>;
 %PointerEQ(lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::UPPER>)
 %AddStreamRepr(lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::UPPER>)

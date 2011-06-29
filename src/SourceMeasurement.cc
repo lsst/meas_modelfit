@@ -169,14 +169,14 @@ CompoundShapeletModelBasis::Ptr SourceMeasurement::getDeVaucouleurBasis() {
 void SourceMeasurement::addObjectsToDefinition(
     Definition & def, lsst::afw::geom::ellipses::Ellipse const & ellipse
 ) const {
-    definition::PositionComponent::Ptr position = definition::PositionComponent::make(
+    definition::PositionElement::Ptr position = definition::PositionElement::make(
         ellipse.getCenter(), false
     );
     EllipseCore ellipseCore(ellipse.getCore());
-    definition::RadiusComponent::Ptr radius = definition::RadiusComponent::make(
+    definition::RadiusElement::Ptr radius = definition::RadiusElement::make(
         ellipseCore.getRadius(), true
     );
-    definition::EllipticityComponent::Ptr ellipticity = definition::EllipticityComponent::make(
+    definition::EllipticityElement::Ptr ellipticity = definition::EllipticityElement::make(
         ellipseCore.getEllipticity(), true
     );
     if (_options.fitDeltaFunction) {
