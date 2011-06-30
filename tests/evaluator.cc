@@ -71,7 +71,10 @@ void checkEvaluator(
     for(int i =0; i < fp.getArea(); ++i) {
         BOOST_CHECK_CLOSE(frame.getWeights()[i], weightValue, 0.00001);
     }
-   
+    for(int i =0; i < fp.getArea(); ++i) {
+        BOOST_CHECK_CLOSE(eval.getDataVector()[i], dataValue, 0.00001);
+    } 
+
     BOOST_CHECK_EQUAL(eval.getGrid()->objects.size(), 1);
     multifit::grid::ObjectComponent const & object= *(eval.getGrid()->objects.begin());
     BOOST_CHECK_EQUAL(object.getCoefficientOffset(), 0);
@@ -95,15 +98,18 @@ BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
     exp->setPsf(psf);
     detection::Footprint::Ptr fp(new detection::Footprint(bbox));
     geom::Point2D point(30.5, 55.8);
-    
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, false, ~0x0, true))
-    );
+   
+    multifit::Definition definition;    
+    definition.frames.insert(multifit::definition::Frame::make(0, *exp, fp, ~0x0));
+    definition.objects.insert(multifit::definition::ObjectComponent::makeStar(0, point, false, false));
+
+    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, 1, 0, 1.0, 0.5);
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, true, ~0x0, true))
-    );
+    definition.objects.erase(0);
+    definition.objects.insert(multifit::definition::ObjectComponent::makeStar(0, point, false, true));
+    eval = multifit::Evaluator::make(definition, false);
+    
     checkEvaluator(*eval, *fp, 1, 2, 1.0, 0.5);
     ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterSize());
     eval->writeInitialParameters(parameters);
@@ -122,21 +128,22 @@ BOOST_AUTO_TEST_CASE(GalaxySourceConstruction) {
     multifit::Footprint::Ptr fp(new multifit::Footprint(ellipse));
     multifit::ModelBasis::Ptr basis = multifit::ShapeletModelBasis::make(5);
 
+    multifit::Definition definition;    
+    definition.frames.insert(multifit::definition::Frame::make(0, *exp, fp, ~0x0));
+    definition.objects.insert(multifit::definition::ObjectComponent::makeGalaxy(0, basis, ellipse, false, false, false));
 
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, false, false, false, ~0x0, true))
-    );
+    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, basis->getSize(), 0, 1.0, 0.5);
 
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, false, ~0x0, true))
-    );
+    definition.objects.erase(0);
+    definition.objects.insert(multifit::definition::ObjectComponent::makeGalaxy(0, basis, ellipse, true, true, false));
+    eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, basis->getSize(), 3, 1.0, 0.5);
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, true, ~0x0, true))
-    );
+    definition.objects.erase(0);
+    definition.objects.insert(multifit::definition::ObjectComponent::makeGalaxy(0, basis, ellipse, true, true, true));
+    eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, basis->getSize(), 5, 1.0, 0.5);
 }
 
@@ -232,7 +239,7 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
     );
     nParameters+=3;
 
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(multifit::Grid::make(definition));
+    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(definition, false);
 
     BOOST_CHECK_EQUAL(eval->getGrid()->getFilterCount(), 2);
     BOOST_CHECK_EQUAL(eval->getGrid()->getCoefficientCount(), 
@@ -250,7 +257,8 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
         multifit::definition::Frame const & j = definition.frames[i->id];
         BOOST_CHECK_EQUAL(i->id, j.id);
         BOOST_CHECK_EQUAL(i->getFrameIndex(), frameIndex);
-        BOOST_CHECK_EQUAL(i->getFootprint(), j.getFootprint());
+        BOOST_CHECK_EQUAL(i->getFootprint()->getArea(), j.getFootprint()->getArea());
+        BOOST_CHECK_EQUAL(i->getFootprint()->getBBox(), j.getFootprint()->getBBox());
         BOOST_CHECK_EQUAL(i->getPixelOffset(), pixelOffset);
         BOOST_CHECK_EQUAL(i->getPixelCount(), j.getFootprint()->getArea());
 

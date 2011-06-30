@@ -103,6 +103,7 @@ public:
         lsst::afw::detection::Footprint const & fp
     );
 
+
     template <typename ExposureT>
     int measure(
         PTR(ExposureT) exp,
@@ -121,12 +122,21 @@ public:
     );
 #endif
 
+
+
     Evaluator::Ptr getEvaluator() const { return _evaluator; }
     lsst::afw::detection::Footprint::Ptr getFootprint() const { return _fp; }
     lsst::ndarray::Array<double const,1,1> getParameters() const { return _parameters; }
+    lsst::ndarray::Array<double const,2,2> getTestPoints() const { return _points; }
+    lsst::ndarray::Array<double const,3,3> getObjectiveValue() const { return _objectiveValue; }
+    int getRadiusIndex() const { return _rBest; }
+    int getE1Index() const { return _e1Best; }
+    int getE2Index() const { return _e2Best; }
+
     lsst::ndarray::Array<Pixel const,1,1> getCoefficients() const { return _coefficients; }
     lsst::ndarray::Array<Pixel const,2,2> getCovariance() const { return _covariance; }
     lsst::ndarray::Array<Pixel const,1,1> getIntegration() const { return _integration; }
+
 
     int getCoefficientSize() const { return _coefficients.getSize<0>(); }
 
@@ -162,8 +172,9 @@ private:
         return grid::find(_evaluator->getGrid()->objects, id).getCoefficientOffset();
     }
 
+    void setTestPoints(EllipseCore const & initialEllipse, EllipseCore const & psfEllipse);
     void optimize(Ellipse const & initialEllipse);
-    void solve(double e1, double e2, double radius, double & best);
+    bool solve(double e1, double e2, double radius, double & objective, double & best);
 
     Options _options;
     lsst::afw::image::MaskPixel _bitmask;
@@ -174,6 +185,10 @@ private:
     Evaluator::Ptr _evaluator;
     lsst::afw::detection::Footprint::Ptr _fp;
     ndarray::Array<double,1,1> _parameters;
+    ndarray::Array<double, 3, 3> _objectiveValue;
+    ndarray::Array<double, 2, 2> _points;
+    int _rBest, _e1Best, _e2Best;
+
     ndarray::Array<Pixel,1,1> _coefficients;
     ndarray::Array<Pixel,2,2> _covariance;
     ndarray::Array<Pixel,1,1> _integration;

@@ -38,11 +38,11 @@ public:
 
     Grid::Ptr getGrid() const { return _grid; }
     
-    static Ptr make(Grid::Ptr const & grid) {
-        return boost::make_shared<Evaluator>(grid);
+    static Ptr make(Grid::Ptr const & grid, bool const usePixelWeights) {
+        return boost::make_shared<Evaluator>(grid, usePixelWeights);
     }
-    static Ptr make(Definition const & definition) {
-        return boost::make_shared<Evaluator>(Grid::make(definition));
+    static Ptr make(Definition const & definition, bool const usePixelWeights) {
+        return boost::make_shared<Evaluator>(Grid::make(definition), usePixelWeights);
     }
 
     virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const {
@@ -68,13 +68,13 @@ protected:
 
 private:
     
-    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid>);
+    FRIEND_MAKE_SHARED_2(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid>, bool );
 
-    explicit Evaluator(Grid::Ptr const & grid);
+    explicit Evaluator(Grid::Ptr const & grid, bool const usePixelWeights);
 
-    Evaluator(Evaluator const & other);
+    Evaluator(Evaluator const & other, bool const usePixelWeights);
     
-    void _initialize();
+    void _initialize(bool const usePixelWeights);
 
     Grid::Ptr _grid;
 };

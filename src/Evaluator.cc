@@ -162,20 +162,20 @@ void Evaluator::_evaluateModelMatrixDerivative(
 
 #endif
 
-Evaluator::Evaluator(Grid::Ptr const & grid) :
+Evaluator::Evaluator(Grid::Ptr const & grid, bool const usePixelWeights) :
     BaseEvaluator(
         grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount()
     ),
     _grid(grid)
 {
-    _initialize();
+    _initialize(usePixelWeights);
 }
 
-Evaluator::Evaluator(Evaluator const & other) : BaseEvaluator(other), _grid(other._grid) {
-    _initialize();
+Evaluator::Evaluator(Evaluator const & other, bool const usePixelWeights) : BaseEvaluator(other), _grid(other._grid) {
+    _initialize(usePixelWeights);
 }
 
-void Evaluator::_initialize() {
+void Evaluator::_initialize(bool const usePixelWeights) {
     for (
         Grid::FrameArray::const_iterator i = _grid->frames.begin();
         i != _grid->frames.end(); ++i
@@ -184,7 +184,7 @@ void Evaluator::_initialize() {
             ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] = i->getData();
         
-        if (!i->getWeights().empty()) {
+        if (!i->getWeights().empty() && usePixelWeights) {
             _dataVector[
                 ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] *= i->getWeights();

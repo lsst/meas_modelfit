@@ -127,8 +127,7 @@ public:
         ID const id,
         lsst::afw::image::Exposure<PixelT> const & exposure,
         Footprint::Ptr const & footprint,
-        lsst::afw::image::MaskPixel const bitmask=~0x0,
-        bool const usePixelWeights = false
+        lsst::afw::image::MaskPixel const bitmask=~0x0
     );
     
 #ifndef SWIG
