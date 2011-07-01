@@ -62,14 +62,14 @@ lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>;
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
-template <typename T> class Array {};
+template <typename T, ArrayIndexEnum indexed> class Array {};
 
 }}}} // namespace lsst::meas::multifit::grid
 
-%define %DeclareArray(NAME)
-%template(grid_##NAME##Array)
-lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME>;
-%extend lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME> {
+%define %DeclareArray(NAME, INDEXED, CLS)
+%template(grid_##CLS)
+lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME,lsst::meas::multifit::grid::INDEXED>;
+%extend lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME,lsst::meas::multifit::grid::INDEXED> {
     NAME const * __getitem__(int n) {
         if (n < 0 || n >= self->size()) {
             PyErr_SetString(PyExc_IndexError, "Index out of range.");
@@ -79,6 +79,9 @@ lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME>;
     }
     int __len__() {
         return self->size();
+    }
+    NAME const & find(ID const id) {
+        return self->find(id);
     }
     %pythoncode %{
         def __iter__(self):
@@ -168,9 +171,10 @@ SWIG_SHARED_PTR(grid_SourceComponentPtr, lsst::meas::multifit::grid::SourceCompo
 
 //----------------------------- Grid -----------------------------------
 
-%DeclareArray(SourceComponent)
-%DeclareArray(ObjectComponent)
-%DeclareArray(Frame)
+%DeclareArray(SourceComponent, NO_ID, SourceComponentArray)
+%DeclareArray(ObjectComponent, SORTED, FluxGroup_ComponentArray)
+%DeclareArray(ObjectComponent, UNSORTED, ObjectComponentArray)
+%DeclareArray(Frame, SORTED, FrameArray)
 
 %{
 #include "lsst/meas/multifit/grid/Grid.h"

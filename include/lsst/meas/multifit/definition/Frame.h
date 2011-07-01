@@ -177,7 +177,7 @@ public:
 private:
     friend class grid::Initializer;
 
-    explicit Frame(detail::FrameBase const & other) : detail::FrameBase(other, true) {}
+    explicit Frame(detail::FrameBase const & other) : detail::FrameBase(other, false) {}
 };
 
 #ifndef SWIG

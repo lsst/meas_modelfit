@@ -159,7 +159,7 @@ public:
 private:
 
     int getCoefficientOffset(ID id) const {
-        return grid::find(_evaluator->getGrid()->objects, id).getCoefficientOffset();
+        return _evaluator->getGrid()->objects.find(id).getCoefficientOffset();
     }
 
     void optimize(Ellipse const & initialEllipse);

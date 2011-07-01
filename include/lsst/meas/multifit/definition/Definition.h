@@ -26,7 +26,7 @@
 
 #include "lsst/meas/multifit/definition/Frame.h"
 #include "lsst/meas/multifit/definition/ObjectComponent.h"
-#include "lsst/meas/multifit/definition/Set.h"
+#include "lsst/meas/multifit/containers/Set.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
@@ -35,8 +35,8 @@ public:
     typedef definition::Frame Frame;
     typedef definition::ObjectComponent ObjectComponent;
 
-    typedef definition::Set<Frame> FrameSet;
-    typedef definition::Set<ObjectComponent> ObjectComponentSet; 
+    typedef containers::MutableSet<Frame> FrameSet;
+    typedef containers::MutableSet<ObjectComponent> ObjectComponentSet; 
 
     Definition() {}
 

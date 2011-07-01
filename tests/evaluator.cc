@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
         multifit::definition::ObjectComponent const & k = definition.objects[i->id];
         BOOST_CHECK_EQUAL(i->id, k.id);
         BOOST_CHECK_EQUAL(i->getBasis(), k.getBasis());
-        BOOST_CHECK_EQUAL(i->isVariable(), k.isVariable());
+        BOOST_CHECK_EQUAL(i->getFluxGroup()->isVariable(), k.getFluxGroup()->isVariable());
         BOOST_CHECK_EQUAL(i->getRadiusFactor(), k.getRadiusFactor());
         BOOST_CHECK_EQUAL(i->getCoefficientOffset(), coefficientOffset);
         int sourceCoefficientCount = k.getBasis() ? k.getBasis()->getSize() : 1;
@@ -292,8 +292,8 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
     for(multifit::grid::SourceComponent const * source = eval->getGrid()->sources.begin();
         source != eval->getGrid()->sources.end(); ++source
     ) {
-        multifit::grid::ObjectComponent const & object = multifit::grid::find(eval->getGrid()->objects, source->object.id);
-        multifit::grid::Frame const & frame = multifit::grid::find(eval->getGrid()->frames, source->frame.id);
+        multifit::grid::ObjectComponent const & object = eval->getGrid()->objects.find(source->object.id);
+        multifit::grid::Frame const & frame = eval->getGrid()->frames.find(source->frame.id);
         
         BOOST_CHECK_EQUAL(&object, &source->object);
         BOOST_CHECK_EQUAL(&frame, &source->frame);
