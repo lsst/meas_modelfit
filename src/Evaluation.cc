@@ -4,12 +4,13 @@
 #include <Eigen/Cholesky>
 #include <Eigen/Array>
 #include <Eigen/QR>
+#include <Eigen/SVD>
 
 namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
-typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::AutoAlign | Eigen::RowMajor> MatrixRM;
+
 
 enum ProductEnum {
     MODEL_MATRIX = 0,
@@ -105,8 +106,11 @@ private:
     ndarray::Array<Pixel const,1,1> _vector;
 };
 
-Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator) : 
-    _status(0), _evaluator(evaluator), _parameters(ndarray::allocate(_evaluator->getParameterSize()))
+Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator, double const svThreshold) : 
+    _products(0), _evaluator(evaluator), 
+    _parameters(ndarray::allocate(_evaluator->getParameterSize())),
+    _svThreshold(svThreshold)
+
 {
     _evaluator->writeInitialParameters(_parameters);
     initialize();
@@ -114,18 +118,24 @@ Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator) :
 
 Evaluation::Evaluation(
     BaseEvaluator::Ptr const & evaluator,
-    lsst::ndarray::Array<Pixel const,1,1> const & parameters
+    lsst::ndarray::Array<Pixel const,1,1> const & parameters, 
+    double const svThreshold
 ) : 
-    _status(0), _evaluator(evaluator), _parameters(ndarray::copy(parameters))
+    _products(0), _evaluator(evaluator), 
+    _parameters(ndarray::copy(parameters)),
+    _svThreshold(svThreshold)
 {
     initialize();
 }
 
 Evaluation::Evaluation(
     BaseEvaluator::Ptr const & evaluator,
-    Eigen::VectorXd const & parameters
+    Eigen::VectorXd const & parameters, 
+    double const svThreshold
 ) : 
-    _status(0), _evaluator(evaluator), _parameters(ndarray::allocate(parameters.size()))
+    _products(0), _evaluator(evaluator), 
+    _parameters(ndarray::allocate(parameters.size())),
+    _svThreshold(svThreshold)
 {
     ndarray::viewAsEigen(_parameters) = parameters;
     initialize();
@@ -134,12 +144,12 @@ Evaluation::Evaluation(
 void Evaluation::update(lsst::ndarray::Array<double const,1,1> const & parameters) {
     assert(parameters.getSize<0>() == _parameters.getSize<0>());
     _parameters.deep() = parameters;
-    _status = 0;
+    _products = 0;
 }
 void Evaluation::update(Eigen::VectorXd const & parameters) {
     assert(parameters.size() == _parameters.getSize<0>());
     ndarray::viewAsEigen(_parameters) = parameters;
-    _status = 0;
+    _products = 0;
 }
     
 void Evaluation::update(
@@ -164,8 +174,8 @@ void Evaluation::setCoefficients(lsst::ndarray::Array<Pixel const,1,1> const & c
         _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
     }
     _coefficients.deep() = coefficients;
-    _status &= ~coefficient_dependencies;
-    Bit<COEFFICIENTS>::set(_status);
+    _products &= ~coefficient_dependencies;
+    Bit<COEFFICIENTS>::set(_products);
 }
 
 void Evaluation::setCoefficients(Eigen::VectorXd const & coefficients) {
@@ -174,27 +184,27 @@ void Evaluation::setCoefficients(Eigen::VectorXd const & coefficients) {
     }
     assert(coefficients.size() == _evaluator->getCoefficientSize());
     ndarray::viewAsEigen(_coefficients) = coefficients;
-    _status &= ~coefficient_dependencies;
-    Bit<COEFFICIENTS>::set(_status);
+    _products &= ~coefficient_dependencies;
+    Bit<COEFFICIENTS>::set(_products);
 }
 
 void Evaluation::solveCoefficients() {
-    _status &= ~coefficient_dependencies;
-    Bit<COEFFICIENTS>::reset(_status);
+    _products &= ~coefficient_dependencies;
+    Bit<COEFFICIENTS>::reset(_products);
     ensureCoefficients();
 }
 
 void Evaluation::ensureModelMatrix() const {
-    if (Bit<MODEL_MATRIX>::test(_status)) return;
+    if (Bit<MODEL_MATRIX>::test(_products)) return;
     if (_modelMatrix.getData() == 0) {
         _modelMatrix = ndarray::allocate(_evaluator->getDataSize(), _evaluator->getCoefficientSize());
     }
     _evaluator->_evaluateModelMatrix(_modelMatrix, _parameters);
-    Bit<MODEL_MATRIX>::set(_status);
+    Bit<MODEL_MATRIX>::set(_products);
 }
 
 void Evaluation::ensureModelMatrixDerivative() const {
-    if (Bit<MODEL_MATRIX_DERIVATIVE>::test(_status)) return;
+    if (Bit<MODEL_MATRIX_DERIVATIVE>::test(_products)) return;
     ensureModelMatrix();
     if (_modelMatrixDerivative.getData() == 0) {
         _modelMatrixDerivative = ndarray::allocate(
@@ -202,26 +212,48 @@ void Evaluation::ensureModelMatrixDerivative() const {
         );
     }
     _evaluator->_evaluateModelMatrixDerivative(_modelMatrixDerivative, _modelMatrix, _parameters);
-    Bit<MODEL_MATRIX_DERIVATIVE>::set(_status);
+    Bit<MODEL_MATRIX_DERIVATIVE>::set(_products);
 }
 
 void Evaluation::ensureCoefficients() const {
-    if (Bit<COEFFICIENTS>::test(_status)) return;
+    if (Bit<COEFFICIENTS>::test(_products)) return;
     ensureCoefficientFisherMatrix();
     if (_coefficients.getData() == 0) {
         _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
     }
-    _solver->solve(
-        ndarray::EigenView<Pixel const,2,2>(_modelMatrix),
-        ndarray::EigenView<Pixel const,2,2>(_coefficientFisherMatrix),
-        ndarray::EigenView<Pixel const,1,1>(_evaluator->getDataVector()),
-        ndarray::EigenView<Pixel,1,1>(_coefficients)
-    );
-    Bit<COEFFICIENTS>::set(_status);
+    ndarray::EigenView<Pixel const,2,2> modelMatrix(_modelMatrix);
+    ndarray::EigenView<Pixel const,2,2> fisherMatrix(_coefficientFisherMatrix);
+    ndarray::EigenView<Pixel const,1,1> data(_evaluator->getDataVector());
+    ndarray::EigenView<Pixel,1,1> coeff(_coefficients);
+ 
+    _svd.reset();
+    try {
+        _solver->solve(modelMatrix, fisherMatrix, data, coeff);
+    } catch (...) {
+        
+        _svd.reset(new Eigen::SVD<MatrixRM>(modelMatrix.svd()));
+        //Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> U = svd.matrixU();
+        //Eigen::Matrix<Pixel, Eigen::Dynamic, Eigen::Dynamic> V = svd.matrixV();
+        //Eigen::Matrix<Pixel, Eigen::Dynamic, 1> s = svd.singularValues();
+        Eigen::Matrix<Pixel, Eigen::Dynamic, 1, Eigen::AutoAlign> tmp;
+
+        tmp = _svd->matrixU().transpose()*(data);
+        for(int i=0; i < tmp.size(); ++i) {
+            double s = _svd->singularValues()[i];
+            if(s > _svThreshold) {
+                tmp[i] /= s;
+            } else {
+                tmp[i] = 0.;
+            }
+        }
+        coeff = _svd->matrixV()*tmp;
+    }
+
+    Bit<COEFFICIENTS>::set(_products);
 }
 
 void Evaluation::ensureModelVector() const {
-    if (Bit<MODEL_VECTOR>::test(_status)) return;
+    if (Bit<MODEL_VECTOR>::test(_products)) return;
     ensureCoefficients();
     ensureModelMatrix();
     if (_modelVector.getData() == 0) {
@@ -229,22 +261,22 @@ void Evaluation::ensureModelVector() const {
     }
     ndarray::viewAsEigen(_modelVector) 
         = ndarray::viewAsEigen(_modelMatrix) * ndarray::viewAsEigen(_coefficients);
-    Bit<MODEL_VECTOR>::set(_status);
+    Bit<MODEL_VECTOR>::set(_products);
 }
 
 void Evaluation::ensureResiduals() const {
-    if (Bit<RESIDUALS>::test(_status)) return;
+    if (Bit<RESIDUALS>::test(_products)) return;
     ensureModelVector();
     if (_residuals.getData() == 0) {
         _residuals = ndarray::allocate(_evaluator->getDataSize());
     }
     ndarray::viewAsEigen(_residuals) = ndarray::viewAsEigen(_modelVector) 
         - ndarray::viewAsEigen(_evaluator->getDataVector());
-    Bit<RESIDUALS>::set(_status);
+    Bit<RESIDUALS>::set(_products);
 }
 
 void Evaluation::ensureResidualsJacobian() const {
-    if (Bit<RESIDUALS_JACOBIAN>::test(_status)) return;
+    if (Bit<RESIDUALS_JACOBIAN>::test(_products)) return;
     ensureCoefficients();
     ensureModelMatrixDerivative();
     if (_residualsJacobian.getData() == 0) {
@@ -257,18 +289,18 @@ void Evaluation::ensureResidualsJacobian() const {
     for (int n = 0; n < jac.cols(); ++n) {
         jac.col(n) = ndarray::viewAsEigen(_modelMatrixDerivative[n]) * coeffVec;
     }
-    Bit<RESIDUALS_JACOBIAN>::set(_status);
+    Bit<RESIDUALS_JACOBIAN>::set(_products);
 }
 
 void Evaluation::ensureObjectiveValue() const {
-    if (Bit<OBJECTIVE_VALUE>::test(_status)) return;
+    if (Bit<OBJECTIVE_VALUE>::test(_products)) return;
     ensureResiduals();
     _objectiveValue = 0.5 * ndarray::viewAsEigen(_residuals).squaredNorm();
-    Bit<OBJECTIVE_VALUE>::set(_status);
+    Bit<OBJECTIVE_VALUE>::set(_products);
 }
 
 void Evaluation::ensureCoefficientFisherMatrix() const {
-    if (Bit<COEFFICIENT_FISHER_MATRIX>::test(_status)) return;
+    if (Bit<COEFFICIENT_FISHER_MATRIX>::test(_products)) return;
     ensureModelMatrix();
     if (_coefficientFisherMatrix.getData() == 0) {
         _coefficientFisherMatrix = ndarray::allocate(
@@ -278,7 +310,7 @@ void Evaluation::ensureCoefficientFisherMatrix() const {
     ndarray::viewAsEigen(_coefficientFisherMatrix).part<Eigen::SelfAdjoint>()
         = ndarray::viewAsTransposedEigen(_modelMatrix)
         * ndarray::viewAsEigen(_modelMatrix);
-    Bit<COEFFICIENT_FISHER_MATRIX>::set(_status);
+    Bit<COEFFICIENT_FISHER_MATRIX>::set(_products);
 }
 
 void Evaluation::initialize() {

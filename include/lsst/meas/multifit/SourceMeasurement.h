@@ -29,6 +29,7 @@
 #include "lsst/afw/detection/Astrometry.h"
 #include "lsst/afw/detection/Shape.h"
 #include "lsst/afw/math/shapelets/constants.h"
+#include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/meas/multifit/Evaluator.h"
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #include <Eigen/Core>
@@ -125,6 +126,7 @@ public:
 
 
     Evaluator::Ptr getEvaluator() const { return _evaluator; }
+    Evaluation::Ptr getEvaluation() const { return _evaluation; }
     lsst::afw::detection::Footprint::Ptr getFootprint() const { return _fp; }
     lsst::ndarray::Array<double const,1,1> getParameters() const { return _parameters; }
     lsst::ndarray::Array<double const,2,2> getTestPoints() const { return _points; }
@@ -174,7 +176,7 @@ private:
 
     void setTestPoints(EllipseCore const & initialEllipse, EllipseCore const & psfEllipse);
     void optimize(Ellipse const & initialEllipse);
-    bool solve(double e1, double e2, double radius, double & objective, double & best);
+    bool solve(double e1, double e2, double radius, double & objective, double & best, bool &);
 
     Options _options;
     lsst::afw::image::MaskPixel _bitmask;
@@ -183,9 +185,11 @@ private:
     double _flux, _fluxErr;
     Ellipse _ellipse;
     Evaluator::Ptr _evaluator;
+    Evaluation::Ptr _evaluation;
     lsst::afw::detection::Footprint::Ptr _fp;
     ndarray::Array<double,1,1> _parameters;
     ndarray::Array<double, 3, 3> _objectiveValue;
+    ndarray::Array<bool, 3, 3> _usedSvd;
     ndarray::Array<double, 2, 2> _points;
     int _rBest, _e1Best, _e2Best;
 

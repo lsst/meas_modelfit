@@ -126,7 +126,12 @@ SourceMeasurement::SourceMeasurement(Options const & options) :
         2*options.ellipticityStepCount+1, 
         2*options.ellipticityStepCount+1
     );
-    _points = ndarray::allocate(3, options.radiusStepCount);
+    _usedSvd = ndarray::allocate(
+        options.radiusStepCount, 
+        2*options.ellipticityStepCount+1,
+        2*options.ellipticityStepCount+1
+    );
+    _points = ndarray::allocate(options.radiusStepCount, 3);
 
     int offset = 0;
     if (_options.fitDeltaFunction) {
@@ -243,7 +248,7 @@ void SourceMeasurement::setTestPoints(
 }
 
 
-bool SourceMeasurement::solve(double e1, double e2, double r, double & objective, double & best) {
+bool SourceMeasurement::solve(double e1, double e2, double r, double & objective, double & best, bool & usedSvd) {
     pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
     assert(_evaluator->getParameterSize() == 3);
 
@@ -252,9 +257,10 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
     parameters[_evaluator->getGrid()->radii[0].offset] = r;
     parameters[_evaluator->getGrid()->ellipticities[0].offset] = e1;
     parameters[_evaluator->getGrid()->ellipticities[0].offset + 1] = e2;
-    Evaluation evaluation(_evaluator, parameters);
+    _evaluation->update(parameters);
     try {
-        objective = evaluation.getObjectiveValue();
+        objective = _evaluation->getObjectiveValue();
+        usedSvd = _evaluation->usedSvd();
         log.debug(6, boost::format("Objective value is %f") % objective);
     } catch (...) {      
         objective = std::numeric_limits<double>::quiet_NaN();
@@ -271,8 +277,8 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
         //    _status &= ~algorithms::Flags::SHAPELET_PHOTOM_INVERSION_UNSAFE;
         // }
         _parameters.deep() = parameters;
-        _coefficients.deep() = evaluation.getCoefficients();
-        _covariance.deep() = evaluation.getCoefficientFisherMatrix();
+        _coefficients.deep() = _evaluation->getCoefficients();
+        _covariance.deep() = _evaluation->getCoefficientFisherMatrix();
         best = objective;
         _ellipse.getCore() = EllipseCore(e1, e2, r);
         return true;
@@ -287,6 +293,7 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
     setTestPoints(initialEllipse.getCore(), psfEllipse.getCore());
     double best = std::numeric_limits<double>::infinity();
     double objective;
+    bool usedSvd;
     _rBest = _e1Best = _e2Best = -1;
     _status |= algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
     _objectiveValue.deep() = std::numeric_limits<double>::quiet_NaN();
@@ -297,13 +304,14 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
             _points[iR][EllipseCore::E1] = 0.;
             _points[iR][EllipseCore::E2] = 0.;
 
-            if( solve(0., 0., SQRT_EPS, objective, best) ) {
+            if( solve(0., 0., SQRT_EPS, objective, best, usedSvd) ) {
                 _rBest = iR;
                 _e1Best = 0;
                 _e2Best = 0;
             }
 
             _objectiveValue[iR].deep() = objective;
+            _usedSvd[iR].deep() = objective;
             continue;
         }
 
@@ -311,12 +319,13 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
         for (int iE1 = 0; iE1 < _objectiveValue.getSize<1>(); ++iE1, e1 += _options.ellipticityStepSize) {
             double e2 = _points[iR][EllipseCore::E2];
             for (int iE2 = 0; iE2 < _objectiveValue.getSize<2>(); ++iE2, e2 += _options.ellipticityStepSize) {
-                if(solve(e1, e2, r, objective, best)) {                    
+                if(solve(e1, e2, r, objective, best, usedSvd)) {                    
                     _rBest = iR;
                     _e1Best = iE1;
                     _e2Best = iE2;
                 }
                 _objectiveValue[iR][iE1][iE2] = objective;
+                _usedSvd[iR][iE1][iE2] = usedSvd;
             }
         }
     }
@@ -376,6 +385,7 @@ int SourceMeasurement::measure(
     }
     addObjectsToDefinition(def, *ellipse);
     _evaluator = Evaluator::make(def, _options.usePixelWeights);
+    _evaluation.reset(new Evaluation(_evaluator));
 
     optimize(*ellipse);
 

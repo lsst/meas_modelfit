@@ -32,7 +32,8 @@ void Evaluator::_evaluateModelMatrix(
                     source->frame.getFootprint(), 
                     ellipse.transform(source->getTransform())
                 );
-                source->frame.applyWeights(block);
+                if(_usePixelWeights)
+                    source->frame.applyWeights(block);
             }
         } else {
             afw::geom::Point2D point = object->makePoint(param.getData());
@@ -54,7 +55,8 @@ void Evaluator::_evaluateModelMatrix(
                     block, 
                     source->getTransform()(point) - source->getReferencePoint()
                 );
-                source->frame.applyWeights(block);
+                if(_usePixelWeights)
+                    source->frame.applyWeights(block);
             }            
         }
     }
@@ -166,16 +168,17 @@ Evaluator::Evaluator(Grid::Ptr const & grid, bool const usePixelWeights) :
     BaseEvaluator(
         grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount()
     ),
-    _grid(grid)
+    _grid(grid), _usePixelWeights(usePixelWeights)
 {
-    _initialize(usePixelWeights);
+    _initialize();
 }
 
-Evaluator::Evaluator(Evaluator const & other, bool const usePixelWeights) : BaseEvaluator(other), _grid(other._grid) {
-    _initialize(usePixelWeights);
+Evaluator::Evaluator(Evaluator const & other, bool const usePixelWeights) 
+    : BaseEvaluator(other), _grid(other._grid), _usePixelWeights(usePixelWeights) {
+    _initialize();
 }
 
-void Evaluator::_initialize(bool const usePixelWeights) {
+void Evaluator::_initialize() {
     for (
         Grid::FrameArray::const_iterator i = _grid->frames.begin();
         i != _grid->frames.end(); ++i
@@ -184,7 +187,7 @@ void Evaluator::_initialize(bool const usePixelWeights) {
             ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] = i->getData();
         
-        if (!i->getWeights().empty() && usePixelWeights) {
+        if (!i->getWeights().empty() && _usePixelWeights) {
             _dataVector[
                 ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] *= i->getWeights();

@@ -74,8 +74,8 @@ private:
 
     Evaluator(Evaluator const & other, bool const usePixelWeights);
     
-    void _initialize(bool const usePixelWeights);
-
+    void _initialize();
+    bool _usePixelWeights;
     Grid::Ptr _grid;
 };
 

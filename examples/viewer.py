@@ -97,18 +97,19 @@ class Viewer(object):
         definition.frames[0].setFootprint(fp)
         definition.frames[0].setData(dataArray)
 
-        if self.sourceMeasurement.getOptions().usePixelWeights:
-            weightArray = numpy.ones_like(dataArray)
-            lsst.afw.detection.flattenArray(
-                fp,
-                self.exposure.getMaskedImage().getVariance().getArray(), 
-                weightArray, 
-                self.exposure.getXY0()
-            )
-            definition.frames[0].setWeights(weightArray)
-        else:
-            definition.frames[0].setWeights(numpy.array([], dtype=float))
-        evaluator = lsst.meas.multifit.Evaluator.make(definition)
+        weightArray = numpy.ones_like(dataArray)
+        lsst.afw.detection.flattenArray(
+            fp,
+            self.exposure.getMaskedImage().getVariance().getArray(), 
+            weightArray, 
+            self.exposure.getXY0()
+        )
+        definition.frames[0].setWeights(weightArray)
+
+        evaluator = lsst.meas.multifit.Evaluator.make(\
+            definition, 
+            self.sourceMeasurement.getOptions().usePixelWeights
+        )
         evaluation = lsst.meas.multifit.Evaluation(evaluator)
         evaluation.update(
             param,
@@ -177,6 +178,8 @@ class Viewer(object):
         d["coefficients"] = coeff
         d["evaluator"] = evaluator
         d["evaluation"] = evaluation
+        d["test_points"] = self.sourceMeasurement.getTestPoints()
+        d["objective_value"] = self.sourceMeasurement.getObjectiveValue()
         d["images"] = [mi, modelMi, residualMi]
         d["image_labels"] = ["image", "model", "residuals"]
         d["psf_images"] = [psfImg, psfModel, psfResidual]
@@ -270,7 +273,7 @@ class Viewer(object):
         r = d["ellipse"].getCore().getDeterminantRadius()
         colors = {"full": "k", "exp":"b", "dev":"r", "shp":"g", "psf":"y"}
         pyplot.figure()
-        ax1 = pyplot.axes([0.1, 0.1, 0.6, 0.38])
+        ax1 = pyplot.axes([0.1, 0.38, 0.6, 0.24])
         ax1.plot(radii * r, numpy.dot(fullProfile, d["coefficients"]) / f, "k", label="combined")
         for k in order:
             if k not in allProfiles: continue
@@ -279,7 +282,7 @@ class Viewer(object):
             pyplot.xlabel("radius (pixels)")
 	pyplot.axvline(r, color="k", linestyle=":")
         pyplot.legend()
-        ax2 = pyplot.axes([0.1, 0.52, 0.6, 0.38], sharex=ax1)
+        ax2 = pyplot.axes([0.1, 0.66, 0.6, 0.24], sharex=ax1)
         ax2.semilogy(radii * r, numpy.dot(fullProfile, d["coefficients"]) / f, "k", label="combined")
         for k in order:
             if k not in allProfiles: continue
@@ -288,11 +291,22 @@ class Viewer(object):
 	pyplot.axvline(r, color="k", linestyle=":")
         pyplot.title("deconvolved radial profile")
         order.reverse()
-        ax3 = pyplot.axes([0.75, 0.1, 0.2, 0.8])
-        ax3.barh(numpy.arange(0, len(order)), [allFractions[k] for k in order], 
+
+        #objective value vs. radius
+        ax3 = pyplot.axes([0.1, 0.1, 0.6, 0.24], sharex=ax1)
+        ax3.plot(d["test_points"][:, 2], d["objective_value"][:, 0, 0], color="k")
+        ax3.axvline(r, color="k", linestyle=":")
+        pyplot.title("objective value")
+
+        #flux fraction
+        ax4 = pyplot.axes([0.75, 0.1, 0.2, 0.8])
+        ax4.barh(numpy.arange(0, len(order)), [allFractions[k] for k in order], 
                  color=[colors[k] for k in order])
         pyplot.ylim(-0.2, len(order))
         pyplot.title("flux fraction")
-        ax3.set_yticklabels([])
+        ax4.set_yticklabels([])
         pyplot.xlim(0, 1.0)
+
+        
+
         pyplot.show()
