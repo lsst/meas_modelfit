@@ -112,6 +112,7 @@ SourceMeasurement::SourceMeasurement(Options const & options) :
     _options(options),
     _bitmask(afw::image::Mask<afw::image::MaskPixel>::getPlaneBitMask(options.maskPlaneNames)),
     _ellipse(EllipseCore())
+
 {
     int coefficientSize = computeCoefficientSize(options);
     _integration = ndarray::allocate(coefficientSize);
@@ -119,6 +120,19 @@ SourceMeasurement::SourceMeasurement(Options const & options) :
     _covariance = ndarray::allocate(coefficientSize, coefficientSize);
     _parameters = ndarray::allocate(3);
     _integration.deep() = 0.0;
+
+    _objectiveValue = ndarray::allocate(
+        options.radiusStepCount, 
+        2*options.ellipticityStepCount+1, 
+        2*options.ellipticityStepCount+1
+    );
+    _usedSvd = ndarray::allocate(
+        options.radiusStepCount, 
+        2*options.ellipticityStepCount+1,
+        2*options.ellipticityStepCount+1
+    );
+    _points = ndarray::allocate(options.radiusStepCount, 3);
+
     int offset = 0;
     if (_options.fitDeltaFunction) {
         _integration[offset] = 1.0;
@@ -211,22 +225,48 @@ void SourceMeasurement::addObjectsToDefinition(
     }
 }
 
-void SourceMeasurement::solve(double e1, double e2, double radius, double & best) {
+void SourceMeasurement::setTestPoints(
+    EllipseCore const & initialEllipse, 
+    EllipseCore const & psfEllipse
+) {
+    EllipseCore maxEllipse(initialEllipse);
+    EllipseCore minEllipse(maxEllipse);
+    maxEllipse.scale(_options.radiusMaxFactor);
+    minEllipse.scale(_options.radiusMinFactor);
+    maxEllipse = naiveDeconvolve(maxEllipse, psfEllipse);
+    minEllipse = naiveDeconvolve(minEllipse, psfEllipse);
+    EllipseCore::ParameterVector base(minEllipse.getParameterVector());
+    EllipseCore::ParameterVector delta = maxEllipse.getParameterVector() - minEllipse.getParameterVector();
+    delta /= _options.radiusStepCount;
+
+    double ellipticityDelta = _options.ellipticityStepCount*_options.ellipticityStepSize;
+    for (int i = 0; i < _options.radiusStepCount; ++i, base += delta) {
+        _points[i][EllipseCore::RADIUS] = base[EllipseCore::RADIUS];
+        _points[i][EllipseCore::E1] = base[EllipseCore::E1] - ellipticityDelta;
+        _points[i][EllipseCore::E2] = base[EllipseCore::E2] - ellipticityDelta; 
+    }
+}
+
+
+bool SourceMeasurement::solve(double e1, double e2, double r, double & objective, double & best, bool & usedSvd) {
     pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
     assert(_evaluator->getParameterSize() == 3);
-    log.debug(4, boost::format("Testing %f %f %f.") % e1 % e2 % radius);
+
+    log.debug(4, boost::format("Testing %f %f %f.") % e1 % e2 % r);
     ndarray::Array<double,1,1> parameters(ndarray::allocate(_evaluator->getParameterSize()));
-    parameters[_evaluator->getGrid()->radii[0].offset] = radius;
+    parameters[_evaluator->getGrid()->radii[0].offset] = r;
     parameters[_evaluator->getGrid()->ellipticities[0].offset] = e1;
     parameters[_evaluator->getGrid()->ellipticities[0].offset + 1] = e2;
-    Evaluation evaluation(_evaluator, parameters);
-    double objective;
+    _evaluation->update(parameters);
     try {
-        objective = evaluation.getObjectiveValue();
+        objective = _evaluation->getObjectiveValue();
+        usedSvd = _evaluation->usedSvd();
         log.debug(6, boost::format("Objective value is %f") % objective);
-    } catch (...) {
-        return;
+    } catch (...) {      
+        objective = std::numeric_limits<double>::quiet_NaN();
+        return false;
     }
+
     if (objective < best) {
         _status &= ~algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
         //double flux = grid::SourceComponent::computeFlux(_integration, evaluation.getCoefficients());
@@ -237,42 +277,59 @@ void SourceMeasurement::solve(double e1, double e2, double radius, double & best
         //    _status &= ~algorithms::Flags::SHAPELET_PHOTOM_INVERSION_UNSAFE;
         // }
         _parameters.deep() = parameters;
-        _coefficients.deep() = evaluation.getCoefficients();
-        _covariance.deep() = evaluation.getCoefficientFisherMatrix();
+        _coefficients.deep() = _evaluation->getCoefficients();
+        _covariance.deep() = _evaluation->getCoefficientFisherMatrix();
         best = objective;
-        _ellipse.getCore() = EllipseCore(e1, e2, radius);
+        _ellipse.getCore() = EllipseCore(e1, e2, r);
+        return true;
     }
+
+    return false;
 }
 
 void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
-    EllipseCore maxEllipse(initialEllipse.getCore());
-    EllipseCore minEllipse(maxEllipse);
     afw::geom::Ellipse psfEllipse = _evaluator->getGrid()->sources[0].getLocalPsf()->computeMoments();
-    maxEllipse.scale(_options.radiusMaxFactor);
-    minEllipse.scale(_options.radiusMinFactor);
-    maxEllipse = naiveDeconvolve(maxEllipse, psfEllipse.getCore());
-    minEllipse = naiveDeconvolve(minEllipse, psfEllipse.getCore());
-    EllipseCore::ParameterVector base(minEllipse.getParameterVector());
-    EllipseCore::ParameterVector delta = maxEllipse.getParameterVector() - minEllipse.getParameterVector();
-    delta /= _options.radiusStepCount;
+
+    setTestPoints(initialEllipse.getCore(), psfEllipse.getCore());
     double best = std::numeric_limits<double>::infinity();
+    double objective;
+    bool usedSvd;
+    _rBest = _e1Best = _e2Best = -1;
     _status |= algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
-    for (int iR = 0; iR < _options.radiusStepCount; ++iR, base += delta) {
-        if (base[EllipseCore::RADIUS] < SQRT_EPS) {
-            solve(0.0, 0.0, SQRT_EPS, best);
+    _objectiveValue.deep() = std::numeric_limits<double>::quiet_NaN();
+    for (int iR = 0; iR < _points.getSize<0>(); ++iR) {
+        double r = _points[iR][EllipseCore::RADIUS];
+        if (r <= SQRT_EPS) {
+            _points[iR][EllipseCore::RADIUS] = SQRT_EPS;
+            _points[iR][EllipseCore::E1] = 0.;
+            _points[iR][EllipseCore::E2] = 0.;
+
+            if( solve(0., 0., SQRT_EPS, objective, best, usedSvd) ) {
+                _rBest = iR;
+                _e1Best = 0;
+                _e2Best = 0;
+            }
+
+            _objectiveValue[iR].deep() = objective;
+            _usedSvd[iR].deep() = objective;
             continue;
         }
-        for (int iE1 = -_options.ellipticityStepCount; iE1 <= _options.ellipticityStepCount; ++iE1) {
-            for (int iE2 = -_options.ellipticityStepCount; iE2 <= _options.ellipticityStepCount; ++iE2) {
-                solve(
-                    base[EllipseCore::E1] + iE1 * _options.ellipticityStepSize,
-                    base[EllipseCore::E2] + iE2 * _options.ellipticityStepSize,
-                    base[EllipseCore::RADIUS],
-                    best
-                );
+
+        double e1 = _points[iR][EllipseCore::E1];
+        for (int iE1 = 0; iE1 < _objectiveValue.getSize<1>(); ++iE1, e1 += _options.ellipticityStepSize) {
+            double e2 = _points[iR][EllipseCore::E2];
+            for (int iE2 = 0; iE2 < _objectiveValue.getSize<2>(); ++iE2, e2 += _options.ellipticityStepSize) {
+                if(solve(e1, e2, r, objective, best, usedSvd)) {                    
+                    _rBest = iR;
+                    _e1Best = iE1;
+                    _e2Best = iE2;
+                }
+                _objectiveValue[iR][iE1][iE2] = objective;
+                _usedSvd[iR][iE1][iE2] = usedSvd;
             }
         }
     }
+
     if (_status & algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL) {
         _ellipse = initialEllipse;
         _flux = std::numeric_limits<double>::quiet_NaN();
@@ -320,14 +377,15 @@ int SourceMeasurement::measure(
         return _status;
     }
     Definition def;
-    def.frames.insert(definition::Frame::make(0, *exp, fp, _bitmask, _options.usePixelWeights));
+    def.frames.insert(definition::Frame::make(0, *exp, fp, _bitmask));
     _fp = def.frames[0].getFootprint();
     if (_fp->getArea() == 0) {
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
     }
     addObjectsToDefinition(def, *ellipse);
-    _evaluator = Evaluator::make(def);
+    _evaluator = Evaluator::make(def, _options.usePixelWeights);
+    _evaluation.reset(new Evaluation(_evaluator));
 
     optimize(*ellipse);
 

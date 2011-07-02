@@ -168,5 +168,3 @@ SWIG_SHARED_PTR_DERIVED(definition_FramePtr, lsst::meas::multifit::detail::Frame
 
 %include "lsst/meas/multifit/definition/Definition.h"
 
-%template(make) lsst::meas::multifit::definition::Definition::make<float>;
-%template(make) lsst::meas::multifit::definition::Definition::make<double>;

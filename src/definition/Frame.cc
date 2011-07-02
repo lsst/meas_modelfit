@@ -16,7 +16,7 @@ FrameBase::FrameBase(FrameBase const & other, bool deep) :
     if (deep) {
         if (_wcs) _wcs = _wcs->clone();
         if (_psf) _psf = _psf->clone();
-        // TODO: copy footprint when copy ctor becomes available in afw
+        if (_footprint) _footprint = boost::make_shared<Footprint>(*_footprint);
         if (!_data.getData()) _data = ndarray::copy(_data);
         if (!_weights.getData()) _weights = ndarray::copy(_weights);
     }
@@ -31,8 +31,7 @@ Frame Frame::make(
     ID const id,
     lsst::afw::image::Exposure<PixelT> const & exposure,
     Footprint::Ptr const & fp,
-    lsst::afw::image::MaskPixel const bitmask,
-    bool const usePixelWeights
+    lsst::afw::image::MaskPixel const bitmask
 ) {
     typedef Pixel Pixel;
     typedef lsst::afw::image::MaskedImage<PixelT> MaskedImage;
@@ -66,11 +65,7 @@ Frame Frame::make(
             lsst::ndarray::makeVector(maskedFp->getArea())
         )
     );
-    if(usePixelWeights) {
-        weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
-    } else if (weights.size() > 0) {
-        weights.setOnes();
-    }
+    weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
 
     Frame frame(
         id, 
@@ -88,14 +83,12 @@ Frame Frame::make(
 template Frame Frame::make<float>(
     ID const, 
     lsst::afw::image::Exposure<float> const &, Footprint::Ptr const &,
-    lsst::afw::image::MaskPixel const,
-    bool const
+    lsst::afw::image::MaskPixel const
 );
 template Frame Frame::make<double>(
     ID const, 
     lsst::afw::image::Exposure<double> const &, Footprint::Ptr const &, 
-    lsst::afw::image::MaskPixel const,
-    bool const
+    lsst::afw::image::MaskPixel const
 );
 
 std::ostream & operator<<(std::ostream & os, Frame const & frame) {

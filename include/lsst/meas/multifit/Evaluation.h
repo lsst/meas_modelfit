@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_Evaluation
 
 #include "lsst/meas/multifit/BaseEvaluator.h"
-
+#include <boost/shared_ptr.hpp>
 namespace lsst { namespace meas { namespace multifit {
 
 /**
@@ -56,20 +56,24 @@ namespace lsst { namespace meas { namespace multifit {
  */
 class Evaluation : private boost::noncopyable {
 public:
+    typedef boost::shared_ptr<Evaluation> Ptr;
+    typedef boost::shared_ptr<Evaluation const> ConstPtr;
 
     /// @brief Construct with no prior and use the evaluator's initial parameters.
-    Evaluation(BaseEvaluator::Ptr const & evaluator);
+    Evaluation(BaseEvaluator::Ptr const & evaluator, double const svThreshold=1e-8);
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        lsst::ndarray::Array<double const,1,1> const & parameters
+        lsst::ndarray::Array<double const,1,1> const & parameters,
+        double const svThreshold=1e-8
     );
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        Eigen::VectorXd const & parameters
+        Eigen::VectorXd const & parameters,
+        double const svThreshold=1e-8
     );
 
     /// @brief Update the parameters @f$\phi@f$.
@@ -176,6 +180,8 @@ public:
         return _objectiveValue;
     }
 
+    bool usedSvd() const {return static_cast<bool>(_svd);}
+    
     ~Evaluation();
 
 private:
@@ -185,6 +191,8 @@ private:
     class CholeskySolver;
     class ConstrainedSolver;
 #endif
+
+    typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::AutoAlign | Eigen::RowMajor> MatrixRM;
 
     void ensureModelMatrix() const;
     void ensureModelMatrixDerivative() const;
@@ -198,8 +206,10 @@ private:
     void initialize();
 
     mutable int _status;
+    mutable int _products;
     BaseEvaluator::Ptr _evaluator;
     boost::scoped_ptr<LinearSolver> _solver;
+    mutable boost::scoped_ptr<Eigen::SVD<MatrixRM> > _svd;
     mutable double _objectiveValue;
     ndarray::Array<double,1,1> _parameters;
     mutable ndarray::Array<Pixel,2,2> _modelMatrix;
@@ -209,6 +219,7 @@ private:
     mutable ndarray::Array<Pixel,1,1> _residuals;
     mutable ndarray::Array<Pixel,2,2> _residualsJacobian;
     mutable ndarray::Array<Pixel,1,1> _modelVector;
+    double _svThreshold;
 };
 
 }}} // namespace lsst::meas::multifit
