@@ -57,11 +57,22 @@ public:
     int const getCoefficientOffset(Frame const & frame) const {
         return getCoefficientOffset(isVariable() ? frame.getFrameIndex() : frame.getFilterIndex());
     }
-    
+
+    /// @brief Return the constraint offset for the frame/filter with the given index.
+    int const getConstraintOffset(int frameOrFilterIndex) const {
+        return _constraintOffset + getConstraintCount() * frameOrFilterIndex;
+    }
+
+    /// @brief Return the coefficient offset for the given frame.
+    int const getConstraintOffset(Frame const & frame) const {
+        return getConstraintOffset(isVariable() ? frame.getFrameIndex() : frame.getFilterIndex());
+    }
+
     //@{
     /// @brief Return linear inequality constraints for one instance (frame/filter) of this group.
     lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
     lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
+    int const getConstraintCount() const { return _constraintVector.getSize<0>(); }
     //@}
 
     /// @brief Return an array that computes the flux for one instance (frame/filter) of this group.
@@ -80,7 +91,7 @@ private:
     FluxGroup(definition::FluxGroup const & definition, int coefficientOffset) :
         detail::FluxGroupBase(definition),
         _coefficientOffset(coefficientOffset),
-        _sourceCoefficientCount(0)
+        _sourceCoefficientCount(0), _constraintOffset(0)
     {}
 
     // Sets up constraints; must be called after components array view is initialized.
@@ -88,6 +99,7 @@ private:
 
     int _coefficientOffset;
     int _sourceCoefficientCount;
+    int _constraintOffset;
     ndarray::Array<Pixel,2,2> _constraintMatrix;
     ndarray::Array<Pixel,1,1> _constraintVector;
     ndarray::Array<Pixel,1,1> _integration;

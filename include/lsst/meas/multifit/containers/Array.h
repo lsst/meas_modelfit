@@ -214,6 +214,7 @@ public:
 
     typedef typename Super::iterator iterator;
 
+    Array() : _internal() {}
     explicit Array(Internal & internal) : _internal() { internal.swap(_internal); }
 
     iterator begin() const { return iterator(_internal.begin()); }

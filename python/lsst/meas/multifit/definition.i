@@ -121,6 +121,18 @@ SWIG_SHARED_PTR_DERIVED(definition_ObjectComponentPtr, lsst::meas::multifit::det
 
 %include "lsst/meas/multifit/definition/ObjectComponent.h"
 
+%extend lsst::meas::multifit::definition::ObjectComponent {
+
+    boost::shared_ptr< lsst::meas::multifit::definition::FluxGroup > getFluxGroup() {
+        return self->getFluxGroup();
+    }
+
+    void setFluxGroup(boost::shared_ptr< lsst::meas::multifit::definition::FluxGroup > group) {
+        self->getFluxGroup() = group;
+    }
+
+}
+
 %DeclareDefinitionSharedElement(Position, position, POSITION, detail::CircleConstraint);
 %DeclareDefinitionSharedElement(Radius, radius, RADIUS, detail::MinMaxConstraint);
 %DeclareDefinitionSharedElement(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
@@ -156,15 +168,20 @@ SWIG_SHARED_PTR_DERIVED(definition_FramePtr, lsst::meas::multifit::detail::Frame
 %template(make) lsst::meas::multifit::definition::Frame::make<float>;
 %template(make) lsst::meas::multifit::definition::Frame::make<double>;
 
+//-------------------------------------- FluxGroup -----------------------------------------
 
-//-------------------------------------- Set -----------------------------------------
+SWIG_SHARED_PTR(detail_FluxGroupBasePtr, lsst::meas::multifit::detail::FluxGroupBase);
+SWIG_SHARED_PTR_DERIVED(definition_FluxGroupPtr, lsst::meas::multifit::detail::FluxGroupBase, lsst::meas::multifit::definition::FluxGroup);
+%rename(definition_FluxGroup) lsst::meas::multifit::definition::FluxGroup;
+
+%include "lsst/meas/multifit/definition/FluxGroup.h"
+
+//-------------------------------------- Definition -----------------------------------------
 
 %include "lsst/meas/multifit/containers.i"
 
 %DeclareMutableSet(lsst::meas::multifit::definition::ObjectComponent, definition_ObjectComponentSet)
 %DeclareMutableSet(lsst::meas::multifit::definition::Frame, definition_FrameSet)
-
-//-------------------------------------- Definition -----------------------------------------
 
 %include "lsst/meas/multifit/definition/Definition.h"
 

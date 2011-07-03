@@ -51,8 +51,8 @@ public:
 
 protected:
     
-    FluxGroupBase(ID const id_, double maxMorphologyRatio, bool isVariable) :
-        id(id_), _variable(isVariable), _maxMorphologyRatio(maxMorphologyRatio)
+    FluxGroupBase(ID const id_, double maxMorphologyRatio, bool variable) :
+        id(id_), _variable(variable), _maxMorphologyRatio(maxMorphologyRatio)
     {}
 
     FluxGroupBase(FluxGroupBase const & other) :
@@ -105,8 +105,8 @@ public:
      *
      *  Constructors are private to ensure we only get shared_ptrs to these things.
      */
-    static Ptr make(ID id, double maxMorphologyRatio, bool isVariable) {
-        return Ptr(new FluxGroup(id, maxMorphologyRatio, isVariable));
+    static Ptr make(ID id, double maxMorphologyRatio, bool variable) {
+        return Ptr(new FluxGroup(id, maxMorphologyRatio, variable));
     }
 
     //@{
@@ -124,8 +124,8 @@ private:
 
     FluxGroup(FluxGroup const & other) : detail::FluxGroupBase(other) {}
     
-    FluxGroup(ID id, double maxMorphologyRatio, bool isVariable) :
-        detail::FluxGroupBase(id, isVariable, maxMorphologyRatio)
+    FluxGroup(ID id, double maxMorphologyRatio, bool variable) :
+        detail::FluxGroupBase(id, maxMorphologyRatio, variable)
     {}
 
 };

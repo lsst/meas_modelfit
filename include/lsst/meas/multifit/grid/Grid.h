@@ -90,6 +90,7 @@ public:
     int const getCoefficientCount() const { return _coefficientCount; }
     int const getPixelCount() const { return _pixelCount; }
     int const getParameterCount() const { return _parameterCount; }
+    int const getConstraintCount() const { return _constraintCount; }
 
     CONST_PTR(Wcs) const getWcs() const { return _wcs; }
 
@@ -107,6 +108,7 @@ private:
     int _coefficientCount;
     int _pixelCount;
     int _parameterCount;
+    int _constraintCount;
 
     CONST_PTR(Wcs) _wcs;
     FilterMap _filters;

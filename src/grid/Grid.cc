@@ -18,6 +18,7 @@ public:
     int _coefficientCount;
     int _pixelCount;
     int _parameterCount;
+    int _constraintCount;
 
     ObjectComponentVector _objects;
     SourceComponentVector _sources;
@@ -50,11 +51,12 @@ public:
 
 
 Initializer::Initializer(Definition const & def) :
-    _filterCount(0), _coefficientCount(0), _pixelCount(0), _parameterCount(0), _wcs()
+    _filterCount(0), _coefficientCount(0), _pixelCount(0), _parameterCount(0), _constraintCount(0), _wcs()
 {
     if (def.getWcs()) _wcs = def.getWcs()->clone();
     _objects.reserve(def.objects.size());
     _frames.reserve(def.frames.size());
+    _sources.reserve(def.objects.size() * def.frames.size());
 
     std::map<definition::PositionElement::Ptr,grid::PositionElement::Ptr> positionMap;
     std::map<definition::RadiusElement::Ptr,grid::RadiusElement::Ptr> radiusMap;
@@ -104,6 +106,12 @@ Initializer::Initializer(Definition const & def) :
                     new ObjectComponent(*j, _groups.back()->getSourceCoefficientCount())
                 )
             );
+            if (j->getPosition())
+                _objects.back()->_position = positionMap.find(j->getPosition())->second;
+            if (j->getRadius())
+                _objects.back()->_radius = radiusMap.find(j->getRadius())->second;
+            if (j->getEllipticity())
+                _objects.back()->_ellipticity = ellipticityMap.find(j->getEllipticity())->second;
             _groups.back()->_sourceCoefficientCount += _objects.back()->getSourceCoefficientCount();
             _objects.back()->sources._first = ObjectComponent::SourceArray::iterator(_sources.end());
             for (FrameVector::iterator k = _frames.begin(); k != _frames.end(); ++k) {
@@ -112,19 +120,14 @@ Initializer::Initializer(Definition const & def) :
                 );
             }
             _objects.back()->sources._last = ObjectComponent::SourceArray::iterator(_sources.end());
-            if (j->getPosition())
-                _objects.back()->_position = positionMap.find(j->getPosition())->second;
-            if (j->getRadius())
-                _objects.back()->_radius = radiusMap.find(j->getRadius())->second;
-            if (j->getEllipticity())
-                _objects.back()->_ellipticity = ellipticityMap.find(j->getEllipticity())->second;
             _objects.back()->_fluxGroup = _groups.back();
             _objects.back()->validate();
         }
         _groups.back()->components._last = FluxGroup::ComponentArray::iterator(_objects.end());
-        _coefficientCount += 
-            ((_groups.back()->isVariable()) ? _frames.size() : _filterCount)
-            * _groups.back()->getSourceCoefficientCount();
+        _groups.back()->initialize();
+        int nFluxInstances = ((_groups.back()->isVariable()) ? _frames.size() : _filterCount);
+        _coefficientCount += nFluxInstances * _groups.back()->getSourceCoefficientCount();
+        _constraintCount += nFluxInstances * _groups.back()->getConstraintCount();
     }
 }
 
@@ -211,6 +214,7 @@ Grid::Grid(Initializer & initializer) :
     _coefficientCount(initializer._coefficientCount),
     _pixelCount(initializer._pixelCount),
     _parameterCount(initializer._parameterCount),
+    _constraintCount(initializer._constraintCount),
     _wcs(initializer._wcs)
 {
     _filters.swap(initializer._filters);

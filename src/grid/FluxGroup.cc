@@ -7,12 +7,12 @@ void FluxGroup::initialize() {
     int constraintCount = 0;
     for (ComponentArray::iterator i = components.begin(); i != components.end(); ++i) {
         if (i->getBasis()) {
-            constraintCount += i->getBasis()->getConstraintSize();
+            constraintCount += i->getBasis()->getConstraintCount();
         } else {
             constraintCount += 1;
         }
     }
-    _constraintMatrix = ndarray::allocate(getSourceCoefficientCount(), constraintCount);
+    _constraintMatrix = ndarray::allocate(constraintCount, getSourceCoefficientCount());
     _constraintMatrix.deep() = 0.0;
     _constraintVector = ndarray::allocate(constraintCount);
     _constraintVector.deep() = 0.0;
@@ -22,25 +22,29 @@ void FluxGroup::initialize() {
     int constraintOffset = 0;
     for (ComponentArray::iterator i = components.begin(); i != components.end(); ++i) {
         if (i->getBasis()) {
-            _constraintMatrix[
-                ndarray::view(
-                    coefficientOffset, coefficientOffset + i->getBasis()->getSize()
-                )(
-                    constraintOffset, constraintOffset + i->getBasis()->getConstraintSize()
-                )
-            ].deep() = i->getBasis()->getConstraintMatrix();
-            _constraintVector[
-                ndarray::view(constraintOffset, constraintOffset + i->getBasis()->getConstraintSize())
-            ].deep() = i->getBasis()->getConstraintVector();
-            constraintOffset += i->getBasis()->getConstraintSize();
+            if (i->getBasis()->getConstraintCount() > 0) {
+                _constraintMatrix[
+                    ndarray::view(
+                        constraintOffset, constraintOffset + i->getBasis()->getConstraintCount()
+                    )(
+                        coefficientOffset, coefficientOffset + i->getBasis()->getSize()
+                    )
+                ] = i->getBasis()->getConstraintMatrix();
+                _constraintVector[
+                    ndarray::view(constraintOffset, constraintOffset + i->getBasis()->getConstraintCount())
+                ] = i->getBasis()->getConstraintVector();
+            }
             i->getBasis()->integrate(
                 _integration[ndarray::view(coefficientOffset, coefficientOffset + i->getBasis()->getSize())]
             );
+            constraintOffset += i->getBasis()->getConstraintCount();
+            coefficientOffset += i->getBasis()->getSize();
         } else {
-            _constraintMatrix[coefficientOffset][constraintOffset] = 1.0;
+            _constraintMatrix[constraintOffset][coefficientOffset] = 1.0;
             // constraint vector for point sources is 0
-            constraintOffset += 1;
             _integration[coefficientOffset] = 1.0;
+            constraintOffset += 1;
+            coefficientOffset += 1;
         }
     }
 }
