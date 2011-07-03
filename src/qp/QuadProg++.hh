@@ -74,13 +74,13 @@ along with QuadProg++. If not, see <http://www.gnu.org/licenses/>.
 #ifndef _QUADPROGPP
 #define _QUADPROGPP
 
-#include "Array.hh"
+#include <Eigen/Core>
 
 namespace QuadProgPP{
-  double solve_quadprog(Matrix<double>& G, Vector<double>& g0, 
-			const Matrix<double>& CE, const Vector<double>& ce0,  
-			const Matrix<double>& CI, const Vector<double>& ci0, 
-			Vector<double>& x, int maxIterations);
+  double solve_quadprog(Eigen::MatrixXd& G, Eigen::VectorXd& g0, 
+			const Eigen::MatrixXd& CE, const Eigen::VectorXd& ce0,  
+			const Eigen::MatrixXd& CI, const Eigen::VectorXd& ci0, 
+			Eigen::VectorXd& x, int maxIterations);
 }
 
 #endif // #define _QUADPROGPP

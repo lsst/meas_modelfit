@@ -227,8 +227,9 @@ void Evaluation::ensureCoefficients() const {
     ndarray::EigenView<Pixel,1,1> coeff(_coefficients);
  
     _svd.reset();
-    try {
+    //try {
         _solver->solve(modelMatrix, fisherMatrix, data, coeff);
+        /*
     } catch (...) {
         
         _svd.reset(new Eigen::SVD<MatrixRM>(modelMatrix.svd()));
@@ -248,7 +249,7 @@ void Evaluation::ensureCoefficients() const {
         }
         coeff = _svd->matrixV()*tmp;
     }
-
+        */
     Bit<COEFFICIENTS>::set(_products);
 }
 
