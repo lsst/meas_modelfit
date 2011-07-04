@@ -42,13 +42,15 @@ namespace {
 
 nd::Array<double,2,1> makeRandomMatrix(int rows, int cols) {
     nd::Array<double,2,2> r = nd::allocate(rows, cols);
-    nd::viewAsEigen(r).setRandom();
+    if (rows * cols > 0)
+        nd::viewAsEigen(r).setRandom();
     return r;
 }
 
 nd::Array<double,1,1> makeRandomVector(int rows) {
     nd::Array<double,1,1> r = nd::allocate(rows);
-    nd::viewAsEigen(r).setRandom();
+    if (rows > 0)
+        nd::viewAsEigen(r).setRandom();
     return r;
 }
 
@@ -61,25 +63,30 @@ double checkQP(
     nd::Array<double,1> const & bi,
     nd::Array<double,1> const & x
 ) {
+    Eigen::IOFormat fmt(16);
     double r = 0.5 * nd::viewAsEigen(x).dot(
         nd::viewAsEigen(g) * nd::viewAsEigen(x)
     ) + nd::viewAsEigen(c).dot(nd::viewAsEigen(x));
-    if (!nd::viewAsEigen(be).isApprox(nd::viewAsEigen(ae) * nd::viewAsEigen(x))) {
-        r = std::numeric_limits<double>::infinity();
+    if (be.size() > 0) {
+        if (!nd::viewAsEigen(be).isApprox(nd::viewAsEigen(ae) * nd::viewAsEigen(x))) {
+            r = std::numeric_limits<double>::infinity();
+        }
     }
-    if (((nd::viewAsEigen(ai) * nd::viewAsEigen(x)).cwise() >= nd::viewAsEigen(bi)).all()) {
-        r = std::numeric_limits<double>::infinity();
+    if (bi.size() > 0) {
+        if (!((nd::viewAsEigen(ai) * nd::viewAsEigen(x) - nd::viewAsEigen(bi)).cwise() >= 
+              -std::numeric_limits<double>::epsilon()).all()) {
+            r = std::numeric_limits<double>::infinity();
+        }
     }
     return r;
 }
 
-}
-
-BOOST_AUTO_TEST_CASE(qp) {
-    int const nx = 12;
-    int const nd = 20;
-    int const ni = 4;
-    int const ne = 3;
+void testQP(
+    int const nx,
+    int const nd,
+    int const ni,
+    int const ne
+) {
     int const MAX_ITER = 100;
     double const SQRT_EPS = std::sqrt(std::numeric_limits<double>::epsilon());
 
@@ -105,7 +112,6 @@ BOOST_AUTO_TEST_CASE(qp) {
         if (r < std::numeric_limits<double>::infinity()) {
             double s = checkQP(g, c, ae, be, ai, bi, x);
             BOOST_CHECK_CLOSE(s, r, 1E-8);
-
             for (int i = 0; i < nx; ++i) {
                 x[i] += SQRT_EPS;
                 BOOST_CHECK( checkQP(g, c, ae, be, ai, bi, x) > r );
@@ -117,4 +123,12 @@ BOOST_AUTO_TEST_CASE(qp) {
             success = true;
         }
     }
+}
+
+} // anonymous
+
+BOOST_AUTO_TEST_CASE(qp) {
+    testQP(12, 20, 4, 3);
+    //testQP(12, 20, 0, 3);
+    testQP(12, 20, 4, 0);
 }

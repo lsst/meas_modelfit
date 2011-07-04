@@ -1,0 +1,13 @@
+# -*- python -*-
+import re
+Import("env")
+
+pkg = env["eups_product"]
+env.CheckSwig("python", ilang="c++", 
+            includedProducts="ndarray")
+env.LoadableModuleIncomplete("_eigenSVD", Split("eigenSVD.i"), 
+                             SWIGFLAGS=env['SWIGFLAGS'] + " -DIMPORT_FUNCTION_I",
+                             CCFLAGS=re.sub("-Wall", "", " ".join(env['CCFLAGS'])),
+                             LIBS=env.getlibs(pkg))
+
+

@@ -47,7 +47,6 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"    
 #include "lsst/ndarray/eigen.h"
 #include <Eigen/Core>
-#include <Eigen/SVD>
 #define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
 #include "numpy/arrayobject.h"
 #include "lsst/ndarray/python.h"
@@ -205,34 +204,3 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
     %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<float> >;
     %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<double> >;
 }
-
-%inline %{
-namespace lsst {
-namespace meas {
-namespace multifit {
-    
-Eigen::VectorXd solveEigenSvd(
-    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 2> const & model, 
-    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 1, 1> const &dataVector
-) {
-    lsst::ndarray::EigenView<Pixel const,2,2> modelMatrix(model);
-    lsst::ndarray::EigenView<Pixel const,1,1> data(dataVector);
-
-    Eigen::SVD<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::AutoAlign | Eigen::RowMajor> > svd(modelMatrix);
-    Eigen::Matrix<lsst::meas::multifit::Pixel, Eigen::Dynamic, 1, Eigen::AutoAlign> tmp;
-
-    tmp = svd.matrixU().transpose()*(data);
-    for(int i=0; i < tmp.size(); ++i) {
-        double s = svd.singularValues()[i];
-        if(s > 1e-8) {
-            tmp[i] /= s;
-        } else {
-            tmp[i] = 0.;
-        }
-    }
-    return svd.matrixV()*tmp;
-}
-
-}}}
-
-%}

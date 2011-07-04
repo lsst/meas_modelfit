@@ -91,8 +91,9 @@ afw::geom::ellipses::Ellipse SourceMeasurement::makeEllipse(
     afw::geom::ellipses::Quadrupole quad(
         source.getIxx(), source.getIyy(), source.getIxy() 
     );
-
+    quad.normalize();
     afw::geom::ellipses::Axes axes(quad);
+    axes.normalize();
     if(axes.getA()<= std::numeric_limits<double>::epsilon())
         axes.setA(std::numeric_limits<double>::epsilon());
     if(axes.getB()<= std::numeric_limits<double>::epsilon())
@@ -124,11 +125,6 @@ SourceMeasurement::SourceMeasurement(Options const & options) :
     _objectiveValue = ndarray::allocate(
         options.radiusStepCount, 
         2*options.ellipticityStepCount+1, 
-        2*options.ellipticityStepCount+1
-    );
-    _usedSvd = ndarray::allocate(
-        options.radiusStepCount, 
-        2*options.ellipticityStepCount+1,
         2*options.ellipticityStepCount+1
     );
     _points = ndarray::allocate(options.radiusStepCount, 3);
@@ -239,16 +235,15 @@ void SourceMeasurement::setTestPoints(
     EllipseCore::ParameterVector delta = maxEllipse.getParameterVector() - minEllipse.getParameterVector();
     delta /= _options.radiusStepCount;
 
-    double ellipticityDelta = _options.ellipticityStepCount*_options.ellipticityStepSize;
     for (int i = 0; i < _options.radiusStepCount; ++i, base += delta) {
         _points[i][EllipseCore::RADIUS] = base[EllipseCore::RADIUS];
-        _points[i][EllipseCore::E1] = base[EllipseCore::E1] - ellipticityDelta;
-        _points[i][EllipseCore::E2] = base[EllipseCore::E2] - ellipticityDelta; 
+        _points[i][EllipseCore::E1] = base[EllipseCore::E1];
+        _points[i][EllipseCore::E2] = base[EllipseCore::E2]; 
     }
 }
 
 
-bool SourceMeasurement::solve(double e1, double e2, double r, double & objective, double & best, bool & usedSvd) {
+bool SourceMeasurement::solve(double e1, double e2, double r, double & objective, double & best) {
     pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
     assert(_evaluator->getParameterSize() == 3);
 
@@ -260,8 +255,12 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
     _evaluation->update(parameters);
     try {
         objective = _evaluation->getObjectiveValue();
-        usedSvd = _evaluation->usedSvd();
         log.debug(6, boost::format("Objective value is %f") % objective);
+#if LSST_MAX_DEBUG > 5
+    } catch (std::exception & err) {
+        log.debug(6, boost::format("exception: %s") % err.what());
+        return false;
+#endif
     } catch (...) {      
         objective = std::numeric_limits<double>::quiet_NaN();
         return false;
@@ -278,7 +277,7 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
         // }
         _parameters.deep() = parameters;
         _coefficients.deep() = _evaluation->getCoefficients();
-        _covariance.deep() = _evaluation->getCoefficientFisherMatrix();
+        _covariance.deep() = _evaluation->getCoefficientCovarianceMatrix();
         best = objective;
         _ellipse.getCore() = EllipseCore(e1, e2, r);
         return true;
@@ -293,7 +292,6 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
     setTestPoints(initialEllipse.getCore(), psfEllipse.getCore());
     double best = std::numeric_limits<double>::infinity();
     double objective;
-    bool usedSvd;
     _rBest = _e1Best = _e2Best = -1;
     _status |= algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
     _objectiveValue.deep() = std::numeric_limits<double>::quiet_NaN();
@@ -304,28 +302,28 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
             _points[iR][EllipseCore::E1] = 0.;
             _points[iR][EllipseCore::E2] = 0.;
 
-            if( solve(0., 0., SQRT_EPS, objective, best, usedSvd) ) {
+            if( solve(0., 0., SQRT_EPS, objective, best) ) {
                 _rBest = iR;
                 _e1Best = 0;
                 _e2Best = 0;
             }
 
             _objectiveValue[iR].deep() = objective;
-            _usedSvd[iR].deep() = objective;
             continue;
         }
 
         double e1 = _points[iR][EllipseCore::E1];
-        for (int iE1 = 0; iE1 < _objectiveValue.getSize<1>(); ++iE1, e1 += _options.ellipticityStepSize) {
+        double deltaE = _options.ellipticityStepSize;
+        int nSteps = _options.ellipticityStepCount;
+        for (int nE1 = -nSteps, iE1 = 0; nE1 <= nSteps; ++iE1, ++nE1) {
             double e2 = _points[iR][EllipseCore::E2];
-            for (int iE2 = 0; iE2 < _objectiveValue.getSize<2>(); ++iE2, e2 += _options.ellipticityStepSize) {
-                if(solve(e1, e2, r, objective, best, usedSvd)) {                    
+            for (int nE2 = -nSteps, iE2 = 0; nE2 <= nSteps; ++iE2, ++nE2) {
+                if (solve(e1 + nE1 * deltaE, e2 + nE2 * deltaE, r, objective, best)) {                    
                     _rBest = iR;
                     _e1Best = iE1;
                     _e2Best = iE2;
                 }
                 _objectiveValue[iR][iE1][iE2] = objective;
-                _usedSvd[iR][iE1][iE2] = usedSvd;
             }
         }
     }
@@ -336,9 +334,6 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
         _fluxErr = std::numeric_limits<double>::quiet_NaN();
         return;
     }
-    Eigen::LDLT<Eigen::MatrixXd> ldlt(ndarray::viewAsTransposedEigen(_covariance));
-    ndarray::viewAsTransposedEigen(_covariance).setIdentity();
-    ldlt.solveInPlace(ndarray::viewAsTransposedEigen(_covariance).setIdentity());
     Grid::Ptr grid = _evaluator->getGrid();
     _flux = grid::SourceComponent::computeFlux(_integration, _coefficients);
     _fluxErr = std::sqrt(grid::SourceComponent::computeFluxVariance(_integration, _covariance));
