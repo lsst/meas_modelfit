@@ -140,7 +140,7 @@ public:
     lsst::ndarray::Array<Pixel const,1,1> getIntegration() const { return _integration; }
 
 
-    int getCoefficientSize() const { return _coefficients.getSize<0>(); }
+    int getCoefficientCount() const { return _coefficients.getSize<0>(); }
 
     Pixel getDeltaFunctionCoefficient() const {
         return _coefficients[getCoefficientOffset(DELTAFUNCTION_ID)];
@@ -171,7 +171,7 @@ public:
 private:
 
     int getCoefficientOffset(ID id) const {
-        return grid::find(_evaluator->getGrid()->objects, id).getCoefficientOffset();
+        return _evaluator->getGrid()->objects.find(id)->getFluxGroup()->getCoefficientOffset(0);
     }
 
     void setTestPoints(EllipseCore const & initialEllipse, EllipseCore const & psfEllipse);

@@ -121,6 +121,18 @@ SWIG_SHARED_PTR_DERIVED(definition_ObjectComponentPtr, lsst::meas::multifit::det
 
 %include "lsst/meas/multifit/definition/ObjectComponent.h"
 
+%extend lsst::meas::multifit::definition::ObjectComponent {
+
+    boost::shared_ptr< lsst::meas::multifit::definition::FluxGroup > getFluxGroup() {
+        return self->getFluxGroup();
+    }
+
+    void setFluxGroup(boost::shared_ptr< lsst::meas::multifit::definition::FluxGroup > group) {
+        self->getFluxGroup() = group;
+    }
+
+}
+
 %DeclareDefinitionSharedElement(Position, position, POSITION, detail::CircleConstraint);
 %DeclareDefinitionSharedElement(Radius, radius, RADIUS, detail::MinMaxConstraint);
 %DeclareDefinitionSharedElement(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
@@ -156,78 +168,20 @@ SWIG_SHARED_PTR_DERIVED(definition_FramePtr, lsst::meas::multifit::detail::Frame
 %template(make) lsst::meas::multifit::definition::Frame::make<float>;
 %template(make) lsst::meas::multifit::definition::Frame::make<double>;
 
+//-------------------------------------- FluxGroup -----------------------------------------
 
-//-------------------------------------- Set -----------------------------------------
+SWIG_SHARED_PTR(detail_FluxGroupBasePtr, lsst::meas::multifit::detail::FluxGroupBase);
+SWIG_SHARED_PTR_DERIVED(definition_FluxGroupPtr, lsst::meas::multifit::detail::FluxGroupBase, lsst::meas::multifit::definition::FluxGroup);
+%rename(definition_FluxGroup) lsst::meas::multifit::definition::FluxGroup;
 
-%{
-#include "lsst/meas/multifit/definition/Set.h"
-%}
-
-namespace lsst { namespace meas { namespace multifit { namespace definition {
-
-template <typename Value_> class Set {};
-
-}}}} // namespace lsst::meas::multifit::definition
-
-%define %DeclareSet(NAME)
-%template(definition_##NAME##Set)
-lsst::meas::multifit::definition::Set<lsst::meas::multifit::definition::NAME>;
-%extend lsst::meas::multifit::definition::Set<lsst::meas::multifit::definition::NAME> {
-    boost::shared_ptr< NAME > __getitem__(ID id) {
-        lsst::meas::multifit::definition::Set<lsst::meas::multifit::definition::NAME>::iterator i 
-            = self->find(id);
-        boost::shared_ptr< lsst::meas::multifit::definition::NAME > result;
-        if (i != self->end()) {
-            result = i;
-        }
-        return result;
-    }
-    bool insert(boost::shared_ptr< lsst::meas::multifit::definition::NAME > const & item) {
-        return self->insert(item).second;
-    }
-    int __len__() {
-        return self->size();
-    }
-    void clear() {
-        self->clear();
-    }
-
-    PyObject * keys() {
-        PyObject * result = PyList_New(0);
-        typedef lsst::meas::multifit::definition::Set<lsst::meas::multifit::definition::NAME> Self;
-        for (Self::iterator i = self->begin(); i != self->end(); ++i) {
-            PyObject * element = PyLong_FromLongLong(i->id);
-            if (element == 0) {
-                Py_DECREF(result);
-                return 0;
-            }
-            if (PyList_Append(result, element) < 0) {
-                Py_DECREF(result);
-                Py_DECREF(element);
-                return 0;
-            }
-            Py_DECREF(element);
-        }
-        return result;
-    }
-
-    %pythoncode %{
-        def values(self):
-            return [self[id] for id in self.keys()]
-        def __iter__(self):
-            for id in self.keys():
-                yield self[id]
-        def __repr__(self):
-            return "NAME""Set([\n"  + ",".join(repr(v) for v in self) + "\n])"
-    %}
-}
-%enddef
-
-%DeclareSet(ObjectComponent)
-%DeclareSet(Frame)
-
+%include "lsst/meas/multifit/definition/FluxGroup.h"
 
 //-------------------------------------- Definition -----------------------------------------
+
+%include "lsst/meas/multifit/containers.i"
+
+%DeclareMutableSet(lsst::meas::multifit::definition::ObjectComponent, definition_ObjectComponentSet)
+%DeclareMutableSet(lsst::meas::multifit::definition::Frame, definition_FrameSet)
 
 %include "lsst/meas/multifit/definition/Definition.h"
 

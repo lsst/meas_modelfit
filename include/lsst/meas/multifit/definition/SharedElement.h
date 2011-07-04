@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_DEFINITION_parameters
-#define LSST_MEAS_MULTIFIT_DEFINITION_parameters
+#ifndef LSST_MEAS_MULTIFIT_DEFINITION_SharedElement
+#define LSST_MEAS_MULTIFIT_DEFINITION_SharedElement
 
 #include "lsst/meas/multifit/constants.h"
 #include <boost/shared_ptr.hpp>
@@ -286,7 +286,7 @@ public:
 
 private:
 
-    SharedElement(SharedElement const & other) : detail::SharedElementBase<E>(*this) {}
+    SharedElement(SharedElement const & other) : detail::SharedElementBase<E>(other) {}
 
     explicit SharedElement(Value const & value, Bounds const & bounds, bool active) : 
         detail::SharedElementBase<E>(value, bounds, active) {}
@@ -304,4 +304,4 @@ std::ostream & operator<<(std::ostream & os, SharedElement<E> const & component)
 
 }}}} // namespace lsst::meas::multifit::definition
 
-#endif // !LSST_MEAS_MULTIFIT_DEFINITION_parameters
+#endif // !LSST_MEAS_MULTIFIT_DEFINITION_SharedElement

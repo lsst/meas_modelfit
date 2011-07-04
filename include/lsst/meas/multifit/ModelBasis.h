@@ -66,7 +66,7 @@ public:
     ) const;
 
     /// @brief Return the number of inequality constraints.
-    int getConstraintSize() const { return _constraintMatrix.getSize<0>(); }
+    int getConstraintCount() const { return _constraintMatrix.getSize<0>(); }
 
     /// @brief Return the inequality constraint matrix.
     lsst::ndarray::Array<Pixel const,2,1> getConstraintMatrix() const { return _constraintMatrix; }

@@ -7,31 +7,6 @@ namespace lsst { namespace meas { namespace multifit { namespace grid {
 
 static double const EPSILON = std::sqrt(std::numeric_limits<double>::epsilon());
 
-template <SharedElementType E>
-std::ostream & operator<<(std::ostream & os, SharedElement<E> const & component) {
-    return os << (*definition::SharedElement<E>::make(component.getValue(), component.isActive()))
-              << " [" << component.offset << "]";
-}
-
-template std::ostream & operator<<(std::ostream &, SharedElement<POSITION> const &);
-template std::ostream & operator<<(std::ostream &, SharedElement<RADIUS> const &);
-template std::ostream & operator<<(std::ostream &, SharedElement<ELLIPTICITY> const &);
-
-ObjectComponent::ObjectComponent(definition::ObjectComponent const & def, int coefficientOffset, int frameCount, int filterCount) :
-    detail::ObjectComponentBase(def), 
-    _coefficientOffset(coefficientOffset),
-    _coefficientCount(1)
-{
-    if (getBasis()) {
-        _coefficientCount = getBasis()->getSize();
-    }
-    if (isVariable()) {
-        _coefficientCount *= frameCount;
-    } else {
-        _coefficientCount *= filterCount;
-    }
-}
-
 void ObjectComponent::validate() const {
     if (!getPosition()) {
         throw LSST_EXCEPT(
@@ -258,69 +233,11 @@ void ObjectComponent::unperturbEllipse(
 }
 
 std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj) {
-    os << "ObjectComponent " << obj.id << "(@" << (&obj) << ") = {"
-       << (obj.isVariable() ? "variable" : "nonvariable") << ", Rx" << obj.getRadiusFactor() << "}:\n";
+    os << "ObjectComponent " << obj.id << "(@" << (&obj) << "):\n";
     if (obj.getPosition()) os << "    " << (*obj.getPosition()) << "\n";
     if (obj.getRadius()) os << "    " << (*obj.getRadius()) << " x " << obj.getRadiusFactor() << "\n";
     if (obj.getEllipticity()) os << "    " << (*obj.getEllipticity()) << "\n";
     return os;
-}
-
-void SourceComponent::fillIntegration(lsst::ndarray::Array<Pixel,1,1> const & integration) const {
-    if (object.getBasis()) {
-        object.getBasis()->integrate(
-            integration[ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())]
-        );
-    } else {
-        integration[getCoefficientOffset()] = 1.0;
-    }
-}
-
-double SourceComponent::computeFlux(
-    lsst::ndarray::Array<Pixel const,1,1> const & integration,
-    lsst::ndarray::Array<Pixel const,1,1> const & coefficients
-) {
-    return ndarray::viewAsEigen(integration).dot(ndarray::viewAsEigen(coefficients));
-}
-
-double SourceComponent::computeFluxVariance(
-    lsst::ndarray::Array<Pixel const,1,1> const & integration,
-    lsst::ndarray::Array<Pixel const,2,1> const & covariance
-) {
-    return ndarray::viewAsEigen(integration).dot(
-        ndarray::viewAsEigen(covariance) * ndarray::viewAsEigen(integration)
-    );
-}
-
-double SourceComponent::computeFlux(
-    lsst::ndarray::Array<Pixel const,1,1> const & coefficients
-) const {
-    if (object.getBasis()) {
-        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
-        object.getBasis()->integrate(integration);
-        return ndarray::viewAsEigen(
-            coefficients[
-                ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())
-            ]).dot(ndarray::viewAsEigen(integration));
-    }
-    return coefficients[getCoefficientOffset()];
-}
-
-double SourceComponent::computeFluxVariance(
-    lsst::ndarray::Array<Pixel const,2,1> const & covariance
-) const {
-    if (object.getBasis()) {
-        Eigen::MatrixXd sigma = ndarray::viewAsEigen(covariance).block(
-            getCoefficientOffset(),
-            getCoefficientOffset(),
-            getCoefficientCount(),
-            getCoefficientCount()
-        );
-        ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
-        object.getBasis()->integrate(integration);
-        return ndarray::viewAsEigen(integration).dot(sigma * ndarray::viewAsEigen(integration));
-    }
-    return covariance[getCoefficientOffset()][getCoefficientOffset()];
 }
 
 }}}} // namespace lsst::meas::multifit::grid

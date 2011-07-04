@@ -1,4 +1,4 @@
-#include "lsst/meas/multifit/definition/Definition.h"
+#include "lsst/meas/multifit/definition/Frame.h"
 #include "lsst/afw/detection/FootprintArray.cc"
 #include "lsst/ndarray/eigen.h"
 #include <limits>
@@ -24,59 +24,7 @@ FrameBase::FrameBase(FrameBase const & other, bool deep) :
 
 } // namespace detail
 
-
 namespace definition {
-
-template <SharedElementType E>
-std::ostream & operator<<(std::ostream & os, SharedElement<E> const & component) {
-    static char const * names[] = { "Position", "Radius", "Ellipticity" };
-    os << names[E] << " (@" << (&component) << ") = ";
-    detail::SharedElementTraits<E>::printValue(os, component.getValue());
-    return os << (component.isActive() ? " (active) " : " (inactive) ") 
-              << "(" << component.getBounds() << ")";
-}
-
-template std::ostream & operator<<(std::ostream &, SharedElement<POSITION> const &);
-template std::ostream & operator<<(std::ostream &, SharedElement<RADIUS> const &);
-template std::ostream & operator<<(std::ostream &, SharedElement<ELLIPTICITY> const &);
-
-ObjectComponent ObjectComponent::makeStar(
-    ID const id, 
-    lsst::afw::geom::Point2D const & position, 
-    bool const isVariable,
-    bool const isPositionActive
-) {
-    ObjectComponent r(id);
-    r.getPosition() = PositionElement::make(position, isPositionActive);
-    r.isVariable() = isVariable;    
-    return r;
-}
-
-ObjectComponent ObjectComponent::makeGalaxy(
-    ID const id,
-    ModelBasis::Ptr const & basis,
-    lsst::afw::geom::ellipses::Ellipse const & ellipse,
-    bool const isEllipticityActive,
-    bool const isRadiusActive,
-    bool const isPositionActive
-) {
-    ObjectComponent r(id);
-    EllipseCore core(ellipse.getCore());
-    r.getPosition() = PositionElement::make(ellipse.getCenter(), isPositionActive);
-    r.getEllipticity() = EllipticityElement::make(core.getEllipticity(), isEllipticityActive);
-    r.getRadius() = RadiusElement::make(core.getRadius(), isRadiusActive);
-    r.getBasis() = basis;
-    return r;
-}
-
-std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj) {
-    os << "ObjectComponent " << obj.id << "(@" << (&obj) << ") = {"
-       << (obj.isVariable() ? "variable" : "nonvariable") << ", Rx" << obj.getRadiusFactor() << "}:\n";
-    if (obj.getPosition()) os << "    " << (*obj.getPosition()) << "\n";
-    if (obj.getRadius()) os << "    " << (*obj.getRadius()) << " x " << obj.getRadiusFactor() << "\n";
-    if (obj.getEllipticity()) os << "    " << (*obj.getEllipticity()) << "\n";
-    return os;
-}
 
 template <typename PixelT>
 Frame Frame::make(
@@ -151,8 +99,5 @@ std::ostream & operator<<(std::ostream & os, Frame const & frame) {
     return os << "Frame " << frame.id << " (@" << (&frame) << ") = {" << filterName 
               << ", " << frame.getFootprint()->getArea() << "pix}\n";
 }
-
-Definition::Definition(Definition const & other) :
-    frames(other.frames), objects(other.objects), _wcs(other._wcs) {}
 
 }}}} // namespace lsst::meas::multifit::definition

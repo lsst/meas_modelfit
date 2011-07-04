@@ -119,9 +119,9 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
     def testObjectComponentAccessors(self):
         self.assertEqual(self.star.id, 3)
         self.assertEqual(self.galaxy.id, 1)
-        self.assertFalse(self.star.isVariable())
-        self.star.setVariable(True)
-        self.assert_(self.star.isVariable())
+        self.assertFalse(self.star.getFluxGroup().isVariable())
+        self.star.getFluxGroup().setVariable(True)
+        self.assert_(self.star.getFluxGroup().isVariable())
         self.assertEqual(self.star.getBasis(), None)
         self.star.setBasis(mf.ShapeletModelBasis.make(0))
         self.assertEqual(self.star.getBasis().getSize(), 1)
@@ -195,9 +195,10 @@ class GridTest(unittest.TestCase, TestCaseMixIn):
     def testConstruction(self):
         grid = mf.Grid.make(self.definition)
         n = 0
+        allSources = list(grid.sources)
         for obj in grid.objects:
             for source in obj.sources:
-                self.assertEqual(source, grid.sources[n])
+                self.assertEqual(source, allSources[n])
                 self.assertEqual(source.object, obj)
                 self.assertEqual(source.object.id, obj.id)
                 self.assertEqual(source.frame.id, 0)
