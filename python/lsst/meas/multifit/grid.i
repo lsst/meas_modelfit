@@ -82,13 +82,6 @@ SWIG_SHARED_PTR_DERIVED(grid_ObjectComponentPtr, lsst::meas::multifit::detail::O
         return self->getFluxGroup();
     }
 
-    lsst::afw::geom::Point2D makePoint(lsst::ndarray::Array<double const,1,1> const & params) const {
-        return self->makePoint(params.getData());
-    }
-
-    lsst::afw::geom::ellipses::Ellipse makeEllipse(lsst::ndarray::Array<double const,1,1> const & params) const {
-        return self->makeEllipse(params.getData());
-    }
 }
 
 //------------------------------------- Frame ---------------------------------------

@@ -4,7 +4,7 @@ namespace lsst { namespace meas { namespace multifit {
 
 void Evaluator::_evaluateModelMatrix(
     ndarray::Array<Pixel,2,2> const & matrix,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<double const,1,1> const & parameters
 ) const {
     matrix.deep() = 0.0;
     for (
@@ -12,7 +12,7 @@ void Evaluator::_evaluateModelMatrix(
         object != _grid->objects.end(); ++object
     ) {
         if (object->getBasis()) {
-            lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(param.getData());
+            lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(parameters);
             for (
                 Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end(); ++source
@@ -36,7 +36,7 @@ void Evaluator::_evaluateModelMatrix(
                     source->frame.applyWeights(block);
             }
         } else {
-            afw::geom::Point2D point = object->makePoint(param.getData());
+            afw::geom::Point2D point = object->makePoint(parameters);
             for (
                 Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
@@ -66,7 +66,7 @@ void Evaluator::_evaluateModelMatrix(
 void Evaluator::_evaluateModelMatrixDerivative(
     ndarray::Array<Pixel,3,3> const & derivative,
     ndarray::Array<Pixel const,2,2> const & modelMatrix,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<double const,1,1> const & parameters
 ) const {
     derivative.deep() = 0.0;
     for (
@@ -75,7 +75,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
         ++object
     ) {
         if (object->getBasis()) {
-            lsst::afw::geom::Ellipse ellipse = object->makeEllipse(param.getData());
+            lsst::afw::geom::Ellipse ellipse = object->makeEllipse(parameters);
             for (
                 Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
@@ -119,7 +119,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
                 }
             }
         } else {
-            lsst::afw::geom::Point2D point = object->makePoint(param.getData());
+            lsst::afw::geom::Point2D point = object->makePoint(parameters);
             for (
                 Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();
