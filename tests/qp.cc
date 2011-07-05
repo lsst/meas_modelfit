@@ -129,6 +129,6 @@ void testQP(
 
 BOOST_AUTO_TEST_CASE(qp) {
     testQP(12, 20, 4, 3);
-    //testQP(12, 20, 0, 3);
+    testQP(12, 20, 0, 3);
     testQP(12, 20, 4, 0);
 }

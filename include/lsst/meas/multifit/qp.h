@@ -31,11 +31,33 @@ public:
     /**
      *  @brief Initialize the solver.
      *
+     *  @param[in]      g   The diagonal of the @f$N \times N@f$ matrix @f$G@f$.
+     *  @param[in]      c   The @f$N@f$-element vector @f$c@f$.
+     */
+    QPSolver(
+        lsst::ndarray::Array<double const,1,0> const & g,
+        lsst::ndarray::Array<double const,1,0> const & c
+    );
+
+    /**
+     *  @brief Initialize the solver.
+     *
      *  @param[in]      g   The @f$N \times N@f$ matrix @f$G@f$.
      *  @param[in]      c   The @f$N@f$-element vector @f$c@f$.
      */
     QPSolver(
         Eigen::MatrixXd const & g,
+        Eigen::VectorXd const & c
+    );
+
+    /**
+     *  @brief Initialize the solver.
+     *
+     *  @param[in]      g   The diagonal of the @f$N \times N@f$ matrix @f$G@f$.
+     *  @param[in]      c   The @f$N@f$-element vector @f$c@f$.
+     */
+    QPSolver(
+        Eigen::VectorXd const & g,
         Eigen::VectorXd const & c
     );
 
@@ -117,6 +139,7 @@ public:
 
 private:
     struct Data;
+    class Impl;
     boost::shared_ptr<Data> _data;
 };
 
