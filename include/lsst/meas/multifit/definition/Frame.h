@@ -127,8 +127,7 @@ public:
         ID const id,
         lsst::afw::image::Exposure<PixelT> const & exposure,
         Footprint::Ptr const & footprint,
-        lsst::afw::image::MaskPixel const bitmask=~0x0,
-        bool const usePixelWeights = false
+        lsst::afw::image::MaskPixel const bitmask=~0x0
     );
     
 #ifndef SWIG
@@ -177,7 +176,7 @@ public:
 private:
     friend class grid::Initializer;
 
-    explicit Frame(detail::FrameBase const & other) : detail::FrameBase(other, true) {}
+    explicit Frame(detail::FrameBase const & other) : detail::FrameBase(other, false) {}
 };
 
 #ifndef SWIG

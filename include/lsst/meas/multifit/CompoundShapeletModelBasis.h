@@ -50,7 +50,7 @@ public:
 
     void integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
     
-    void evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const;
+    void evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 2, 1> const & matrix) const;
 
 protected:
 
@@ -126,7 +126,9 @@ public:
         detail::CompoundShapeletBase::integrate(vector);
     }
 
-    virtual void _evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const {
+    virtual void _evaluateMultipoleMatrix(
+        lsst::ndarray::Array<Pixel, 2, 1> const & matrix
+    ) const {
         detail::CompoundShapeletBase::evaluateMultipoleMatrix(matrix);
     }
 
@@ -136,7 +138,9 @@ protected:
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
         detail::CompoundShapeletBase::integrate(vector);
     }
-    virtual void _evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const {
+    virtual void _evaluateMultipoleMatrix(
+        lsst::ndarray::Array<Pixel, 2, 1> const & matrix
+    ) const {
         detail::CompoundShapeletBase::evaluateMultipoleMatrix(matrix);
     };
 

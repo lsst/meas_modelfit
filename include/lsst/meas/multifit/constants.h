@@ -118,6 +118,7 @@ template <SharedElementType E> class SharedElement;
 class ObjectComponent;
 class Frame;
 class Definition;
+class FluxGroup;
 
 } // namespace definition
 
@@ -128,6 +129,7 @@ class ObjectComponent;
 class Frame;
 class SourceComponent;
 class Grid;
+class FluxGroup;
 class Initializer;
 
 } // namespace definition

@@ -4,6 +4,7 @@
 
 #include "lsst/ndarray.h"
 #include "boost/shared_ptr.hpp"
+#include "Eigen/Core"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -27,6 +28,39 @@ public:
         lsst::ndarray::Array<double const,1,0> const & c
     );
 
+    /**
+     *  @brief Initialize the solver.
+     *
+     *  @param[in]      g   The diagonal of the @f$N \times N@f$ matrix @f$G@f$.
+     *  @param[in]      c   The @f$N@f$-element vector @f$c@f$.
+     */
+    QPSolver(
+        lsst::ndarray::Array<double const,1,0> const & g,
+        lsst::ndarray::Array<double const,1,0> const & c
+    );
+
+    /**
+     *  @brief Initialize the solver.
+     *
+     *  @param[in]      g   The @f$N \times N@f$ matrix @f$G@f$.
+     *  @param[in]      c   The @f$N@f$-element vector @f$c@f$.
+     */
+    QPSolver(
+        Eigen::MatrixXd const & g,
+        Eigen::VectorXd const & c
+    );
+
+    /**
+     *  @brief Initialize the solver.
+     *
+     *  @param[in]      g   The diagonal of the @f$N \times N@f$ matrix @f$G@f$.
+     *  @param[in]      c   The @f$N@f$-element vector @f$c@f$.
+     */
+    QPSolver(
+        Eigen::VectorXd const & g,
+        Eigen::VectorXd const & c
+    );
+
     /// @brief Set the maximum number of iterations.
     QPSolver & maxIterations(int n);
 
@@ -44,6 +78,19 @@ public:
     );
 
     /**
+     *  @brief Set the equality constraint for the solver.
+     *
+     *  @param[in]      a   The @f$K_e \times N@f$ matrix @f$A_e@f$.
+     *  @param[in]      b   The @f$K_e@f$-element vector @f$b_e@f$.
+     *
+     *  Multiple calls will reset the equality constraint, not append to it.
+     */
+    QPSolver & equality(
+        Eigen::MatrixXd const & a,
+        Eigen::VectorXd const & b
+    );
+
+    /**
      *  @brief Set the inequality constraint for the solver.
      *
      *  @param[in]      a   The @f$K_i \times N@f$ matrix @f$A_i@f$.
@@ -57,6 +104,19 @@ public:
     );
 
     /**
+     *  @brief Set the inequality constraint for the solver.
+     *
+     *  @param[in]      a   The @f$K_i \times N@f$ matrix @f$A_i@f$.
+     *  @param[in]      b   The @f$K_i@f$-element vector @f$b_i@f$.
+     *
+     *  Multiple calls will reset the inequality constraint, not append to it.
+     */
+    QPSolver & inequality(
+        Eigen::MatrixXd const & a,
+        Eigen::VectorXd const & b
+    );
+
+    /**
      *  @brief Solve the quadratic programming problem.
      *
      *  @param[in,out]  x   The solution vector @f$x@f$.  Must be allocated to the correct size,
@@ -67,8 +127,19 @@ public:
      */
     double solve(lsst::ndarray::Array<double,1,0> const & x) const;
 
+    /**
+     *  @brief Solve the quadratic programming problem.
+     *
+     *  @param[in,out]  x   The solution vector @f$x@f$.
+     *
+     *  @return the value of the cost function @f$q(x)@f$ at the solution, or infinity if the
+     *          problem is infeasible.
+     */
+    double solve(Eigen::VectorXd & x) const;
+
 private:
     struct Data;
+    class Impl;
     boost::shared_ptr<Data> _data;
 };
 

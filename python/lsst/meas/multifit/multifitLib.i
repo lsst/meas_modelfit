@@ -45,6 +45,8 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/meas/multifit/ShapeletModelBasis.h"
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"    
+#include "lsst/ndarray/eigen.h"
+#include <Eigen/Core>
 #define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
 #include "numpy/arrayobject.h"
 #include "lsst/ndarray/python.h"
@@ -135,6 +137,7 @@ def makeSourceMeasurement(**kw):
 %declareNumPyConverters(lsst::ndarray::Array<double, 2, 2>);
 %declareNumPyConverters(lsst::ndarray::Array<double const, 2, 2>);
 %declareNumPyConverters(lsst::ndarray::Array<double const, 3, 3>);
+%declareNumPyConverters(Eigen::VectorXd);
 
 %include "lsst/meas/multifit/constants.h"
 

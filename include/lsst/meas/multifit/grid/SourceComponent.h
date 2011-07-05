@@ -35,11 +35,6 @@ class ObjectComponent;
 class SourceComponent {
 public:
 
-    SourceComponent(
-        Frame const & frame, ObjectComponent const & object, 
-        CONST_PTR(afw::image::Wcs) const & wcs
-    );
-
     afw::geom::Point2D const getReferencePoint() const;
 
     Frame const & frame;
@@ -89,6 +84,14 @@ public:
     afw::detection::LocalPsf::Ptr const getLocalPsf() const { return _localPsf; }
 
 private:
+
+    friend class grid::Initializer;
+
+    SourceComponent(
+        Frame const & frame, ObjectComponent const & object, 
+        CONST_PTR(afw::image::Wcs) const & wcs
+    );
+
     afw::geom::AffineTransform _transform;
     ModelBasis::Ptr _basis;
     afw::detection::LocalPsf::Ptr _localPsf;

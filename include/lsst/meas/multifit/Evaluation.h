@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_Evaluation
 
 #include "lsst/meas/multifit/BaseEvaluator.h"
-
+#include <boost/shared_ptr.hpp>
 namespace lsst { namespace meas { namespace multifit {
 
 /**
@@ -46,7 +46,7 @@ namespace lsst { namespace meas { namespace multifit {
  *
  *  Some intermediate and derivative products produced by the Evaluation include:
  *   - the residuals vector @f$r = Ax - y@f$
- *   - the coefficient Fisher matrix @f$F = A^T A + \Sigma^{-1}@f$
+ *   - the coefficient Fisher matrix @f$F = A^T A@f$
  *   - partial derivatives of the model matrix and residuals vector with respect to the parameters
  *
  *  If constructed without a prior, only the first term is evaluated.
@@ -56,20 +56,24 @@ namespace lsst { namespace meas { namespace multifit {
  */
 class Evaluation : private boost::noncopyable {
 public:
+    typedef boost::shared_ptr<Evaluation> Ptr;
+    typedef boost::shared_ptr<Evaluation const> ConstPtr;
 
     /// @brief Construct with no prior and use the evaluator's initial parameters.
-    Evaluation(BaseEvaluator::Ptr const & evaluator);
+    Evaluation(BaseEvaluator::Ptr const & evaluator, double const svThreshold=1e-8);
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        lsst::ndarray::Array<double const,1,1> const & parameters
+        lsst::ndarray::Array<double const,1,1> const & parameters,
+        double const svThreshold=1e-8
     );
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        Eigen::VectorXd const & parameters
+        Eigen::VectorXd const & parameters,
+        double const svThreshold=1e-8
     );
 
     /// @brief Update the parameters @f$\phi@f$.
@@ -164,10 +168,16 @@ public:
         return _residualsJacobian;
     }
 
-    /// @brief The coefficient Fisher matrix $F = A^T A + \Sigma^{-1}$.
+    /// @brief The coefficient Fisher matrix $F = A^T A$.
     lsst::ndarray::Array<Pixel const,2,2> getCoefficientFisherMatrix() const {
         ensureCoefficientFisherMatrix();
         return _coefficientFisherMatrix;
+    }
+
+    /// @brief The coefficient Covariance matrix $\Sigma = F^+ = (A^T A)^+$.
+    lsst::ndarray::Array<Pixel const,2,2> getCoefficientCovarianceMatrix() const {
+        ensureCoefficientCovarianceMatrix();
+        return _coefficientCovarianceMatrix;
     }
 
     /// @brief Return the objective value @f$q@f$.
@@ -175,16 +185,10 @@ public:
         ensureObjectiveValue();
         return _objectiveValue;
     }
-
+    
     ~Evaluation();
 
 private:
-
-#ifndef SWIG
-    class LinearSolver;
-    class CholeskySolver;
-    class ConstrainedSolver;
-#endif
 
     void ensureModelMatrix() const;
     void ensureModelMatrixDerivative() const;
@@ -193,22 +197,29 @@ private:
     void ensureResiduals() const;
     void ensureResidualsJacobian() const;
     void ensureCoefficientFisherMatrix() const;
+    void ensureCoefficientCovarianceMatrix() const;
     void ensureObjectiveValue() const;
+    void ensureFactorization() const;
 
     void initialize();
 
+    class Factorization;
+
     mutable int _status;
+    mutable int _products;
     BaseEvaluator::Ptr _evaluator;
-    boost::scoped_ptr<LinearSolver> _solver;
+    mutable boost::scoped_ptr<Factorization> _factorization;
     mutable double _objectiveValue;
     ndarray::Array<double,1,1> _parameters;
     mutable ndarray::Array<Pixel,2,2> _modelMatrix;
     mutable ndarray::Array<Pixel,3,3> _modelMatrixDerivative;
     mutable ndarray::Array<Pixel,1,1> _coefficients;
     mutable ndarray::Array<Pixel,2,2> _coefficientFisherMatrix;
+    mutable ndarray::Array<Pixel,2,2> _coefficientCovarianceMatrix;
     mutable ndarray::Array<Pixel,1,1> _residuals;
     mutable ndarray::Array<Pixel,2,2> _residualsJacobian;
     mutable ndarray::Array<Pixel,1,1> _modelVector;
+    double _svThreshold;
 };
 
 }}} // namespace lsst::meas::multifit
