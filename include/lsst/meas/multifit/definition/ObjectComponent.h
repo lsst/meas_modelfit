@@ -26,6 +26,7 @@
 
 
 #include "lsst/meas/multifit/definition/SharedElement.h"
+#include "lsst/meas/multifit/definition/FluxGroup.h"
 #include "lsst/meas/multifit/ModelBasis.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -44,27 +45,19 @@ public:
     /// @brief Return the ratio of the actual radius of this object to the radius parameter.
     double const getRadiusFactor() const { return _radiusFactor; }
 
-    /**
-     *  @brief Return whether the object is time-variable (has different coefficients
-     *         in each exposure).
-     */
-    bool const isVariable() const { return _variable; };
-
 protected:
     
     ObjectComponentBase(
         ID const id_, 
         double const radiusFactor,
-        bool const variable,
         ModelBasis::Ptr const & basis = ModelBasis::Ptr()
-    ) : id(id_), _radiusFactor(radiusFactor), _variable(variable), _basis(basis) {}
+    ) : id(id_), _radiusFactor(radiusFactor), _basis(basis) {}
 
     ObjectComponentBase(ObjectComponentBase const & other) : 
-        id(other.id), _radiusFactor(other._radiusFactor), _variable(other._variable), _basis(other._basis)
+        id(other.id), _radiusFactor(other._radiusFactor), _basis(other._basis)
     {}
 
     double _radiusFactor;
-    bool _variable;
     ModelBasis::Ptr _basis;
 };
 
@@ -76,24 +69,29 @@ namespace definition {
 /**
  *  @brief An astronomical object in a multifit definition.
  *
- *  An ObjectComponent will typically represent a point source or elliptical source.  For the former, the
- *  radius, ellipticity, and basis pointers will be empty, while they will all be non-empty for the latter.
+ *  An ObjectComponent will typically represent a point source or elliptical
+ *  source.  For the former, the radius, ellipticity, and basis pointers will be
+ *  empty, while they will all be non-empty for the latter.
  *
- *  Most of the accessors of object return by non-const reference, reflecting that ObjectComponent is essentially
- *  a struct that is validated only when a Grid is constructed from the Definition.  We have used accessors
- *  rather than public data members so the interface is similar to that of grid::ObjectComponent, which behaves
- *  like a const version of definition::ObjectComponent.
+ *  Most of the accessors of object return by non-const reference, reflecting
+ *  that ObjectComponent is essentially a struct that is validated only when a
+ *  Grid is constructed from the Definition.  We have used accessors rather than
+ *  public data members so the interface is similar to that of
+ *  grid::ObjectComponent, which behaves like a const version of
+ *  definition::ObjectComponent.
  *
- *  In Python, accessors of ObjectComponent will be wrapped both with "get/set" methods and as Python properties.
+ *  In Python, accessors of ObjectComponent will be wrapped both with "get/set"
+ *  methods and as Python properties.  
  */
 class ObjectComponent : public detail::ObjectComponentBase {
 public:
 
-    explicit ObjectComponent(ID id_) : detail::ObjectComponentBase(id_, 1.0, false) {}
+    explicit ObjectComponent(ID id_) : detail::ObjectComponentBase(id_, 1.0) {}
 
     ObjectComponent(ObjectComponent const & other) :
         detail::ObjectComponentBase(other),
-        _position(other._position), _radius(other._radius), _ellipticity(other._ellipticity)
+        _position(other._position), _radius(other._radius), _ellipticity(other._ellipticity),
+        _fluxGroup(other._fluxGroup)
     {}
 
     static ObjectComponent makeStar(
@@ -114,16 +112,18 @@ public:
 
     //@{
     /**
-     *  @brief Return and/or set the parameter element.
+     *  @brief Return and/or set the parameter elements and flux group.
      */
 #ifndef SWIG
     PositionElement::Ptr & getPosition() { return _position; }
     RadiusElement::Ptr & getRadius() { return _radius; }
     EllipticityElement::Ptr & getEllipticity() { return _ellipticity; }
+    FluxGroup::Ptr & getFluxGroup() { return _fluxGroup; }
 
     PositionElement::Ptr const getPosition() const { return _position; }
     RadiusElement::Ptr const getRadius() const { return _radius; }
     EllipticityElement::Ptr const getEllipticity() const { return _ellipticity; }
+    FluxGroup::Ptr const getFluxGroup() const { return _fluxGroup; }
 
     template <SharedElementType E>
     typename SharedElement<E>::Ptr & getElement() {
@@ -146,28 +146,20 @@ public:
     /// @brief Return and/or set the ratio of the actual radius of this object to the radius parameter.
     double & getRadiusFactor() { return _radiusFactor; }
 
-    /**
-     *  @brief Return and/or set whether the object is time-variable (has different coefficients
-     *         in each exposure).
-     */
-    bool & isVariable() { return _variable; };
-
 #endif
 
     using detail::ObjectComponentBase::getBasis;
     using detail::ObjectComponentBase::getRadiusFactor;
-    using detail::ObjectComponentBase::isVariable;
 
     //@{
     /**
-     *  @brief Setters for basis, radius factor and variability.
+     *  @brief Setters for basis and radius factor.
      *
      *  These aren't necessary in C++ because the non-const getters return references, but they might
      *  be expected, and they're the only way to do things from Python.
      */
     void setBasis(ModelBasis::Ptr const & basis) { _basis = basis; }
     void setRadiusFactor(double factor) { _radiusFactor = factor; }
-    void setVariable(bool variable) { _variable = variable; }
     //@}
 
 private:
@@ -184,6 +176,7 @@ private:
     PositionElement::Ptr _position;
     RadiusElement::Ptr _radius;
     EllipticityElement::Ptr _ellipticity;
+    FluxGroup::Ptr _fluxGroup;
 };
 
 #ifndef SWIG

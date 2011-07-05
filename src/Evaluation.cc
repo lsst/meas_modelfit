@@ -103,7 +103,7 @@ public:
 
 Evaluation::Evaluation(BaseEvaluator::Ptr const & evaluator, double const svThreshold) : 
     _products(0), _evaluator(evaluator), _factorization(new Factorization),
-    _parameters(ndarray::allocate(_evaluator->getParameterSize())),
+    _parameters(ndarray::allocate(_evaluator->getParameterCount())),
     _svThreshold(svThreshold)
 {
     _evaluator->writeInitialParameters(_parameters);
@@ -164,9 +164,9 @@ void Evaluation::update(
 }
 
 void Evaluation::setCoefficients(lsst::ndarray::Array<Pixel const,1,1> const & coefficients) {
-    assert(coefficients.size() == _evaluator->getCoefficientSize());
+    assert(coefficients.size() == _evaluator->getCoefficientCount());
     if (_coefficients.getData() == 0) {
-        _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
+        _coefficients = ndarray::allocate(_evaluator->getCoefficientCount());
     }
     _coefficients.deep() = coefficients;
     _products &= ~coefficient_dependencies;
@@ -175,9 +175,9 @@ void Evaluation::setCoefficients(lsst::ndarray::Array<Pixel const,1,1> const & c
 
 void Evaluation::setCoefficients(Eigen::VectorXd const & coefficients) {
     if (_coefficients.getData() == 0) {
-        _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
+        _coefficients = ndarray::allocate(_evaluator->getCoefficientCount());
     }
-    assert(coefficients.size() == _evaluator->getCoefficientSize());
+    assert(coefficients.size() == _evaluator->getCoefficientCount());
     ndarray::viewAsEigen(_coefficients) = coefficients;
     _products &= ~coefficient_dependencies;
     Bit<COEFFICIENTS>::set(_products);
@@ -192,7 +192,7 @@ void Evaluation::solveCoefficients() {
 void Evaluation::ensureModelMatrix() const {
     if (Bit<MODEL_MATRIX>::test(_products)) return;
     if (_modelMatrix.getData() == 0) {
-        _modelMatrix = ndarray::allocate(_evaluator->getDataSize(), _evaluator->getCoefficientSize());
+        _modelMatrix = ndarray::allocate(_evaluator->getPixelCount(), _evaluator->getCoefficientCount());
     }
     _evaluator->_evaluateModelMatrix(_modelMatrix, _parameters);
     Bit<MODEL_MATRIX>::set(_products);
@@ -203,7 +203,7 @@ void Evaluation::ensureModelMatrixDerivative() const {
     ensureModelMatrix();
     if (_modelMatrixDerivative.getData() == 0) {
         _modelMatrixDerivative = ndarray::allocate(
-            _evaluator->getParameterSize(), _evaluator->getDataSize(), _evaluator->getCoefficientSize()
+            _evaluator->getParameterCount(), _evaluator->getPixelCount(), _evaluator->getCoefficientCount()
         );
     }
     _evaluator->_evaluateModelMatrixDerivative(_modelMatrixDerivative, _modelMatrix, _parameters);
@@ -214,7 +214,7 @@ void Evaluation::ensureCoefficients() const {
     if (Bit<COEFFICIENTS>::test(_products)) return;
     ensureFactorization();
     if (_coefficients.getData() == 0) {
-        _coefficients = ndarray::allocate(_evaluator->getCoefficientSize());
+        _coefficients = ndarray::allocate(_evaluator->getCoefficientCount());
     }
     _factorization->solve(
         _coefficients, _evaluator->getDataVector(),
@@ -228,7 +228,7 @@ void Evaluation::ensureModelVector() const {
     ensureCoefficients();
     ensureModelMatrix();
     if (_modelVector.getData() == 0) {
-        _modelVector = ndarray::allocate(_evaluator->getDataSize());
+        _modelVector = ndarray::allocate(_evaluator->getPixelCount());
     }
     ndarray::viewAsEigen(_modelVector) 
         = ndarray::viewAsEigen(_modelMatrix) * ndarray::viewAsEigen(_coefficients);
@@ -239,7 +239,7 @@ void Evaluation::ensureResiduals() const {
     if (Bit<RESIDUALS>::test(_products)) return;
     ensureModelVector();
     if (_residuals.getData() == 0) {
-        _residuals = ndarray::allocate(_evaluator->getDataSize());
+        _residuals = ndarray::allocate(_evaluator->getPixelCount());
     }
     ndarray::viewAsEigen(_residuals) = ndarray::viewAsEigen(_modelVector) 
         - ndarray::viewAsEigen(_evaluator->getDataVector());
@@ -252,7 +252,7 @@ void Evaluation::ensureResidualsJacobian() const {
     ensureModelMatrixDerivative();
     if (_residualsJacobian.getData() == 0) {
         _residualsJacobian = ndarray::allocate(
-            _evaluator->getDataSize(), _evaluator->getParameterSize()
+            _evaluator->getPixelCount(), _evaluator->getParameterCount()
         );
     }
     ndarray::EigenView<Pixel,1,1> coeffVec(_coefficients);
@@ -267,7 +267,7 @@ void Evaluation::ensureCoefficientFisherMatrix() const {
     if (Bit<COEFFICIENT_FISHER_MATRIX>::test(_products)) return;
     if (_coefficientFisherMatrix.getData() == 0) {
         _coefficientFisherMatrix = ndarray::allocate(
-            _evaluator->getCoefficientSize(), _evaluator->getCoefficientSize()
+            _evaluator->getCoefficientCount(), _evaluator->getCoefficientCount()
         );
     }
     if (Bit<FACTORIZATION>::test(_products)) {
@@ -286,7 +286,7 @@ void Evaluation::ensureCoefficientCovarianceMatrix() const {
     ensureFactorization();
     if (_coefficientCovarianceMatrix.getData() == 0) {
         _coefficientCovarianceMatrix = ndarray::allocate(
-            _evaluator->getCoefficientSize(), _evaluator->getCoefficientSize()
+            _evaluator->getCoefficientCount(), _evaluator->getCoefficientCount()
         );
     }
     _factorization->fillCovarianceMatrix(_coefficientCovarianceMatrix);
@@ -308,11 +308,11 @@ void Evaluation::ensureFactorization() const {
 }
 
 void Evaluation::initialize() {
-    if (_evaluator->getParameterSize() != _parameters.getSize<0>()) {
+    if (_evaluator->getParameterCount() != _parameters.getSize<0>()) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LengthErrorException,
             (boost::format("Evaluator parameter size (%d) does not match parameter vector size (%d).")
-             % _evaluator->getParameterSize() % _parameters.getSize<0>()).str()
+             % _evaluator->getParameterCount() % _parameters.getSize<0>()).str()
         );
     }
 }

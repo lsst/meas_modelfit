@@ -189,36 +189,46 @@ void SourceMeasurement::addObjectsToDefinition(
     definition::EllipticityElement::Ptr ellipticity = definition::EllipticityElement::make(
         ellipseCore.getEllipticity(), true
     );
+    definition::FluxGroup::Ptr fluxGroup = definition::FluxGroup::make(0, 1.0, false);
+    int nFlux = 0;
     if (_options.fitDeltaFunction) {
         definition::ObjectComponent obj(DELTAFUNCTION_ID);
         obj.getPosition() = position;
+        obj.getFluxGroup() = fluxGroup;
         def.objects.insert(obj);
+        ++nFlux;
     }
     if (_options.fitExponential) {
         definition::ObjectComponent obj(EXPONENTIAL_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
+        obj.getFluxGroup() = fluxGroup;
         obj.setBasis(getExponentialBasis());
         def.objects.insert(obj);
-
+        ++nFlux;
     }
     if (_options.fitDeVaucouleur) {
         definition::ObjectComponent obj(DEVAUCOULEUR_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
+        obj.getFluxGroup() = fluxGroup;
         obj.setBasis(getDeVaucouleurBasis());
         def.objects.insert(obj);
+        ++nFlux;
     }
     if (_options.shapeletOrder >= 0) {
         definition::ObjectComponent obj(SHAPELET_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
+        obj.getFluxGroup() = fluxGroup;
         obj.setBasis(_shapeletBasis);
         def.objects.insert(obj);
+        ++nFlux;
     }
+    fluxGroup->getMaxMorphologyRatio() = 1.0 / nFlux;
 }
 
 void SourceMeasurement::setTestPoints(
@@ -245,13 +255,13 @@ void SourceMeasurement::setTestPoints(
 
 bool SourceMeasurement::solve(double e1, double e2, double r, double & objective, double & best) {
     pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
-    assert(_evaluator->getParameterSize() == 3);
+    assert(_evaluator->getParameterCount() == 3);
 
     log.debug(4, boost::format("Testing %f %f %f.") % e1 % e2 % r);
-    ndarray::Array<double,1,1> parameters(ndarray::allocate(_evaluator->getParameterSize()));
-    parameters[_evaluator->getGrid()->radii[0].offset] = r;
-    parameters[_evaluator->getGrid()->ellipticities[0].offset] = e1;
-    parameters[_evaluator->getGrid()->ellipticities[0].offset + 1] = e2;
+    ndarray::Array<double,1,1> parameters(ndarray::allocate(_evaluator->getParameterCount()));
+    parameters[_evaluator->getGrid()->radii.front().offset] = r;
+    parameters[_evaluator->getGrid()->ellipticities.front().offset] = e1;
+    parameters[_evaluator->getGrid()->ellipticities.front().offset + 1] = e2;
     _evaluation->update(parameters);
     try {
         objective = _evaluation->getObjectiveValue();
@@ -287,7 +297,7 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
 }
 
 void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
-    afw::geom::Ellipse psfEllipse = _evaluator->getGrid()->sources[0].getLocalPsf()->computeMoments();
+    afw::geom::Ellipse psfEllipse = _evaluator->getGrid()->sources.front().getLocalPsf()->computeMoments();
 
     setTestPoints(initialEllipse.getCore(), psfEllipse.getCore());
     double best = std::numeric_limits<double>::infinity();

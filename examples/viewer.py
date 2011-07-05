@@ -229,7 +229,7 @@ class Viewer(object):
         self.fit(index)
         d = self.fits[index]
         radii = numpy.linspace(0.0, 5.0, 200)
-        fullProfile = numpy.zeros((radii.size, d['evaluator'].getCoefficientSize()), dtype=float)
+        fullProfile = numpy.zeros((radii.size, d['evaluator'].getCoefficientCount()), dtype=float)
         allProfiles = {"full":fullProfile, "psf": fullProfile.copy()}
         v = d["coefficients"] * self.sourceMeasurement.getIntegration()
         v /= v.sum()

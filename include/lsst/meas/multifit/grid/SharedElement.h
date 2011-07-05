@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_GRID_parameters
-#define LSST_MEAS_MULTIFIT_GRID_parameters
+#ifndef LSST_MEAS_MULTIFIT_GRID_SharedElement
+#define LSST_MEAS_MULTIFIT_GRID_SharedElement
 
 #include "lsst/meas/multifit/definition/SharedElement.h"
 
@@ -76,45 +76,10 @@ typedef SharedElement<ELLIPTICITY> EllipticityElement;
 #ifndef SWIG
 
 template <SharedElementType E>
-class ElementArray {
-    typedef typename SharedElement<E>::Ptr Ptr;
-    typedef std::vector<Ptr> PtrVec;
-    typedef typename PtrVec::const_iterator PtrIter;
-public:
-
-    typedef SharedElement<E> value_type;
-    typedef Ptr pointer;
-    typedef value_type const & reference;
-    typedef reference const_reference;
-    typedef std::ptrdiff_t difference_type;
-    typedef std::size_t size_type;
-    typedef boost::indirect_iterator<PtrIter> iterator;
-    typedef iterator const_iterator;
-
-    ElementArray() : _ptrVec() {}
-
-    const_iterator begin() const { return _ptrVec.begin(); }
-    const_iterator end() const { return _ptrVec.end(); }
-
-    size_type size() const { return _ptrVec.size(); }
-
-    bool empty() const { return _ptrVec.empty(); }
-
-    SharedElement<E> const & operator[](int n) const { return *_ptrVec[n]; }
-
-private:
-
-    friend class Initializer;
-
-    PtrVec _ptrVec;
-
-};
-
-template <SharedElementType E>
 std::ostream & operator<<(std::ostream & os, SharedElement<E> const & component);
 
 #endif
 
 }}}} // namespace lsst::meas::multifit::grid
 
-#endif // !LSST_MEAS_MULTIFIT_GRID_parameters
+#endif // !LSST_MEAS_MULTIFIT_GRID_SharedElement

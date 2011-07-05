@@ -353,7 +353,7 @@ void CompoundShapeletModelBasis::save(std::string const & filename) {
     ar << height;
     ar << width;
     ar << boost::serialization::make_array(mapping.getData(), size);
-    int constraintSize = getConstraintSize();
+    int constraintSize = getConstraintCount();
     ar << constraintSize;
     if (constraintSize > 0) {
         ndarray::Array<Pixel,2,2> cMatrix = ndarray::copy(getConstraintMatrix());

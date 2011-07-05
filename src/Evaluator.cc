@@ -164,25 +164,20 @@ void Evaluator::_evaluateModelMatrixDerivative(
 
 #endif
 
-Evaluator::Evaluator(Grid::Ptr const & grid, bool const usePixelWeights) :
+Evaluator::Evaluator(Grid::Ptr const & grid, bool usePixelWeights) :
     BaseEvaluator(
-        grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount()
+        grid->getPixelCount(), grid->getCoefficientCount(), grid->getParameterCount(), 
+        grid->getConstraintCount()
     ),
-    _grid(grid), _usePixelWeights(usePixelWeights)
+    _usePixelWeights(usePixelWeights), _grid(grid)
 {
-    _initialize();
-}
-
-Evaluator::Evaluator(Evaluator const & other, bool const usePixelWeights) 
-    : BaseEvaluator(other), _grid(other._grid), _usePixelWeights(usePixelWeights) {
+    _constraintMatrix.deep() = 0.0;
+    _constraintVector.deep() = 0.0;
     _initialize();
 }
 
 void Evaluator::_initialize() {
-    for (
-        Grid::FrameArray::const_iterator i = _grid->frames.begin();
-        i != _grid->frames.end(); ++i
-    ) {
+    for (Grid::FrameArray::iterator i = _grid->frames.begin(); i != _grid->frames.end(); ++i) {
         _dataVector[
             ndarray::view(i->getPixelOffset(), i->getPixelOffset() + i->getPixelCount())
             ] = i->getData();
@@ -193,12 +188,29 @@ void Evaluator::_initialize() {
             ] *= i->getWeights();
         }
     }
-    _constraintMatrix = _grid->getConstraintMatrix();
-    _constraintVector = _grid->getConstraintVector();
+    for (Grid::FluxGroupArray::iterator i = _grid->groups.begin(); i != _grid->groups.end(); ++i) {
+        int const nFluxInstances = i->isVariable() ? _grid->frames.size() : _grid->getFilterCount();
+        for (int n = 0; n < nFluxInstances; ++n) {
+            int constraintOffset = i->getConstraintOffset(n);
+            int coefficientOffset = i->getCoefficientOffset(n);
+            _constraintMatrix[
+                ndarray::view(
+                    constraintOffset, constraintOffset + i->getConstraintCount()
+                )(
+                    coefficientOffset, coefficientOffset + i->getSourceCoefficientCount()
+                )
+            ] = i->getConstraintMatrix();
+            _constraintVector[
+                ndarray::view(
+                    constraintOffset, constraintOffset + i->getConstraintCount()
+                )
+            ] = i->getConstraintVector();
+        }
+    }
 }
 
-void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & param) const {
-    _grid->writeParameters(param.getData());
+void Evaluator::_writeInitialParameters(ndarray::Array<double,1,1> const & parameters) const {
+    _grid->writeParameters(parameters);
 }
 
 }}} // namespace lsst::meas::multifit
