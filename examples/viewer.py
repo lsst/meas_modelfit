@@ -270,7 +270,7 @@ class Viewer(object):
             order.append("shp")
             fullProfile += shpProfile
         f = d["ellipse"].getCore().getArea() / numpy.pi
-        r = d["ellipse"].getCore().getDeterminantRadius()
+        r = d["ellipse"].getCore().getTraceRadius()
         colors = {"full": "k", "exp":"b", "dev":"r", "shp":"g", "psf":"y"}
         pyplot.figure()
         ax1 = pyplot.axes([0.1, 0.38, 0.6, 0.24])
@@ -293,10 +293,9 @@ class Viewer(object):
         order.reverse()
 
         #objective value vs. radius
-        ax3 = pyplot.axes([0.1, 0.1, 0.6, 0.24], sharex=ax1)
-        ax3.plot(d["test_points"][:, 2], d["objective_value"][:, 0, 0], color="k")
+        ax3 = pyplot.axes([0.1, 0.1, 0.6, 0.24]) #, sharex=ax1)
+        ax3.plot(d["test_points"][:, 2], d["objective_value"][:, 0, 0], "ok")
         ax3.axvline(r, color="k", linestyle=":")
-        pyplot.title("objective value")
 
         #flux fraction
         ax4 = pyplot.axes([0.75, 0.1, 0.2, 0.8])

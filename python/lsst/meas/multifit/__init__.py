@@ -35,7 +35,6 @@ from .multifitLib import (
     CompoundShapeletBuilder,
     version,
     makeSourceMeasurement,
-    solveEigenSvd,
     )
 from . import multifitLib
 from . import definition

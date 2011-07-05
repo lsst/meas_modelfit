@@ -176,7 +176,7 @@ private:
 
     void setTestPoints(EllipseCore const & initialEllipse, EllipseCore const & psfEllipse);
     void optimize(Ellipse const & initialEllipse);
-    bool solve(double e1, double e2, double radius, double & objective, double & best, bool &);
+    bool solve(double e1, double e2, double radius, double & objective, double & best);
 
     Options _options;
     lsst::afw::image::MaskPixel _bitmask;
@@ -189,7 +189,6 @@ private:
     lsst::afw::detection::Footprint::Ptr _fp;
     ndarray::Array<double,1,1> _parameters;
     ndarray::Array<double, 3, 3> _objectiveValue;
-    ndarray::Array<bool, 3, 3> _usedSvd;
     ndarray::Array<double, 2, 2> _points;
     int _rBest, _e1Best, _e2Best;
 
