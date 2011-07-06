@@ -162,8 +162,8 @@ class Viewer(object):
             )
         dfEvaluation = lsst.meas.multifit.Evaluation(dfEvaluator)
 
-        dfModelArray = evaluation.getModelVector().astype(img.getArray().dtype)
-        dfResidualArray = evaluation.getResiduals().astype(img.getArray().dtype)
+        dfModelArray = dfEvaluation.getModelVector().astype(img.getArray().dtype)
+        dfResidualArray = dfEvaluation.getResiduals().astype(img.getArray().dtype)
         
         dfModel = img.Factory(bbox)        
         lsst.afw.detection.expandArray(fp, dfModelArray, dfModel.getArray(), bbox.getMin())
@@ -171,6 +171,7 @@ class Viewer(object):
 
         dfResiduals = img.Factory(bbox)        
         lsst.afw.detection.expandArray(fp, dfResidualArray, dfResiduals.getArray(), bbox.getMin())
+        dfResiduals.getArray()[:,:] *= -1
         dfResidualsMi = mi.Factory(dfResiduals, msk)
 
         #generate images of the psf and psf models
