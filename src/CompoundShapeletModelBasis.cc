@@ -322,12 +322,12 @@ CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
         ndarray::makeVector(height, width)
     );
     ar >> boost::serialization::make_array(mapping.getData(), size);
-    int constraintSize;
-    ar >> constraintSize;
+    int constraintCount;
+    ar >> constraintCount;
     CompoundShapeletBuilder builder(components, mapping);
-    if (constraintSize > 0) {
-        ndarray::Array<Pixel,2,2> cMatrix = ndarray::allocate(constraintSize, width);
-        ndarray::Array<Pixel,1,1> cVector = ndarray::allocate(constraintSize);
+    if (constraintCount > 0) {
+        ndarray::Array<Pixel,2,2> cMatrix = ndarray::allocate(constraintCount, width);
+        ndarray::Array<Pixel,1,1> cVector = ndarray::allocate(constraintCount);
         ar >> boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());
         ar >> boost::serialization::make_array(cVector.getData(), cVector.getNumElements());
         builder.setConstraint(cMatrix, cVector);
@@ -353,9 +353,9 @@ void CompoundShapeletModelBasis::save(std::string const & filename) {
     ar << height;
     ar << width;
     ar << boost::serialization::make_array(mapping.getData(), size);
-    int constraintSize = getConstraintCount();
-    ar << constraintSize;
-    if (constraintSize > 0) {
+    int constraintCount = getConstraintCount();
+    ar << constraintCount;
+    if (constraintCount > 0) {
         ndarray::Array<Pixel,2,2> cMatrix = ndarray::copy(getConstraintMatrix());
         ndarray::Array<Pixel,1,1> cVector = ndarray::copy(getConstraintVector());
         ar << boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());

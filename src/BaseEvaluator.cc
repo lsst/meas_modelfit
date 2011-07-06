@@ -7,7 +7,7 @@ namespace lsst { namespace meas { namespace multifit {
 
 void BaseEvaluator::evaluateModelMatrix(
     ndarray::Array<Pixel,2,2> const & matrix,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<double const,1,1> const & parameters
 ) const {
     detail::checkSize(
         matrix.getSize<0>(), getPixelCount(),
@@ -18,15 +18,15 @@ void BaseEvaluator::evaluateModelMatrix(
         "Number of matrix columns (%d) does not match expected value (%d)."
     );
     detail::checkSize(
-        param.getSize<0>(), getParameterCount(),
+        parameters.getSize<0>(), getParameterCount(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    _evaluateModelMatrix(matrix, param);
+    _evaluateModelMatrix(matrix, parameters);
 }
 
 void BaseEvaluator::evaluateModelMatrixDerivative(
     ndarray::Array<Pixel,3,3> const & derivative,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<double const,1,1> const & parameters
 ) const {
     detail::checkSize(
         derivative.getSize<0>(), getParameterCount(),
@@ -41,40 +41,40 @@ void BaseEvaluator::evaluateModelMatrixDerivative(
         "Size of derivative array third (%d) does not match expected value (%d)."
     );
     detail::checkSize(
-        param.getSize<0>(), getParameterCount(),
+        parameters.getSize<0>(), getParameterCount(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
     ndarray::Array<Pixel,2,2> modelMatrix = ndarray::allocate(getPixelCount(), getCoefficientCount());
-    _evaluateModelMatrix(modelMatrix, param);
-    _evaluateModelMatrixDerivative(derivative, modelMatrix, param);
+    _evaluateModelMatrix(modelMatrix, parameters);
+    _evaluateModelMatrixDerivative(derivative, modelMatrix, parameters);
 }
 
 void BaseEvaluator::_evaluateModelMatrixDerivative(
     ndarray::Array<Pixel,3,3> const & derivative,
     ndarray::Array<Pixel const,2,2> const & fiducial,
-    ndarray::Array<double const,1,1> const & param
+    ndarray::Array<double const,1,1> const & parameters
 ) const {
     static double const epsilon = std::sqrt(
         std::numeric_limits<double>::epsilon()
     );
-    ndarray::Array<double,1,1> parameters(ndarray::copy(param));
+    ndarray::Array<double,1,1> testParameters(ndarray::copy(parameters));
     for (int n = 0; n < getParameterCount(); ++n) {
-        parameters[n] += epsilon;
-        _evaluateModelMatrix(derivative[n], parameters);
+        testParameters[n] += epsilon;
+        _evaluateModelMatrix(derivative[n], testParameters);
         derivative[n] -= fiducial;
         derivative[n] /= epsilon;
-        parameters[n] -= epsilon;
+        testParameters[n] -= epsilon;
     }
 }
 
 void BaseEvaluator::writeInitialParameters(
-    ndarray::Array<double,1,1> const & param
+    ndarray::Array<double,1,1> const & parameters
 ) const {
     detail::checkSize(
-        param.getSize<0>(), getParameterCount(),
+        parameters.getSize<0>(), getParameterCount(),
         "Parameter vector size (%d) does not match expected value (%d)."
     );
-    _writeInitialParameters(param);
+    _writeInitialParameters(parameters);
 }
 
 }}} // namespace lsst::meas::multifit

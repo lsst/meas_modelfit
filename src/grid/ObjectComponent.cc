@@ -73,7 +73,7 @@ std::pair<int,double> ObjectComponent::perturbPoint(lsst::afw::geom::Point2D & p
 lsst::afw::geom::ellipses::Ellipse ObjectComponent::makeEllipse(
     lsst::ndarray::Array<double const,1,1> const & parameters
 ) const {
-    double const * paramIter = parameters.getData();
+    double const * parameterIter = parameters.getData();
     requireEllipse();
     lsst::afw::geom::Ellipse result(
         EllipseCore(
@@ -83,16 +83,16 @@ lsst::afw::geom::ellipses::Ellipse ObjectComponent::makeEllipse(
         getPosition()->getValue()
     );
     if (getPosition()->isActive()) {
-        double const * p = paramIter + getPosition()->offset;
+        double const * p = parameterIter + getPosition()->offset;
         result.getCenter() = getPosition()->getValue() + lsst::afw::geom::Extent2D(p[0], p[1]);
     }
     if (getEllipticity()->isActive()) {
-        double const * p = paramIter + getEllipticity()->offset;
+        double const * p = parameterIter + getEllipticity()->offset;
         static_cast<EllipseCore&>(result.getCore()).getEllipticity().setE1(p[0]);
         static_cast<EllipseCore&>(result.getCore()).getEllipticity().setE2(p[1]);
     }
     if (getRadius()->isActive()) {
-        double const * p = paramIter + getRadius()->offset;
+        double const * p = parameterIter + getRadius()->offset;
         static_cast<EllipseCore&>(result.getCore()).setRadius(p[0]);
     }
     result.getCore().scale(getRadiusFactor());
@@ -103,18 +103,18 @@ void ObjectComponent::readEllipse(
     lsst::ndarray::Array<double,1,1> const & parameters,
     lsst::afw::geom::ellipses::Ellipse const & ellipse
 ) const {
-    double * paramIter = parameters.getData();
+    double * parameterIter = parameters.getData();
     requireEllipse();
     readPoint(parameters, ellipse.getCenter());
     EllipseCore core(ellipse.getCore());
     core.scale(1.0 / getRadiusFactor());
     if (getEllipticity()->isActive()) {
-        double * p = paramIter + getEllipticity()->offset;
+        double * p = parameterIter + getEllipticity()->offset;
         p[0] = core.getEllipticity().getE1();
         p[1] = core.getEllipticity().getE2();
     }
     if (getRadius()->isActive()) {
-        double * p = paramIter + getRadius()->offset;
+        double * p = parameterIter + getRadius()->offset;
         p[0] = core.getRadius();
     }
 }

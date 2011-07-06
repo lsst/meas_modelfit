@@ -67,7 +67,7 @@ public:
     ShapeletModelPhotometry(boost::int64_t flag,
         double flux, double fluxErr,
         double e1, double e2, double radius,
-        ndarray::Array<double const, 1,1> coeff
+        ndarray::Array<double const, 1,1> coefficients
     );
 
     static SourceMeasurement::Options options;

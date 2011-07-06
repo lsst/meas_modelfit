@@ -68,12 +68,12 @@ class Viewer(object):
         source = self.sources[index]
         self.sourceMeasurement.measure(self.exposure, source)
 
-        #get fit parameters/coeff
+        #get fit parameters/coefficients
         fitFp = self.sourceMeasurement.getFootprint()
         ellipse = self.sourceMeasurement.getEllipse()
         core = ellipse.getCore()
-        coeff = self.sourceMeasurement.getCoefficients()
-        param = self.sourceMeasurement.getParameters()
+        coefficients = self.sourceMeasurement.getCoefficients()
+        parameters = self.sourceMeasurement.getParameters()
         #generate a larger, unmasked fp
         bbox = fitFp.getBBox()
         bounds = lsst.afw.geom.ellipses.Ellipse(ellipse)
@@ -112,8 +112,8 @@ class Viewer(object):
         )
         evaluation = lsst.meas.multifit.Evaluation(evaluator)
         evaluation.update(
-            param,
-            coeff
+            parameters,
+            coefficients
         )        
 
 
@@ -201,7 +201,7 @@ class Viewer(object):
         d["fp"] = fitFp
         d["bbox"] = bbox
         d["ellipse"] = ellipse
-        d["coefficients"] = coeff
+        d["coefficients"] = coefficients
         d["evaluator"] = evaluator
         d["evaluation"] = evaluation
         d["test_points"] = self.sourceMeasurement.getTestPoints()

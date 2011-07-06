@@ -115,10 +115,10 @@ SourceMeasurement::SourceMeasurement(Options const & options) :
     _ellipse(EllipseCore())
 
 {
-    int coefficientSize = computeCoefficientSize(options);
-    _integration = ndarray::allocate(coefficientSize);
-    _coefficients = ndarray::allocate(coefficientSize);
-    _covariance = ndarray::allocate(coefficientSize, coefficientSize);
+    int coefficientCount = computeCoefficientCount(options);
+    _integration = ndarray::allocate(coefficientCount);
+    _coefficients = ndarray::allocate(coefficientCount);
+    _covariance = ndarray::allocate(coefficientCount, coefficientCount);
     _parameters = ndarray::allocate(3);
     _integration.deep() = 0.0;
 

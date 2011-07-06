@@ -34,7 +34,7 @@ public:
 
     explicit Initializer(Definition const & definition);
 
-    static Definition makeDefinition(Grid const & grid, double const * paramIter);
+    static Definition makeDefinition(Grid const & grid, double const * parameterIter);
 
     template <SharedElementType E>
     void makeGridElements(
@@ -45,7 +45,7 @@ public:
 
     template <SharedElementType E>
     static void transferElementsToDefinition(
-        Grid const & input, Definition & output, double const * paramIter
+        Grid const & input, Definition & output, double const * parameterIter
     );
 };
 
@@ -131,7 +131,7 @@ Initializer::Initializer(Definition const & def) :
     }
 }
 
-Definition Initializer::makeDefinition(Grid const & grid, double const * paramIter) {
+Definition Initializer::makeDefinition(Grid const & grid, double const * parameterIter) {
     Wcs::Ptr wcs;
     if (grid.getWcs()) wcs = grid.getWcs()->clone();
     Definition def(wcs);
@@ -150,9 +150,9 @@ Definition Initializer::makeDefinition(Grid const & grid, double const * paramIt
         }
     }
 
-    transferElementsToDefinition<POSITION>(grid, def, paramIter);
-    transferElementsToDefinition<RADIUS>(grid, def, paramIter);
-    transferElementsToDefinition<ELLIPTICITY>(grid, def, paramIter);
+    transferElementsToDefinition<POSITION>(grid, def, parameterIter);
+    transferElementsToDefinition<RADIUS>(grid, def, parameterIter);
+    transferElementsToDefinition<ELLIPTICITY>(grid, def, parameterIter);
     return def;
 }
 
@@ -185,7 +185,7 @@ void Initializer::makeGridElements(
 
 template <SharedElementType E>
 void Initializer::transferElementsToDefinition(
-    Grid const & input, Definition & output, double const * paramIter
+    Grid const & input, Definition & output, double const * parameterIter
 ) {
     typedef boost::shared_ptr< definition::SharedElement<E> > DPtr;
     typedef boost::shared_ptr< grid::SharedElement<E> > GPtr;
@@ -200,9 +200,9 @@ void Initializer::transferElementsToDefinition(
         std::pair<typename Map::iterator,bool> r = unique.insert(item);
         if (r.second) {
             r.first->second = definition::SharedElement<E>::make(gp->getValue(), gp->isActive());
-            if (paramIter != 0 && r.first->second->isActive()) {
+            if (parameterIter != 0 && r.first->second->isActive()) {
                 detail::SharedElementTraits<E>::readParameters(
-                    paramIter + gp->offset,
+                    parameterIter + gp->offset,
                     r.first->second->getValue()
                 );
             }
@@ -241,43 +241,43 @@ int const Grid::getFilterIndex(FilterId filterId) const {
 }
 
 void Grid::writeParameters(ndarray::Array<double,1,1> const & parameters) const {
-    double * paramIter = parameters.getData();
+    double * parameterIter = parameters.getData();
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        detail::SharedElementTraits<POSITION>::writeParameters(paramIter + i->offset, i->getValue());
+        detail::SharedElementTraits<POSITION>::writeParameters(parameterIter + i->offset, i->getValue());
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        detail::SharedElementTraits<RADIUS>::writeParameters(paramIter + i->offset, i->getValue());
+        detail::SharedElementTraits<RADIUS>::writeParameters(parameterIter + i->offset, i->getValue());
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        detail::SharedElementTraits<ELLIPTICITY>::writeParameters(paramIter + i->offset, i->getValue());
+        detail::SharedElementTraits<ELLIPTICITY>::writeParameters(parameterIter + i->offset, i->getValue());
     }
 }
 
 bool Grid::checkBounds(ndarray::Array<double const,1,1> const & parameters) const {
-    double const * paramIter = parameters.getData();
+    double const * parameterIter = parameters.getData();
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        if (!i->checkBounds(paramIter)) return false;
+        if (!i->checkBounds(parameterIter)) return false;
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        if (!i->checkBounds(paramIter)) return false;
+        if (!i->checkBounds(parameterIter)) return false;
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        if (!i->checkBounds(paramIter)) return false;
+        if (!i->checkBounds(parameterIter)) return false;
     }
     return true;
 }
 
 double Grid::clipToBounds(ndarray::Array<double,1,1> const & parameters) const {
-    double * paramIter = parameters.getData();
+    double * parameterIter = parameters.getData();
     double value = 0.0;
     for (PositionArray::const_iterator i = positions.begin(); i != positions.end(); ++i) {
-        value += i->clipToBounds(paramIter);
+        value += i->clipToBounds(parameterIter);
     }
     for (RadiusArray::const_iterator i = radii.begin(); i != radii.end(); ++i) {
-        value += i->clipToBounds(paramIter);
+        value += i->clipToBounds(parameterIter);
     }
     for (EllipticityArray::const_iterator i = ellipticities.begin(); i != ellipticities.end(); ++i) {
-        value += i->clipToBounds(paramIter);
+        value += i->clipToBounds(parameterIter);
     }
     return value;
 }

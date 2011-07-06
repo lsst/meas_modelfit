@@ -94,7 +94,7 @@ public:
 
     static Options readPolicy(lsst::pex::policy::Policy const & policy);
 
-    static int computeCoefficientSize(Options const & options) {
+    static int computeCoefficientCount(Options const & options) {
         return options.fitDeltaFunction + options.fitExponential + options.fitDeVaucouleur
             + ((options.shapeletOrder < 0) ? 0 : afw::math::shapelets::computeSize(options.shapeletOrder));
     }

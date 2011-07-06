@@ -51,7 +51,7 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
     nRadius = measurement.getOptions().radiusStepCount
     nEllipticity = 2*measurement.getOptions().ellipticityStepCount + 1
     dtype = numpy.dtype(list(fields) + [
-        ("coeff", float, nCoeff), 
+        ("coefficients", float, nCoeff), 
         ("covar", float, (nCoeff, nCoeff)),
         ("test_points", float, (nRadius, 3)),
         ("objective_value", float, (nRadius, nEllipticity, nEllipticity)),
@@ -95,7 +95,7 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
             record["r_index"] = measurement.getRadiusIndex()
             record["e1_index"] = measurement.getE1Index()
             record["e2_index"] = measurement.getE2Index()
-            record["coeff"][:] = measurement.getCoefficients()
+            record["coefficients"][:] = measurement.getCoefficients()
             record["covar"][:,:] = measurement.getCovariance()
             record["test_points"][:] = measurement.getTestPoints()
             record["objective_value"][:,:,:] = measurement.getObjectiveValue()            
@@ -160,7 +160,7 @@ def plotPsfMagComparison(table, alpha=0.5):
 def plotFluxFractions(table, alpha=0.3, **kw):
     measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
     integration = measurement.getIntegration()
-    fractions = integration[numpy.newaxis,:] * table["coeff"]
+    fractions = integration[numpy.newaxis,:] * table["coefficients"]
     fractions /= table["flux"][:,numpy.newaxis]
     offset = 0
     def doPlot(color):

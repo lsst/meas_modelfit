@@ -91,14 +91,14 @@ public:
      *  @brief Evaluate the matrix with the given parameters.
      *
      *  @param[out] matrix  An array to fill with shape (getPixelCount(), getCoefficientCount()).
-     *  @param[in]  param   An array of parameters with size getParameterCount().
+     *  @param[in]  parameters   An array of parameters with size getParameterCount().
      *
      *  If the data vector is weighted, the output matrix should be as well (each row should be divided
      *  by the corresponding pixel sigma value).
      */
     void evaluateModelMatrix(
         lsst::ndarray::Array<Pixel,2,2> const & matrix,
-        lsst::ndarray::Array<Pixel const,1,1> const & param
+        lsst::ndarray::Array<Pixel const,1,1> const & parameters
     ) const;
 
     /**
@@ -111,10 +111,10 @@ public:
      */
     virtual void evaluateModelMatrixDerivative(
         ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<Pixel const,1,1> const & parameters
     ) const;
 
-    void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & param) const;
+    void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & parameters) const;
 
     virtual ~BaseEvaluator() {}
 
@@ -138,16 +138,16 @@ protected:
 
     virtual void _evaluateModelMatrix(
         ndarray::Array<Pixel,2,2> const & matrix,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<Pixel const,1,1> const & parameters
     ) const = 0;
 
     virtual void _evaluateModelMatrixDerivative(
         ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
         ndarray::Array<Pixel const,2,2> const & modelMatrix,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<Pixel const,1,1> const & parameters
     ) const;
 
-    virtual void _writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const = 0;
+    virtual void _writeInitialParameters(ndarray::Array<Pixel,1,1> const & parameters) const = 0;
 
     int const _parameterCount;
     ndarray::Array<Pixel,1,1> _dataVector;

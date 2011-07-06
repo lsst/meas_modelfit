@@ -44,7 +44,7 @@ ShapeletModelPhotometry::ShapeletModelPhotometry(
     boost::int64_t status,  
     double flux, double fluxErr, 
     double e1, double e2, double radius,
-    ndarray::Array<double const, 1,1> coeff
+    ndarray::Array<double const, 1,1> coefficients
 ) : afw::detection::Photometry(),
     _flag(status)
 {
@@ -57,7 +57,7 @@ ShapeletModelPhotometry::ShapeletModelPhotometry(
     set<E1>(e1);
     set<E2>(e2);           
     for(int i = 0; i < nCoeff; ++i) {
-        set<COEFFICIENTS>(i, coeff[i]);
+        set<COEFFICIENTS>(i, coefficients[i]);
     }
 }
 
@@ -91,7 +91,7 @@ bool ShapeletModelPhotometry::doConfigure(
     lsst::pex::policy::Policy const & policy
 ) {   
     options = SourceMeasurement::readPolicy(policy);
-    nCoeff = SourceMeasurement::computeCoefficientSize(options);
+    nCoeff = SourceMeasurement::computeCoefficientCount(options);
     return true;
 }
 
