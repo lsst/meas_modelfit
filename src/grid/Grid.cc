@@ -141,6 +141,15 @@ Definition Initializer::makeDefinition(Grid const & grid, double const * paramIt
     for (Grid::ObjectComponentArray::iterator i = grid.objects.begin(); i != grid.objects.end(); ++i) {
         def.objects.insert(definition::ObjectComponent(*i));
     }
+    for(Grid::FluxGroupArray::iterator i = grid.groups.begin(); i != grid.groups.end(); ++i) {
+        definition::FluxGroup::Ptr group(new definition::FluxGroup(*i));
+        for(grid::FluxGroup::ComponentArray::iterator j = i->components.begin();
+            j != i->components.end(); ++j
+        ) {
+            def.objects[j->id].getFluxGroup() = group;
+        }
+    }
+
     transferElementsToDefinition<POSITION>(grid, def, paramIter);
     transferElementsToDefinition<RADIUS>(grid, def, paramIter);
     transferElementsToDefinition<ELLIPTICITY>(grid, def, paramIter);

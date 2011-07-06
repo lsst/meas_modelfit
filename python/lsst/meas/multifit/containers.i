@@ -59,6 +59,7 @@
     }
 %enddef
 
+
 namespace lsst { namespace meas { namespace multifit { namespace containers {
 
 template <typename T> class MutableSet {};

@@ -58,17 +58,6 @@ protected:
         vector.deep() *= _scale * _scale;
     }
 
-    virtual void _evaluateMultipoleMatrix(
-        lsst::ndarray::Array<Pixel, 2, 1> const & matrix
-    ) const {
-        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(getOrder());
-        matrix.deep() = 0.0;
-                
-
-        
-
-        vector.deep() *= _scale * _scale;
-    }
 
     virtual void _evaluate(
         ndarray::Array<Pixel, 2, 1> const & matrix,

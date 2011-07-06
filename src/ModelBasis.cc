@@ -44,21 +44,6 @@ void ModelBasis::integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) con
     _integrate(vector);
 }
 
-void ModelBasis::evaluateMultipoleMatrix(
-    lsst::ndarray::Array<Pixel, 2, 1> const & matrix
-) const {
-    detail::checkSize(
-        matrix.getSize<0>(), 6,
-        "Number of matrix rows (%d) does not match expected value (%d)."
-    );
-    detail::checkSize(
-        matrix.getSize<1>(), getSize(),
-        "Number of matrix cols (%d) does not match number of coefficients (%d)."
-    );
-
-    _evaluateMultipoleMatrix(matrix);
-}
-
 ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
     throw LSST_EXCEPT(lsst::pex::exceptions::LogicErrorException,
                       "ModelBasis subclass does not support convolution.");

@@ -167,7 +167,11 @@ public:
     CompoundShapeletModelBasis::Ptr getShapeletBasis() const { return _shapeletBasis; } 
     lsst::afw::image::MaskPixel getBitmask() const { return _bitmask; }
     Options const & getOptions() const { return _options; }
-
+ 
+    static ID const DELTAFUNCTION_ID=0;
+    static ID const EXPONENTIAL_ID=1;
+    static ID const DEVAUCOULEUR_ID=2;
+    static ID const SHAPELET_ID=3;
 private:
 
     int getCoefficientOffset(ID id) const {
@@ -197,10 +201,7 @@ private:
     ndarray::Array<Pixel,1,1> _integration;
     boost::int64_t _status;
 
-    static ID const DELTAFUNCTION_ID=0;
-    static ID const EXPONENTIAL_ID=1;
-    static ID const DEVAUCOULEUR_ID=2;
-    static ID const SHAPELET_ID=3;
+
 
 };
 

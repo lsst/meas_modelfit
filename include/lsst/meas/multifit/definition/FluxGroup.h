@@ -30,6 +30,11 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+namespace grid {
+class Initializer;
+
+}
+
 namespace detail {
 
 class FluxGroupBase {
@@ -50,7 +55,8 @@ public:
     double const getMaxMorphologyRatio() const { return _maxMorphologyRatio; }
 
 protected:
-    
+    friend class grid::Initializer;
+
     FluxGroupBase(ID const id_, double maxMorphologyRatio, bool variable) :
         id(id_), _variable(variable), _maxMorphologyRatio(maxMorphologyRatio)
     {}
@@ -121,8 +127,9 @@ public:
     //@}
 
 private:
+    friend class grid::Initializer;
 
-    FluxGroup(FluxGroup const & other) : detail::FluxGroupBase(other) {}
+    FluxGroup(FluxGroupBase const &other) : detail::FluxGroupBase(other) {}
     
     FluxGroup(ID id, double maxMorphologyRatio, bool variable) :
         detail::FluxGroupBase(id, maxMorphologyRatio, variable)
