@@ -52,6 +52,12 @@ public:
     Eigen::VectorXd workspace;
 
     void factor(ndarray::Array<Pixel,2,1> const & modelMatrix, double svThreshold) {
+        if (modelMatrix.getSize<0>() < modelMatrix.getSize<1>()) {
+            throw LSST_EXCEPT(
+                lsst::pex::exceptions::RuntimeErrorException,
+                "Not enough data points to fit model."
+            );
+        }
         svd.compute(ndarray::viewAsEigen(modelMatrix));
         svd.sort();
         n = n1 = svd.singularValues().size();
@@ -70,7 +76,6 @@ public:
         ndarray::Array<Pixel const,2,2> const & constraintMatrix,
         ndarray::Array<Pixel const,1,1> const & constraintVector
     ) {
-#ifndef SOLVE_UNCONSTRAINED
         Eigen::MatrixXd A = ndarray::viewAsEigen(constraintMatrix) * svd.matrixV().block(0, 0, n, n1);
         Eigen::MatrixXd G = Eigen::MatrixXd::Zero(n1, n1);
         G.diagonal() = svd.singularValues().segment(0, n1);
@@ -79,12 +84,6 @@ public:
         Eigen::VectorXd x = Eigen::VectorXd::Zero(n1);
         QPSolver(G, c).inequality(A, ndarray::viewAsEigen(constraintVector)).solve(x);
         ndarray::viewAsEigen(coefficients) = svd.matrixV().block(0, 0, n, n1) * x;
-#else
-        workspace = svd.matrixU().block(0, 0, svd.matrixU().rows(), n1).transpose() 
-            * ndarray::viewAsEigen(data);
-        workspace.cwise() /= svd.singularValues().segment(0, n1);
-        ndarray::viewAsEigen(coefficients) = svd.matrixV().block(0, 0, n, n1) * workspace;
-#endif
     }
 
     void fillFisherMatrix(ndarray::Array<Pixel,2,2> const & matrix) {
