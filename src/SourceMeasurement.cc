@@ -233,14 +233,14 @@ void SourceMeasurement::addObjectsToDefinition(
 
 void SourceMeasurement::setTestPoints(
     EllipseCore const & initialEllipse, 
-    EllipseCore const & psfEllipse
+    Ellipse const & psfEllipse
 ) {
     EllipseCore maxEllipse(initialEllipse);
     EllipseCore minEllipse(maxEllipse);
     maxEllipse.scale(_options.radiusMaxFactor);
     minEllipse.scale(_options.radiusMinFactor);
-    maxEllipse = naiveDeconvolve(maxEllipse, psfEllipse);
-    minEllipse = naiveDeconvolve(minEllipse, psfEllipse);
+    maxEllipse = naiveDeconvolve(maxEllipse, psfEllipse.getCore());
+    minEllipse = naiveDeconvolve(minEllipse, psfEllipse.getCore());
     EllipseCore::ParameterVector base(minEllipse.getParameterVector());
     EllipseCore::ParameterVector delta = maxEllipse.getParameterVector() - minEllipse.getParameterVector();
     delta /= _options.radiusStepCount;
@@ -298,8 +298,8 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
 
 void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
     afw::geom::Ellipse psfEllipse = _evaluator->getGrid()->sources.front().getLocalPsf()->computeMoments();
-
-    setTestPoints(initialEllipse.getCore(), psfEllipse.getCore());
+   
+    setTestPoints(initialEllipse.getCore(), psfEllipse);
     double best = std::numeric_limits<double>::infinity();
     double objective;
     _rBest = _e1Best = _e2Best = -1;
@@ -361,6 +361,7 @@ int SourceMeasurement::measure(
         return _status;
     }
     log.debug(1, boost::format("Processing source %lld") % source->getSourceId());
+
     if (!source->getFootprint()) {
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
@@ -391,6 +392,7 @@ int SourceMeasurement::measure(
     addObjectsToDefinition(def, *ellipse);
     _evaluator = Evaluator::make(def, _options.usePixelWeights);
     _evaluation.reset(new Evaluation(_evaluator));
+
 
     optimize(*ellipse);
 

@@ -178,7 +178,7 @@ private:
         return _evaluator->getGrid()->objects.find(id)->getFluxGroup()->getCoefficientOffset(0);
     }
 
-    void setTestPoints(EllipseCore const & initialEllipse, EllipseCore const & psfEllipse);
+    void setTestPoints(EllipseCore const & initialEllipse, Ellipse const & psfEllipse);
     void optimize(Ellipse const & initialEllipse);
     bool solve(double e1, double e2, double radius, double & objective, double & best);
 
