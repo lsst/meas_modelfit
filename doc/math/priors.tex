@@ -1,0 +1,412 @@
+\documentclass{amsart}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{verbatim}
+\usepackage{amsbsy}
+\usepackage[colorlinks=true, urlcolor=blue, citecolor=blue, linkcolor=blue, book
+marks=true, ]{hyperref}
+\usepackage[top=3cm,right=3cm,left=3cm]{geometry}
+
+\DeclareMathOperator{\erf}{erf}
+\newcommand{\D}[2]{\ensuremath{\frac{d{#1}}{d{#2}}}}
+\newcommand{\Dp}[2]{\ensuremath{\frac{\partial{#1}}{\partial{#2}}}}
+\newcommand{\bm}[1]{\ensuremath{\boldsymbol{#1}}}
+\newcommand{\eqnref}[1]{(\ref{#1})}
+
+\begin{document}
+
+\section{Definitions}
+
+\begin{itemize}
+\item $\bm{x}$: weighted pixel vector
+\item $\bm{\Sigma}$: pixel covariance matrix (assumed to be diagonal)
+\item $\bm{\phi}$: nonlinear parameters
+\item $\bm{\alpha}$: linear parameters (coefficients)
+\item $M$: number of group instances
+\item $N$: total number of coefficients; $N_j$ is the number of
+  coefficients for group instance $j \in [1,M]$
+\item $\bm{\nu}$: flux coefficients; $\nu_j$ (scalar) is the flux coefficient of
+  group instance $j \in [1,M]$
+\item $\bm{\mu}$: morphology coefficients; $\bm{\mu}_j$ are the morphology
+  coefficients of group instance $j \in [1,M]$
+\end{itemize}
+
+A ``group instance'' refers to a \texttt{FluxGroup} combined with a
+particular frame/filter (for variable/nonvariable objects,
+respectively).
+
+The coefficients $\bm{\alpha}_j$ for each group instance $j$ are decomposed
+into flux and morphology coefficients $\nu_j$ and $\bm{\mu}_j$ using a QR
+decomposition of the integration vector $\bm{v}_j$:
+
+\begin{eqnarray}
+  \bm{v}_j &=& \left[\begin{array}{ c c }
+      \bm{q}_j & \bm{Q}_j
+    \end{array}\right]
+  \left[\begin{array}{ c }
+      r_j \\
+      0
+    \end{array}\right] \\
+  \left[\begin{array}{ c }
+      \nu_j \\
+      \bm{\mu}_j
+    \end{array}\right] &=&
+  \left[\begin{array}{ c }
+      \bm{q}_j^T \bm{\alpha}_j \\
+      \bm{Q}_j^T \bm{\alpha}_j
+    \end{array}\right] \\
+  \bm{\alpha}_j &=& \bm{q}_j \nu_j + \bm{Q}_j \bm{\mu}_j
+\end{eqnarray}
+
+The full coefficients are just the direct sum of the
+per-group-instance vectors, while full orthogonal matrices $\bm{q}$
+and $\bm{Q}$ are constructed blockwise:
+
+\begin{align*}
+  \bm{\alpha} &=
+  \left[\begin{array}{ c }
+      \bm{\alpha}_1 \\
+      \vdots \\
+      \bm{\alpha}_M
+    \end{array}\right] &
+  \bm{\nu} &=
+  \left[\begin{array}{ c }
+      \nu_1 \\
+      \vdots \\
+      \nu_M
+    \end{array}\right] &
+  \bm{\mu} &=
+  \left[\begin{array}{ c }
+      \bm{\mu}_1 \\
+      \vdots \\
+      \bm{\nu}_M
+    \end{array}\right] &
+  \bm{q} &=  
+  \left[\begin{array}{ c c c }
+      \bm{q}_1 &        & \\
+                   & \ddots & \\
+                   &        & \bm{q}_M
+    \end{array}\right] &
+  \bm{Q} &=
+  \left[\begin{array}{ c c c }
+      \bm{Q}_1 &        & \\
+                   & \ddots & \\
+                   &        & \bm{Q}_M
+    \end{array}\right]
+\end{align*}
+
+We will typically write the coefficient prior for group instance $j$
+as a product of flux and morphology priors
+
+\begin{equation}
+  P(\bm{\alpha}_j|\bm{\phi}) = P(\nu_j|\bm{\phi})
+  \;P(\bm{\mu}_j|\nu_j,\bm{\phi})
+\end{equation}
+
+and we will rewrite the morphology prior as
+
+\begin{equation}
+  P(\bm{\mu}_j|\nu_j,\bm{\phi}) = 
+  \frac{f_j(\bm{\alpha}_j,\bm{\phi})\,e^{\frac{-\bm{\mu}_j^T\!\bm{\mu}_j}{2b_j^2\nu_j^2}}}
+  {\left(\sqrt{2\pi}\,b_j \nu_j\right)^{{N_j-1}}}
+\end{equation}
+
+which must of course be normalized for any value of $\nu_j$ and $\bm{\phi}$:
+\begin{equation}
+  \int P(\bm{\mu}_j|\nu_j,\bm{\phi})\,d\bm{\mu}_j = 1
+\end{equation}
+
+\section{Bayesian Probabilities}
+
+\begin{eqnarray}
+  P(\bm{\alpha},\bm{\phi}|\bm{x}) &=& P(\bm{x}|\bm{\alpha},\bm{\phi})
+  \frac{P(\bm{\alpha},\bm{\phi})}{P(\bm{x})} \\
+  P(\bm{\phi}|\bm{x})P(\bm{\alpha}|\bm{x},\bm{\phi}) &=&
+  P(\bm{x}|\bm{\alpha},\bm{\phi})\frac{P(\bm{\alpha}|\bm{\phi}) P(\bm{\phi})}{P(\bm{x})}
+  \\
+  P(\bm{\phi}|\bm{x}) &=& \frac{P(\bm{\phi})}{P(\bm{x})}
+  \int d\bm{\alpha} P(\bm{\alpha}|\bm{\phi}) P(\bm{x}|\bm{\alpha},\bm{\phi}) \\
+  &=& \frac{P(\bm{\phi})}{P(\bm{x})} P(\bm{x}|\bm{\phi})
+\end{eqnarray}
+
+\section{Maximum Likelihood Solution}
+
+\begin{eqnarray}
+  s(\bm{\alpha}) &\equiv& -\ln
+  P(\bm{x}|\bm{\alpha},\bm{\phi}) \\
+  &=& \frac{1}{2}(\bm{A}\bm{\alpha}-\bm{x})^T(\bm{A}\bm{\alpha}-\bm{x})
+  +\frac{1}{2}\ln\left|2\pi\bm{\Sigma}\right| \\
+  &=& \frac{1}{2}(\bm{A}\hat{\bm{\alpha}}-\bm{x})^T(\bm{A}\hat{\bm{\alpha}}-\bm{x})
+  +\frac{1}{2}\ln\left|2\pi\bm{\Sigma}\right| 
+  +\frac{1}{2}(\bm{\alpha} -\hat{\bm{\alpha}})^T\! 
+  \bm{A}^T\!\bm{A} \,(\bm{\alpha}-\hat{\bm{\alpha}}) \\
+  &=& s(\hat{\bm{\alpha}}) + 
+  \frac{1}{2}(\bm{\alpha}-\hat{\bm{\alpha}})^T\! 
+  \bm{A}^T\!\bm{A}\,(\bm{\alpha}-\hat{\bm{\alpha}})
+\end{eqnarray}
+
+with $\hat{\bm{\alpha}}$ the minimum-norm least-squares solution:
+
+\begin{equation}
+  \bm{A}^T\!\bm{A} \hat{\bm{\alpha}} = \bm{A}^T\bm{x}
+\end{equation}
+
+Because $\bm{A}$ may not have full rank, we will solve for
+$\hat{\bm{\alpha}}$ using a singular value
+decomposition of $\bm{A}$:
+
+\begin{eqnarray}
+  \bm{A} &=& \bm{U} \bm{S} \bm{V}^T \\
+  \hat{\bm{\alpha}} &=& \bm{V} \bm{S}^{-1} \bm{U}^T
+  \bm{x}
+\end{eqnarray}
+
+We can then change variables to $\bm{\nu}$ and $\bm{\mu}$
+
+\begin{align}
+  s(\bm{\alpha}) &= s(\hat{\bm{\alpha}}) +
+  \frac{1}{2}(\bm{\nu}-\hat{\bm{\nu}})^T\bm{B}^T\!\bm{B}\,(\bm{\nu}-\hat{\bm{\nu}})
+  + \frac{1}{2}(\bm{\mu}-\hat{\bm{\mu}})^T\bm{C}^T\!\bm{C}\,(\bm{\mu}-\hat{\bm{\mu}})
+  + (\bm{\nu}-\hat{\bm{\nu}})^T\bm{B}^T\!\bm{C}\,(\bm{\mu}-\hat{\bm{\mu}})
+\end{align}
+with
+\begin{align}
+  \bm{B} &\equiv \bm{S}\bm{V}^T\!\bm{q} & 
+  \bm{C} &\equiv \bm{S}\bm{V}^T\!\bm{Q}
+\end{align}
+
+\section{Sampling Derivation}
+
+At each nonlinear parameter point $\bm{\phi}$ we wish to marginalize
+over $\bm{\alpha}$ using Monte Carlo integration, while saving these
+samples so we can later compute expectation values on the full
+posterior.  The integral in question is
+
+\begin{align}
+  P(\bm{x}|\bm{\phi}) &= \int P(\bm{x}|\bm{\alpha},\bm{\phi})
+  \,P(\bm{\alpha}|\bm{\phi})\,d\bm{\alpha} \\
+  &= \int e^{-s(\bm{\alpha})}\,
+  P(\bm{\nu}|\bm{\phi})\,
+  P(\bm{\mu}|\bm{\nu},\bm{\phi})\,d\bm{\alpha} \\
+  &= \int e^{-s(\bm{\alpha})}\,
+  P(\bm{\nu}|\bm{\phi})\,
+  \left[
+    \prod_{j=1}^M \frac{f_j(\bm{\alpha}_j,\bm{\phi})\,e^{-\frac{\bm{\mu}_j^T\!\bm{\mu}_j}{2b_j^2\nu_j^2}}}
+         {\left(\sqrt{2\pi}\,b_j\nu_j\right)^{{N_j-1}}}
+    \right]\,d\bm{\alpha} \\
+  &= e^{-s(\hat{\bm{\alpha}})}\int e^{-z(\bm{\alpha})}
+  P(\bm{\nu}|\bm{\phi})\left[
+    \prod_{j=1}^M \frac{f_j(\bm{\alpha}_j,\bm{\phi})}
+         {\left(b_j\nu_j\right)^{N_j-1}}
+    \right]d\bm{\alpha}
+  \label{eqn:marginalization}
+\end{align}
+
+where we defined $z(\bm{\alpha})$ as
+
+\begin{align}
+  z(\bm{\alpha}) &\equiv 
+  \frac{1}{2}(\bm{\alpha}-\hat{\bm{\alpha}})^T\! 
+  \bm{A}^T\!\bm{A}\,(\bm{\alpha}-\hat{\bm{\alpha}})
+  + \sum_{j=1}^M \frac{\bm{\mu}_j^T\bm{\mu}_j}{2\,b_j^2\,\nu_j^2} 
+  + \frac{N-M}{2}\ln 2\pi
+\end{align}
+
+We can construct $z = z_M$ using a recurrence relation
+
+\begin{align}
+  z_0 &=
+  \frac{1}{2}(\bm{\nu}-\hat{\bm{\nu}})^T\bm{B}^T\!\bm{B}\,(\bm{\nu}-\hat{\bm{\nu}})
+  + \frac{N-M}{2}\ln 2\pi\\
+  z_j &= z_{j-1} + 
+  \frac{1}{2}(\bm{\mu}_j-\hat{\bm{\mu}}_j)^T\bm{C}_j^T\!\bm{C}_j\,(\bm{\mu}_j-\hat{\bm{\mu}}_j)
+  + \frac{\bm{\mu}_j^T\bm{\mu}_j}{2\,b_j^2\,\nu_j^2}
+  + \bm{g}_{j-1}^T \bm{C}_j\,(\bm{\mu}_j-\hat{\bm{\mu}}_j)
+\end{align}
+with $\bm{g}$ also defined recursively as
+\begin{align}
+  \bm{g}_0 &= \bm{B}\,(\bm{\nu}-\hat{\bm{\nu}})\\
+  \bm{g}_j &= \bm{g}_{j-1} + \bm{C}_j (\bm{\mu}_j-\hat{\bm{\mu}}_j)
+\end{align}
+At this point it will be useful to perform one more orthogonal change
+of variables:
+\begin{align}
+  \bm{B}^T\!\bm{B} &= \bm{Z}_0\bm{D}_0\bm{Z}_0^T &
+  \bm{C}_j^T\!\bm{C}_j &= \bm{Z}_j\bm{D}_j\bm{Z}_j^T \\
+  \bm{\beta}_0 &= \bm{Z}_0^T \bm{\nu} &
+  \bm{\beta}_j &= \bm{Z}_j^T \bm{\mu}_j \\
+  \hat{\bm{\beta}}_0 &= \bm{Z}_0^T \hat{\bm{\nu}} &
+  \hat{\bm{\beta}}_j &= \bm{Z}_j^T \hat{\bm{\mu}}_j
+\end{align}
+where the $\bm{Z}$ are orthogonal and $\bm{D}$ are diagonal, yielding
+\begin{align}
+  z_0 &=
+  \frac{1}{2}(\bm{\beta}_0-\hat{\bm{\beta}}_0)^T\bm{D}_0\,(\bm{\beta}_0-\hat{\bm{\beta}}_0) \\
+  z_j &= z_{j-1} + 
+  \frac{1}{2}(\bm{\beta}_j-\hat{\bm{\beta}}_j)^T\bm{D}_j\,(\bm{\beta}_j-\hat{\bm{\beta}}_j)
+  + \frac{\bm{\beta}_j^T\bm{\beta}_j}{2\,b_j^2\,\nu_j^2}
+  + \bm{g}_{j-1}^T \bm{C}_j\bm{Z}_j(\bm{\beta}_j-\hat{\bm{\beta}}_j)
+  + \frac{N-M}{2}\ln 2\pi \\
+  \bm{g}_0 &= \bm{B}\bm{Z}_0(\bm{\beta}_0-\hat{\bm{\beta}}_0)\\
+  \bm{g}_j &= \bm{g}_{j-1} + \bm{C}_j\bm{Z}_j(\bm{\beta}_j-\hat{\bm{\beta}}_j)
+\end{align}
+and finally recentering:
+\begin{align}
+  \bm{F}_0 &= \bm{D}_0^{-1} &
+  \bm{F}_j &= \left(\bm{D}_j + \frac{1}{b_j^2\nu_j^2}\right)^{-1} \\
+  \bar{\bm{\beta}}_0 &= \hat{\bm{\beta}}_0 &
+  \bar{\bm{\beta}}_j &=
+  \bm{F}_j
+  \left(\bm{D}_j\hat{\bm{\beta}}_j-\bm{Z}_j^T\!\bm{C}_j^T\bm{g}_{j-1}\right) \\
+  h_0 &= \frac{N-M}{2}\ln 2\pi &
+  h_j &=
+  \frac{1}{2}\left(\bar{\bm{\beta}}_j-\hat{\bm{\beta}}\right)^T\!\bm{D}_j
+  \left(\bar{\bm{\beta}}_j-\hat{\bm{\beta}}\right) +
+  \frac{\bar{\bm{\beta}}_j^T\!\bar{\bm{\beta}}_j}{2b_j^2\nu_j^2}
+  +
+  \bm{g}_{j-1}^T\bm{C}_j\bm{Z}_j\left(\bar{\bm{\beta}}_j-\hat{\bm{\beta}}\right)
+\end{align}
+\begin{align}
+  z_j &= z_{j-1} + h_j
+  +
+  \frac{1}{2}\left(\bm{\beta}_j-\bar{\bm{\beta}}_j\right)^T\!
+  \bm{F}_j^{-1}
+  \left(\bm{\beta}_j-\bar{\bm{\beta}}_j\right)
+\end{align}
+
+We can analogously construct a probability distribution from the
+product of a sequence of Gaussian distributions with means
+$\bar{\bm{\beta}}_j$ and covariances $\bm{F}_j$:
+\begin{align}
+  P_I(\bm{\beta}) &= P_I(\bm{\beta}_0)\,
+  P_I(\bm{\beta}_1|\bm{\beta}_0)\,\dotsi\,
+  P_I(\bm{\beta}_M|\bm{\beta}_0,\dotsi,\bm{\beta}_{M-1})\\
+  &= \prod_{j=0}^M
+  \frac{e^{-\frac{1}{2}\left(\bm{\beta}_j-\bar{\bm{\beta}}_j\right)^T\!\bm{F}_j^{-1}\!
+      \left(\bm{\beta}_j-\bar{\bm{\beta}}_j\right)}}
+       {\sqrt{2\pi\left|\bm{F}_j\right|}}\\
+     &=
+       \frac{1}{(2\pi)^{\frac{N}{2}}} \prod_{j=0}^M 
+       \frac{e^{-\frac{1}{2}\left(\bm{\beta}_j-\hat{\bm{\beta}}_j\right)^T\!\bm{F}_j
+           \left(\bm{\beta}_j-\hat{\bm{\beta}}_j\right)}}
+            {\sqrt{\left|\bm{F}_j\right|}}
+\end{align}
+
+Note that the full distribution is not a multivariate Gaussian,
+because $\bm{F}_j$ and $\bar{\bm{\beta}}_j$ depend on $\bm{\beta}_{j-1}$,
+but we can still draw variates $\bm{\beta}_j$ from each individual
+multivariate Gaussian sequentially, and consider a full set of such
+variates a fair sample from the full distribution $P_I(\bm{\beta})$.
+
+By construction, $P_I(\bm{\beta})$ is simply related to
+$e^{-z(\bm{\alpha})}$:
+\begin{align}
+  e^{-z(\bm{\alpha})} &= P_I(\bm{\beta})\,(2\pi)^{\frac{N}{2}}\! \left[
+    \prod_{j=0}^M \left|\bm{F}_j\right|^{\frac{1}{2}}\! e^{-h_j}
+  \right]
+  = P_I(\bm{\beta})\,\left|2\pi\bm{F}_0\right|^{\frac{1}{2}}\!
+  \left[\prod_{j=1}^M \left|\bm{F}_j\right|^{\frac{1}{2}}\!e^{-h_j} \right] 
+\end{align}
+and we can substitute this is in \eqnref{eqn:marginalization}:
+\begin{align}
+  P(\bm{x}|\bm{\phi}) &=
+  e^{-s(\hat{\bm{\alpha}})}\int
+  P_I(\bm{\beta})\,
+  P(\bm{\nu}|\bm{\phi})\left|2\pi\bm{F}_0\right|^{\frac{1}{2}}
+  \left[
+    \prod_{j=1}^M
+    \frac{f_j(\bm{\alpha}_j,\bm{\phi})
+      \left|\bm{F}_j\right|^{\frac{1}{2}}
+      e^{-h_j}}
+         {\left(b_j\nu_j\right)^{N_j-1}}
+         \right]
+  d\bm{\alpha}
+\end{align}
+
+Finally, we can approximate this integral (and similarly, any expectation on
+it) using the Monte Carlo formula
+
+\begin{align}
+  P(\bm{x}|\bm{\phi}) &\approx
+  \frac{e^{-s(\hat{\bm{\alpha}})}\left|2\pi\bm{F}_0\right|^{\frac{1}{2}}}{K} \sum_{i=1}^K
+  P(\bm{\nu}^{(i)}|\bm{\phi})
+  \left[
+    \prod_{j=1}^M
+    \frac{
+      f_j(\bm{\alpha}_j^{(i)},\bm{\phi})
+      \left|\bm{F}_j^{(i)}\right|^{\frac{1}{2}}
+      e^{-h_j^{(i)}}
+    }{
+      \left(b_j\nu_j^{(i)}\right)^{N_j-1}
+    }
+    \right]
+  \label{eqn:montecarlo}
+\end{align}
+where $\bm{\alpha}^{(i)}$ is drawn from $P_I(\bm{\beta})$ with the
+change of variables defined by $\bm{Z}$, $\bm{q}$ and $\bm{Q}$,
+and $\bm{F}_j^{(i)}$ and $h_j^{(i)}$ are computed sequentially as we
+draw each $\bm{\beta}_j^{(i)}$.
+
+\section{Sampling Algorithm}
+
+\begin{enumerate}
+\item Compute a QR factorization of the flux vector
+  \begin{align*}
+    \bm{v}_j &= \left[\begin{array}{ c c }
+        \bm{q}_j & \bm{Q}_j
+      \end{array}\right]
+    \left[\begin{array}{ c }
+        r_j \\
+        0
+      \end{array}\right]
+  \end{align*}
+  for each group instance $j$.
+\item For each point $\bm{\phi}$:
+  \begin{enumerate}
+  \item Compute the singular value decomposition
+    $\bm{A} = \bm{U}\bm{S}\bm{V}^T$, dropping columns of $\bm{U}$ and
+    $\bm{V}$ that correspond to zero singular values.
+  \item Set $\hat{\bm{\alpha}} = \bm{V}\bm{S}^{-1}\bm{U^T}\bm{x}$, 
+    $\hat{\bm{\mu}}_j = \bm{Q}_j^T\hat{\bm{\alpha}}$, and
+    $\hat{\nu}_j = \bm{q}_j^T\hat{\bm{\alpha}}$.
+  \item Set $\bm{B}_j = \bm{S}\bm{V^T}\bm{q}_j$ and
+    $\bm{C}_j = \bm{S}\bm{V^T}\bm{Q}_j$.
+  \item Diagonalize $\bm{B}^T\!\bm{B}=\bm{Z_0}\bm{D}_0\bm{Z_0}^T$.
+  \item For $j$ in $[1, M]$, diagonalize
+    $\bm{C_j}^T\!\bm{C_j}=\bm{Z_j}\bm{D}_j\bm{Z_j}^T$.
+  \item For $i$ in $[1, K]$:
+    \begin{enumerate}
+    \item Draw $\bm{\beta}_0^{(i)}$ from a Gaussian distribution with mean
+      $\bar{\bm{\beta}}_0 = \bm{Z}^T_0\bm{q}^T\hat{\bm{\alpha}}$ and
+      covariance $\bm{F}_0 = \bm{D}_0^{-1}$.
+    \item Set $\bm{\nu}^{(i)} = \bm{Z}\bm{\beta}_0^{(i)}$
+    \item Set $h=0$, $t=0$, $u=0$, $\bm{g}=\bm{B}\bm{Z}_0(\bm{\beta}_0^{(i)} - \bar{\bm{\beta}}_0)$
+    \item For $j$ in $[1, M]$:
+      \begin{enumerate}
+      \item Set $\bm{F}_j = \left(\bm{D}_j+\frac{1}{b_j^2\left(\nu_j^{(i)}\right)^2}\right)^{-1}$
+      \item Set $\bar{\bm{\beta}}_j =
+        \bm{F}_j\left(\bm{D}_j\hat{\bm{\beta}}_j-\bm{Z}_j^T\bm{C}_j^T\bm{g}\right)$
+      \item Draw $\bm{\beta}_j^{(i)}$ from a Gaussian distribution
+        with mean $\bar{\bm{\beta}}_j$ and covariance $\bm{F}_j$.
+      \item Set $\bm{\alpha}_j^{(i)} = \bm{q}_j\nu_j^{(i)} +
+        \bm{Q}_j\bm{Z}_j\bm{\beta_j}^{(i)}$
+      \item If $f_j(\bm{\alpha}_j^{(i)},\bm{\phi})=0$ short-circuit
+        loop and continue to next $i$.
+      \item Update $t = t + \ln f_j(\bm{\alpha}_j^{(i)}, \bm{\phi})$
+      \item Update $u = u + \frac{1}{2}\ln\left|\frac{\bm{F}_j}{b_j^2\left(\nu_j^{(i)}\right)^2}\right|$
+      \item Update $h = h + \frac{1}{2}\left(\bar{\bm{\beta}}_j-\hat{\bm{\beta}}\right)^T\!\bm{D}_j
+        \left(\bar{\bm{\beta}}_j-\hat{\bm{\beta}}\right) +
+        \frac{\bar{\bm{\beta}}_j^T\!\bar{\bm{\beta}}_j}{2b_j^2\nu_j^2}
+        +
+        \bm{g}_{j-1}^T\bm{C}_j\bm{Z}_j\left(\bar{\bm{\beta}}_j-\hat{\bm{\beta}}\right)$
+      \item Update $\bm{g} = \bm{g} +
+        \bm{C}_j\bm{Z}_j(\bm{\beta}_k^{(i)}-\bar{\bm{\beta}}_j)$
+      \end{enumerate}
+    \item Update $t = t + \ln P(\bm{\nu}^{(i)}|\bm{\phi})$
+    \item Update $u = u + \frac{1}{2}\ln\left|2\pi\bm{F}_0\right|$
+    \item Set $w^{(i)} = e^{t + u - s(\hat{\bm{\alpha}}) - h}$
+    \end{enumerate}
+  \end{enumerate}
+  \item Finish: $P(\bm\phi) \approx \frac{1}{K}\sum_{i=1}^K w^{(i)}$
+\end{enumerate}
+\end{document}

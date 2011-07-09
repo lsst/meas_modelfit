@@ -2,3 +2,4 @@
 Import('env')
 
 doxy = env.Doxygen("doxygen.conf")
+priors = env.PDF("math/priors.tex")
