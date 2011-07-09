@@ -396,6 +396,9 @@ void QPSolver::Impl::update(int iq) {
     /* set z = H * d */
     if (iq < n)
         z = J.block(0, iq, n, n - iq) * d.segment(iq, n - iq); 
+    else
+	z.setZero();
+
     /* set r = R^-1 d */
     for (int i = iq - 1; i >= 0; --i) {
         double sum = 0.0;
