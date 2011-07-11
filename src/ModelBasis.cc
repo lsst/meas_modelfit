@@ -12,7 +12,6 @@ void ModelBasis::evaluate(
         matrix.getSize<1>(), getSize(),
         "Number of matrix columns (%d) does not match expected value (%d)."
     );
-
     detail::checkSize(
         matrix.getSize<0>(), footprint->getNpix(),
         "Number of matrix rows (%d) does not match expected value (%d)."
@@ -36,24 +35,31 @@ void ModelBasis::evaluateRadialProfile(
     _evaluateRadialProfile(profile, radii);
 }
 
-void ModelBasis::integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-    detail::checkSize(
-        vector.getSize<0>(), getSize(),
-        "Number of vector elements (%d) does not match expected value (%d)."
-    );
-    _integrate(vector);
+lsst::ndarray::Array<Pixel const,1,1> ModelBasis::getIntegration() const {
+    if (_multipoleMatrix.getData() == 0) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "getIntegration() not implemented for this basis."
+        );
+    }
+    return _multipoleMatrix[0];
 }
 
-void ModelBasis::evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 2, 1> const & matrix) const {
-    detail::checkSize(
-        matrix.getSize<1>(), getSize(),
-        "Number of coefficients in matrix (%d) does not match expected value (%d)."
-    );
-    detail::checkSize(
-        matrix.getSize<0>(), 6,
-        "Incorrect number of rows (%d) in multipole matrix (expected %d)."
-    );
-    _evaluateMultipoleMatrix(matrix);
+lsst::ndarray::Array<Pixel const,2,2> ModelBasis::getMultipoleMatrix() const {
+    if (_multipoleMatrix.getData() == 0 || _multipoleMatrix.getSize<0>() != 6) {
+        throw LSST_EXCEPT(
+            lsst::pex::exceptions::LogicErrorException,
+            "getMultipoleMatrix() not implemented for this basis."
+        );
+    }
+    return _multipoleMatrix;
+}
+
+void ModelBasis::computeMultipoleEllipse(
+    lsst::afw::geom::ellipses::Ellipse & ellipse,
+    lsst::ndarray::Array<Pixel const,1,1> const & coefficients
+) const {
+    // TODO
 }
 
 ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
@@ -62,8 +68,8 @@ ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {
 }
 
 void ModelBasis::attachConstraint(
-    lsst::ndarray::Array<Pixel,2,1> const & matrix,
-    lsst::ndarray::Array<Pixel,1,1> const & vector
+    lsst::ndarray::Array<Pixel const,2,1> const & matrix,
+    lsst::ndarray::Array<Pixel const,1,1> const & vector
 ) {
     detail::checkSize(
         matrix.getSize<0>(), vector.getSize<0>(),
@@ -75,6 +81,20 @@ void ModelBasis::attachConstraint(
     );
     _constraintMatrix = matrix;
     _constraintVector = vector;
+}
+
+void ModelBasis::attachMultipoleMatrix(
+    lsst::ndarray::Array<Pixel const,2,2> const & matrix
+) {
+    detail::checkSize(
+        matrix.getSize<0>(), 6,
+        "Number of rows of multipole matrix (%d) must be %d."
+    );
+    detail::checkSize(
+        matrix.getSize<1>(), _size,
+        "Number of columns of multipole matrix (%d) must match basis size (%d)."
+    );
+    _multipoleMatrix = matrix;
 }
 
 }}} // namespace lsst::meas::multifit

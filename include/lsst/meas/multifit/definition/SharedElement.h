@@ -47,8 +47,8 @@ private:
     template <SharedElementType E> friend class grid::SharedElement;
 
     /// Return true if the parameters are in-bounds.
-    bool checkBounds(double const * paramIter) const {
-        return paramIter[0] * paramIter[0] + paramIter[1] + paramIter[1] <= max * max;
+    bool checkBounds(double const * parameterIter) const {
+        return parameterIter[0] * parameterIter[0] + parameterIter[1] + parameterIter[1] <= max * max;
     }
 
     /**
@@ -56,11 +56,11 @@ private:
      *  a positive value that increases as the necessary parameter change increases.
      *  Return 0.0 if the parameters are already in-bounds
      */
-    double clipToBounds(double * paramIter) const {
-        double a = std::sqrt(max * max / (paramIter[0] * paramIter[0] + paramIter[1] + paramIter[1]));
+    double clipToBounds(double * parameterIter) const {
+        double a = std::sqrt(max * max / (parameterIter[0] * parameterIter[0] + parameterIter[1] + parameterIter[1]));
         if (a < 1.0) {
-            paramIter[0] *= a;
-            paramIter[1] *= a;
+            parameterIter[0] *= a;
+            parameterIter[1] *= a;
             return -std::log(a);
         }
         return 0.0;
@@ -83,8 +83,8 @@ private:
     template <SharedElementType E> friend class grid::SharedElement;
 
     /// Return true if the parameters are in-bounds.
-    bool checkBounds(double const * paramIter) const {
-        return *paramIter >= min && *paramIter <= max;
+    bool checkBounds(double const * parameterIter) const {
+        return *parameterIter >= min && *parameterIter <= max;
     }
 
     /**
@@ -92,14 +92,14 @@ private:
      *  a positive value that increases as the necessary parameter change increases.
      *  Return 0.0 if the parameters are already in-bounds
      */
-    double clipToBounds(double * paramIter) const {
-        if (*paramIter < min) {
-            double r = min - *paramIter;
-            *paramIter = min;
+    double clipToBounds(double * parameterIter) const {
+        if (*parameterIter < min) {
+            double r = min - *parameterIter;
+            *parameterIter = min;
             return r;
-        } else if (*paramIter > max) {
-            double r = *paramIter - max;
-            *paramIter = max;
+        } else if (*parameterIter > max) {
+            double r = *parameterIter - max;
+            *parameterIter = max;
             return r;
         }
         return 0.0;
@@ -113,13 +113,13 @@ struct SharedElementTraits<POSITION> {
     typedef CircleConstraint Bounds;
     static int const SIZE = 2;
 
-    static void readParameters(double const * paramIter, Value & value) {
-        value[0] += paramIter[0];
-        value[1] += paramIter[1];
+    static void readParameters(double const * parameterIter, Value & value) {
+        value[0] += parameterIter[0];
+        value[1] += parameterIter[1];
     }
-    static void writeParameters(double * paramIter, Value const & value) {
-        paramIter[0] = 0.0;
-        paramIter[1] = 0.0;
+    static void writeParameters(double * parameterIter, Value const & value) {
+        parameterIter[0] = 0.0;
+        parameterIter[1] = 0.0;
     }
     static void printValue(std::ostream & os, Value const & value) { os << value; }
 
@@ -133,11 +133,11 @@ struct SharedElementTraits<RADIUS> {
     typedef MinMaxConstraint Bounds;
     static int const SIZE = 1;
 
-    static void readParameters(double const * paramIter, Value & value) {
-        value = paramIter[0];
+    static void readParameters(double const * parameterIter, Value & value) {
+        value = parameterIter[0];
     }
-    static void writeParameters(double * paramIter, Value const & value) {
-        paramIter[0] = value;
+    static void writeParameters(double * parameterIter, Value const & value) {
+        parameterIter[0] = value;
     }
     static void printValue(std::ostream & os, Value const & value) { os << (double)value; }
 
@@ -153,13 +153,13 @@ struct SharedElementTraits<ELLIPTICITY> {
     typedef CircleConstraint Bounds;
     static int const SIZE = 2;
 
-    static void readParameters(double const * paramIter, Value & value) {
-        value.setE1(paramIter[0]);
-        value.setE2(paramIter[1]);
+    static void readParameters(double const * parameterIter, Value & value) {
+        value.setE1(parameterIter[0]);
+        value.setE2(parameterIter[1]);
     }
-    static void writeParameters(double * paramIter, Value const & value) {
-        paramIter[0] = value.getE1();
-        paramIter[1] = value.getE2();
+    static void writeParameters(double * parameterIter, Value const & value) {
+        parameterIter[0] = value.getE1();
+        parameterIter[1] = value.getE2();
     }
     static void printValue(std::ostream & os, Value const & value) { os << value.getComplex(); }
 

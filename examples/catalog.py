@@ -35,6 +35,9 @@ fields = (("dataset", int),
           ("e1", float),
           ("e2", float),
           ("r", float),
+          ("e1_index", int),
+          ("e2_index", int),
+          ("r_index", int),
           ("src_flags", numpy.int64),
           )
 algorithm = "SHAPELET_MODEL"
@@ -44,8 +47,15 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
         mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
     measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
-    nCoeff = measurement.getCoefficientSize()
-    dtype = numpy.dtype(list(fields) + [("coeff", float, nCoeff)])
+    nCoeff = measurement.getCoefficientCount()
+    nRadius = measurement.getOptions().radiusStepCount
+    nEllipticity = 2*measurement.getOptions().ellipticityStepCount + 1
+    dtype = numpy.dtype(list(fields) + [
+        ("coefficients", float, nCoeff), 
+        ("covar", float, (nCoeff, nCoeff)),
+        ("test_points", float, (nRadius, 3)),
+        ("objective_value", float, (nRadius, nEllipticity, nEllipticity)),
+        ])
     tables = []
     for d in datasets:
         logging.info("Processing dataset %d" % d)
@@ -82,7 +92,14 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
             record["e1"] = core.getE1()
             record["e2"] = core.getE2()
             record["r"] = core.getRadius()
-            record["coeff"][:] = measurement.getCoefficients()
+            record["r_index"] = measurement.getRadiusIndex()
+            record["e1_index"] = measurement.getE1Index()
+            record["e2_index"] = measurement.getE2Index()
+            record["coefficients"][:] = measurement.getCoefficients()
+            record["covar"][:,:] = measurement.getCovariance()
+            record["test_points"][:] = measurement.getTestPoints()
+            record["objective_value"][:,:,:] = measurement.getObjectiveValue()            
+
         tables.append(table)
 
     return numpy.concatenate(tables)
@@ -133,7 +150,7 @@ def subset(table, x=None, y=None):
 	numpy.logical_and(y >= ymin, y <= ymax)
 	)]
 
-def plotPsfMagComparsion(table, alpha=0.5):
+def plotPsfMagComparison(table, alpha=0.5):
     pyplot.figure()
     pyplot.scatter(psf_mag(table), psf_mag(table)-mag(table), alpha=alpha, linewidth=0)
     pyplot.axhline(0, color='k')
@@ -143,7 +160,7 @@ def plotPsfMagComparsion(table, alpha=0.5):
 def plotFluxFractions(table, alpha=0.3, **kw):
     measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
     integration = measurement.getIntegration()
-    fractions = integration[numpy.newaxis,:] * table["coeff"]
+    fractions = integration[numpy.newaxis,:] * table["coefficients"]
     fractions /= table["flux"][:,numpy.newaxis]
     offset = 0
     def doPlot(color):

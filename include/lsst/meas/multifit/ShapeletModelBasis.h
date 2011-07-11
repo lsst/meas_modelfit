@@ -78,11 +78,6 @@ protected:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
-    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
-    virtual void _evaluateMultipoleMatrix(
-        lsst::ndarray::Array<Pixel, 1, 1> const & matrix
-    ) const = 0;
-
     virtual void _evaluateRadialProfile(
         lsst::ndarray::Array<Pixel,2,1> const & profile,
         lsst::ndarray::Array<Pixel const,1,1> const & radii

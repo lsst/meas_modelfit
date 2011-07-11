@@ -56,10 +56,16 @@ public:
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
-    /// @brief Evaluate the integral of each basis function (with unit circle parameters).
-    void integrate(lsst::ndarray::Array<Pixel,1,1> const & vector) const;
+    lsst::ndarray::Array<Pixel const,1,1> getIntegration() const;
+    lsst::ndarray::Array<Pixel const,2,2> getMultipoleMatrix() const;
 
-    void evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 2, 1> const & matrix) const;
+    /**
+     *  @brief Modify a parameter ellipse to include the moments of the basis functions.
+     */
+    void computeMultipoleEllipse(
+        lsst::afw::geom::ellipses::Ellipse & ellipse,
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients        
+    ) const;
 
     /// @brief Fill a matrix that evaluates the radial profile of a basis expansion.
     void evaluateRadialProfile(
@@ -82,7 +88,10 @@ protected:
 
     explicit ModelBasis(int size) : _size(size) {}
 
-    ModelBasis(ModelBasis const & other) : _size(other._size) {}
+    ModelBasis(ModelBasis const & other) :
+        _size(other._size), _multipoleMatrix(other._multipoleMatrix),
+        _constraintMatrix(other._constraintMatrix), _constraintVector(other._constraintVector)
+    {}
 
     /**
      *  @brief Attach a linear inequality constraint to the basis.
@@ -93,13 +102,18 @@ protected:
      *  Should only be called by subclasses upon construction.
      */
     void attachConstraint(
-        lsst::ndarray::Array<Pixel,2,1> const & matrix,
-        lsst::ndarray::Array<Pixel,1,1> const & vector
+        lsst::ndarray::Array<Pixel const,2,1> const & matrix,
+        lsst::ndarray::Array<Pixel const,1,1> const & vector
     );
 
-    virtual void _integrate(lsst::ndarray::Array<Pixel,1,1> const & vector) const = 0;
-
-    virtual void _evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const = 0;
+    /**
+     *  @brief Attach a multipole matrix to the basis.
+     *
+     *  Should only be called by subclasses upon construction.
+     */
+    void attachMultipoleMatrix(
+        lsst::ndarray::Array<Pixel const,2,2> const & matrix
+    );
 
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
@@ -120,8 +134,9 @@ protected:
 private:
 
     int const _size;
-    ndarray::Array<Pixel,2,1> _constraintMatrix;
-    ndarray::Array<Pixel,1,1> _constraintVector;
+    ndarray::Array<Pixel const,2,2> _multipoleMatrix;
+    ndarray::Array<Pixel const,2,1> _constraintMatrix;
+    ndarray::Array<Pixel const,1,1> _constraintVector;
 };
 
 }}} // namespace lsst::meas::multifit

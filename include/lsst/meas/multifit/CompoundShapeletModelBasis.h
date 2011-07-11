@@ -33,73 +33,19 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace detail {
 
-class CompoundShapeletBase {
-public:
-
-    typedef std::vector<ShapeletModelBasis::Ptr> ComponentVector;
-    
-    ComponentVector extractComponents() const;
-
-    /// @brief Return the mapping from Shapelet components (rows) to compound basis functions (columns).
-    lsst::ndarray::Array<Pixel const,2,1> getMapping() const { return _mapping; }
-
-    /**
-     *  @brief Return a matrix of inner products that can be used to orthogonalize the basis.
-     */
-    Eigen::MatrixXd computeInnerProductMatrix() const;
-
-    void integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
-    
-    void evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 2, 1> const & matrix) const;
-
-protected:
-
-    typedef ndarray::EigenView<Pixel,2,1> Matrix;
-
-    struct Element {
-        ShapeletModelBasis::Ptr component;
-        Matrix mapping;
-
-        Element(
-            ShapeletModelBasis::Ptr const & component_, 
-            ndarray::Array<Pixel,2,1> const & fullMapping,
-            int offset
-        );
-
-        Element & operator=(Element const & other);
-    };
-
-    typedef std::vector<Element> ElementVector;
-
-    CompoundShapeletBase(
-        ComponentVector const & components,
-        ndarray::Array<Pixel,2,1> const & mapping
-    );
-    
-    explicit CompoundShapeletBase(ComponentVector const & components);
-    void _fillElements(ComponentVector const & components);
-
-    void _resetElements();
-
-    static int _computeSize(ComponentVector const & components);
-
-    static ndarray::Array<Pixel,2,2> _makeIdentity(int size);
-
-    ElementVector _elements;
-    ndarray::Array<Pixel,2,1> _mapping;
-};
+template <typename Component> class CompoundShapeletImpl;
 
 } // namespace detail
-
-class CompoundShapeletBuilder;
 
 /**
  *  @brief An ModelBasis subclass for a multi-scale shapelet expansion.
  */
-class CompoundShapeletModelBasis : public ModelBasis, public detail::CompoundShapeletBase {
+class CompoundShapeletModelBasis : public ModelBasis {
+    typedef detail::CompoundShapeletImpl<ShapeletModelBasis> Impl;
 public:
 
     typedef boost::shared_ptr<CompoundShapeletModelBasis> Ptr;
+    typedef std::vector<ShapeletModelBasis::Ptr> ComponentVector;
 
     /**
      *  @brief Convolve the basis with the given local PSF, returning a new basis with the same
@@ -118,47 +64,43 @@ public:
      *         parametrization.
      */
     ModelBasis::Ptr convolve(lsst::afw::math::shapelets::MultiShapeletFunction const & psf) const;
+    
+    ComponentVector extractComponents() const;
+
+    lsst::ndarray::Array<Pixel const,2,1> getMapping() const;
+
+    Eigen::MatrixXd computeInnerProductMatrix() const;
 
     static Ptr load(std::string const & filename);
     void save(std::string const & filename);
 
-    void integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-        detail::CompoundShapeletBase::integrate(vector);
-    }
+    virtual ~CompoundShapeletModelBasis();
 
-    virtual void _evaluateMultipoleMatrix(
-        lsst::ndarray::Array<Pixel, 2, 1> const & matrix
-    ) const {
-        detail::CompoundShapeletBase::evaluateMultipoleMatrix(matrix);
-    }
-
-    virtual ~CompoundShapeletModelBasis() {}
 protected:
 
-    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-        detail::CompoundShapeletBase::integrate(vector);
-    }
-    virtual void _evaluateMultipoleMatrix(
-        lsst::ndarray::Array<Pixel, 2, 1> const & matrix
-    ) const {
-        detail::CompoundShapeletBase::evaluateMultipoleMatrix(matrix);
-    };
-
     virtual void _evaluate(
-        lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
+        ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
         lsst::afw::geom::Ellipse const & ellipse
     ) const;
 
     virtual void _evaluateRadialProfile(
-        lsst::ndarray::Array<Pixel,2,1> const & profile,
-        lsst::ndarray::Array<Pixel const,1,1> const & radii
+        ndarray::Array<Pixel,2,1> const & profile,
+        ndarray::Array<Pixel const,1,1> const & radii
     ) const;
 
 private:
-    FRIEND_MAKE_SHARED_1(CompoundShapeletModelBasis, lsst::meas::multifit::CompoundShapeletBuilder);
 
-    explicit CompoundShapeletModelBasis(CompoundShapeletBuilder const &);
+    friend class CompoundShapeletBuilder;
+
+    explicit CompoundShapeletModelBasis(
+        boost::shared_ptr<Impl> const & impl,
+        ndarray::Array<Pixel const,2,2> const & multipoleMatrix,
+        ndarray::Array<Pixel const,2,1> const & constraintMatrix,
+        ndarray::Array<Pixel const,1,1> const & constraintVector
+    );
+
+    boost::shared_ptr<Impl> _impl;
 };
 
 /**
@@ -181,8 +123,11 @@ public:
 /**
  *  @brief A builder class for CompoundShapeletModelBasis.
  */
-class CompoundShapeletBuilder : public detail::CompoundShapeletBase {
+class CompoundShapeletBuilder {
+    typedef detail::CompoundShapeletImpl<ShapeletModelBasis> Impl;
 public:
+
+    typedef std::vector<ShapeletModelBasis::Ptr> ComponentVector;
 
     explicit CompoundShapeletBuilder(
         ComponentVector const & components,
@@ -206,18 +151,45 @@ public:
         lsst::ndarray::Array<Pixel const,1,1> const & matchRadii
     );
 
+    int getSize() const;
+
     /// @brief Normalize the basis so the flux of the nth basis function is one.
     void normalizeFlux(int n);
 
     void orthogonalize();
 
     void slice(int start, int stop);
+    
+    ComponentVector extractComponents() const;
 
-    int getSize() const { return _mapping.getSize<1>(); }
+    lsst::ndarray::Array<Pixel const,2,1> getMapping() const;
 
-    void setMapping(
-        lsst::ndarray::Array<Pixel const,2,1> const & mapping
-    );
+    void setMapping(lsst::ndarray::Array<Pixel const,2,1> const & mapping);
+
+    Eigen::MatrixXd computeInnerProductMatrix() const;
+
+    /// @brief Evaluate the basis functions on the given footprint.
+    void evaluate(
+        lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
+        CONST_PTR(Footprint) const & footprint,
+        lsst::afw::geom::Ellipse const & ellipse
+    ) const;
+
+    /// @brief Fill a matrix that evaluates the radial profile of a basis expansion.
+    void evaluateRadialProfile(
+        lsst::ndarray::Array<Pixel,2,1> const & profile,
+        lsst::ndarray::Array<Pixel const,1,1> const & radii
+    ) const;
+
+    void evaluateIntegration(lsst::ndarray::Array<Pixel,1,1> const & vector) const;
+
+    void evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel,2,2> const & matrix) const;
+
+    /// @brief Return the number of inequality constraints.
+    int getConstraintCount() const { return _constraintMatrix.getSize<0>(); }
+
+    lsst::ndarray::Array<Pixel const,2,1> getConstraintMatrix() const { return _constraintMatrix; }
+    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
 
     void setConstraint(
         lsst::ndarray::Array<Pixel const,2,1> const & matrix,
@@ -226,13 +198,13 @@ public:
 
     CompoundShapeletModelBasis::Ptr build() const;
 
-    lsst::ndarray::Array<Pixel,2,2> dataImage;
-    lsst::ndarray::Array<Pixel,3,3> modelImages;
+    ~CompoundShapeletBuilder();
 
 private:
 
-    friend class CompoundShapeletModelBasis;
+    explicit CompoundShapeletBuilder(boost::shared_ptr<Impl> const & impl) : _impl(impl) {}
 
+    boost::shared_ptr<Impl> _impl;
     ndarray::Array<Pixel,2,1> _constraintMatrix;
     ndarray::Array<Pixel,1,1> _constraintVector;
 };

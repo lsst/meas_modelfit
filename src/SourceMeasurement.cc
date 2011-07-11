@@ -91,8 +91,9 @@ afw::geom::ellipses::Ellipse SourceMeasurement::makeEllipse(
     afw::geom::ellipses::Quadrupole quad(
         source.getIxx(), source.getIyy(), source.getIxy() 
     );
-
+    quad.normalize();
     afw::geom::ellipses::Axes axes(quad);
+    axes.normalize();
     if(axes.getA()<= std::numeric_limits<double>::epsilon())
         axes.setA(std::numeric_limits<double>::epsilon());
     if(axes.getB()<= std::numeric_limits<double>::epsilon())
@@ -112,24 +113,33 @@ SourceMeasurement::SourceMeasurement(Options const & options) :
     _options(options),
     _bitmask(afw::image::Mask<afw::image::MaskPixel>::getPlaneBitMask(options.maskPlaneNames)),
     _ellipse(EllipseCore())
+
 {
-    int coefficientSize = computeCoefficientSize(options);
-    _integration = ndarray::allocate(coefficientSize);
-    _coefficients = ndarray::allocate(coefficientSize);
-    _covariance = ndarray::allocate(coefficientSize, coefficientSize);
+    int coefficientCount = computeCoefficientCount(options);
+    _integration = ndarray::allocate(coefficientCount);
+    _coefficients = ndarray::allocate(coefficientCount);
+    _covariance = ndarray::allocate(coefficientCount, coefficientCount);
     _parameters = ndarray::allocate(3);
     _integration.deep() = 0.0;
+
+    _objectiveValue = ndarray::allocate(
+        options.radiusStepCount, 
+        2*options.ellipticityStepCount+1, 
+        2*options.ellipticityStepCount+1
+    );
+    _points = ndarray::allocate(options.radiusStepCount, 3);
+
     int offset = 0;
     if (_options.fitDeltaFunction) {
         _integration[offset] = 1.0;
         ++offset;
     }
     if (_options.fitExponential) {
-        getExponentialBasis()->integrate(_integration[ndarray::view(offset, offset+1)]);
+        _integration[ndarray::view(offset, offset+1)] = getExponentialBasis()->getIntegration();
         ++offset;
     }
     if (_options.fitDeVaucouleur) {
-        getDeVaucouleurBasis()->integrate(_integration[ndarray::view(offset, offset+1)]);
+        _integration[ndarray::view(offset, offset+1)] = getDeVaucouleurBasis()->getIntegration();
         ++offset;
     }
     if (_options.shapeletOrder >= 0) {
@@ -139,13 +149,14 @@ SourceMeasurement::SourceMeasurement(Options const & options) :
         builder.normalizeFlux(0);
         ndarray::Array<Pixel,2,2> constraintMatrix(ndarray::allocate(2, builder.getSize()));
         constraintMatrix.deep() = 0.0;
-        builder.integrate(constraintMatrix[1]);
+        builder.evaluateIntegration(constraintMatrix[1]);
         std::swap(constraintMatrix[1][0], constraintMatrix[0][0]);
         ndarray::Array<Pixel,1,1> constraintVector(ndarray::allocate(2));
         constraintVector.deep() = 0.0;
         builder.setConstraint(constraintMatrix, constraintVector);
         _shapeletBasis = builder.build();
-        _shapeletBasis->integrate(_integration[ndarray::view(offset, offset + _shapeletBasis->getSize())]);
+        _integration[ndarray::view(offset, offset + _shapeletBasis->getSize())] 
+            = _shapeletBasis->getIntegration();
     }
 }
 
@@ -179,54 +190,93 @@ void SourceMeasurement::addObjectsToDefinition(
     definition::EllipticityElement::Ptr ellipticity = definition::EllipticityElement::make(
         ellipseCore.getEllipticity(), true
     );
+    definition::FluxGroup::Ptr fluxGroup = definition::FluxGroup::make(0, 1.0, false);
+    int nFlux = 0;
     if (_options.fitDeltaFunction) {
         definition::ObjectComponent obj(DELTAFUNCTION_ID);
         obj.getPosition() = position;
+        obj.getFluxGroup() = fluxGroup;
         def.objects.insert(obj);
+        ++nFlux;
     }
     if (_options.fitExponential) {
         definition::ObjectComponent obj(EXPONENTIAL_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
+        obj.getFluxGroup() = fluxGroup;
         obj.setBasis(getExponentialBasis());
         def.objects.insert(obj);
-
+        ++nFlux;
     }
     if (_options.fitDeVaucouleur) {
         definition::ObjectComponent obj(DEVAUCOULEUR_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
+        obj.getFluxGroup() = fluxGroup;
         obj.setBasis(getDeVaucouleurBasis());
         def.objects.insert(obj);
+        ++nFlux;
     }
     if (_options.shapeletOrder >= 0) {
         definition::ObjectComponent obj(SHAPELET_ID);
         obj.getPosition() = position;
         obj.getRadius() = radius;
         obj.getEllipticity() = ellipticity;
+        obj.getFluxGroup() = fluxGroup;
         obj.setBasis(_shapeletBasis);
         def.objects.insert(obj);
+        ++nFlux;
+    }
+    fluxGroup->getMaxMorphologyRatio() = 1.0 / nFlux;
+}
+
+void SourceMeasurement::setTestPoints(
+    EllipseCore const & initialEllipse, 
+    Ellipse const & psfEllipse
+) {
+    EllipseCore maxEllipse(initialEllipse);
+    EllipseCore minEllipse(maxEllipse);
+    maxEllipse.scale(_options.radiusMaxFactor);
+    minEllipse.scale(_options.radiusMinFactor);
+    maxEllipse = naiveDeconvolve(maxEllipse, psfEllipse.getCore());
+    minEllipse = naiveDeconvolve(minEllipse, psfEllipse.getCore());
+    EllipseCore::ParameterVector base(minEllipse.getParameterVector());
+    EllipseCore::ParameterVector delta = maxEllipse.getParameterVector() - minEllipse.getParameterVector();
+    delta /= _options.radiusStepCount;
+
+    for (int i = 0; i < _options.radiusStepCount; ++i, base += delta) {
+        _points[i][EllipseCore::RADIUS] = base[EllipseCore::RADIUS];
+        _points[i][EllipseCore::E1] = base[EllipseCore::E1];
+        _points[i][EllipseCore::E2] = base[EllipseCore::E2]; 
     }
 }
 
-void SourceMeasurement::solve(double e1, double e2, double radius, double & best) {
+
+bool SourceMeasurement::solve(double e1, double e2, double r, double & objective, double & best) {
     pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
-    assert(_evaluator->getParameterSize() == 3);
-    log.debug(4, boost::format("Testing %f %f %f.") % e1 % e2 % radius);
-    ndarray::Array<double,1,1> parameters(ndarray::allocate(_evaluator->getParameterSize()));
-    parameters[_evaluator->getGrid()->radii[0].offset] = radius;
-    parameters[_evaluator->getGrid()->ellipticities[0].offset] = e1;
-    parameters[_evaluator->getGrid()->ellipticities[0].offset + 1] = e2;
-    Evaluation evaluation(_evaluator, parameters);
-    double objective;
+    assert(_evaluator->getParameterCount() == 3);
+
+    log.debug(4, boost::format("Testing %f %f %f.") % e1 % e2 % r);
+    ndarray::Array<double,1,1> parameters(ndarray::allocate(_evaluator->getParameterCount()));
+    parameters[_evaluator->getGrid()->radii.front().offset] = r;
+    parameters[_evaluator->getGrid()->ellipticities.front().offset] = e1;
+    parameters[_evaluator->getGrid()->ellipticities.front().offset + 1] = e2;
+    _evaluation->update(parameters);
     try {
-        objective = evaluation.getObjectiveValue();
+        objective = _evaluation->getObjectiveValue();
         log.debug(6, boost::format("Objective value is %f") % objective);
-    } catch (...) {
-        return;
+#if LSST_MAX_DEBUG > 5
+    } catch (std::exception & err) {
+        log.debug(6, boost::format("exception: %s") % err.what());
+        return false;
+#endif
+    } catch (...) {      
+        objective = std::numeric_limits<double>::quiet_NaN();
+        return false;
     }
+
     if (objective < best) {
         _status &= ~algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
         //double flux = grid::SourceComponent::computeFlux(_integration, evaluation.getCoefficients());
@@ -237,51 +287,64 @@ void SourceMeasurement::solve(double e1, double e2, double radius, double & best
         //    _status &= ~algorithms::Flags::SHAPELET_PHOTOM_INVERSION_UNSAFE;
         // }
         _parameters.deep() = parameters;
-        _coefficients.deep() = evaluation.getCoefficients();
-        _covariance.deep() = evaluation.getCoefficientFisherMatrix();
+        _coefficients.deep() = _evaluation->getCoefficients();
+        _covariance.deep() = _evaluation->getCoefficientCovarianceMatrix();
         best = objective;
-        _ellipse.getCore() = EllipseCore(e1, e2, radius);
+        _ellipse.getCore() = EllipseCore(e1, e2, r);
+        return true;
     }
+
+    return false;
 }
 
 void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
-    EllipseCore maxEllipse(initialEllipse.getCore());
-    EllipseCore minEllipse(maxEllipse);
-    afw::geom::Ellipse psfEllipse = _evaluator->getGrid()->sources[0].getLocalPsf()->computeMoments();
-    maxEllipse.scale(_options.radiusMaxFactor);
-    minEllipse.scale(_options.radiusMinFactor);
-    maxEllipse = naiveDeconvolve(maxEllipse, psfEllipse.getCore());
-    minEllipse = naiveDeconvolve(minEllipse, psfEllipse.getCore());
-    EllipseCore::ParameterVector base(minEllipse.getParameterVector());
-    EllipseCore::ParameterVector delta = maxEllipse.getParameterVector() - minEllipse.getParameterVector();
-    delta /= _options.radiusStepCount;
+    afw::geom::Ellipse psfEllipse = _evaluator->getGrid()->sources.front().getLocalPsf()->computeMoments();
+   
+    setTestPoints(initialEllipse.getCore(), psfEllipse);
     double best = std::numeric_limits<double>::infinity();
+    double objective;
+    _rBest = _e1Best = _e2Best = -1;
     _status |= algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
-    for (int iR = 0; iR < _options.radiusStepCount; ++iR, base += delta) {
-        if (base[EllipseCore::RADIUS] < SQRT_EPS) {
-            solve(0.0, 0.0, SQRT_EPS, best);
+    _objectiveValue.deep() = std::numeric_limits<double>::quiet_NaN();
+    for (int iR = 0; iR < _points.getSize<0>(); ++iR) {
+        double r = _points[iR][EllipseCore::RADIUS];
+        if (r <= SQRT_EPS) {
+            _points[iR][EllipseCore::RADIUS] = SQRT_EPS;
+            _points[iR][EllipseCore::E1] = 0.;
+            _points[iR][EllipseCore::E2] = 0.;
+
+            if( solve(0., 0., SQRT_EPS, objective, best) ) {
+                _rBest = iR;
+                _e1Best = 0;
+                _e2Best = 0;
+            }
+
+            _objectiveValue[iR].deep() = objective;
             continue;
         }
-        for (int iE1 = -_options.ellipticityStepCount; iE1 <= _options.ellipticityStepCount; ++iE1) {
-            for (int iE2 = -_options.ellipticityStepCount; iE2 <= _options.ellipticityStepCount; ++iE2) {
-                solve(
-                    base[EllipseCore::E1] + iE1 * _options.ellipticityStepSize,
-                    base[EllipseCore::E2] + iE2 * _options.ellipticityStepSize,
-                    base[EllipseCore::RADIUS],
-                    best
-                );
+
+        double e1 = _points[iR][EllipseCore::E1];
+        double deltaE = _options.ellipticityStepSize;
+        int nSteps = _options.ellipticityStepCount;
+        for (int nE1 = -nSteps, iE1 = 0; nE1 <= nSteps; ++iE1, ++nE1) {
+            double e2 = _points[iR][EllipseCore::E2];
+            for (int nE2 = -nSteps, iE2 = 0; nE2 <= nSteps; ++iE2, ++nE2) {
+                if (solve(e1 + nE1 * deltaE, e2 + nE2 * deltaE, r, objective, best)) {                    
+                    _rBest = iR;
+                    _e1Best = iE1;
+                    _e2Best = iE2;
+                }
+                _objectiveValue[iR][iE1][iE2] = objective;
             }
         }
     }
+
     if (_status & algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL) {
         _ellipse = initialEllipse;
         _flux = std::numeric_limits<double>::quiet_NaN();
         _fluxErr = std::numeric_limits<double>::quiet_NaN();
         return;
     }
-    Eigen::LDLT<Eigen::MatrixXd> ldlt(ndarray::viewAsTransposedEigen(_covariance));
-    ndarray::viewAsTransposedEigen(_covariance).setIdentity();
-    ldlt.solveInPlace(ndarray::viewAsTransposedEigen(_covariance).setIdentity());
     Grid::Ptr grid = _evaluator->getGrid();
     _flux = grid::SourceComponent::computeFlux(_integration, _coefficients);
     _fluxErr = std::sqrt(grid::SourceComponent::computeFluxVariance(_integration, _covariance));
@@ -299,6 +362,7 @@ int SourceMeasurement::measure(
         return _status;
     }
     log.debug(1, boost::format("Processing source %lld") % source->getSourceId());
+
     if (!source->getFootprint()) {
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
@@ -320,14 +384,16 @@ int SourceMeasurement::measure(
         return _status;
     }
     Definition def;
-    def.frames.insert(definition::Frame::make(0, *exp, fp, _bitmask, _options.usePixelWeights));
+    def.frames.insert(definition::Frame::make(0, *exp, fp, _bitmask));
     _fp = def.frames[0].getFootprint();
     if (_fp->getArea() == 0) {
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
     }
     addObjectsToDefinition(def, *ellipse);
-    _evaluator = Evaluator::make(def);
+    _evaluator = Evaluator::make(def, _options.usePixelWeights);
+    _evaluation.reset(new Evaluation(_evaluator));
+
 
     optimize(*ellipse);
 

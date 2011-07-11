@@ -68,7 +68,7 @@ protected:
     ) const;
 #endif
 
-    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & param) const;
+    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & parameters) const;
 
 private:
     

@@ -23,8 +23,7 @@ class IntegrationTestCase(unittest.TestCase):
     def compare(self, basis, ellipse, factor):
         images = makeBasisImages(basis, ellipse, factor)
         i1 = images.sum(axis=0).sum(axis=0)
-        i2 = numpy.zeros(basis.getSize(), dtype=float)
-        basis.integrate(i2)
+        i2 = basis.getIntegration()
         self.assert_(numpy.allclose(i1, i2, rtol=1E-2, atol=1E-1), "%s\n!=\n%s" % (i1, i2))
 
     def testIntegration(self):

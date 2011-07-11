@@ -68,12 +68,12 @@ class Viewer(object):
         source = self.sources[index]
         self.sourceMeasurement.measure(self.exposure, source)
 
-        #get fit parameters/coeff
+        #get fit parameters/coefficients
         fitFp = self.sourceMeasurement.getFootprint()
         ellipse = self.sourceMeasurement.getEllipse()
         core = ellipse.getCore()
-        coeff = self.sourceMeasurement.getCoefficients()
-        param = self.sourceMeasurement.getParameters()
+        coefficients = self.sourceMeasurement.getCoefficients()
+        parameters = self.sourceMeasurement.getParameters()
         #generate a larger, unmasked fp
         bbox = fitFp.getBBox()
         bounds = lsst.afw.geom.ellipses.Ellipse(ellipse)
@@ -97,22 +97,23 @@ class Viewer(object):
         definition.frames[0].setFootprint(fp)
         definition.frames[0].setData(dataArray)
 
-        if self.sourceMeasurement.getOptions().usePixelWeights:
-            weightArray = numpy.ones_like(dataArray)
-            lsst.afw.detection.flattenArray(
-                fp,
-                self.exposure.getMaskedImage().getVariance().getArray(), 
-                weightArray, 
-                self.exposure.getXY0()
-            )
-            definition.frames[0].setWeights(weightArray)
-        else:
-            definition.frames[0].setWeights(numpy.array([], dtype=float))
-        evaluator = lsst.meas.multifit.Evaluator.make(definition)
+        weightArray = numpy.ones_like(dataArray)
+        lsst.afw.detection.flattenArray(
+            fp,
+            self.exposure.getMaskedImage().getVariance().getArray(), 
+            weightArray, 
+            self.exposure.getXY0()
+        )
+        definition.frames[0].setWeights(weightArray)
+
+        evaluator = lsst.meas.multifit.Evaluator.make(\
+            definition, 
+            self.sourceMeasurement.getOptions().usePixelWeights
+        )
         evaluation = lsst.meas.multifit.Evaluation(evaluator)
         evaluation.update(
-            param,
-            coeff
+            parameters,
+            coefficients
         )        
 
 
@@ -139,14 +140,41 @@ class Viewer(object):
         lsst.afw.detection.expandArray(fp, modelArray, model.getArray(), bbox.getMin())
         modelMi = mi.Factory(model, msk)
 
-
         residual = img.Factory(bbox)
         lsst.afw.detection.expandArray(fp, residualArray, residual.getArray(), bbox.getMin())    
         residual.getArray()[:,:] *= -1
         residualMi = mi.Factory(residual, msk)
         
+        #generate images of just the delta function component of the model
+        dfDefinition = lsst.meas.multifit.Definition()
+        dfObject = lsst.meas.multifit.definition.ObjectComponent.makeStar(
+                lsst.meas.multifit.SourceMeasurement.DELTAFUNCTION_ID,
+                ellipse.getCenter(),
+                False, False)          
+        dfFluxGroup = lsst.meas.multifit.definition.FluxGroup.make(0, 1., False)
+        dfObject.setFluxGroup(dfFluxGroup)
+        dfDefinition.objects.insert(dfObject)
+        dfDefinition.frames.insert(definition.frames[0])
+                
+        dfEvaluator = lsst.meas.multifit.Evaluator.make(
+                dfDefinition, 
+                self.sourceMeasurement.getOptions().usePixelWeights
+            )
+        dfEvaluation = lsst.meas.multifit.Evaluation(dfEvaluator)
 
-      
+        dfModelArray = dfEvaluation.getModelVector().astype(img.getArray().dtype)
+        dfResidualArray = dfEvaluation.getResiduals().astype(img.getArray().dtype)
+        
+        dfModel = img.Factory(bbox)        
+        lsst.afw.detection.expandArray(fp, dfModelArray, dfModel.getArray(), bbox.getMin())
+        dfModelMi = mi.Factory(dfModel, msk)
+
+        dfResiduals = img.Factory(bbox)        
+        lsst.afw.detection.expandArray(fp, dfResidualArray, dfResiduals.getArray(), bbox.getMin())
+        dfResiduals.getArray()[:,:] *= -1
+        dfResidualsMi = mi.Factory(dfResiduals, msk)
+
+        #generate images of the psf and psf models
         psfImg = lsst.afw.image.ImageD(bbox)
         psfModel = lsst.afw.image.ImageD(bbox)
         psfResidual = lsst.afw.image.ImageD(bbox)
@@ -154,7 +182,7 @@ class Viewer(object):
         psfDataArray = numpy.zeros(fp.getArea(), float)
         psfModelArray = numpy.zeros(fp.getArea(), float)
 
-        source = evaluator.getGrid().sources[0]
+        source = list(evaluator.getGrid().sources)[0]
         localPsfData = source.getLocalPsf()
         shapelet = localPsfData.computeShapelet(
             lsst.afw.math.shapelets.HERMITE,
@@ -174,11 +202,15 @@ class Viewer(object):
         d["fp"] = fitFp
         d["bbox"] = bbox
         d["ellipse"] = ellipse
-        d["coefficients"] = coeff
+        d["coefficients"] = coefficients
         d["evaluator"] = evaluator
         d["evaluation"] = evaluation
+        d["test_points"] = self.sourceMeasurement.getTestPoints()
+        d["objective_value"] = self.sourceMeasurement.getObjectiveValue()
         d["images"] = [mi, modelMi, residualMi]
         d["image_labels"] = ["image", "model", "residuals"]
+        d["df_images"] = [mi, dfModelMi, dfResidualsMi]
+        d["df_labels"] = ["image", "delta function model", "delta function residuals"]
         d["psf_images"] = [psfImg, psfModel, psfResidual]
         d["psf_labels"] = ["psf", "ShapeletLocalPsf model", "residuals"]
         self.fits[index] = d
@@ -194,6 +226,8 @@ class Viewer(object):
         src = self.sources[index]
 
         if(mode=="ds9"):
+            ds9.setMaskTransparency(75)
+
             #one frame for psf mosaic
             psfMosaic = self.m.makeMosaic(d["psf_images"], frame=1)
             self.m.drawLabels(d["psf_labels"], frame=1)  
@@ -201,24 +235,33 @@ class Viewer(object):
             #another for the model mosaic
             mosaic = self.m.makeMosaic(d["images"], frame=0)
             self.m.drawLabels(d["image_labels"], frame=0)
-            ds9.setMaskTransparency(75)
 
-            #plot initial, and fit ellipses over model mosaic
-            #image
-            #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
-            ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
-            ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=0, ctype=ds9.BLUE)
-            #model
-            center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter , 0)
-            #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
-            ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
-            ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=0, ctype=ds9.BLUE)
-            #residual
-            center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter, 0)
-            #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
-            ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=0)
-            ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=0, ctype=ds9.BLUE)
+            #and another for the delta function images
+            dfMosaic = self.m.makeMosaic(d["df_images"], frame = 2)
+            self.m.drawLabels(d["df_labels"], frame=2)
+
+            for frame in range(3):
+                center = lsst.afw.geom.Point2D(
+                    ellipse.getCenter().getX() - bbox.getMinX(), 
+                    ellipse.getCenter().getY() - bbox.getMinY()
+                )
+                #plot initial, and fit ellipses over model mosaic
+                #image
+                #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+                ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=frame)
+                ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=frame, ctype=ds9.BLUE)
+                #model
+                center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter , 0)
+                #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+                ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=frame)
+                ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=frame, ctype=ds9.BLUE)
+                #residual
+                center += lsst.afw.geom.ExtentD(bbox.getWidth() + self.gutter, 0)
+                #ds9.dot("x", c=center.getX(), r=center.getY(), frame=0)
+                ds9.dot("@:%f,%f,%f"%(q.getIXX(), q.getIXY(), q.getIYY()), center.getX(), center.getY(), frame=frame)
+                ds9.dot("@:%f,%f,%f"%(src.getIxx(), src.getIxy(), src.getIyy()), center.getX(), center.getY(), frame=frame, ctype=ds9.BLUE)
             
+
             ds9.ds9Cmd("tile mode row")
             ds9.ds9Cmd("tile yes")
 
@@ -226,7 +269,7 @@ class Viewer(object):
         self.fit(index)
         d = self.fits[index]
         radii = numpy.linspace(0.0, 5.0, 200)
-        fullProfile = numpy.zeros((radii.size, d['evaluator'].getCoefficientSize()), dtype=float)
+        fullProfile = numpy.zeros((radii.size, d['evaluator'].getCoefficientCount()), dtype=float)
         allProfiles = {"full":fullProfile, "psf": fullProfile.copy()}
         v = d["coefficients"] * self.sourceMeasurement.getIntegration()
         v /= v.sum()
@@ -267,10 +310,10 @@ class Viewer(object):
             order.append("shp")
             fullProfile += shpProfile
         f = d["ellipse"].getCore().getArea() / numpy.pi
-        r = d["ellipse"].getCore().getDeterminantRadius()
+        r = d["ellipse"].getCore().getTraceRadius()
         colors = {"full": "k", "exp":"b", "dev":"r", "shp":"g", "psf":"y"}
         pyplot.figure()
-        ax1 = pyplot.axes([0.1, 0.1, 0.6, 0.38])
+        ax1 = pyplot.axes([0.1, 0.38, 0.6, 0.24])
         ax1.plot(radii * r, numpy.dot(fullProfile, d["coefficients"]) / f, "k", label="combined")
         for k in order:
             if k not in allProfiles: continue
@@ -279,7 +322,7 @@ class Viewer(object):
             pyplot.xlabel("radius (pixels)")
 	pyplot.axvline(r, color="k", linestyle=":")
         pyplot.legend()
-        ax2 = pyplot.axes([0.1, 0.52, 0.6, 0.38], sharex=ax1)
+        ax2 = pyplot.axes([0.1, 0.66, 0.6, 0.24], sharex=ax1)
         ax2.semilogy(radii * r, numpy.dot(fullProfile, d["coefficients"]) / f, "k", label="combined")
         for k in order:
             if k not in allProfiles: continue
@@ -288,11 +331,21 @@ class Viewer(object):
 	pyplot.axvline(r, color="k", linestyle=":")
         pyplot.title("deconvolved radial profile")
         order.reverse()
-        ax3 = pyplot.axes([0.75, 0.1, 0.2, 0.8])
-        ax3.barh(numpy.arange(0, len(order)), [allFractions[k] for k in order], 
+
+        #objective value vs. radius
+        ax3 = pyplot.axes([0.1, 0.1, 0.6, 0.24]) #, sharex=ax1)
+        ax3.plot(d["test_points"][:, 2], d["objective_value"][:, 0, 0], "ok")
+        ax3.axvline(r, color="k", linestyle=":")
+
+        #flux fraction
+        ax4 = pyplot.axes([0.75, 0.1, 0.2, 0.8])
+        ax4.barh(numpy.arange(0, len(order)), [allFractions[k] for k in order], 
                  color=[colors[k] for k in order])
         pyplot.ylim(-0.2, len(order))
         pyplot.title("flux fraction")
-        ax3.set_yticklabels([])
+        ax4.set_yticklabels([])
         pyplot.xlim(0, 1.0)
+
+        
+
         pyplot.show()

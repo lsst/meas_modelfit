@@ -94,7 +94,7 @@ public:
 
     static Options readPolicy(lsst::pex::policy::Policy const & policy);
 
-    static int computeCoefficientSize(Options const & options) {
+    static int computeCoefficientCount(Options const & options) {
         return options.fitDeltaFunction + options.fitExponential + options.fitDeVaucouleur
             + ((options.shapeletOrder < 0) ? 0 : afw::math::shapelets::computeSize(options.shapeletOrder));
     }
@@ -167,14 +167,18 @@ public:
     CompoundShapeletModelBasis::Ptr getShapeletBasis() const { return _shapeletBasis; } 
     lsst::afw::image::MaskPixel getBitmask() const { return _bitmask; }
     Options const & getOptions() const { return _options; }
-
+ 
+    static ID const DELTAFUNCTION_ID=0;
+    static ID const EXPONENTIAL_ID=1;
+    static ID const DEVAUCOULEUR_ID=2;
+    static ID const SHAPELET_ID=3;
 private:
 
     int getCoefficientOffset(ID id) const {
         return _evaluator->getGrid()->objects.find(id)->getFluxGroup()->getCoefficientOffset(0);
     }
 
-    void setTestPoints(EllipseCore const & initialEllipse, EllipseCore const & psfEllipse);
+    void setTestPoints(EllipseCore const & initialEllipse, Ellipse const & psfEllipse);
     void optimize(Ellipse const & initialEllipse);
     bool solve(double e1, double e2, double radius, double & objective, double & best);
 
@@ -197,10 +201,7 @@ private:
     ndarray::Array<Pixel,1,1> _integration;
     boost::int64_t _status;
 
-    static ID const DELTAFUNCTION_ID=0;
-    static ID const EXPONENTIAL_ID=1;
-    static ID const DEVAUCOULEUR_ID=2;
-    static ID const SHAPELET_ID=3;
+
 
 };
 

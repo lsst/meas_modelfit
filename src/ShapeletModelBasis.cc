@@ -47,17 +47,12 @@ public:
         _convolution(boost::make_shared<afwShapelets::detail::HermiteConvolution>(basis.getOrder(), psf)),
         _frontBasis(ShapeletModelBasis::make(_convolution->getRowOrder(), 1.0)),
         _scale(basis.getScale())
-    {}
+    {
+        attachMultipoleMatrix(basis.getMultipoleMatrix());
+    }
 
 protected:
-    virtual void _evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1, 1> const & matrix) const;
 
-    virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(getOrder());
-        vector.deep() = 0.0;
-        shapeletEvaluator.fillIntegration(vector);
-        vector.deep() *= _scale * _scale;
-    }
 
     virtual void _evaluate(
         ndarray::Array<Pixel, 2, 1> const & matrix,
@@ -78,7 +73,6 @@ protected:
     }
 
 private:
-
     afwShapelets::detail::HermiteConvolution::Ptr _convolution;
     ShapeletModelBasis::Ptr _frontBasis;
     double _scale;
@@ -92,27 +86,22 @@ mf::ShapeletModelBasis::ShapeletModelBasis(int order, double scale)
     : ModelBasis(afw::math::shapelets::computeSize(order)),
       _order(order), _scale(scale)
 {
+    ndarray::Array<Pixel,2,2> multipoleMatrix(ndarray::allocate(6, getSize()));
+    multipoleMatrix.deep() = 0.0;
+    afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
+    shapeletEvaluator.fillIntegration(multipoleMatrix[0], 0, 0);
+    shapeletEvaluator.fillIntegration(multipoleMatrix[1], 1, 0);
+    shapeletEvaluator.fillIntegration(multipoleMatrix[2], 0, 1);
+    shapeletEvaluator.fillIntegration(multipoleMatrix[3], 2, 0);
+    shapeletEvaluator.fillIntegration(multipoleMatrix[4], 0, 2);
+    shapeletEvaluator.fillIntegration(multipoleMatrix[5], 1, 1);
+    multipoleMatrix.deep() *= _scale * _scale;
+    attachMultipoleMatrix(multipoleMatrix);
 }
 
 int & mf::ShapeletModelBasis::getPsfShapeletOrderRef() {
     static int v = 4;
     return v;
-}
-
-void mf::ShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-    afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
-    vector.deep() = 0.0;
-    shapeletEvaluator.fillIntegration(vector);
-    vector.deep() *= _scale * _scale;
-}
-
-void mf::ShapeletModelBasis::_evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel, 1,1> const & matrix) const {
-    afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
-    matrix.deep() = 0.0;
-    shapeletEvaluator.fillIntegration(matrix[0]);
-
-    matrix.deep() *= _scale * _scale;
-
 }
 
 void mf::ShapeletModelBasis::_evaluate(
