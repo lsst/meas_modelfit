@@ -151,7 +151,6 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 %nodefaultctor lsst::meas::multifit::ShapeletModelBasis;
 %nodefaultctor lsst::meas::multifit::CompoundShapeletModelBasis;
 
-
 %extend lsst::meas::multifit::CompoundShapeletModelBasis {
     %feature("shadow") _getMapping %{
         def getMapping(self):
@@ -161,7 +160,6 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
         def extractComponents(self):
             return $action(self)
     %}
-
 
     lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getMapping() const {
         return self->getMapping();
@@ -173,11 +171,13 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 
 SWIG_SHARED_PTR(ProfileFunctionPtr, lsst::meas::multifit::ProfileFunction);
 
+%include "lsst/meas/multifit/MultipoleMatrix.h"
 %include "lsst/meas/multifit/ModelBasis.h"
 %include "lsst/meas/multifit/ShapeletModelBasis.h"
 %include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 
-%template(CompoundShapelet_ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
+%template(CompoundShapelet_ComponentVector) 
+std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
 
 SWIG_SHARED_PTR(BaseEvaluatorPtr, lsst::meas::multifit::BaseEvaluator);
 
@@ -196,7 +196,6 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %{ 
 #include "lsst/meas/multifit/SourceMeasurement.h"
 %}
-
 
 %include "lsst/meas/multifit/SourceMeasurement.h"
 

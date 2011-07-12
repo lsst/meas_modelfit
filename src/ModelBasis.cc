@@ -45,21 +45,14 @@ lsst::ndarray::Array<Pixel const,1,1> ModelBasis::getIntegration() const {
     return _multipoleMatrix[0];
 }
 
-lsst::ndarray::Array<Pixel const,2,2> ModelBasis::getMultipoleMatrix() const {
+MultipoleMatrix ModelBasis::getMultipoleMatrix() const {
     if (_multipoleMatrix.getData() == 0 || _multipoleMatrix.getSize<0>() != 6) {
         throw LSST_EXCEPT(
             lsst::pex::exceptions::LogicErrorException,
             "getMultipoleMatrix() not implemented for this basis."
         );
     }
-    return _multipoleMatrix;
-}
-
-void ModelBasis::computeMultipoleEllipse(
-    lsst::afw::geom::ellipses::Ellipse & ellipse,
-    lsst::ndarray::Array<Pixel const,1,1> const & coefficients
-) const {
-    // TODO
+    return MultipoleMatrix(_multipoleMatrix);
 }
 
 ModelBasis::Ptr ModelBasis::convolve(CONST_PTR(LocalPsf) const & psf) const {

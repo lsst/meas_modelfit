@@ -23,6 +23,7 @@ def devProfile(r):
     p[big] *= scr*scr
     p[r > DEVOUT] = 0.0
     return p
+devProfile.radiusFactor = 0.73407739**0.5
 
 def expProfile(r):
     """Truncated exponential - copied from SDSS"""
@@ -33,6 +34,7 @@ def expProfile(r):
     p[big] *= scr * scr
     p[r > EXPOUT] = 0.0
     return p
+expProfile.radiusFactor = 0.77534062**0.5
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -41,7 +43,7 @@ def plotBasis(basis, func, factor):
     radii = numpy.linspace(0, 4, 500)
     profile = numpy.zeros((radii.size, basis.getSize()), dtype=float)
     basis.evaluateRadialProfile(profile, radii)
-    f = func(radii) / factor
+    f = func(radii * func.radiusFactor) / factor
     pyplot.subplot(3, 1, 1)
     pyplot.plot(radii, profile[:,0], 'k-')
     pyplot.plot(radii, f, 'r--')
@@ -71,7 +73,7 @@ def makeExponential():
         matchRadii
         )
     integral = numpy.zeros(1, dtype=float)
-    builder.integrate(integral)
+    builder.evaluateIntegration(integral)
     builder.setMapping(builder.getMapping() / integral[0])
     return builder.build(), integral[0]
 
@@ -92,7 +94,7 @@ def makeDeVaucouleur():
         matchRadii
         )
     integral = numpy.zeros(1, dtype=float)
-    builder.integrate(integral)
+    builder.evaluateIntegration(integral)
     builder.setMapping(builder.getMapping() / integral[0])
     return builder.build(), integral[0]
 

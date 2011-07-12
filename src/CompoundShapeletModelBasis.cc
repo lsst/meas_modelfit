@@ -228,6 +228,14 @@ public:
         }
     }
 
+    void evaluateMultipoleMatrix(ndarray::Array<Pixel,2,2> const & matrix) const {
+        matrix.deep() = 0.0;
+        for (ElementIter i = _elements.begin(); i != _elements.end(); ++i) {
+            ndarray::viewAsEigen(matrix) += 
+                ndarray::viewAsEigen(i->component->getMultipoleMatrix().getArray()) * i->mapping;
+        }
+    }
+
 private:
 
     friend class CompoundShapeletHelper;
@@ -403,9 +411,13 @@ void CompoundShapeletHelper::approximate(
         * ndarray::viewAsEigen(coefficients);
     impl.setMapping(mapping);
 
+    ndarray::Array<Pixel,2,2> multipoleMatrix(ndarray::allocate(6, 1));
+    impl.evaluateMultipoleMatrix(multipoleMatrix);
+    double radius = std::sqrt(multipoleMatrix[MultipoleMatrix::IXX][0] 
+                              / multipoleMatrix[MultipoleMatrix::I0][0]);
     for (Impl::ElementVector::iterator i = impl._elements.begin(); i != impl._elements.end(); ++i) {
         i->component = ShapeletModelBasis::make(
-            i->component->getOrder(), i->component->getScale() / sersicRadius
+            i->component->getOrder(), i->component->getScale() / radius
         );
     }
 }
@@ -475,7 +487,7 @@ ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
     }
     return ModelBasis::Ptr(
         new ConvolvedCompoundShapeletModelBasis(
-            this->getSize(), boost::ref(convolvedElements), getMultipoleMatrix()
+            this->getSize(), boost::ref(convolvedElements), getMultipoleMatrix().getArray()
         )
     );
 }
@@ -498,7 +510,7 @@ ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
     }
     return ModelBasis::Ptr(
         new ConvolvedCompoundShapeletModelBasis(
-            this->getSize(), boost::ref(convolvedElements), getMultipoleMatrix()
+            this->getSize(), boost::ref(convolvedElements), getMultipoleMatrix().getArray()
         )
     );
 }
@@ -734,11 +746,7 @@ void CompoundShapeletBuilder::evaluateIntegration(lsst::ndarray::Array<Pixel,1,1
 }
 
 void CompoundShapeletBuilder::evaluateMultipoleMatrix(lsst::ndarray::Array<Pixel,2,2> const & matrix) const {
-    matrix.deep() = 0.0;
-    for (Impl::ElementIter i = _impl->getElements().begin(); i != _impl->getElements().end(); ++i) {
-        ndarray::viewAsEigen(matrix) += 
-            ndarray::viewAsEigen(i->component->getMultipoleMatrix()) * i->mapping;
-    }
+    _impl->evaluateMultipoleMatrix(matrix);
 }
 
 void CompoundShapeletBuilder::setConstraint(

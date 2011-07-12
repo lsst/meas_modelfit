@@ -28,6 +28,7 @@ from .multifitLib import (
     Evaluator,
     Evaluation,
     SourceMeasurement,
+    MultipoleMatrix,
     ModelBasis,
     ShapeletModelBasis,
     ProfileFunction,

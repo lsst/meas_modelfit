@@ -48,7 +48,7 @@ public:
         _frontBasis(ShapeletModelBasis::make(_convolution->getRowOrder(), 1.0)),
         _scale(basis.getScale())
     {
-        attachMultipoleMatrix(basis.getMultipoleMatrix());
+        attachMultipoleMatrix(basis.getMultipoleMatrix().getArray());
     }
 
 protected:
@@ -95,7 +95,15 @@ mf::ShapeletModelBasis::ShapeletModelBasis(int order, double scale)
     shapeletEvaluator.fillIntegration(multipoleMatrix[3], 2, 0);
     shapeletEvaluator.fillIntegration(multipoleMatrix[4], 0, 2);
     shapeletEvaluator.fillIntegration(multipoleMatrix[5], 1, 1);
-    multipoleMatrix.deep() *= _scale * _scale;
+    double s = _scale * _scale;
+    multipoleMatrix[0] *= s;
+    s *= _scale;
+    multipoleMatrix[1] *= s;
+    multipoleMatrix[2] *= s;
+    s *= _scale;
+    multipoleMatrix[3] *= s;
+    multipoleMatrix[4] *= s;
+    multipoleMatrix[5] *= s;
     attachMultipoleMatrix(multipoleMatrix);
 }
 

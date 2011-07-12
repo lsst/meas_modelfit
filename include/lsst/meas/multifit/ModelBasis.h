@@ -25,6 +25,7 @@
 #define LSST_MEAS_MULTIFIT_ModelBasis
 
 #include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/MultipoleMatrix.h"
 #include <boost/noncopyable.hpp>
 
 namespace lsst { namespace meas { namespace multifit {
@@ -57,15 +58,8 @@ public:
     ) const;
 
     lsst::ndarray::Array<Pixel const,1,1> getIntegration() const;
-    lsst::ndarray::Array<Pixel const,2,2> getMultipoleMatrix() const;
 
-    /**
-     *  @brief Modify a parameter ellipse to include the moments of the basis functions.
-     */
-    void computeMultipoleEllipse(
-        lsst::afw::geom::ellipses::Ellipse & ellipse,
-        lsst::ndarray::Array<Pixel const,1,1> const & coefficients        
-    ) const;
+    MultipoleMatrix getMultipoleMatrix() const;
 
     /// @brief Fill a matrix that evaluates the radial profile of a basis expansion.
     void evaluateRadialProfile(
