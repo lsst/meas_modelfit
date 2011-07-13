@@ -33,40 +33,57 @@ public:
 
     enum { I0=0, IX, IY, IXX, IYY, IXY };
 
-    /// @brief Transform the matrix.
-    void transform(lsst::afw::geom::AffineTransform const & t);
+    lsst::afw::geom::Point2D computeCentroid(
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients,
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
+    ) const;
 
-    /// @brief Transform the matrix with a simple scaling transform.
-    void scale(double factor);
+    lsst::afw::geom::Point2D computeCentroid(
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients
+    ) const;
 
-    /**
-     *  @brief Modify an ellipse to include multipole moments that correspond to the given coefficients.
-     */
-    void applyMoments(
-        lsst::afw::geom::ellipses::Ellipse & ellipse,
+    lsst::afw::geom::ellipses::Quadrupole computeQuadrupole(
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients,
+        lsst::afw::geom::ellipses::Ellipse const & ellipse,
+        lsst::afw::geom::Point2D const & centroid
+    ) const;
+
+    lsst::afw::geom::ellipses::Quadrupole computeQuadrupole(
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients,
+        lsst::afw::geom::Point2D const & centroid
+    ) const;
+
+    lsst::afw::geom::ellipses::Ellipse computeEllipse(
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients,
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
+    ) const;
+
+    lsst::afw::geom::ellipses::Ellipse computeEllipse(
         lsst::ndarray::Array<Pixel const,1,1> const & coefficients
     ) const;
 
     /// @brief Return the multipole matrix as an array.
     lsst::ndarray::Array<Pixel const,2,2> getArray() const { return _array; }
 
-    /// @brief Construct from an array (always deep).
-    explicit MultipoleMatrix(lsst::ndarray::Array<Pixel const,2,2> const & array) :
-        _array(ndarray::copy(array))
-    {}
+    /**
+     *  @brief Update a grid parameter vector by modifying all centers and
+     *         ellipses to include the moments defined by a coefficient vector.
+     */
+    static void updateParameters(
+        PTR(grid::Grid) const & grid, 
+        lsst::ndarray::Array<double const,1,1> const & parametersIn,
+        lsst::ndarray::Array<double,1,1> const & parametersOut,
+        lsst::ndarray::Array<Pixel const,1,1> & coefficients
+    );
 
-    /// @brief Construct from an array (deep by default).
-    explicit MultipoleMatrix(lsst::ndarray::Array<Pixel,2,2> const & array, bool deep=true) :
-        _array(deep ? ndarray::copy(array) : array)
-    {}
+    /// @brief Construct from an array (shallow).
+    explicit MultipoleMatrix(lsst::ndarray::Array<Pixel const,2,2> const & array) : _array(array) {}
 
-    /// @brief Copy construct (shallow by default).
-    MultipoleMatrix(MultipoleMatrix const & other, bool deep=false) :
-        _array(deep ? ndarray::copy(other._array) : other._array)
-    {}
+    /// @brief Copy construct (shallow).
+    MultipoleMatrix(MultipoleMatrix const & other) : _array(other._array) {}
 
 private:
-    ndarray::Array<Pixel,2,2> _array;
+    ndarray::Array<Pixel const,2,2> _array;
 };
 
 }}} // namespace lsst::meas::multifit
