@@ -25,8 +25,9 @@
 #define LSST_MEAS_MULTIFIT_Grid
 
 #include "lsst/meas/multifit/grid/Frame.h"
-#include "lsst/meas/multifit/grid/Object.h"
-#include "lsst/meas/multifit/grid/Array.h"
+#include "lsst/meas/multifit/grid/ObjectComponent.h"
+#include "lsst/meas/multifit/grid/FluxGroup.h"
+#include "lsst/meas/multifit/containers/Array.h"
 #include "lsst/meas/multifit/definition/Definition.h"
 
 #include <boost/scoped_array.hpp>
@@ -38,33 +39,30 @@ class Grid {
 public:
     typedef boost::shared_ptr<Grid> Ptr;
 
-    typedef grid::Object Object;
+    typedef grid::ObjectComponent ObjectComponent;
     typedef grid::Frame Frame;
-    typedef grid::Source Source;
+    typedef grid::SourceComponent SourceComponent;
 
-    typedef grid::Array<Object> ObjectArray;
-    typedef grid::Array<Frame> FrameArray;
-    typedef grid::Array<Source> SourceArray;
+    typedef containers::Array<ObjectComponent,containers::UNSORTED> ObjectComponentArray;
+    typedef containers::Array<Frame,containers::SORTED> FrameArray;
+    typedef containers::Array<SourceComponent,containers::NO_INDEX> SourceComponentArray;
 
-    typedef grid::ComponentArray<POSITION> PositionArray;
-    typedef grid::ComponentArray<RADIUS> RadiusArray;
-    typedef grid::ComponentArray<ELLIPTICITY> EllipticityArray;
+    typedef containers::Array<PositionElement,containers::NO_INDEX> PositionArray;
+    typedef containers::Array<RadiusElement,containers::NO_INDEX> RadiusArray;
+    typedef containers::Array<EllipticityElement,containers::NO_INDEX> EllipticityArray;
+
+    typedef containers::Array<FluxGroup,containers::UNSORTED> FluxGroupArray;
 
     Definition makeDefinition() const;
 
-    Definition makeDefinition(double const * paramIter) const;
+    Definition makeDefinition(lsst::ndarray::Array<double const,1,1> const & parameters) const;
 
-#ifndef SWIG
-    void writeParameters(double * paramIter) const;
-#endif
-    void writeParameters(lsst::ndarray::Array<double, 1, 1> const & params) const {
-        writeParameters(params.getData());
-    }
+    void writeParameters(lsst::ndarray::Array<double,1,1> const & parameters) const;
 
     int const getFilterIndex(FilterId filterId) const;
 
     /// @brief Return true if all parameters are in-bounds.
-    bool checkBounds(double const * paramIter) const;
+    bool checkBounds(lsst::ndarray::Array<double const,1,1> const & parameters) const;
 
     /**
      *  @brief Clip any out-of-bounds parameters to the bounds and return a positive number
@@ -73,65 +71,45 @@ public:
      *  The returned value has no well-defined units and may penalize some parameter types
      *  more than others.  The return value will be zero when no clipping is necessary.
      */
-    double clipToBounds(double * paramIter) const;
+    double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const;
 
-    ~Grid();
-
-    ObjectArray objects;
+    ObjectComponentArray objects;
+    SourceComponentArray sources;
     FrameArray frames;
-    SourceArray sources;
 
-#ifndef SWIG
+    FluxGroupArray groups;
+
     //@{
-    /// Arrays of all active parameter components (inactive ones are still held by the Objects). 
+    /// Arrays of all active parameter elements (inactive ones are still held by the ObjectComponents). 
     PositionArray positions;
     RadiusArray radii;
     EllipticityArray ellipticities;
     //@}
-#endif
 
     int const getFilterCount() const { return _filterCount; }
     int const getCoefficientCount() const { return _coefficientCount; }
     int const getPixelCount() const { return _pixelCount; }
     int const getParameterCount() const { return _parameterCount; }
-    int const getConstraintCount() const { return _constraintVector.getSize<0>(); }
-
-    lsst::ndarray::Array<Pixel const,2,2> getConstraintMatrix() const { return _constraintMatrix; }
-    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
+    int const getConstraintCount() const { return _constraintCount; }
 
     CONST_PTR(Wcs) const getWcs() const { return _wcs; }
 
-    static Ptr make(Definition const & definition) {
-        return Ptr(new Grid(definition));
-    }
+    static Ptr make(Definition const & definition);
 
 private:
 
     friend class Initializer;
 
-    typedef std::map<FilterId, int > FilterMap;
+    typedef std::map<FilterId,int> FilterMap;
 
-    explicit Grid(Definition const & definition);
-
-    void _destroy();
-
-    template <typename ObjectIterator, typename FrameIterator>
-    void _initialize(
-        ObjectIterator const & objectBegin, ObjectIterator const & objectEnd,
-        FrameIterator const & frameBegin, FrameIterator const & frameEnd
-    );
+    explicit Grid(Initializer & initializer);
 
     int _filterCount;
     int _coefficientCount;
     int _pixelCount;
     int _parameterCount;
-    
-    ndarray::Array<Pixel,2,2> _constraintMatrix;
-    ndarray::Array<Pixel,1,1> _constraintVector;
+    int _constraintCount;
 
-    boost::scoped_array<char> _objectData;
-    boost::scoped_array<char> _frameData;
-    boost::scoped_array<char> _sourceData;
     CONST_PTR(Wcs) _wcs;
     FilterMap _filters;
 };

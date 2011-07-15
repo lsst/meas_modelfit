@@ -26,7 +26,6 @@ import lsst.afw.detection as afwDetection
 import lsst.afw.geom as afwGeom
 import lsst.afw.geom.ellipses as geomEllipses
 import lsst.meas.multifit as mf
-import lsst.meas.multifit.utils as mfUtils
 import lsst.afw.math.shapelets as shapelets
 
 import lsst.utils.tests as utilsTests
@@ -41,21 +40,17 @@ class CompoundShapeletModelBasisTest(unittest.TestCase):
             components.push_back(mf.ShapeletModelBasis.make(i))
 
         builder =  mf.CompoundShapeletBuilder(components)     
-        forward = numpy.zeros_like(builder.getForward())
-        reverse = numpy.zeros_like(builder.getReverse())
+        mapping = numpy.zeros_like(builder.getMapping())
         i = 0
-        shape=forward.shape
-        area = shape[0]*shape[1]
+        shape=mapping.shape
         for r in range(shape[0]):
             for c in range(shape[1]):
-                forward[r,c]=i
-                reverse[r,c]=area-i
+                mapping[r,c]=i
                 i+=1
-        builder.setMapping(forward, reverse)
+        builder.setMapping(mapping)
         saver = builder.build()
 
-        print forward.shape
-        print reverse.shape
+        print mapping.shape
 
         filename = os.path.join("tests", "compound_shapelet.boost")
         saver.save(filename)
@@ -69,35 +64,13 @@ class CompoundShapeletModelBasisTest(unittest.TestCase):
             self.assertAlmostEqual(i.getScale(), j.getScale())
             self.assertEqual(i.getOrder(), j.getOrder())            
 
-        loadForward = loader.getForward()
-        loadReverse = loader.getReverse()
+        loadMapping = loader.getMapping()
 
         for r in range(shape[0]):
             for c in range(shape[1]):
-                self.assertAlmostEqual(loadReverse[r,c], reverse[r,c])
-                self.assertAlmostEqual(loadForward[r,c], forward[r,c])
+                self.assertAlmostEqual(loadMapping[r,c], mapping[r,c])
 
         os.remove(filename)
-
-    def testIntegration(self):
-        components = mf.CompoundShapeletBuilder.ComponentVector()
-        components.push_back(mf.ShapeletModelBasis.make(4, 1.0))
-        components.push_back(mf.ShapeletModelBasis.make(4, 1.1))
-        builder = mf.CompoundShapeletBuilder(components)
-        builder.orthogonalize()
-        basis = builder.build()
-        ellipse = geomEllipses.Ellipse(geomEllipses.Axes(10.0, 8.0, 0.3), afwGeom.Point2D(0.0, 0.0))
-        bounds = geomEllipses.Ellipse(ellipse)
-        bounds.scale(8.0)
-        footprint = afwDetection.Footprint(bounds)
-        matrix = numpy.zeros((footprint.getArea(), basis.getSize()), dtype=float)
-        basis.evaluate(matrix, footprint, ellipse)
-        integration = numpy.zeros(basis.getSize(), dtype=float)
-        basis.integrate(integration)
-        factor = ellipse.getCore().getArea() / numpy.pi
-        total = matrix.sum(axis=0) / factor
-        self.assert_(numpy.allclose(integration, total))
-        
 
 def suite():
     utilsTests.init()

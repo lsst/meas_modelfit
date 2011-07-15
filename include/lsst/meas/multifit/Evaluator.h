@@ -38,44 +38,47 @@ public:
 
     Grid::Ptr getGrid() const { return _grid; }
     
-    static Ptr make(Grid::Ptr const & grid) {
-        return boost::make_shared<Evaluator>(grid);
+    static Ptr make(Grid::Ptr const & grid, bool usePixelWeights) {
+        return boost::make_shared<Evaluator>(grid, usePixelWeights);
     }
-    static Ptr make(Definition const & definition) {
-        return boost::make_shared<Evaluator>(Grid::make(definition));
+    static Ptr make(Definition const & definition, bool usePixelWeights) {
+        return boost::make_shared<Evaluator>(Grid::make(definition), usePixelWeights);
     }
 
     virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const {
-        return _grid->clipToBounds(parameters.getData());
+        return _grid->clipToBounds(parameters);
+    }
+
+    virtual bool checkBounds(lsst::ndarray::Array<double const,1,1> const & parameters) const {
+        return _grid->checkBounds(parameters);
     }
 
 protected:
 
     virtual void _evaluateModelMatrix(
-        ndarray::Array<double,2,2> const & matrix,
-        ndarray::Array<double const,1,1> const & param
+        ndarray::Array<Pixel,2,2> const & matrix,
+        ndarray::Array<double const,1,1> const & parameters
     ) const;
 
 #if 0
     virtual void _evaluateModelMatrixDerivative(
-        ndarray::Array<double,3,3> const & modelMatrixDerivative,
-        ndarray::Array<double const,2,2> const & modelMatrix,
-        ndarray::Array<double const,1,1> const & param
+        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
+        ndarray::Array<Pixel const,2,2> const & modelMatrix,
+        ndarray::Array<double const,1,1> const & parameters
     ) const;
 #endif
 
-    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & param) const;
+    virtual void _writeInitialParameters(ndarray::Array<double,1,1> const & parameters) const;
 
 private:
     
-    FRIEND_MAKE_SHARED_1(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid>);
+    FRIEND_MAKE_SHARED_2(Evaluator, boost::shared_ptr<lsst::meas::multifit::Grid>, bool );
 
-    explicit Evaluator(Grid::Ptr const & grid);
-
-    Evaluator(Evaluator const & other);
+    explicit Evaluator(Grid::Ptr const & grid, bool usePixelWeights);
     
     void _initialize();
 
+    bool _usePixelWeights;
     Grid::Ptr _grid;
 };
 

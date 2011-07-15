@@ -46,22 +46,25 @@ public:
     typedef boost::shared_ptr<BaseEvaluator> Ptr;
 
     /// @brief Size of data vector (number of rows of matrix).
-    int getDataSize() const { return _dataVector.getSize<0>(); }
+    int getPixelCount() const { return _dataVector.getSize<0>(); }
 
     /// @brief Size of coefficient vector (number of colums of matrix).
-    int getCoefficientSize() const { return _coefficientSize; }
+    int getCoefficientCount() const { return _constraintMatrix.getSize<1>(); }
 
     /// @brief Number of parameters.
-    int getParameterSize() const { return _parameterSize; }
+    int getParameterCount() const { return _parameterCount; }
 
     /// @brief Number of coefficient inequality constraints.
-    int getConstraintSize() const { return _constraintVector.getSize<0>(); }
+    int getConstraintCount() const { return _constraintVector.getSize<0>(); }
 
     /**
      *  @brief Clip the given parameter vector to the valid range and return a penalty
      *         that scales with how far the parameter vector was beyond the constraints.
      */
     virtual double clipToBounds(lsst::ndarray::Array<double,1,1> const & parameters) const = 0;
+
+    /// @brief Return true if all parameters are in-bounds.
+    virtual bool checkBounds(lsst::ndarray::Array<double const,1,1> const & parameters) const = 0;
 
     /**
      *  @brief Data vector.
@@ -87,15 +90,15 @@ public:
     /**
      *  @brief Evaluate the matrix with the given parameters.
      *
-     *  @param[out] matrix  An array to fill with shape (getDataSize(), getCoefficientSize()).
-     *  @param[in]  param   An array of parameters with size getParameterSize().
+     *  @param[out] matrix  An array to fill with shape (getPixelCount(), getCoefficientCount()).
+     *  @param[in]  parameters   An array of parameters with size getParameterCount().
      *
      *  If the data vector is weighted, the output matrix should be as well (each row should be divided
      *  by the corresponding pixel sigma value).
      */
     void evaluateModelMatrix(
         lsst::ndarray::Array<Pixel,2,2> const & matrix,
-        lsst::ndarray::Array<Pixel const,1,1> const & param
+        lsst::ndarray::Array<Pixel const,1,1> const & parameters
     ) const;
 
     /**
@@ -108,10 +111,10 @@ public:
      */
     virtual void evaluateModelMatrixDerivative(
         ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<Pixel const,1,1> const & parameters
     ) const;
 
-    void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & param) const;
+    void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & parameters) const;
 
     virtual ~BaseEvaluator() {}
 
@@ -119,27 +122,15 @@ protected:
 
     friend class Evaluation;
 
-    BaseEvaluator(int dataSize, int coefficientSize, int parameterSize) :
-        _coefficientSize(coefficientSize),
-        _parameterSize(parameterSize),
-        _dataVector(ndarray::allocate(dataSize)),
-        _constraintVector(),
-        _constraintMatrix()
-    {}
-
-    BaseEvaluator(
-        ndarray::Array<Pixel,1,1> const & data, int coefficientSize, int parameterSize
-    ) :
-        _coefficientSize(coefficientSize),
-        _parameterSize(parameterSize),
-        _dataVector(data),
-        _constraintVector(),
-        _constraintMatrix()
+    BaseEvaluator(int pixelCount, int coefficientCount, int parameterCount, int constraintCount) :
+        _parameterCount(parameterCount),
+        _dataVector(ndarray::allocate(pixelCount)),
+        _constraintVector(ndarray::allocate(constraintCount)),
+        _constraintMatrix(ndarray::allocate(constraintCount, coefficientCount))
     {}
 
     BaseEvaluator(BaseEvaluator const & other) :
-        _coefficientSize(other._coefficientSize), 
-        _parameterSize(other._parameterSize), 
+        _parameterCount(other._parameterCount), 
         _dataVector(other._dataVector),
         _constraintVector(other._constraintVector),
         _constraintMatrix(other._constraintMatrix)
@@ -147,22 +138,21 @@ protected:
 
     virtual void _evaluateModelMatrix(
         ndarray::Array<Pixel,2,2> const & matrix,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<Pixel const,1,1> const & parameters
     ) const = 0;
 
     virtual void _evaluateModelMatrixDerivative(
         ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
         ndarray::Array<Pixel const,2,2> const & modelMatrix,
-        ndarray::Array<Pixel const,1,1> const & param
+        ndarray::Array<Pixel const,1,1> const & parameters
     ) const;
 
-    virtual void _writeInitialParameters(ndarray::Array<Pixel,1,1> const & param) const = 0;
+    virtual void _writeInitialParameters(ndarray::Array<Pixel,1,1> const & parameters) const = 0;
 
-    int const _coefficientSize;
-    int const _parameterSize;
+    int const _parameterCount;
     ndarray::Array<Pixel,1,1> _dataVector;
-    ndarray::Array<Pixel const,1,1> _constraintVector;
-    ndarray::Array<Pixel const,2,2> _constraintMatrix;
+    ndarray::Array<Pixel,1,1> _constraintVector;
+    ndarray::Array<Pixel,2,2> _constraintMatrix;
 
 private:
     void operator=(BaseEvaluator const &) {}

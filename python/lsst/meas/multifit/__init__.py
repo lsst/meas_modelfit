@@ -27,27 +27,18 @@ from .multifitLib import (
     Definition,
     Evaluator,
     Evaluation,
+    SourceMeasurement,
     ModelBasis,
     ShapeletModelBasis,
+    ProfileFunction,
     CompoundShapeletModelBasis,
     CompoundShapeletBuilder,
-    BaseDistribution,
-    SimpleDistribution,
-    StudentDistribution,
-    GaussianDistribution,
-    BaseInterpreter,
-    UnifiedInterpreter,
-    NestedInterpreter,
-    SimpleInterpreter,
-    UnifiedSimpleInterpreter,
-    NestedSimpleInterpreter,
-    GaussNewtonOptimizer,
-    BruteForceSourceOptimizer
+    version,
+    makeSourceMeasurement,
     )
 from . import multifitLib
 from . import definition
 from . import grid
-from . import utils
 
 import os
 import eups

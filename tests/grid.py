@@ -36,7 +36,7 @@ class TestCaseMixIn(object):
     def addGalaxy(self):
         self.galaxyEllipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(4.0, 3.0, 0.25), 
                                                             lsst.afw.geom.Point2D(10.3, 42.1))
-        self.galaxy = mf.definition.Object.makeGalaxy(
+        self.galaxy = mf.definition.ObjectComponent.makeGalaxy(
             1,
             mf.ShapeletModelBasis.make(2),
             self.galaxyEllipse,
@@ -45,7 +45,7 @@ class TestCaseMixIn(object):
 
     def addStar(self):
         self.starPoint = lsst.afw.geom.Point2D(12.1, 56.7)
-        self.star = mf.definition.Object.makeStar(3, self.starPoint, False, True)
+        self.star = mf.definition.ObjectComponent.makeStar(3, self.starPoint, False, True)
 
     def addFrame(self, footprint=None):
         if footprint is None:
@@ -70,7 +70,7 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
     def testComponents(self):
         position1 = mf.Position(4.3, 2.0)
         position2 = mf.Position(-2.1, 0.5)
-        p = mf.definition.PositionComponent.make(position1)
+        p = mf.definition.PositionElement.make(position1)
         self.assert_(p.isActive())
         self.assertEqual(p.getValue(), position1)
         p.setValue(position2)
@@ -84,7 +84,7 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
 
         ellipticity1 = mf.Ellipticity(0.6, -0.1)
         ellipticity2 = mf.Ellipticity(-0.25, 0.3)
-        e = mf.definition.EllipticityComponent.make(ellipticity1, False)
+        e = mf.definition.EllipticityElement.make(ellipticity1, False)
         self.assertEqual(e.getValue().getE1(), ellipticity1.getE1())
         self.assertEqual(e.getValue().getE2(), ellipticity1.getE2())
         self.assertFalse(e.isActive())
@@ -98,7 +98,7 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
         
         radius1 = mf.Radius(2.3)
         radius2 = mf.Radius(1.6)
-        r = mf.definition.RadiusComponent.make(radius1, True)
+        r = mf.definition.RadiusElement.make(radius1, True)
         self.assertEqual(float(r.getValue()), float(radius1))
         self.assert_(r.isActive())
         r.setValue(radius2)
@@ -116,12 +116,12 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
         self.assertEqual(self.galaxy.getPosition(), self.star.getPosition())
         self.assertNotEqual(self.galaxy.getPosition(), self.star.getRadius()) # this shouldn't throw
 
-    def testObjectAccessors(self):
+    def testObjectComponentAccessors(self):
         self.assertEqual(self.star.id, 3)
         self.assertEqual(self.galaxy.id, 1)
-        self.assertFalse(self.star.isVariable())
-        self.star.setVariable(True)
-        self.assert_(self.star.isVariable())
+        self.assertFalse(self.star.getFluxGroup().isVariable())
+        self.star.getFluxGroup().setVariable(True)
+        self.assert_(self.star.getFluxGroup().isVariable())
         self.assertEqual(self.star.getBasis(), None)
         self.star.setBasis(mf.ShapeletModelBasis.make(0))
         self.assertEqual(self.star.getBasis().getSize(), 1)
@@ -129,8 +129,8 @@ class DefinitionTest(unittest.TestCase, TestCaseMixIn):
         self.galaxy.setRadiusFactor(2.0)
         self.assertEqual(self.galaxy.getRadiusFactor(), 2.0)
 
-    def testObjectSet(self):
-        s = mf.definition.ObjectSet()
+    def testObjectComponentSet(self):
+        s = mf.definition.ObjectComponentSet()
         self.assert_(s.insert(self.star))
         self.assert_(s.insert(self.galaxy))
         self.assertFalse(s.insert(self.star))
@@ -195,9 +195,10 @@ class GridTest(unittest.TestCase, TestCaseMixIn):
     def testConstruction(self):
         grid = mf.Grid.make(self.definition)
         n = 0
+        allSources = list(grid.sources)
         for obj in grid.objects:
             for source in obj.sources:
-                self.assertEqual(source, grid.sources[n])
+                self.assertEqual(source, allSources[n])
                 self.assertEqual(source.object, obj)
                 self.assertEqual(source.object.id, obj.id)
                 self.assertEqual(source.frame.id, 0)

@@ -1,22 +1,24 @@
-from .multifitLib import definition_PositionComponent as PositionComponent
-from .multifitLib import definition_RadiusComponent as RadiusComponent
-from .multifitLib import definition_EllipticityComponent as EllipticityComponent
-from .multifitLib import definition_Object as Object
-from .multifitLib import definition_ObjectSet as ObjectSet
+from .multifitLib import definition_PositionElement as PositionElement
+from .multifitLib import definition_RadiusElement as RadiusElement
+from .multifitLib import definition_EllipticityElement as EllipticityElement
+from .multifitLib import definition_ObjectComponent as ObjectComponent
+from .multifitLib import definition_ObjectComponentSet as ObjectComponentSet
 from .multifitLib import definition_Frame as Frame
+from .multifitLib import definition_FluxGroup as FluxGroup
 from .multifitLib import definition_FrameSet as FrameSet
 from .multifitLib import Definition
 
 from . import multifitLib
 
-multifitLib.Definition.Object = Object
+multifitLib.Definition.ObjectComponent = ObjectComponent
+multifitLib.Definition.FluxGroup = FluxGroup
 multifitLib.Definition.Frame = Frame
-multifitLib.Definition.ObjectSet = ObjectSet
+multifitLib.Definition.ObjectComponentSet = ObjectComponentSet
 multifitLib.Definition.FrameSet = FrameSet
-multifitLib.Definition.PositionComponent = PositionComponent
-multifitLib.Definition.RadiusComponent = RadiusComponent
-multifitLib.Definition.EllipticityComponent = EllipticityComponent
+multifitLib.Definition.PositionElement = PositionElement
+multifitLib.Definition.RadiusElement = RadiusElement
+multifitLib.Definition.EllipticityElement = EllipticityElement
 
-PositionComponent.Bounds = multifitLib.detail_CircleConstraint
-RadiusComponent.Bounds = multifitLib.detail_MinMaxConstraint
-EllipticityComponent.Bounds = multifitLib.detail_CircleConstraint
+PositionElement.Bounds = multifitLib.detail_CircleConstraint
+RadiusElement.Bounds = multifitLib.detail_MinMaxConstraint
+EllipticityElement.Bounds = multifitLib.detail_CircleConstraint

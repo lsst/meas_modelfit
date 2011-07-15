@@ -52,18 +52,19 @@ public:
 protected:
 
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
-        throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
-            "Cannot integrate convolved basis."
-        );      
+        afwShapelets::detail::HermiteEvaluator shapeletEvaluator(getOrder());
+        vector.deep() = 0.0;
+        shapeletEvaluator.fillIntegration(vector);
+        vector.deep() *= _scale * _scale;
     }
+
 
     virtual void _evaluate(
         ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
         afw::geom::Ellipse const & ellipse
     ) const {
-        ndarray::Array<double,2,2> frontMatrix(
+        ndarray::Array<Pixel,2,2> frontMatrix(
             ndarray::allocate(footprint->getArea(), _frontBasis->getSize())
         );
         afw::geom::Ellipse frontEllipse(ellipse);
@@ -73,6 +74,7 @@ protected:
         _frontBasis->evaluate(frontMatrix, footprint, frontEllipse);
         ndarray::viewAsEigen(matrix) = 
             ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix);
+        matrix.deep() *= frontEllipse.getCore().getArea() / ellipse.getCore().getArea();
     }
 
 private:
@@ -85,6 +87,12 @@ private:
 } // anonymous
 
 }}} // namespace lsst::meas::multifit
+
+mf::ShapeletModelBasis::ShapeletModelBasis(int order, double scale) 
+    : ModelBasis(afw::math::shapelets::computeSize(order)),
+      _order(order), _scale(scale)
+{
+}
 
 int & mf::ShapeletModelBasis::getPsfShapeletOrderRef() {
     static int v = 4;
@@ -99,7 +107,7 @@ void mf::ShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const 
 }
 
 void mf::ShapeletModelBasis::_evaluate(
-    lsst::ndarray::Array<double, 2, 1> const & matrix,
+    lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
     CONST_PTR(Footprint) const & footprint,
     lsst::afw::geom::Ellipse const & ellipse
 ) const {
@@ -109,13 +117,14 @@ void mf::ShapeletModelBasis::_evaluate(
     afw::geom::AffineTransform transform = fullEllipse.getGridTransform();
     mf::Footprint::SpanList::const_iterator const spanEnd = footprint->getSpans().end();
     mf::Footprint::SpanList::const_iterator spanIter = footprint->getSpans().begin();
-    lsst::ndarray::Array<double, 2, 1>::Iterator pixelIter = matrix.begin();
+    lsst::ndarray::Array<Pixel, 2, 1>::Iterator pixelIter = matrix.begin();
     for (; spanIter != spanEnd; ++spanIter) {
         afw::detection::Span const & span = **spanIter;
         for (int x = span.getX0(); x <= span.getX1(); ++x, ++pixelIter) {
             shapeletEvaluator.fillEvaluation(*pixelIter, transform(afw::geom::Point2D(x, span.getY())));
         }
     }
+    matrix.deep() *= (M_PI / ellipse.getCore().getArea());
 }
 
 void mf::ShapeletModelBasis::_evaluateRadialProfile(
@@ -166,7 +175,7 @@ mf::ModelBasis::Ptr mf::ShapeletModelBasis::convolve(
     afwShapelets::MultiShapeletFunction const & psf
 ) const {
     CompoundShapeletModelBasis::ComponentVector components;
-    components.push_back(boost::make_shared<ShapeletModelBasis>(_order, _scale));
+    components.push_back(Ptr(new ShapeletModelBasis(_order, _scale)));
     CompoundShapeletModelBasis::Ptr asCompound = CompoundShapeletBuilder(components).build();
     return asCompound->convolve(psf);
 }

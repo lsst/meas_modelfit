@@ -4,7 +4,7 @@
 namespace lsst { namespace meas { namespace multifit {
 
 void ModelBasis::evaluate(
-    lsst::ndarray::Array<double, 2, 1> const & matrix,
+    lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
     CONST_PTR(Footprint) const & footprint,
     Ellipse const & ellipse
 ) const {
@@ -36,7 +36,7 @@ void ModelBasis::evaluateRadialProfile(
     _evaluateRadialProfile(profile, radii);
 }
 
-void ModelBasis::integrate(lsst::ndarray::Array<double, 1, 1> const & vector) const {
+void ModelBasis::integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const {
     detail::checkSize(
         vector.getSize<0>(), getSize(),
         "Number of vector elements (%d) does not match expected value (%d)."

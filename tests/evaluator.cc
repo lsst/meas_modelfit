@@ -21,7 +21,12 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
+// Suppress warnings from Boost.Test and Boost.System
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wparentheses"
+
 #include <iostream>
 #include <cmath>
 #include <vector>
@@ -71,20 +76,24 @@ void checkEvaluator(
     for(int i =0; i < fp.getArea(); ++i) {
         BOOST_CHECK_CLOSE(frame.getWeights()[i], weightValue, 0.00001);
     }
-   
+    for(int i =0; i < fp.getArea(); ++i) {
+        BOOST_CHECK_CLOSE(eval.getDataVector()[i], dataValue, 0.00001);
+    } 
+
     BOOST_CHECK_EQUAL(eval.getGrid()->objects.size(), 1);
-    multifit::grid::Object const & object= *(eval.getGrid()->objects.begin());
-    BOOST_CHECK_EQUAL(object.getCoefficientOffset(), 0);
-    BOOST_CHECK_EQUAL(object.getCoefficientCount(), nCoefficient);
-    BOOST_CHECK_EQUAL(eval.getGrid()->objects.begin()->sources.begin(), eval.getGrid()->sources.begin());
-    BOOST_CHECK_EQUAL(eval.getGrid()->objects.begin()->sources.end(), eval.getGrid()->sources.end());
+    multifit::grid::ObjectComponent const & object= *(eval.getGrid()->objects.begin());
+    BOOST_CHECK_EQUAL(object.getGroupCoefficientOffset(), 0);
+
+    BOOST_CHECK(eval.getGrid()->objects.begin()->sources.begin() == eval.getGrid()->sources.begin());
+    BOOST_CHECK(eval.getGrid()->objects.begin()->sources.end() == eval.getGrid()->sources.end());
     BOOST_CHECK_EQUAL(object.id, 0);
 
     BOOST_CHECK_EQUAL(eval.getGrid()->sources.size(), 1);
-    BOOST_CHECK_EQUAL(&eval.getGrid()->sources.begin()->object, eval.getGrid()->objects.begin());
-    BOOST_CHECK_EQUAL(&eval.getGrid()->sources.begin()->frame, eval.getGrid()->frames.begin());
-
+    BOOST_CHECK_EQUAL(&eval.getGrid()->sources.begin()->object, &(*eval.getGrid()->objects.begin()));
+    BOOST_CHECK_EQUAL(&eval.getGrid()->sources.begin()->frame, &(*eval.getGrid()->frames.begin()));
 }
+
+
 
 BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
     geom::BoxI bbox = geom::BoxI(geom::PointI(25, 40), geom::ExtentI(10, 30));
@@ -95,17 +104,22 @@ BOOST_AUTO_TEST_CASE(StarSourceConstruction) {
     exp->setPsf(psf);
     detection::Footprint::Ptr fp(new detection::Footprint(bbox));
     geom::Point2D point(30.5, 55.8);
-    
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, false, ~0x0, true))
-    );
+   
+    multifit::Definition definition;    
+    definition.frames.insert(multifit::definition::Frame::make(0, *exp, fp, ~0x0));
+    definition.objects.insert(multifit::definition::ObjectComponent::makeStar(0, point, false, false));
+
+    BOOST_CHECK(definition.objects[0].getFluxGroup());
+
+    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, 1, 0, 1.0, 0.5);
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, point, false, true, ~0x0, true))
-    );
+    definition.objects.erase(0);
+    definition.objects.insert(multifit::definition::ObjectComponent::makeStar(0, point, false, true));
+    eval = multifit::Evaluator::make(definition, false);
+    
     checkEvaluator(*eval, *fp, 1, 2, 1.0, 0.5);
-    ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterSize());
+    ndarray::Array<double, 1, 1> parameters = ndarray::allocate(eval->getParameterCount());
     eval->writeInitialParameters(parameters);
 }
 
@@ -122,21 +136,22 @@ BOOST_AUTO_TEST_CASE(GalaxySourceConstruction) {
     multifit::Footprint::Ptr fp(new multifit::Footprint(ellipse));
     multifit::ModelBasis::Ptr basis = multifit::ShapeletModelBasis::make(5);
 
+    multifit::Definition definition;    
+    definition.frames.insert(multifit::definition::Frame::make(0, *exp, fp, ~0x0));
+    definition.objects.insert(multifit::definition::ObjectComponent::makeGalaxy(0, basis, ellipse, false, false, false));
 
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, false, false, false, ~0x0, true))
-    );
+    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, basis->getSize(), 0, 1.0, 0.5);
 
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, false, ~0x0, true))
-    );
+    definition.objects.erase(0);
+    definition.objects.insert(multifit::definition::ObjectComponent::makeGalaxy(0, basis, ellipse, true, true, false));
+    eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, basis->getSize(), 3, 1.0, 0.5);
 
-    eval = multifit::Evaluator::make(
-        multifit::Grid::make(multifit::Definition::make(*exp, fp, basis, ellipse, true, true, true, ~0x0, true))
-    );
+    definition.objects.erase(0);
+    definition.objects.insert(multifit::definition::ObjectComponent::makeGalaxy(0, basis, ellipse, true, true, true));
+    eval = multifit::Evaluator::make(definition, false);
     checkEvaluator(*eval, *fp, basis->getSize(), 5, 1.0, 0.5);
 }
 
@@ -209,11 +224,11 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
 
     multifit::ModelBasis::Ptr basis = multifit::ShapeletModelBasis::make(5);
 
-    int nObject =0;
+    int nObjectComponent =0;
     int nParameters = 0;
     definition.objects.insert(
-        multifit::definition::Object::makeStar(
-            nObject++, 
+        multifit::definition::ObjectComponent::makeStar(
+            nObjectComponent++, 
             point0,
             false,
             true
@@ -221,8 +236,8 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
     );
     nParameters +=2;
     definition.objects.insert(
-        multifit::definition::Object::makeGalaxy(
-            nObject++, 
+        multifit::definition::ObjectComponent::makeGalaxy(
+            nObjectComponent++, 
             basis,
             ellipse,
             true,
@@ -232,7 +247,30 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
     );
     nParameters+=3;
 
-    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(multifit::Grid::make(definition));
+    multifit::Evaluator::Ptr eval = multifit::Evaluator::make(definition, false);
+
+    int coefficientCount = 0;
+    for (
+        multifit::Grid::FluxGroupArray::iterator i = eval->getGrid()->groups.begin();
+        i != eval->getGrid()->groups.end();
+        ++i
+    ) {
+        int sourceCoefficientCount = 0;
+        for (
+            multifit::grid::FluxGroup::ComponentArray::iterator j = i->components.begin();
+            j != i->components.end();
+            ++j
+        ) {
+            sourceCoefficientCount += j->getSourceCoefficientCount();
+        }
+        BOOST_CHECK_EQUAL(sourceCoefficientCount, i->getSourceCoefficientCount());
+        coefficientCount += sourceCoefficientCount 
+            * (i->isVariable() ? eval->getGrid()->frames.size() : eval->getGrid()->getFilterCount());
+    }
+    BOOST_CHECK_EQUAL(coefficientCount, eval->getGrid()->getCoefficientCount());
+    
+    BOOST_CHECK_EQUAL(eval->getGrid()->groups[0].components.size(), 1);
+    BOOST_CHECK_EQUAL(eval->getGrid()->groups[1].components.size(), 1);
 
     BOOST_CHECK_EQUAL(eval->getGrid()->getFilterCount(), 2);
     BOOST_CHECK_EQUAL(eval->getGrid()->getCoefficientCount(), 
@@ -244,13 +282,14 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
     BOOST_CHECK_EQUAL(eval->getGrid()->frames.size(), nFrame);
 
     int pixelOffset =0, frameIndex =0;
-    for(multifit::grid::Frame const * i = eval->getGrid()->frames.begin();
+    for(multifit::Grid::FrameArray::iterator i = eval->getGrid()->frames.begin();
         i != eval->getGrid()->frames.end(); ++i
     ) {        
         multifit::definition::Frame const & j = definition.frames[i->id];
         BOOST_CHECK_EQUAL(i->id, j.id);
         BOOST_CHECK_EQUAL(i->getFrameIndex(), frameIndex);
-        BOOST_CHECK_EQUAL(i->getFootprint(), j.getFootprint());
+        BOOST_CHECK_EQUAL(i->getFootprint()->getArea(), j.getFootprint()->getArea());
+        BOOST_CHECK_EQUAL(i->getFootprint()->getBBox(), j.getFootprint()->getBBox());
         BOOST_CHECK_EQUAL(i->getPixelOffset(), pixelOffset);
         BOOST_CHECK_EQUAL(i->getPixelCount(), j.getFootprint()->getArea());
 
@@ -262,41 +301,33 @@ BOOST_AUTO_TEST_CASE(DefinitionConstruction) {
         ++frameIndex;
     }
 
-    int coefficientOffset=0;
-    BOOST_CHECK_EQUAL(eval->getGrid()->objects.size(), nObject);
-    for(multifit::grid::Object const * i = eval->getGrid()->objects.begin();
+    BOOST_CHECK_EQUAL(eval->getGrid()->objects.size(), nObjectComponent);
+    for(multifit::Grid::ObjectComponentArray::iterator i = eval->getGrid()->objects.begin();
         i != eval->getGrid()->objects.end(); ++i
     ) {
-        multifit::definition::Object const & k = definition.objects[i->id];
+        multifit::definition::ObjectComponent const & k = definition.objects[i->id];
         BOOST_CHECK_EQUAL(i->id, k.id);
         BOOST_CHECK_EQUAL(i->getBasis(), k.getBasis());
-        BOOST_CHECK_EQUAL(i->isVariable(), k.isVariable());
+        BOOST_CHECK_EQUAL(i->getFluxGroup()->isVariable(), k.getFluxGroup()->isVariable());
         BOOST_CHECK_EQUAL(i->getRadiusFactor(), k.getRadiusFactor());
-        BOOST_CHECK_EQUAL(i->getCoefficientOffset(), coefficientOffset);
         int sourceCoefficientCount = k.getBasis() ? k.getBasis()->getSize() : 1;
-        for(multifit::grid::Object::SourceArray::const_iterator j = i->sources.begin();
+        BOOST_CHECK_EQUAL(i->getSourceCoefficientCount(), sourceCoefficientCount);
+        for(multifit::grid::ObjectComponent::SourceArray::iterator j = i->sources.begin();
             j != i->sources.end(); ++j
         ){
-            BOOST_CHECK_EQUAL(&j->object, i);
-            BOOST_CHECK_EQUAL(j->getCoefficientCount(), sourceCoefficientCount);
-            BOOST_CHECK_EQUAL(j->getCoefficientOffset(), 
-                              i->getCoefficientOffset() + sourceCoefficientCount * j->frame.getFilterIndex());
-        }
-        BOOST_CHECK_EQUAL(i->getCoefficientCount(),
-                          sourceCoefficientCount * eval->getGrid()->getFilterCount());
+            BOOST_CHECK_EQUAL(&j->object, &(*i));
+            BOOST_CHECK_EQUAL(j->getCoefficientCount(), sourceCoefficientCount);        }
 
-        coefficientOffset += i->getCoefficientCount();
     }
 
-    BOOST_CHECK_EQUAL(eval->getGrid()->sources.size(), nObject*nFrame);
-    for(multifit::grid::Source const * source = eval->getGrid()->sources.begin();
+    BOOST_CHECK_EQUAL(eval->getGrid()->sources.size(), nObjectComponent*nFrame);
+    for(multifit::Grid::SourceComponentArray::iterator source = eval->getGrid()->sources.begin();
         source != eval->getGrid()->sources.end(); ++source
     ) {
-        multifit::grid::Object const & object = multifit::grid::find(eval->getGrid()->objects, source->object.id);
-        multifit::grid::Frame const & frame = multifit::grid::find(eval->getGrid()->frames, source->frame.id);
+        multifit::grid::ObjectComponent const & object = eval->getGrid()->objects[source->object.id];
+        multifit::grid::Frame const & frame = eval->getGrid()->frames[source->frame.id];
         
         BOOST_CHECK_EQUAL(&object, &source->object);
         BOOST_CHECK_EQUAL(&frame, &source->frame);
     }
-
 }

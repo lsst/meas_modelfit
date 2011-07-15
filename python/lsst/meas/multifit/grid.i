@@ -22,25 +22,22 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-//----------------------------- ParameterComponents -----------------------------------
+//----------------------------- SharedElements -----------------------------------
 
 %{
-#include "lsst/meas/multifit/definition/parameters.h"
+#include "lsst/meas/multifit/definition/SharedElement.h"
 %}
 
-SWIG_SHARED_PTR(grid_PositionComponentPtr, lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::POSITION>);
-SWIG_SHARED_PTR(grid_RadiusComponentPtr, lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::RADIUS>);
-SWIG_SHARED_PTR(grid_EllipticityComponentPtr, lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::ELLIPTICITY>);
+SWIG_SHARED_PTR(grid_PositionElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::POSITION>);
+SWIG_SHARED_PTR(grid_RadiusElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::RADIUS>);
+SWIG_SHARED_PTR(grid_EllipticityElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
 
-%define %AddComponentAccessors(TITLE, LOWER, UPPER)
-%enddef
-
-%define %DeclareGridParameterComponent(TITLE, LOWER, UPPER, CONSTRAINT)
-%template(grid_##TITLE##Component)
-lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::UPPER>;
-%PointerEQ(lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::UPPER>)
-%AddStreamRepr(lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::UPPER>)
-%extend lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::UPPER> {
+%define %DeclareGridSharedElement(TITLE, LOWER, UPPER, CONSTRAINT)
+%template(grid_##TITLE##Element)
+lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>;
+%PointerEQ(lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>)
+%AddStreamRepr(lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>)
+%extend lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER> {
     lsst::meas::multifit::TITLE const getValue() {
         return self->getValue();
     }
@@ -48,81 +45,43 @@ lsst::meas::multifit::grid::ParameterComponent<lsst::meas::multifit::UPPER>;
         return self->isActive();
     }
 }
-%extend lsst::meas::multifit::grid::Object {
-    boost::shared_ptr< lsst::meas::multifit::grid::ParameterComponent< lsst::meas::multifit::UPPER > > get ## TITLE() {
+%extend lsst::meas::multifit::grid::ObjectComponent {
+    boost::shared_ptr< lsst::meas::multifit::grid::SharedElement< lsst::meas::multifit::UPPER > > get ## TITLE() {
         return self->get##TITLE();
     }
 }
 %enddef
 
-%include "lsst/meas/multifit/grid/parameters.h"
+%include "lsst/meas/multifit/grid/SharedElement.h"
 
-//-------------------------------------- Array -----------------------------------------
-
-%{
-#include "lsst/meas/multifit/grid/Array.h"
-%}
-
-namespace lsst { namespace meas { namespace multifit { namespace grid {
-
-template <typename T> class Array {};
-
-}}}} // namespace lsst::meas::multifit::grid
-
-%define %DeclareArray(NAME)
-%template(grid_##NAME##Array)
-lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME>;
-%extend lsst::meas::multifit::grid::Array<lsst::meas::multifit::grid::NAME> {
-    NAME const * __getitem__(int n) {
-        if (n < 0 || n >= self->size()) {
-            PyErr_SetString(PyExc_IndexError, "Index out of range.");
-            return 0;
-        }
-        return &self->operator[](n);
-    }
-    int __len__() {
-        return self->size();
-    }
-    %pythoncode %{
-        def __iter__(self):
-            for id in range(len(self)):
-                yield self[id]
-        def __repr__(self):
-            return "NAME""Array([\n"  + ",".join(repr(v) for v in self) + "\n])"
-    %}
-}
-%enddef
-
-//------------------------------------- Object ---------------------------------------
+//------------------------------------- ObjectComponent ---------------------------------------
 
 %{
-#include "lsst/meas/multifit/grid/Object.h"
+#include "lsst/meas/multifit/grid/ObjectComponent.h"
 %}
 
-%immutable lsst::meas::multifit::grid::Object::sources;
+%immutable lsst::meas::multifit::grid::ObjectComponent::sources;
 
-SWIG_SHARED_PTR_DERIVED(grid_ObjectPtr, lsst::meas::multifit::detail::ObjectBase, lsst::meas::multifit::grid::Object);
+SWIG_SHARED_PTR_DERIVED(grid_ObjectComponentPtr, lsst::meas::multifit::detail::ObjectComponentBase, lsst::meas::multifit::grid::ObjectComponent);
 
-%rename(grid_Object) lsst::meas::multifit::grid::Object;
+%rename(grid_ObjectComponent) lsst::meas::multifit::grid::ObjectComponent;
+%immutable lsst::meas::multifit::grid::ObjectComponent::sources;
 
-%include "lsst/meas/multifit/grid/Object.h"
+%include "lsst/meas/multifit/grid/ObjectComponent.h"
 
-%DeclareGridParameterComponent(Position, position, POSITION, detail::CircleConstraint);
-%DeclareGridParameterComponent(Radius, radius, RADIUS, detail::MinMaxConstraint);
-%DeclareGridParameterComponent(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
+%DeclareGridSharedElement(Position, position, POSITION, detail::CircleConstraint);
+%DeclareGridSharedElement(Radius, radius, RADIUS, detail::MinMaxConstraint);
+%DeclareGridSharedElement(Ellipticity, ellipticity, ELLIPTICITY, detail::CircleConstraint);
 
-%PointerEQ(lsst::meas::multifit::grid::Object)
-%AddStreamRepr(lsst::meas::multifit::grid::Object)
+%PointerEQ(lsst::meas::multifit::grid::ObjectComponent)
+%AddStreamRepr(lsst::meas::multifit::grid::ObjectComponent)
 
-%extend lsst::meas::multifit::grid::Object {
+%extend lsst::meas::multifit::grid::ObjectComponent {
 
-    lsst::afw::geom::Point2D makePoint(lsst::ndarray::Array<double const,1,1> const & params) const {
-        return self->makePoint(params.getData());
+    boost::shared_ptr< lsst::meas::multifit::grid::FluxGroup > getFluxGroup() {
+        return self->getFluxGroup();
     }
 
-    lsst::afw::geom::ellipses::Ellipse makeEllipse(lsst::ndarray::Array<double const,1,1> const & params) const {
-        return self->makeEllipse(params.getData());
-    }
 }
 
 //------------------------------------- Frame ---------------------------------------
@@ -155,25 +114,45 @@ SWIG_SHARED_PTR_DERIVED(grid_FramePtr, lsst::meas::multifit::detail::FrameBase, 
     lsst::ndarray::Array<lsst::meas::multifit::Pixel const,1,1> getWeights() { return self->getWeights(); }
 }
 
-//------------------------------------- Source ---------------------------------------
+//------------------------------------- SourceComponent ---------------------------------------
 
 %{
-#include "lsst/meas/multifit/grid/Source.h"
+#include "lsst/meas/multifit/grid/SourceComponent.h"
 %}
 
-SWIG_SHARED_PTR(grid_SourcePtr, lsst::meas::multifit::grid::Source);
+SWIG_SHARED_PTR(grid_SourceComponentPtr, lsst::meas::multifit::grid::SourceComponent);
 
-%rename(grid_Source) lsst::meas::multifit::grid::Source;
+%rename(grid_SourceComponent) lsst::meas::multifit::grid::SourceComponent;
 
-%include "lsst/meas/multifit/grid/Source.h"
+%include "lsst/meas/multifit/grid/SourceComponent.h"
 
-%PointerEQ(lsst::meas::multifit::grid::Source)
+%PointerEQ(lsst::meas::multifit::grid::SourceComponent)
+
+//------------------------------------- FluxGroup ---------------------------------------
+
+%{
+#include "lsst/meas/multifit/grid/FluxGroup.h"
+%}
+
+SWIG_SHARED_PTR_DERIVED(grid_FluxGroupPtr, lsst::meas::multifit::detail::FluxGroupBase, lsst::meas::multifit::grid::FluxGroup);
+%rename(grid_FluxGroup) lsst::meas::multifit::grid::FluxGroup;
+%immutable lsst::meas::multifit::grid::FluxGroup::components;
+
+%include "lsst/meas/multifit/grid/FluxGroup.h"
 
 //----------------------------- Grid -----------------------------------
 
-%DeclareArray(Source)
-%DeclareArray(Object)
-%DeclareArray(Frame)
+%DeclareArray(lsst::meas::multifit::grid::SourceComponent, grid_SourceComponentArray, NO_INDEX)
+%DeclareArray(lsst::meas::multifit::grid::ObjectComponent, grid_ObjectComponentArray, UNSORTED)
+%DeclareArray(lsst::meas::multifit::grid::Frame, grid_FrameArray, SORTED)
+
+%DeclareArray(lsst::meas::multifit::grid::PositionElement, grid_PositionArray, NO_INDEX)
+%DeclareArray(lsst::meas::multifit::grid::RadiusElement, grid_RadiusArray, NO_INDEX)
+%DeclareArray(lsst::meas::multifit::grid::EllipticityElement, grid_EllipticityArray, NO_INDEX)
+%DeclareArray(lsst::meas::multifit::grid::FluxGroup, grid_FluxGroupArray, UNSORTED)
+
+%DeclareArrayView(lsst::meas::multifit::grid::ObjectComponent, grid_FluxGroup_ComponentArray, SORTED)
+%DeclareArrayView(lsst::meas::multifit::grid::SourceComponent, grid_ObjectComponent_SourceArray, NO_INDEX)
 
 %{
 #include "lsst/meas/multifit/grid/Grid.h"
@@ -182,6 +161,10 @@ SWIG_SHARED_PTR(grid_SourcePtr, lsst::meas::multifit::grid::Source);
 %immutable lsst::meas::multifit::grid::Grid::objects;
 %immutable lsst::meas::multifit::grid::Grid::frames;
 %immutable lsst::meas::multifit::grid::Grid::sources;
+%immutable lsst::meas::multifit::grid::Grid::groups;
+%immutable lsst::meas::multifit::grid::Grid::positions;
+%immutable lsst::meas::multifit::grid::Grid::radii;
+%immutable lsst::meas::multifit::grid::Grid::ellipticities;
 
 SWIG_SHARED_PTR(GridPtr, lsst::meas::multifit::grid::Grid);
 

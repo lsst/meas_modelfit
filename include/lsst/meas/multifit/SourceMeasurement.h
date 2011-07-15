@@ -23,100 +23,188 @@
 
 #ifndef LSST_MEAS_MULTIFIT_SOURCE_MEASUREMENT_H
 #define LSST_MEAS_MULTIFIT_SOURCE_MEASUREMENT_H
-
+#include "boost/cstdint.hpp"
 #include "lsst/afw/detection/Measurement.h"
 #include "lsst/afw/detection/Photometry.h"
 #include "lsst/afw/detection/Astrometry.h"
 #include "lsst/afw/detection/Shape.h"
-#include "lsst/meas/multifit/GaussNewtonOptimizer.h"
-#include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
+#include "lsst/afw/math/shapelets/constants.h"
+#include "lsst/meas/multifit/Evaluation.h"
+#include "lsst/meas/multifit/Evaluator.h"
+#include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #include <Eigen/Core>
 
 namespace lsst {
 namespace meas {
 namespace multifit {
 
-template <
-    int basisSize ///< Number of basis functions; instantiated for 2, 8, and 17 to match persisted basis sets.
-    >
-class ShapeletModelPhotometry : public lsst::afw::detection::Photometry {
+/**
+ *  @brief Options for configuring SourceMeasurement.
+ *
+ *  Should generally be referred to as SourceMeasurement::Options; it's not an inner class
+ *  only because SWIG chokes on them.
+ */
+struct SourceMeasurementOptions {
+    bool fitDeltaFunction;        ///< Whether to include a point-source component in the model.
+    bool fitExponential;          ///< Whether to include an n=1 Sersic component in the model.
+    bool fitDeVaucouleur;         ///< Whether to include an n=4 Sersic component in the model.
+    int shapeletOrder;            ///< Order of additional shapelet expansion (none if < 0).
+    int psfShapeletOrder;         ///< Shapelet order for PSF model approximation.
+    int nGrowFp;                  ///< Number of pixels to grow footprints by.
+    bool usePixelWeights;         ///< Whether to use per-pixel inverse variances as weights.
+    double ellipticityStepSize;   ///< Range of ellipticities in brute-force grid.
+    int ellipticityStepCount;     ///< Number of ellipticity points to test in each direction.
+    double radiusMaxFactor;       ///< Sets upper limit of radius points in brute-force grid.
+    double radiusMinFactor;       ///< Sets lower limit of radius points in brute-force grid.
+    int radiusStepCount;          ///< Number of radius points to test.
+    std::vector<std::string> maskPlaneNames; ///< Image mask bits to remove from footprint.
+};
+
+/**
+ *  Guts of the ShapeletModelPhotometry measurement algorithm, with intermediate results
+ *  stored as data members so we can inspect them and/or save them.
+ *
+ *  The model is optimized on a very sparse grid in e1, e2, and radius.  The grid points
+ *  are set with the following procedure:
+ *   - Define a pair of max and min radius ellipses by scaling the adaptive moments
+ *     ellipse by radiusMaxFactor and radiusMinFactor.
+ *   - Subtract the PSF moments from the max and min radius ellipse moments.  If either
+ *     or both results in negative moments, set it to a zero-ellipticity, zero-radius
+ *     ellipse.
+ *   - Linearly interpolate radiusStepCount points between the minimum and maximum
+ *     ellipses (note that we interpolate all three ellipse parameters, not just radius).
+ *   - At each point, perturb the ellipticity in steps of ellipticityStepSize in each
+ *     dimension and each direction (so we actually test (ellipticityStepCount * 2 + 1)^2
+ *     points for each radius).  If the radius is zero, only zero ellipticity is tested.
+ */
+class SourceMeasurement {
 public:
-    typedef lsst::afw::detection::Schema Schema;
-    typedef lsst::afw::detection::SchemaEntry SchemaEntry;
-    typedef lsst::afw::detection::Photometry Base;
-    typedef lsst::afw::detection::Measurement<Base> Measurement;
+    typedef SourceMeasurementOptions Options;
 
-    enum {
-        FLUX = Base::FLUX,
-        FLUX_ERR,
-        STATUS,
-        E1, E2, RADIUS, 
-        COEFFICIENTS
-    };
+    SourceMeasurement(Options const & options);
 
-    enum {
-        NO_EXPOSURE=0x001, 
-        NO_PSF=0x002, 
-        NO_SOURCE=0x004, 
-        NO_BASIS=0x008,
-        NO_FOOTPRINT=0x010, 
-        BAD_INITIAL_MOMENTS=0x020, 
-        OPTIMIZER_FAILED=0x040,
-        GALAXY_MODEL_FAILED=0x080,
-        UNSAFE_INVERSION=0x100
-    };
+    static CompoundShapeletModelBasis::Ptr loadBasis(std::string const & name);
 
-    virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
+    static CompoundShapeletModelBasis::Ptr getExponentialBasis();
+    static CompoundShapeletModelBasis::Ptr getDeVaucouleurBasis();
 
-    static bool doConfigure(lsst::pex::policy::Policy const& policy);
+    void addObjectsToDefinition(
+        Definition & definition, lsst::afw::geom::ellipses::Ellipse const & ellipse
+    ) const;
+
+    static Options readPolicy(lsst::pex::policy::Policy const & policy);
+
+    static int computeCoefficientCount(Options const & options) {
+        return options.fitDeltaFunction + options.fitExponential + options.fitDeVaucouleur
+            + ((options.shapeletOrder < 0) ? 0 : afw::math::shapelets::computeSize(options.shapeletOrder));
+    }
+
+    static lsst::afw::geom::ellipses::Ellipse makeEllipse(
+        lsst::afw::detection::Source const & source,
+        lsst::afw::detection::Footprint const & fp
+    );
+
 
     template <typename ExposureT>
-    static Photometry::Ptr doMeasure(CONST_PTR(ExposureT) im,
-                                     CONST_PTR(afw::detection::Peak),
-                                     CONST_PTR(afw::detection::Source)
-                                    );
-    ShapeletModelPhotometry(int const status);
-#if 0
-    ShapeletModelPhotometry(
-        GaussNewtonOptimizer & optimizer,
-        BaseEvaluator::Ptr const & evaluator
+    int measure(
+        PTR(ExposureT) exp,
+        PTR(lsst::afw::detection::Source) src
+    ) {
+        CONST_PTR(ExposureT) const_exp(exp);
+        CONST_PTR(lsst::afw::detection::Source) const_src(src);
+        return measure(const_exp, const_src);
+    }
+
+#ifndef SWIG
+    template <typename ExposureT>
+    int measure(
+        CONST_PTR(ExposureT) exp,
+        CONST_PTR(lsst::afw::detection::Source)
     );
 #endif
-    ShapeletModelPhotometry(
-        Evaluator::Ptr const & evaluator,
-        ndarray::Array<double const, 1,1> const & param,
-        ndarray::Array<double const, 1,1> const & coeff,
-        ndarray::Array<double const, 2,1> const & covar,
-        int const status
-    );
 
-    static bool usePixelWeights;
-    static bool fitDeltaFunction;
-    static bool isEllipticityActive, isRadiusActive, isPositionActive;
-    static lsst::afw::image::MaskPixel bitmask;
-    static int nGrowFp;
-    static int nCoeff;
-    static ModelBasis::Ptr basis;
 
-    static int nTestPoints;
-#if 0
-    static int maxIter
-    static double ftol, gtol, minStep, tau;
-    static bool retryWithSvd;
-#endif
 
+    Evaluator::Ptr getEvaluator() const { return _evaluator; }
+    Evaluation::Ptr getEvaluation() const { return _evaluation; }
+    lsst::afw::detection::Footprint::Ptr getFootprint() const { return _fp; }
+    lsst::ndarray::Array<double const,1,1> getParameters() const { return _parameters; }
+    lsst::ndarray::Array<double const,2,2> getTestPoints() const { return _points; }
+    lsst::ndarray::Array<double const,3,3> getObjectiveValue() const { return _objectiveValue; }
+    int getRadiusIndex() const { return _rBest; }
+    int getE1Index() const { return _e1Best; }
+    int getE2Index() const { return _e2Best; }
+
+    lsst::ndarray::Array<Pixel const,1,1> getCoefficients() const { return _coefficients; }
+    lsst::ndarray::Array<Pixel const,2,2> getCovariance() const { return _covariance; }
+    lsst::ndarray::Array<Pixel const,1,1> getIntegration() const { return _integration; }
+
+
+    int getCoefficientCount() const { return _coefficients.getSize<0>(); }
+
+    Pixel getDeltaFunctionCoefficient() const {
+        return _coefficients[getCoefficientOffset(DELTAFUNCTION_ID)];
+    }
+    Pixel getExponentialCoefficient() const {
+        return _coefficients[getCoefficientOffset(EXPONENTIAL_ID)];
+    }
+    Pixel getDeVaucouleurCoefficient() const {
+        return _coefficients[getCoefficientOffset(DEVAUCOULEUR_ID)];
+    }
+
+    lsst::ndarray::Array<Pixel const,1,1> getShapeletCoefficients() const {
+        int offset = getCoefficientOffset(SHAPELET_ID);
+        return _coefficients[
+            ndarray::view(offset, offset + afw::math::shapelets::computeSize(_options.shapeletOrder))
+        ];
+    }
+
+    double getFlux() const { return _flux; }
+    double getFluxErr() const { return _fluxErr; }
+    Ellipse const & getEllipse() const { return _ellipse; }
+    boost::int64_t getStatus() const { return _status; }
+
+    CompoundShapeletModelBasis::Ptr getShapeletBasis() const { return _shapeletBasis; } 
+    lsst::afw::image::MaskPixel getBitmask() const { return _bitmask; }
+    Options const & getOptions() const { return _options; }
+ 
+    static ID const DELTAFUNCTION_ID=0;
+    static ID const EXPONENTIAL_ID=1;
+    static ID const DEVAUCOULEUR_ID=2;
+    static ID const SHAPELET_ID=3;
 private:
 
+    int getCoefficientOffset(ID id) const {
+        return _evaluator->getGrid()->objects.find(id)->getFluxGroup()->getCoefficientOffset(0);
+    }
+
+    void setTestPoints(EllipseCore const & initialEllipse, Ellipse const & psfEllipse);
+    void optimize(Ellipse const & initialEllipse);
+    bool solve(double e1, double e2, double radius, double & objective, double & best);
+
+    Options _options;
+    lsst::afw::image::MaskPixel _bitmask;
+    CompoundShapeletModelBasis::Ptr _shapeletBasis;
+
+    double _flux, _fluxErr;
+    Ellipse _ellipse;
+    Evaluator::Ptr _evaluator;
+    Evaluation::Ptr _evaluation;
+    lsst::afw::detection::Footprint::Ptr _fp;
+    ndarray::Array<double,1,1> _parameters;
+    ndarray::Array<double, 3, 3> _objectiveValue;
+    ndarray::Array<double, 2, 2> _points;
+    int _rBest, _e1Best, _e2Best;
+
+    ndarray::Array<Pixel,1,1> _coefficients;
+    ndarray::Array<Pixel,2,2> _covariance;
+    ndarray::Array<Pixel,1,1> _integration;
+    boost::int64_t _status;
 
 
-    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() {init();}
-    LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
+
 };
 
 }}}
-
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::ShapeletModelPhotometry<2>);
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::ShapeletModelPhotometry<8>);
-LSST_REGISTER_SERIALIZER(lsst::meas::multifit::ShapeletModelPhotometry<17>);
 
 #endif

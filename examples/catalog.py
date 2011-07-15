@@ -4,6 +4,7 @@ import lsst.afw.image
 import lsst.meas.multifit
 import lsst.meas.algorithms
 import lsst.daf.persistence
+import viewer
 import numpy
 import sys
 import logging
@@ -13,15 +14,13 @@ try:
 except ImportError:
     import pickle
 
-FLUX_SCHEMA = lsst.afw.detection.Schema("Flux", 0, lsst.afw.detection.Schema.DOUBLE)
-FLUX_ERR_SCHEMA = lsst.afw.detection.Schema("FluxErr", 1, lsst.afw.detection.Schema.DOUBLE)
-STATUS_SCHEMA = lsst.afw.detection.Schema("Status", 2, lsst.afw.detection.Schema.INT)
-E1_SCHEMA = lsst.afw.detection.Schema("E1", 3, lsst.afw.detection.Schema.DOUBLE)
-E2_SCHEMA = lsst.afw.detection.Schema("E2", 4, lsst.afw.detection.Schema.DOUBLE)
-RADIUS_SCHEMA = lsst.afw.detection.Schema("R", 5, lsst.afw.detection.Schema.DOUBLE)
-COEFF_SCHEMA = lsst.afw.detection.Schema("COEFFICIENTS", 6, lsst.afw.detection.Schema.DOUBLE)
+try:
+    from matplotlib import pyplot
+except ImportError:
+    pass
 
 fields = (("dataset", int),
+          ("dataset_index", int),
           ("id", numpy.int64),
           ("psf_flux", float), 
           ("psf_flux_err", float),
@@ -36,52 +35,46 @@ fields = (("dataset", int),
           ("e1", float),
           ("e2", float),
           ("r", float),
-          ("pixels", int),
+          ("e1_index", int),
+          ("e2_index", int),
+          ("r_index", int),
+          ("src_flags", numpy.int64),
           )
+algorithm = "SHAPELET_MODEL"
 
-
-def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, fitDelta=True):
+def fit(datasets=(0,1,2,3,4,5,6,7,8,9), **kw):
     bf = lsst.daf.persistence.ButlerFactory( \
         mapper=lsst.meas.multifitData.DatasetMapper())
     butler = bf.create()
-    algorithm = "SHAPELET_MODEL_%d" % basisSize
-    policy = lsst.pex.policy.Policy()
-    policy.add(algorithm + ".enabled", True)
-    policy.add(algorithm + ".fitDeltaFunction", fitDelta)
-    nCoeffs = basisSize
-    if fitDelta:
-        nCoeffs += 1
-    if basisSize == 2:
-        basis = lsst.meas.multifit.utils.loadBasis("ed+02:0000")
-    elif basisSize == 8:
-        basis = lsst.meas.multifit.utils.loadBasis("ed+06:2000")
-    elif basisSize == 17:
-        basis = lsst.meas.multifit.utils.loadBasis("ed+15:4000")
-    rawIntegral = numpy.zeros(nCoeffs, dtype=float)
-    basis.integrate(rawIntegral[:basisSize])
-    if fitDelta:
-        rawIntegral[-1] = 1.0
-    dtype = numpy.dtype(list(fields) + [("integral", float, nCoeffs), ("coeff", float, nCoeffs)])
+    measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
+    nCoeff = measurement.getCoefficientCount()
+    nRadius = measurement.getOptions().radiusStepCount
+    nEllipticity = 2*measurement.getOptions().ellipticityStepCount + 1
+    dtype = numpy.dtype(list(fields) + [
+        ("coefficients", float, nCoeff), 
+        ("covar", float, (nCoeff, nCoeff)),
+        ("test_points", float, (nRadius, 3)),
+        ("objective_value", float, (nRadius, nEllipticity, nEllipticity)),
+        ])
     tables = []
     for d in datasets:
         logging.info("Processing dataset %d" % d)
         if not butler.datasetExists("src", id=d):
             continue
+
+
         psf = butler.get("psf", id=d)
         exp = butler.get("exp", id=d)
         exp.setPsf(psf)
         sources = butler.get("src", id=d)
 
-        measurePhotometry = lsst.meas.algorithms.makeMeasurePhotometry(exp)
-        measurePhotometry.addAlgorithm(algorithm)
-        measurePhotometry.configure(policy)
-
         table = numpy.zeros((len(sources)), dtype=dtype)
         table["dataset"] = d
-        for j, src in enumerate(sources):
+        for j, src in enumerate(sources):            
             logging.debug("Fitting source %d (%d/%d)" % (src.getId(), j+1, len(sources)))
             record = table[j]
             record["id"] = src.getId()
+            record["dataset_index"] = j
             record["psf_flux"] = src.getPsfFlux()
             record["psf_flux_err"] = src.getPsfFluxErr()
             record["x"] = src.getXAstrom()
@@ -89,25 +82,24 @@ def fit(datasets=(0,1,2,3,4,5,6,7,8,9), basisSize=8, fitDelta=True):
             record["ixx"] = src.getIxx()
             record["iyy"] = src.getIyy()
             record["ixy"] = src.getIxy()
-            record["pixels"] = src.getFootprint().getArea()
-            photom = measurePhotometry.measure(lsst.afw.detection.Peak(), src).find(algorithm)
-            record["status"] = photom.get(STATUS_SCHEMA)
-            record["flux"] = photom.get(FLUX_SCHEMA)
-            record["flux_err"] = photom.get(FLUX_ERR_SCHEMA)
-            record["e1"] = photom.get(E1_SCHEMA)
-            record["e2"] = photom.get(E2_SCHEMA)
-            record["r"] = photom.get(RADIUS_SCHEMA)
-            ellipse = lsst.meas.multifit.EllipseCore(record["e1"], record["e2"], record["r"])
-            f = ellipse.getArea() / numpy.pi
-            record["integral"][:] = rawIntegral
-            record["integral"][:basisSize] *= f
-            for i in range(basisSize):
-                record["coeff"][i] = photom.get(i, COEFF_SCHEMA)
-            if fitDelta:
-                record["coeff"][basisSize] = photom.get(basisSize, COEFF_SCHEMA)
-            altFlux = numpy.dot(record["integral"], record["coeff"])
-            if not numpy.allclose(altFlux, record["flux"]):
-                logging.warning("altFlux=%s, flux=%s" % (altFlux, record["flux"]))
+            record["src_flags"] = src.getFlagForDetection()
+            status = measurement.measure(exp, src)
+            record["status"] = status
+            record["flux"] = measurement.getFlux()
+            record["flux_err"] = measurement.getFluxErr()
+            ellipse = measurement.getEllipse()
+            core = ellipse.getCore()
+            record["e1"] = core.getE1()
+            record["e2"] = core.getE2()
+            record["r"] = core.getRadius()
+            record["r_index"] = measurement.getRadiusIndex()
+            record["e1_index"] = measurement.getE1Index()
+            record["e2_index"] = measurement.getE2Index()
+            record["coefficients"][:] = measurement.getCoefficients()
+            record["covar"][:,:] = measurement.getCovariance()
+            record["test_points"][:] = measurement.getTestPoints()
+            record["objective_value"][:,:,:] = measurement.getObjectiveValue()            
+
         tables.append(table)
 
     return numpy.concatenate(tables)
@@ -119,7 +111,7 @@ def build(filename, *args, **kwds):
     pickle.dump(full, outfile, protocol=2)
     outfile.close()
 
-def load(filename, filter_status=True, filter_flux=True, dataset=None):
+def load(filename, filter_status=True, filter_flux=True, filter_flags=True, dataset=None):
     infile = open(filename, "rb")
     table = pickle.load(infile)
     if filter_status:
@@ -128,6 +120,8 @@ def load(filename, filter_status=True, filter_flux=True, dataset=None):
         table = table[table["flux"] > 0]
     if dataset is not None:
         table = table[table["dataset"] == dataset]
+    if filter_flags:
+        table = table[numpy.logical_not(table["src_flags"] & lsst.meas.algorithms.Flags.BAD)]
     return table
 
 def m_radius(table):
@@ -136,3 +130,79 @@ def m_radius(table):
 def ellipticity(table):
     return (table["e1"]**2 + table["e2"]**2)**0.5
 
+def mag(table):
+    return -2.5*numpy.log10(table["flux"])
+
+def psf_mag(table):
+    return -2.5*numpy.log10(table["psf_flux"])
+
+def subset(table, x=None, y=None):
+    """Use the current matplotlib plot limits to extract a subset from
+    the given table."""
+    if x is None:
+        x = psf_mag(table)
+    if y is None:
+        y = psf_mag(table) - mag(table)
+    xmin, xmax = pyplot.xlim()
+    ymin, ymax = pyplot.ylim()
+    return table[numpy.logical_and(
+	numpy.logical_and(x >= xmin, x <= xmax),
+	numpy.logical_and(y >= ymin, y <= ymax)
+	)]
+
+def plotPsfMagComparison(table, alpha=0.5):
+    pyplot.figure()
+    pyplot.scatter(psf_mag(table), psf_mag(table)-mag(table), alpha=alpha, linewidth=0)
+    pyplot.axhline(0, color='k')
+    pyplot.xlabel("psf")
+    pyplot.ylabel("psf - mod")
+
+def plotFluxFractions(table, alpha=0.3, **kw):
+    measurement, policy = lsst.meas.multifit.makeSourceMeasurement(**kw)
+    integration = measurement.getIntegration()
+    fractions = integration[numpy.newaxis,:] * table["coefficients"]
+    fractions /= table["flux"][:,numpy.newaxis]
+    offset = 0
+    def doPlot(color):
+        color[color < 0.0] = 0.0
+        color[color > 1.0] = 1.0
+	pyplot.scatter(psf_mag(table), psf_mag(table)-mag(table),
+		       c=color, alpha=alpha, linewidth=0)
+	pyplot.axhline(0, color='k')
+	#pyplot.xlabel("psf")
+	#pyplot.ylabel("psf - mod")
+        pyplot.ylim(-2, 8)
+    pyplot.figure(figsize=(10, 10))
+    ax = pyplot.subplot(2, 2, 1)
+    if measurement.getOptions().fitDeltaFunction:
+	f = fractions[:,offset]
+	doPlot(f)
+	pyplot.title("psf component")
+	offset += 1
+    pyplot.subplot(2, 2, 3, sharex=ax, sharey=ax)
+    if measurement.getOptions().fitExponential:
+	f = fractions[:,offset]
+	doPlot(f)
+	pyplot.title("exponential component")
+        offset += 1
+    pyplot.subplot(2, 2, 4, sharex=ax, sharey=ax)
+    if measurement.getOptions().fitDeVaucouleur:
+	f = fractions[:,offset]
+	doPlot(f)
+	pyplot.title("de Vaucouleur component")
+	offset += 1
+    pyplot.subplot(2, 2, 2, sharex=ax, sharey=ax)
+    if measurement.getOptions().shapeletOrder >= 0:    
+	f = fractions[:,offset:].sum(axis=1)
+	doPlot(f)
+	pyplot.title("shapelet component")
+    cax = pyplot.axes([0.93, 0.05, 0.02, 0.9])
+    pyplot.colorbar(cax=cax)
+    pyplot.suptitle("FRACTION OF TOTAL FLUX BY COMPONENT")
+    pyplot.show()
+
+def view(record):
+    v = viewer.Viewer(record['dataset'])
+    index = record["dataset_index"]
+    v.plot(index)
+    v.plotProfile(index)

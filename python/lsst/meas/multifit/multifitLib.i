@@ -45,6 +45,8 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/meas/multifit/ShapeletModelBasis.h"
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"    
+#include "lsst/ndarray/eigen.h"
+#include <Eigen/Core>
 #define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
 #include "numpy/arrayobject.h"
 #include "lsst/ndarray/python.h"
@@ -100,6 +102,17 @@ def version(HeadURL = r"$HeadURL$"):
         return version_svn
     else:
         return "%s (setup: %s)" % (version_svn, version_eups)
+
+def makeSourceMeasurement(**kw):
+    policy = lsst.pex.policy.Policy()
+    algorithm = "SHAPELET_MODEL"
+    policy.add("%s.enabled" % algorithm, True)
+    for k in kw:
+        policy.add("%s.%s" % (algorithm, k), kw[k])
+    options = lsst.meas.multifit.SourceMeasurement.readPolicy(policy.get(algorithm))
+    measurement = lsst.meas.multifit.SourceMeasurement(options)
+    return measurement, policy
+
 %}
 
 %include "lsst/ndarray/ndarray.i"
@@ -124,6 +137,7 @@ def version(HeadURL = r"$HeadURL$"):
 %declareNumPyConverters(lsst::ndarray::Array<double, 2, 2>);
 %declareNumPyConverters(lsst::ndarray::Array<double const, 2, 2>);
 %declareNumPyConverters(lsst::ndarray::Array<double const, 3, 3>);
+%declareNumPyConverters(Eigen::VectorXd);
 
 %include "lsst/meas/multifit/constants.h"
 
@@ -139,12 +153,8 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
 
 
 %extend lsst::meas::multifit::CompoundShapeletModelBasis {
-    %feature("shadow") _getForward %{
-        def getForward(self):
-            return $action(self)
-    %}
-    %feature("shadow") _getReverse %{
-        def getReverse(self):
+    %feature("shadow") _getMapping %{
+        def getMapping(self):
             return $action(self)
     %}
     %feature("shadow") _extractComponents %{
@@ -153,16 +163,15 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
     %}
 
 
-    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getForward() const {
-        return self->getForward();
-    }
-    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getReverse() const {
-        return self->getReverse();
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel const, 2, 1> _getMapping() const {
+        return self->getMapping();
     }
     lsst::meas::multifit::CompoundShapeletModelBasis::ComponentVector _extractComponents() const {
         return self->extractComponents();
     }
 };
+
+SWIG_SHARED_PTR(ProfileFunctionPtr, lsst::meas::multifit::ProfileFunction);
 
 %include "lsst/meas/multifit/ModelBasis.h"
 %include "lsst/meas/multifit/ShapeletModelBasis.h"
@@ -183,44 +192,15 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %include "definition.i"
 %include "grid.i"
-%include "distribution.i"
-%include "interpreter.i"
-
-%{ 
-#include "lsst/meas/multifit/GaussNewtonOptimizer.h"
-%}
-
-%include "lsst/meas/multifit/GaussNewtonOptimizer.h"
-
-%{ 
-#include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
-%}
-
-%include "lsst/meas/multifit/BruteForceSourceOptimizer.h"
 
 %{ 
 #include "lsst/meas/multifit/SourceMeasurement.h"
 %}
 
 
-%define %prePhotometry(N)
-SWIG_SHARED_PTR(ShapeletModelPhotometry##N, lsst::meas::multifit::ShapeletModelPhotometry<N>);
-%enddef
-
-%prePhotometry(2);
-%prePhotometry(8);
-%prePhotometry(17);
-
 %include "lsst/meas/multifit/SourceMeasurement.h"
 
-%define %postPhotometry(N)
-%extent lsst::meas::multifit::ShapeletModelPhotometry##N {
-    %template(doMeasure) lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<float>;
-    %template(doMeasure) lsst::meas::multifit::ShapeletModelPhotometry<N>::doMeasure<double>;
+%extend lsst::meas::multifit::SourceMeasurement {
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<float> >;
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<double> >;
 }
-%template(ShapeletModelPhotometry ## N) lsst::meas::multifit::ShapeletModelPhotometry<N>;
-%enddef
-
-%postPhotometry(2);
-%postPhotometry(8);
-%postPhotometry(17);

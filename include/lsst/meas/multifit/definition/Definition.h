@@ -25,18 +25,18 @@
 #define LSST_MEAS_MULTIFIT_Definition
 
 #include "lsst/meas/multifit/definition/Frame.h"
-#include "lsst/meas/multifit/definition/Object.h"
-#include "lsst/meas/multifit/definition/Set.h"
+#include "lsst/meas/multifit/definition/ObjectComponent.h"
+#include "lsst/meas/multifit/containers/Set.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
 
 class Definition {
 public:    
     typedef definition::Frame Frame;
-    typedef definition::Object Object;
+    typedef definition::ObjectComponent ObjectComponent;
 
-    typedef definition::Set<Frame> FrameSet;
-    typedef definition::Set<Object> ObjectSet; 
+    typedef containers::MutableSet<Frame> FrameSet;
+    typedef containers::MutableSet<ObjectComponent> ObjectComponentSet; 
 
     Definition() {}
 
@@ -45,33 +45,9 @@ public:
     Definition(Definition const & other);
 
     FrameSet frames;
-    ObjectSet objects;
+    ObjectComponentSet objects;
 
     Wcs::Ptr getWcs() const { return _wcs; }
-
-    template<typename PixelT>
-    static Definition make(
-        lsst::afw::image::Exposure<PixelT> const & exposure,
-        Footprint::Ptr const & fp,
-        afw::geom::Point2D const & position,
-        bool const isVariable=false,
-        bool const isPositionActive=false,
-        lsst::afw::image::MaskPixel const bitmask=~0x0,
-        bool const usePixelWeights=false
-    );
-
-    template<typename PixelT>
-    static Definition make(
-        lsst::afw::image::Exposure<PixelT> const & exposure,
-        Footprint::Ptr const & fp,
-        ModelBasis::Ptr const & basis,
-        afw::geom::ellipses::Ellipse const & ellipse,
-        bool const isEllipticityActive=false,
-        bool const isRadiusActive=false,
-        bool const isPositionActive=false,
-        lsst::afw::image::MaskPixel const bitmask=~0x0,
-        bool const usePixelWeights=false
-    );
 
 private:
     Wcs::Ptr _wcs;

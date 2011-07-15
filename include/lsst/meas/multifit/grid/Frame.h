@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_GRID_Frame
 
 #include "lsst/meas/multifit/definition/Frame.h"
-#include "lsst/meas/multifit/grid/Source.h"
+#include "lsst/meas/multifit/grid/SourceComponent.h"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 
@@ -38,9 +38,9 @@ public:
     int const getFilterIndex() const { return _filterIndex; }
     int const getFrameIndex() const { return _frameIndex; }
 
-    void applyWeights(ndarray::Array<double,2,1> const & matrix) const;
+    void applyWeights(lsst::ndarray::Array<Pixel,2,1> const & matrix) const;
 
-    void applyWeights(ndarray::Array<double,1,0> const & vector) const;
+    void applyWeights(lsst::ndarray::Array<Pixel,1,0> const & vector) const;
 
 private:
 

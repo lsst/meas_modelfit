@@ -1,5 +1,4 @@
 import lsst.meas.multifit
-import lsst.meas.multifit.utils
 import lsst.afw.geom.ellipses
 import lsst.afw.detection
 import numpy
@@ -30,6 +29,7 @@ def main(basis):
     radii = numpy.linspace(1E-3, 10, 100)
     profileMatrix = numpy.zeros((radii.size, basis.getSize()), dtype=float)
     basis.evaluateRadialProfile(profileMatrix, radii)
+    profileMatrix /= ellipse.getCore().getArea() / numpy.pi
     elements = [n for n in range(basis.getSize()) if (numpy.abs(profileMatrix[:,n]) > 1E-15).any()]
     gt = ellipse.getGridTransform()
     xg, yg = numpy.meshgrid(
@@ -45,5 +45,5 @@ def main(basis):
         pyplot.title(n)
         pyplot.subplot(2, len(elements), len(elements) + i + 1)
         pyplot.plot(radii, profileMatrix[:,n])
-        pyplot.plot(bin(rgt.ravel()), bin(modelImages[:,:,n].ravel()), ',', alpha=0.1)
+        pyplot.plot(bin(rgt.ravel()), bin(modelImages[:,:,n].ravel()), '+', alpha=0.25)
     pyplot.show()

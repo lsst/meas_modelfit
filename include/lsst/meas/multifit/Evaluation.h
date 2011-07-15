@@ -25,8 +25,7 @@
 #define LSST_MEAS_MULTIFIT_Evaluation
 
 #include "lsst/meas/multifit/BaseEvaluator.h"
-#include "lsst/meas/multifit/GaussianDistribution.h"
-
+#include <boost/shared_ptr.hpp>
 namespace lsst { namespace meas { namespace multifit {
 
 /**
@@ -47,7 +46,7 @@ namespace lsst { namespace meas { namespace multifit {
  *
  *  Some intermediate and derivative products produced by the Evaluation include:
  *   - the residuals vector @f$r = Ax - y@f$
- *   - the coefficient Fisher matrix @f$F = A^T A + \Sigma^{-1}@f$
+ *   - the coefficient Fisher matrix @f$F = A^T A@f$
  *   - partial derivatives of the model matrix and residuals vector with respect to the parameters
  *
  *  If constructed without a prior, only the first term is evaluated.
@@ -57,20 +56,24 @@ namespace lsst { namespace meas { namespace multifit {
  */
 class Evaluation : private boost::noncopyable {
 public:
+    typedef boost::shared_ptr<Evaluation> Ptr;
+    typedef boost::shared_ptr<Evaluation const> ConstPtr;
 
     /// @brief Construct with no prior and use the evaluator's initial parameters.
-    Evaluation(BaseEvaluator::Ptr const & evaluator);
+    Evaluation(BaseEvaluator::Ptr const & evaluator, double const svThreshold=1e-8);
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        lsst::ndarray::Array<double const,1,1> const & parameters
+        lsst::ndarray::Array<double const,1,1> const & parameters,
+        double const svThreshold=1e-8
     );
 
     /// @brief Construct with no prior and the given parameter vector.
     Evaluation(
         BaseEvaluator::Ptr const & evaluator,
-        Eigen::VectorXd const & parameters
+        Eigen::VectorXd const & parameters,
+        double const svThreshold=1e-8
     );
 
     /// @brief Update the parameters @f$\phi@f$.
@@ -82,7 +85,7 @@ public:
     /// @brief Update both the parameters @f$\phi@f$ and the coefficients @f$x@f$.
     void update(
         lsst::ndarray::Array<double const,1,1> const & parameters, 
-        lsst::ndarray::Array<double const,1,1> const & coefficients
+        lsst::ndarray::Array<Pixel const,1,1> const & coefficients
     );
 
     /// @brief Update both the parameters @f$\phi@f$ and the coefficients @f$x@f$.
@@ -92,7 +95,7 @@ public:
     );
 
     /// @brief Explicitly set the coefficients @f$x@f$.
-    void setCoefficients(lsst::ndarray::Array<double const,1,1> const & coefficients);
+    void setCoefficients(lsst::ndarray::Array<Pixel const,1,1> const & coefficients);
 
     /// @brief Explicitly set the coefficients @f$x@f$.
     void setCoefficients(Eigen::VectorXd const & coefficients);
@@ -111,7 +114,7 @@ public:
      *
      *  The order of dimensions is {data, coefficients}.
      */
-    lsst::ndarray::Array<double const,2,2> getModelMatrix() const {
+    lsst::ndarray::Array<Pixel const,2,2> getModelMatrix() const {
         ensureModelMatrix();
         return _modelMatrix;
     }
@@ -122,7 +125,7 @@ public:
      *
      *  The order of dimensions is {parameters, data, coefficients}.
      */
-    lsst::ndarray::Array<double const,3,3> getModelMatrixDerivative() const {
+    lsst::ndarray::Array<Pixel const,3,3> getModelMatrixDerivative() const {
         ensureModelMatrixDerivative();
         return _modelMatrixDerivative;
     }
@@ -133,19 +136,19 @@ public:
      *  If the coefficients have not been explicitly set or solved for since the
      *  last parameter change, they will be solved for.
      */
-    lsst::ndarray::Array<double const,1,1> getCoefficients() const {
+    lsst::ndarray::Array<Pixel const,1,1> getCoefficients() const {
         ensureCoefficients();
         return _coefficients;
     }
 
     /// @brief The model vector @f$r = Ax@f$.
-    lsst::ndarray::Array<double const,1,1> getModelVector() const {
+    lsst::ndarray::Array<Pixel const,1,1> getModelVector() const {
         ensureModelVector();
         return _modelVector;
     }
 
     /// @brief The residuals vector @f$r = Ax - y@f$.
-    lsst::ndarray::Array<double const,1,1> getResiduals() const {
+    lsst::ndarray::Array<Pixel const,1,1> getResiduals() const {
         ensureResiduals();
         return _residuals;
     }
@@ -160,15 +163,21 @@ public:
      *  an additional term @f$\frac{\partial r}{\partial x} \frac{\partial x}{\partial \phi}@f$
      *  if the coefficients are solved for).
      */
-    lsst::ndarray::Array<double const,2,2> getResidualsJacobian() const {
+    lsst::ndarray::Array<Pixel const,2,2> getResidualsJacobian() const {
         ensureResidualsJacobian();
         return _residualsJacobian;
     }
 
-    /// @brief The coefficient Fisher matrix $F = A^T A + \Sigma^{-1}$.
-    lsst::ndarray::Array<double const,2,2> getCoefficientFisherMatrix() const {
+    /// @brief The coefficient Fisher matrix $F = A^T A$.
+    lsst::ndarray::Array<Pixel const,2,2> getCoefficientFisherMatrix() const {
         ensureCoefficientFisherMatrix();
         return _coefficientFisherMatrix;
+    }
+
+    /// @brief The coefficient Covariance matrix $\Sigma = F^+ = (A^T A)^+$.
+    lsst::ndarray::Array<Pixel const,2,2> getCoefficientCovarianceMatrix() const {
+        ensureCoefficientCovarianceMatrix();
+        return _coefficientCovarianceMatrix;
     }
 
     /// @brief Return the objective value @f$q@f$.
@@ -176,16 +185,10 @@ public:
         ensureObjectiveValue();
         return _objectiveValue;
     }
-
+    
     ~Evaluation();
 
 private:
-
-#ifndef SWIG
-    class LinearSolver;
-    class CholeskySolver;
-    class ConstrainedSolver;
-#endif
 
     void ensureModelMatrix() const;
     void ensureModelMatrixDerivative() const;
@@ -194,22 +197,29 @@ private:
     void ensureResiduals() const;
     void ensureResidualsJacobian() const;
     void ensureCoefficientFisherMatrix() const;
+    void ensureCoefficientCovarianceMatrix() const;
     void ensureObjectiveValue() const;
+    void ensureFactorization() const;
 
     void initialize();
 
+    class Factorization;
+
     mutable int _status;
+    mutable int _products;
     BaseEvaluator::Ptr _evaluator;
-    boost::scoped_ptr<LinearSolver> _solver;
+    mutable boost::scoped_ptr<Factorization> _factorization;
     mutable double _objectiveValue;
     ndarray::Array<double,1,1> _parameters;
-    mutable ndarray::Array<double,2,2> _modelMatrix;
-    mutable ndarray::Array<double,3,3> _modelMatrixDerivative;
-    mutable ndarray::Array<double,1,1> _coefficients;
-    mutable ndarray::Array<double,2,2> _coefficientFisherMatrix;
-    mutable ndarray::Array<double,1,1> _residuals;
-    mutable ndarray::Array<double,2,2> _residualsJacobian;
-    mutable ndarray::Array<double,1,1> _modelVector;
+    mutable ndarray::Array<Pixel,2,2> _modelMatrix;
+    mutable ndarray::Array<Pixel,3,3> _modelMatrixDerivative;
+    mutable ndarray::Array<Pixel,1,1> _coefficients;
+    mutable ndarray::Array<Pixel,2,2> _coefficientFisherMatrix;
+    mutable ndarray::Array<Pixel,2,2> _coefficientCovarianceMatrix;
+    mutable ndarray::Array<Pixel,1,1> _residuals;
+    mutable ndarray::Array<Pixel,2,2> _residualsJacobian;
+    mutable ndarray::Array<Pixel,1,1> _modelVector;
+    double _svThreshold;
 };
 
 }}} // namespace lsst::meas::multifit

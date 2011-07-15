@@ -1,0 +1,157 @@
+// -*- LSST-C++ -*-
+/* 
+ * LSST Data Management System
+ * Copyright 2008, 2009, 2010, 2011 LSST Corporation.
+ * 
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the LSST License Statement and 
+ * the GNU General Public License along with this program.  If not, 
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+
+#ifndef LSST_MEAS_MULTIFIT_GRID_ObjectComponent
+#define LSST_MEAS_MULTIFIT_GRID_ObjectComponent
+
+#include "lsst/afw/geom/ellipses.h"
+#include "lsst/meas/multifit/definition/ObjectComponent.h"
+#include "lsst/meas/multifit/grid/SharedElement.h"
+#include "lsst/meas/multifit/containers/Array.h"
+#include "lsst/meas/multifit/grid/SourceComponent.h"
+#include "lsst/meas/multifit/grid/Frame.h"
+
+namespace lsst { namespace meas { namespace multifit { namespace grid {
+
+/**
+ *  @brief An immutable and expanded version of definition::ObjectComponent used in a multifit Grid.
+ */
+class ObjectComponent : public detail::ObjectComponentBase, private boost::noncopyable {
+public:
+
+    typedef containers::ArrayView<SourceComponent,containers::NO_INDEX> SourceArray;
+
+    SourceArray sources;
+
+    /// @brief Return the offset of this components coefficients relative to its FluxGroup.
+    int const getGroupCoefficientOffset() const {
+        return _groupCoefficientOffset;
+    }
+
+    /// @brief The number of coefficients for this object per Frame.
+    int const getSourceCoefficientCount() const {
+        return getBasis() ? getBasis()->getSize() : 1;
+    }
+
+#ifndef SWIG
+    //@{
+    /// @brief Return the parameter components.
+    PositionElement::Ptr const getPosition() const { return _position; }
+    RadiusElement::Ptr const getRadius() const { return _radius; }
+    EllipticityElement::Ptr const getEllipticity() const { return _ellipticity; }
+    PTR(FluxGroup) const getFluxGroup() const { return _fluxGroup; }
+
+    template <SharedElementType E>
+    typename SharedElement<E>::Ptr const getElement() const {
+        typename SharedElement<E>::Ptr const * p;
+        getElementImpl(p);
+        return *p;
+    }
+    //@}
+
+
+    /**
+     *  Perturb a point by changing the nth position parameter.
+     *  Returns the offset of the nth position parameter and the
+     *  size of the perturbation.
+     */
+    std::pair<int,double> perturbPoint(lsst::afw::geom::Point2D & point, int n) const;
+
+    /**
+     *  Unperturb a point by changing the nth position parameter.
+     */
+    void unperturbPoint(lsst::afw::geom::Point2D & point, int n, double perturbation) const {
+        point[n] -= perturbation;
+    }
+
+    /**
+     *  Perturb an ellipse by changing the nth ellipse parameter.
+     *  Returns the offset of the nth ellipse parameter and the
+     *  size of the perturbation.
+     */
+    std::pair<int,double> perturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n) const;
+
+    /**
+     *  Unperturb a point by changing the nth position parameter.
+     */
+    void unperturbEllipse(lsst::afw::geom::ellipses::Ellipse & ellipse, int n, double perturbation) const;
+
+#endif
+
+    /// @brief Throw an exception (LogicErrorException) if the object lacks a radius or ellipticity.
+    void requireEllipse() const;
+
+    /// @brief Construct the point corresponding to this object from a parameter vector.
+    lsst::afw::geom::Point2D makePoint(
+        lsst::ndarray::Array<double const,1,1> const & parameters
+    ) const;
+
+    /**
+     *  @brief Fill the elements of a parameter vector with values from the given point.
+     *
+     *  If the position component of the object is inactive, no action is taken.
+     */
+    void readPoint(
+        lsst::ndarray::Array<double,1,1> const & parameters,
+        lsst::afw::geom::Point2D const & point
+    ) const;
+
+    /// @brief Construct the ellipse corresponding to this object from a parameter vector.
+    lsst::afw::geom::ellipses::Ellipse makeEllipse(
+        lsst::ndarray::Array<double const,1,1> const & parameters
+    ) const;
+
+    /// @brief Fill the elements of a parameter vector with values from the given ellipse.
+    void readEllipse(
+        lsst::ndarray::Array<double,1,1> const & parameters,
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
+    ) const;
+
+private:
+
+    friend class grid::Initializer;
+
+    ObjectComponent(definition::ObjectComponent const & def, int groupCoefficientOffset) :
+        detail::ObjectComponentBase(def), _groupCoefficientOffset(groupCoefficientOffset)
+    {}
+
+    void validate() const;
+
+    void getElementImpl(PositionElement::Ptr const * & p) const { p = &_position; }
+    void getElementImpl(RadiusElement::Ptr const * & p) const { p = &_radius; }
+    void getElementImpl(EllipticityElement::Ptr const * & p) const { p = &_ellipticity; }
+
+    int _groupCoefficientOffset;
+    PositionElement::Ptr _position;
+    RadiusElement::Ptr _radius;
+    EllipticityElement::Ptr _ellipticity;
+    PTR(FluxGroup) _fluxGroup;
+};
+
+#ifndef SWIG
+std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj);
+#endif
+
+}}}} // namespace lsst::meas::multifit::grid
+
+#endif // !LSST_MEAS_MULTIFIT_GRID_ObjectComponent
