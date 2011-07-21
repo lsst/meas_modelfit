@@ -104,7 +104,6 @@ public:
         lsst::afw::detection::Footprint const & fp
     );
 
-
     template <typename ExposureT>
     int measure(
         PTR(ExposureT) exp,
@@ -123,7 +122,17 @@ public:
     );
 #endif
 
+    template <typename ExposureT>
+    lsst::afw::image::Image<double> getModelImage(
+        ExposureT const & exp
+    )const;
 
+    lsst::afw::image::Image<double> getPsfImage(
+        lsst::afw::detection::Footprint const & fp
+    )const;
+    lsst::afw::image::Image<double> getPsfModel(
+        lsst::afw::detection::Footprint const & fp
+    )const;
 
     Evaluator::Ptr getEvaluator() const { return _evaluator; }
     Evaluation::Ptr getEvaluation() const { return _evaluation; }

@@ -53,6 +53,7 @@ public:
         return _grid->checkBounds(parameters);
     }
 
+    bool const usePixelWeights() const {return _usePixelWeights;}
 protected:
 
     virtual void _evaluateModelMatrix(

@@ -35,6 +35,18 @@ from lsst.daf.persistence import ButlerFactory
 from lsst.pex.policy import Policy
 import lsst.meas.algorithms
 
+def makeViewFootprint(sourceMeasurement, exposure, bboxGrow=10, ellipseScale=5):
+    fitFp = sourceMeasurement.getFootprint()
+    ellipse = lsst.afw.geom.ellipses.Ellipse(sourceMeasurement.getEllipse())
+    ellipse.scale(ellipseScale)
+    bbox = fitFp.getBBox()
+    bbox.include(lsst.afw.geom.BoxI(ellipse.computeEnvelope()))
+    bbox.grow(10)
+    bbox.clip(exposure.getBBox(lsst.afw.image.PARENT))
+
+    return lsst.afw.detection.Footprint(bbox)
+
+
 class Viewer(object):
 
     def __init__(self, dataset, **kw):
@@ -67,150 +79,56 @@ class Viewer(object):
         #fit the source 
         source = self.sources[index]
         self.sourceMeasurement.measure(self.exposure, source)
-
-        #get fit parameters/coefficients
-        fitFp = self.sourceMeasurement.getFootprint()
-        ellipse = self.sourceMeasurement.getEllipse()
-        core = ellipse.getCore()
         coefficients = self.sourceMeasurement.getCoefficients()
         parameters = self.sourceMeasurement.getParameters()
-        #generate a larger, unmasked fp
-        bbox = fitFp.getBBox()
-        bounds = lsst.afw.geom.ellipses.Ellipse(ellipse)
-        bounds.scale(self.scaleFactor)
-        bbox.include(lsst.afw.geom.Box2I(bounds.computeEnvelope()))
-        bbox.grow(10)
-        bbox.clip(self.exposure.getBBox(lsst.afw.image.PARENT))
-        fp = lsst.afw.detection.Footprint(bbox)       
-        
-        #generate a new evalution of the fitted model over this larger fp
-        definition = self.sourceMeasurement.getEvaluator().getGrid().makeDefinition()
-        dataArray = numpy.zeros(fp.getArea(), dtype=numpy.float32)
+        fitFp = self.sourceMeasurement.getFootprint()
 
-        lsst.afw.detection.flattenArray(
-            fp,
-            self.exposure.getMaskedImage().getImage().getArray(), 
-            dataArray, 
-            self.exposure.getXY0()
-        )
-
-        definition.frames[0].setFootprint(fp)
-        definition.frames[0].setData(dataArray)
-
-        weightArray = numpy.ones_like(dataArray)
-        lsst.afw.detection.flattenArray(
-            fp,
-            self.exposure.getMaskedImage().getVariance().getArray(), 
-            weightArray, 
-            self.exposure.getXY0()
-        )
-        definition.frames[0].setWeights(weightArray)
-
-        evaluator = lsst.meas.multifit.Evaluator.make(\
-            definition, 
-            self.sourceMeasurement.getOptions().usePixelWeights
-        )
-        evaluation = lsst.meas.multifit.Evaluation(evaluator)
-        evaluation.update(
-            parameters,
-            coefficients
-        )        
-
+        #get fit parameters/coefficientks
+        viewFp = makeViewFootprint(self.sourceMeasurement, self.exposure, 10, self.scaleFactor)
+        bbox = viewFp.getBBox()
 
         #construct MaskedImages of the data, model, and residuals
         #of the fitted model evaluated over the larger fp                        
-
-        original = self.exposure.getMaskedImage().getImage().Factory(
-                self.exposure.getMaskedImage().getImage(), 
+        sub = self.exposure.Factory(
+                self.exposure, 
                 bbox, lsst.afw.image.PARENT)        
-        img = lsst.afw.image.ImageD(bbox)        
+        img = lsst.afw.image.ImageD(bbox)       
         msk = lsst.afw.image.MaskU(bbox)    
         msk.addMaskPlane("multifit")
         bitmask = msk.getPlaneBitMask("multifit")
         lsst.afw.detection.setMaskFromFootprint(msk, fitFp, bitmask)
-        msk.getArray()[:,:] = numpy.logical_not(msk.getArray() == bitmask)*bitmask
 
-        img.getArray()[:,:] = original.getArray().astype(numpy.float)[:,:]
+        #get the inverted mask
+        msk.getArray()[:,:] = numpy.logical_not(msk.getArray() == bitmask)*bitmask
+        
+        imgDtype = img.getArray().dtype
+        img.getArray()[:,:] = sub.getMaskedImage().getImage().getArray().astype(imgDtype)[:,:]
         mi = lsst.afw.image.makeMaskedImage(img, msk)
 
-        modelArray = evaluation.getModelVector().astype(img.getArray().dtype)
-        residualArray = evaluation.getResiduals().astype(img.getArray().dtype)
-
-        model = img.Factory(bbox)
-        lsst.afw.detection.expandArray(fp, modelArray, model.getArray(), bbox.getMin())
+        model = self.sourceMeasurement.getModelImage(sub)
         modelMi = mi.Factory(model, msk)
 
-        residual = img.Factory(bbox)
-        lsst.afw.detection.expandArray(fp, residualArray, residual.getArray(), bbox.getMin())    
-        residual.getArray()[:,:] *= -1
+        residual = img.Factory(img, True)
+        residual -= model
         residualMi = mi.Factory(residual, msk)
-        
-        #generate images of just the delta function component of the model
-        dfDefinition = lsst.meas.multifit.Definition()
-        dfObject = lsst.meas.multifit.definition.ObjectComponent.makeStar(
-                lsst.meas.multifit.SourceMeasurement.DELTAFUNCTION_ID,
-                ellipse.getCenter(),
-                False, False)          
-        dfFluxGroup = lsst.meas.multifit.definition.FluxGroup.make(0, 1., False)
-        dfObject.setFluxGroup(dfFluxGroup)
-        dfDefinition.objects.insert(dfObject)
-        dfDefinition.frames.insert(definition.frames[0])
-                
-        dfEvaluator = lsst.meas.multifit.Evaluator.make(
-                dfDefinition, 
-                self.sourceMeasurement.getOptions().usePixelWeights
-            )
-        dfEvaluation = lsst.meas.multifit.Evaluation(dfEvaluator)
-
-        dfModelArray = dfEvaluation.getModelVector().astype(img.getArray().dtype)
-        dfResidualArray = dfEvaluation.getResiduals().astype(img.getArray().dtype)
-        
-        dfModel = img.Factory(bbox)        
-        lsst.afw.detection.expandArray(fp, dfModelArray, dfModel.getArray(), bbox.getMin())
-        dfModelMi = mi.Factory(dfModel, msk)
-
-        dfResiduals = img.Factory(bbox)        
-        lsst.afw.detection.expandArray(fp, dfResidualArray, dfResiduals.getArray(), bbox.getMin())
-        dfResiduals.getArray()[:,:] *= -1
-        dfResidualsMi = mi.Factory(dfResiduals, msk)
-
+       
         #generate images of the psf and psf models
-        psfImg = lsst.afw.image.ImageD(bbox)
-        psfModel = lsst.afw.image.ImageD(bbox)
-        psfResidual = lsst.afw.image.ImageD(bbox)
+        psfImg = self.sourceMeasurement.getPsfImage(viewFp)
+        psfModel = self.sourceMeasurement.getPsfModel(viewFp)
+        psfResidual = psfImg.Factory(psfImg, True)
+        psfResidual -= psfModel
 
-        psfDataArray = numpy.zeros(fp.getArea(), float)
-        psfModelArray = numpy.zeros(fp.getArea(), float)
-
-        source = list(evaluator.getGrid().sources)[0]
-        localPsfData = source.getLocalPsf()
-        shapelet = localPsfData.computeShapelet(
-            lsst.afw.math.shapelets.HERMITE,
-            self.sourceMeasurement.getOptions().psfShapeletOrder
-        )
-        multiShapelet = lsst.afw.math.shapelets.MultiShapeletFunction(shapelet)
-        localPsfModel = lsst.afw.detection.ShapeletLocalPsf(localPsfData.getPoint(), multiShapelet)
-        localPsfData.evaluatePointSource(fp, psfDataArray)
-        localPsfModel.evaluatePointSource(fp, psfModelArray)
-        psfResidualArray = psfDataArray - psfModelArray
-
-        lsst.afw.detection.expandArray(fp, psfDataArray, psfImg.getArray(), bbox.getMin())
-        lsst.afw.detection.expandArray(fp, psfModelArray, psfModel.getArray(), bbox.getMin())
-        lsst.afw.detection.expandArray(fp, psfResidualArray, psfResidual.getArray(), bbox.getMin())
-    
         d = {}
         d["fp"] = fitFp
         d["bbox"] = bbox
-        d["ellipse"] = ellipse
+        d["ellipse"] = self.sourceMeasurement.getEllipse()
         d["coefficients"] = coefficients
-        d["evaluator"] = evaluator
-        d["evaluation"] = evaluation
+        d["evaluator"] = self.sourceMeasurement.getEvaluator()
+        d["evaluation"] = self.sourceMeasurement.getEvaluation
         d["test_points"] = self.sourceMeasurement.getTestPoints()
         d["objective_value"] = self.sourceMeasurement.getObjectiveValue()
         d["images"] = [mi, modelMi, residualMi]
         d["image_labels"] = ["image", "model", "residuals"]
-        d["df_images"] = [mi, dfModelMi, dfResidualsMi]
-        d["df_labels"] = ["image", "delta function model", "delta function residuals"]
         d["psf_images"] = [psfImg, psfModel, psfResidual]
         d["psf_labels"] = ["psf", "ShapeletLocalPsf model", "residuals"]
         self.fits[index] = d
@@ -236,11 +154,7 @@ class Viewer(object):
             mosaic = self.m.makeMosaic(d["images"], frame=0)
             self.m.drawLabels(d["image_labels"], frame=0)
 
-            #and another for the delta function images
-            dfMosaic = self.m.makeMosaic(d["df_images"], frame = 2)
-            self.m.drawLabels(d["df_labels"], frame=2)
-
-            for frame in range(3):
+            for frame in range(2):
                 center = lsst.afw.geom.Point2D(
                     ellipse.getCenter().getX() - bbox.getMinX(), 
                     ellipse.getCenter().getY() - bbox.getMinY()

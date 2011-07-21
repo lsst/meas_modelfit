@@ -203,4 +203,6 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 %extend lsst::meas::multifit::SourceMeasurement {
     %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<float> >;
     %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<double> >;
+    %template(getModelImage) lsst::meas::multifit::SourceMeasurement::getModelImage< lsst::afw::image::Exposure<float> >;
+    %template(getModelImage) lsst::meas::multifit::SourceMeasurement::getModelImage< lsst::afw::image::Exposure<double> >;
 }

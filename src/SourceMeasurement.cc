@@ -6,7 +6,7 @@
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/utils/Utils.h"
 #include "lsst/utils/ieee.h"
-
+#include "lsst/afw/detection/FootprintArray.cc"
 #include "Eigen/Cholesky"
 
 #define LSST_MAX_DEBUG 0
@@ -408,5 +408,70 @@ template int SourceMeasurement::measure(
     CONST_PTR(afw::image::Exposure<double>) exp,
     CONST_PTR(afw::detection::Source) source
 );
+
+
+
+
+
+template <typename ExposureT>
+lsst::afw::image::Image<Pixel> SourceMeasurement::getModelImage(
+    ExposureT const & exp
+) const {
+    Definition def = _evaluator->getGrid()->makeDefinition();
+    def.frames.clear();
+
+    afw::geom::BoxI bbox = exp.getBBox(afw::image::PARENT);
+    PTR(Footprint) fp(new Footprint(bbox));
+    definition::Frame frame = definition::Frame::make(0, exp, fp, 0);
+    def.frames.insert(frame);
+    Evaluator::Ptr evaluator = Evaluator::make(def, _options.usePixelWeights);
+    Evaluation evaluation(evaluator);
+    evaluation.update(_parameters, _coefficients);
+
+    afw::image::Image<Pixel> image(bbox);
+    ndarray::Array<Pixel const, 1, 1> modelVector = evaluation.getModelVector();
+    afw::detection::expandArray(*fp, modelVector, image.getArray(), bbox.getMin());
+    return image;
+}
+
+template afw::image::Image<Pixel> SourceMeasurement::getModelImage(
+    afw::image::Exposure<double> const & exp
+) const;
+template afw::image::Image<Pixel> SourceMeasurement::getModelImage(
+    afw::image::Exposure<float> const & exp
+) const;
+
+lsst::afw::image::Image<Pixel> SourceMeasurement::getPsfImage(
+    lsst::afw::detection::Footprint const & fp
+) const {
+    lsst::afw::image::Image<Pixel> image(fp.getBBox());
+    grid::SourceComponent const & source = *_evaluator->getGrid()->sources.begin();
+    afw::detection::LocalPsf::Ptr localPsf = source.getLocalPsf();
+    ndarray::Array<Pixel, 1, 1> data(ndarray::allocate(fp.getArea()));
+    localPsf->evaluatePointSource(fp, data);
+
+    afw::detection::expandArray(fp, data, image.getArray(), image.getXY0());
+    return image;
+}
+
+lsst::afw::image::Image<Pixel> SourceMeasurement::getPsfModel(
+    lsst::afw::detection::Footprint const & fp
+) const {
+    lsst::afw::image::Image<Pixel> image(fp.getBBox());
+    grid::SourceComponent const & source = *_evaluator->getGrid()->sources.begin();
+    LocalPsf::Ptr localPsf = source.getLocalPsf();
+    if(!localPsf->hasNativeShapelet()) {
+        LocalPsf::Shapelet shapelet = localPsf->computeShapelet(
+            afw::math::shapelets::HERMITE, 
+            _options.psfShapeletOrder
+        );
+        LocalPsf::MultiShapelet multiShapelet = LocalPsf::MultiShapelet(shapelet);
+        localPsf.reset(new afw::detection::ShapeletLocalPsf(localPsf->getPoint(), multiShapelet));
+    }
+    ndarray::Array<Pixel, 1, 1> model(ndarray::allocate(fp.getArea()));
+    localPsf->evaluatePointSource(fp, model);
+    afw::detection::expandArray(fp, model, image.getArray(), image.getXY0());
+    return image;
+}
 
 }}}
