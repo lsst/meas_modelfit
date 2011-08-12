@@ -27,6 +27,12 @@
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/MultipoleMatrix.h"
 #include <boost/noncopyable.hpp>
+#include <boost/serialization/nvp.hpp>
+
+namespace boost { 
+namespace serialization {
+    class access;
+}}
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -71,10 +77,10 @@ public:
     int getConstraintCount() const { return _constraintMatrix.getSize<0>(); }
 
     /// @brief Return the inequality constraint matrix.
-    lsst::ndarray::Array<Pixel const,2,1> getConstraintMatrix() const { return _constraintMatrix; }
+    lsst::ndarray::Array<Pixel const,2,1> const getConstraintMatrix() const { return _constraintMatrix; }
 
     /// @brief Return the inequality constraint vector.
-    lsst::ndarray::Array<Pixel const,1,1> getConstraintVector() const { return _constraintVector; }
+    lsst::ndarray::Array<Pixel const,1,1> const getConstraintVector() const { return _constraintVector; }
 
     virtual ~ModelBasis() {}
 
@@ -126,12 +132,19 @@ protected:
     }
 
 private:
+    friend class boost::serialization::access;
 
+    template <typename Archive>
+    void serialize(Archive & ar, unsigned int const version) {}
     int const _size;
     ndarray::Array<Pixel const,2,2> _multipoleMatrix;
     ndarray::Array<Pixel const,2,1> _constraintMatrix;
     ndarray::Array<Pixel const,1,1> _constraintVector;
 };
+
+#ifndef SWIG
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(ModelBasis)
+#endif
 
 }}} // namespace lsst::meas::multifit
 

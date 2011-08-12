@@ -29,6 +29,12 @@
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <map>
 #include <stdexcept>
+#include <boost/serialization/map.hpp>
+
+namespace boost {
+namespace serialization {
+    class access;
+}}
 
 namespace lsst { namespace meas { namespace multifit { namespace containers {
 
@@ -160,6 +166,13 @@ protected:
     typedef detail::SetBase<T> Super;
     typedef typename Super::Internal Internal;
     typedef typename Super::Pair Pair;
+
+    friend class boost::serialization::access;
+    template <typename Archive>
+    void serialize(Archive & ar, unsigned int const version) {
+        ar & Super::_internal;
+    }
+
 public:
 
     typedef typename Super::key_type key_type;

@@ -26,7 +26,23 @@
 
 #include "lsst/meas/multifit/ModelBasis.h"
 #include "lsst/afw/math/shapelets.h"
+#include <boost/serialization.export.hpp>
 
+namespace lsst { namespace meas { namespace multifit {
+    class ShapeletModelBasis;
+}}}
+
+namespace boost { namespace serialization {
+    template <class Archive>
+    void load_construct_data(
+        Archive &, lsst::meas::multifit::ShapeletModelBasis *, unsigned int const
+    );
+    
+    template <class Archive>
+    void save_construct_data(
+        Archive &, const lsst::meas::multifit::ShapeletModelBasis *, unsigned int const
+    );
+}}
 namespace lsst { namespace meas { namespace multifit {
 
 /**
@@ -84,8 +100,25 @@ protected:
     ) const;
 
 private:
-
     ShapeletModelBasis(int order, double scale);
+
+#ifndef SWIG
+    template <class Archive>
+    friend void boost::serialization::load_construct_data(
+        Archive & ar, ShapeletModelBasis * basis, unsigned const int version
+    );
+    template <class Archive>
+    friend void boost::serialization::save_construct_data(
+        Archive & ar, const ShapeletModelBasis * basis, unsigned const int version
+    );
+
+    friend class boost::serialization::access;
+    template <typename Archive> void serialize(
+        Archive & ar, unsigned int const version
+    ){
+        boost::serialization::base_object<ModelBasis>(*this);
+    }
+#endif
 
     static int & getPsfShapeletOrderRef();
 
@@ -94,5 +127,37 @@ private:
 };
 
 }}} // namespace lsst::meas::multifit
+
+#ifndef SWIG
+
+BOOST_CLASS_EXPORT_GUID(lsst::meas::multifit::ShapeletModelBasis, "lsst::meas::multifit::ShapeletModelBasis");
+
+namespace boost { namespace serialization {
+    
+template <class Archive>
+void save_construct_data(
+    Archive & ar, 
+    const lsst::meas::multifit::ShapeletModelBasis * basis, 
+    unsigned int const version
+) {
+    int order = basis->getOrder();
+    double scale = basis->getScale();
+    ar << make_nvp("order", order);
+    ar << make_nvp("scale", scale);
+}
+template <class Archive>
+void load_construct_data(
+    Archive & ar, 
+    lsst::meas::multifit::ShapeletModelBasis * basis, 
+    unsigned int const version
+) {
+    int order;
+    double scale;
+    ar >> make_nvp("order", order);
+    ar >> make_nvp("scale", scale);
+    ::new(basis)lsst::meas::multifit::ShapeletModelBasis(order, scale);
+}
+}}
+#endif //!SWIG
 
 #endif // !LSST_MEAS_MULTIFIT_ShapeletModelBasis

@@ -27,6 +27,13 @@
 #include "lsst/meas/multifit/constants.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/complex.hpp>
+
+namespace boost {
+namespace serialization {
+    class access;
+}}
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -37,7 +44,7 @@ template <SharedElementType E> struct SharedElementTraits;
 struct CircleConstraint {
     double max;
 
-    explicit CircleConstraint(double max_) : max(max_) {}
+    explicit CircleConstraint(double max_=std::numeric_limits<double>::infinity()) : max(max_) {}
 
     friend inline std::ostream & operator<<(std::ostream & os, CircleConstraint const & k) {
         return os << "||.|| <  " << k.max;
@@ -106,6 +113,8 @@ private:
     }
 };
 
+
+
 template <>
 struct SharedElementTraits<POSITION> {
 
@@ -124,6 +133,13 @@ struct SharedElementTraits<POSITION> {
     static void printValue(std::ostream & os, Value const & value) { os << value; }
 
     static Bounds getDefaultBounds() { return Bounds(5.0); }
+
+    template <typename Archive>
+    static void serialize(Archive & ar, Value & value, Bounds & bounds, unsigned int const version) {
+        ar & boost::serialization::make_nvp("x", value[0]);
+        ar & boost::serialization::make_nvp("y", value[1]);
+        ar & boost::serialization::make_nvp("max", bounds.max);
+    }
 };
 
 template <>
@@ -143,6 +159,13 @@ struct SharedElementTraits<RADIUS> {
 
     static Bounds getDefaultBounds() {
         return Bounds(std::numeric_limits<double>::epsilon(), std::numeric_limits<double>::infinity());
+    }
+
+    template <typename Archive>
+    static void serialize(Archive & ar, Value & value, Bounds & bounds, unsigned int const version) {
+        ar & boost::serialization::make_nvp("radius", static_cast<double &>(value));
+        ar & boost::serialization::make_nvp("max", bounds.max);
+        ar & boost::serialization::make_nvp("min", bounds.min);
     }
 };
 
@@ -165,6 +188,12 @@ struct SharedElementTraits<ELLIPTICITY> {
 
     static Bounds getDefaultBounds() {
         return Bounds(-std::log(std::numeric_limits<double>::epsilon()));
+    }
+
+    template <typename Archive>
+    static void serialize(Archive & ar, Value & value, Bounds & bounds, unsigned int const version) {
+        ar & boost::serialization::make_nvp("complex", value.getComplex());
+        ar & boost::serialization::make_nvp("max", bounds.max);
     }
 };
 
@@ -200,7 +229,7 @@ protected:
     SharedElementBase(SharedElementBase const & other) :
         _active(other._active), _value(other._value), _bounds(other._bounds)
     {}
-
+    SharedElementBase(){}
     bool _active;
     Value _value;
     Bounds _bounds;
@@ -213,11 +242,12 @@ namespace definition {
 template <SharedElementType E>
 class SharedElement : public detail::SharedElementBase<E> {
 public:
-    
+    typedef detail::SharedElementBase<E> Super;
+    typedef detail::SharedElementTraits<E> Traits;
     typedef boost::shared_ptr< SharedElement<E> > Ptr;
     typedef boost::shared_ptr< SharedElement<E> const > ConstPtr;
-    typedef typename detail::SharedElementTraits<E>::Value Value;
-    typedef typename detail::SharedElementTraits<E>::Bounds Bounds;
+    typedef typename Traits::Value Value;
+    typedef typename Traits::Bounds Bounds;
 
 #ifndef SWIG // these are wrapped explicitly; SWIG is confused by the typedefs and "bool &"
 
@@ -249,9 +279,9 @@ public:
     //@}
 
     // Use const accessors from base class.
-    using detail::SharedElementBase<E>::getValue;
-    using detail::SharedElementBase<E>::getBounds;
-    using detail::SharedElementBase<E>::isActive;
+    using Super::getValue;
+    using Super::getBounds;
+    using Super::isActive;
 
     /**
      *  @brief Deep-copy.
@@ -268,7 +298,7 @@ public:
     static Ptr make(Value const & value, bool active=true) {
         return Ptr(
             new SharedElement(
-                value, detail::SharedElementTraits<E>::getDefaultBounds(), active
+                value, Traits::getDefaultBounds(), active
             )
         );
     }
@@ -285,12 +315,18 @@ public:
 #endif
 
 private:
-
+    SharedElement() {}
     SharedElement(SharedElement const & other) : detail::SharedElementBase<E>(other) {}
 
     explicit SharedElement(Value const & value, Bounds const & bounds, bool active) : 
-        detail::SharedElementBase<E>(value, bounds, active) {}
+        Super(value, bounds, active) {}
 
+    friend class boost::serialization::access;
+    template <typename Archive> 
+    void serialize(Archive & ar, unsigned int const version) {
+        Traits::serialize(ar, Super::_value, Super::_bounds, version);
+        ar & Super::_active;
+    }
 };
 
 typedef SharedElement<POSITION> PositionElement;

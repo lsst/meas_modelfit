@@ -237,7 +237,7 @@ public:
     }
 
 private:
-
+    friend class boost::serialization::access;
     friend class CompoundShapeletHelper;
 
     void _fillElements(ComponentVector const & components) {
@@ -534,64 +534,17 @@ CompoundShapeletModelBasis::Ptr CompoundShapeletModelBasis::load(
 ) {
     std::ifstream ifs(filename.c_str());
     boost::archive::text_iarchive ar(ifs);
-    
-    int nComponents;
-    ar >> nComponents;
-    ComponentVector components(nComponents);        
-    int order;
-    double scale;
-    for (int i =0; i < nComponents; ++i) {
-        ar >> order;
-        ar >> scale;
-        components[i] = multifit::ShapeletModelBasis::make(order, scale);            
-    }
-    int width, height;
-    ar >> height;
-    ar >> width;
-    int size = width*height;
-    ndarray::Array<Pixel,2,2> mapping = ndarray::allocate(
-        ndarray::makeVector(height, width)
-    );
-    ar >> boost::serialization::make_array(mapping.getData(), size);
-    int constraintCount;
-    ar >> constraintCount;
-    CompoundShapeletBuilder builder(components, mapping);
-    if (constraintCount > 0) {
-        ndarray::Array<Pixel,2,2> cMatrix = ndarray::allocate(constraintCount, width);
-        ndarray::Array<Pixel,1,1> cVector = ndarray::allocate(constraintCount);
-        ar >> boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());
-        ar >> boost::serialization::make_array(cVector.getData(), cVector.getNumElements());
-        builder.setConstraint(cMatrix, cVector);
-    }
-    return builder.build();
+   
+    CompoundShapeletModelBasis * basis;
+    ar & basis;    
+    return Ptr(basis);
 }
 
 void CompoundShapeletModelBasis::save(std::string const & filename) {
     std::ofstream ofs(filename.c_str());
     boost::archive::text_oarchive ar(ofs);
 
-    int nElement = _impl->getElements().size();
-    ar << nElement;
-    for (Impl::ElementIter i = _impl->getElements().begin(); i != _impl->getElements().end(); ++i) {
-        int order = i->component->getOrder();
-        double scale = i->component->getScale();
-        ar << order;
-        ar << scale;
-    }
-    ndarray::Array<Pixel,2,2> mapping = ndarray::copy(_impl->getMapping());
-    int height = mapping.getSize<0>(), width = mapping.getSize<1>();
-    int size = width*height;
-    ar << height;
-    ar << width;
-    ar << boost::serialization::make_array(mapping.getData(), size);
-    int constraintCount = getConstraintCount();
-    ar << constraintCount;
-    if (constraintCount > 0) {
-        ndarray::Array<Pixel,2,2> cMatrix = ndarray::copy(getConstraintMatrix());
-        ndarray::Array<Pixel,1,1> cVector = ndarray::copy(getConstraintVector());
-        ar << boost::serialization::make_array(cMatrix.getData(), cMatrix.getNumElements());
-        ar << boost::serialization::make_array(cVector.getData(), cVector.getNumElements());
-    }
+    ar & this;
 }
 
 void CompoundShapeletModelBasis::_evaluate(
@@ -611,13 +564,14 @@ void CompoundShapeletModelBasis::_evaluateRadialProfile(
 
 CompoundShapeletModelBasis::CompoundShapeletModelBasis(
     boost::shared_ptr<Impl> const & impl,
-    ndarray::Array<Pixel const,2,2> const & multipoleMatrix,
     ndarray::Array<Pixel const,2,1> const & constraintMatrix,
     ndarray::Array<Pixel const,1,1> const & constraintVector
 ) : ModelBasis(impl->getSize()), _impl(impl) {
     if (constraintMatrix.getSize<0>() > 0) {
         attachConstraint(constraintMatrix, constraintVector);
     }
+    ndarray::Array<Pixel,2,2> multipoleMatrix(ndarray::allocate(6, _impl->getSize()));
+    _impl->evaluateMultipoleMatrix(multipoleMatrix);
     attachMultipoleMatrix(multipoleMatrix);
 }
 
@@ -664,7 +618,7 @@ void CompoundShapeletBuilder::normalizeFlux(int n) {
     if (_constraintMatrix.getSize<0>() > 0) {
         _constraintMatrix = ndarray::copy(_constraintMatrix / integration[n]);
     }
-    ndarray::Array<Pixel,2,1> newMapping(ndarray::copy(_impl->getMapping()));
+    ndarray::Array<Pixel,2,2> newMapping(ndarray::copy(_impl->getMapping()));
     newMapping.deep() /= integration[n];
     _impl->setMapping(newMapping);
 }
@@ -766,10 +720,8 @@ void CompoundShapeletBuilder::setConstraint(
 }
 
 CompoundShapeletModelBasis::Ptr CompoundShapeletBuilder::build() const {
-    ndarray::Array<Pixel,2,2> multipoleMatrix(ndarray::allocate(6, _impl->getSize()));
-    evaluateMultipoleMatrix(multipoleMatrix);
     return CompoundShapeletModelBasis::Ptr(
-        new CompoundShapeletModelBasis(_impl, multipoleMatrix, _constraintMatrix, _constraintVector)
+        new CompoundShapeletModelBasis(_impl, _constraintMatrix, _constraintVector)
     );
 }
 

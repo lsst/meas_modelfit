@@ -27,6 +27,12 @@
 #include "lsst/meas/multifit/constants.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/serialization/nvp.hpp>
+
+namespace boost {
+namespace serialization {
+    class access;
+}}
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -56,7 +62,7 @@ public:
 
 protected:
     friend class grid::Initializer;
-
+    FluxGroupBase(ID const id_): id(id_) {}
     FluxGroupBase(ID const id_, double maxMorphologyRatio, bool variable) :
         id(id_), _variable(variable), _maxMorphologyRatio(maxMorphologyRatio)
     {}
@@ -97,6 +103,8 @@ public:
      */
     double & getMaxMorphologyRatio() { return _maxMorphologyRatio; }
 
+
+    FluxGroup(FluxGroupBase const &other) : detail::FluxGroupBase(other) {}    
 #endif 
 
     /**
@@ -126,17 +134,46 @@ public:
     void setMaxMorphologyRatio(double maxMorphologyRatio) { _maxMorphologyRatio = maxMorphologyRatio; }
     //@}
 
-private:
-    friend class grid::Initializer;
 
-    FluxGroup(FluxGroupBase const &other) : detail::FluxGroupBase(other) {}
-    
+    FluxGroup(ID id) : detail::FluxGroupBase(id) {}
+
     FluxGroup(ID id, double maxMorphologyRatio, bool variable) :
         detail::FluxGroupBase(id, maxMorphologyRatio, variable)
     {}
 
+private:
+    friend class grid::Initializer;
+
+
+    friend class boost::serialization::access;
+    template <typename Archive>
+    void serialize(Archive & ar, unsigned int const version) {
+        ar & boost::serialization::make_nvp("isVariable", _variable);
+        ar & boost::serialization::make_nvp("maxMorphologyRation", _maxMorphologyRatio);
+    }
 };
 
 }}}} // namespace lsst::meas::multifit::definition
 
+namespace boost { namespace serialization {    
+template <class Archive>
+inline void save_construct_data(
+    Archive & ar, 
+    const lsst::meas::multifit::definition::FluxGroup * flux, 
+    unsigned int const version
+) {
+    ar << flux->id;
+}
+template <class Archive>
+inline void load_construct_data(    
+    Archive & ar, 
+    lsst::meas::multifit::definition::FluxGroup * flux, 
+    unsigned int const version
+) {
+    lsst::meas::multifit::ID id;
+    ar >> id;
+    ::new(flux) lsst::meas::multifit::definition::FluxGroup(id);
+}
+
+}}
 #endif // !LSST_MEAS_MULTIFIT_DEFINITION_FluxGroup

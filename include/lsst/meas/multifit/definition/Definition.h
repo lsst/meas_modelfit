@@ -24,11 +24,23 @@
 #ifndef LSST_MEAS_MULTIFIT_Definition
 #define LSST_MEAS_MULTIFIT_Definition
 
+#include <fstream>
 #include "lsst/meas/multifit/definition/Frame.h"
 #include "lsst/meas/multifit/definition/ObjectComponent.h"
 #include "lsst/meas/multifit/containers/Set.h"
+#include "lsst/afw/formatters/WcsFormatter.h"
+#include "boost/serialization/nvp.hpp"
+#include "boost/archive/text_iarchive.hpp"
+#include "boost/archive/text_oarchive.hpp"
+
+namespace boost {
+namespace serialization {
+    class access;
+}}
 
 namespace lsst { namespace meas { namespace multifit { namespace definition {
+
+
 
 class Definition {
 public:    
@@ -48,9 +60,31 @@ public:
     ObjectComponentSet objects;
 
     Wcs::Ptr getWcs() const { return _wcs; }
+    static Definition load(std::string const & file) {
+        Definition definition;
+        std::ifstream ifs(file.c_str());
+        boost::archive::text_iarchive ar(ifs);
+        ar & definition;
+        return definition;
+    }
+    
+    void save(std::string const & file){
+        std::ofstream ofs(file.c_str());
+        boost::archive::text_oarchive ar(ofs);
+
+        ar& *this;
+    };
 
 private:
     Wcs::Ptr _wcs;
+
+    friend class boost::serialization::access;
+    template <typename Archive>
+    void serialize(Archive & ar, unsigned int const version) {
+        ar & boost::serialization::make_nvp("frames", frames);
+        ar & boost::serialization::make_nvp("objects", objects);
+        ar & boost::serialization::make_nvp("wcs", _wcs);
+    }
 };
 
 } // namespace definition

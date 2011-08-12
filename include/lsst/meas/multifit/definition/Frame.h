@@ -26,6 +26,14 @@
 
 #include "lsst/ndarray.h"
 #include "lsst/meas/multifit/constants.h"
+#include "boost/serialization/nvp.hpp"
+#include "boost/serialization/shared_ptr.hpp"
+#include "boost/serialization/binary_object.hpp"
+
+namespace boost {
+namespace serialization {
+    class access;
+}}
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -69,7 +77,7 @@ protected:
     ) : id(id_), _footprint(footprint), _data(data), _weights(weights) {}
 
     FrameBase(FrameBase const & other, bool deep=false);
-
+    FrameBase(ID id_) : id(id_) {};
     FilterId _filterId;
     Wcs::Ptr _wcs;
     Psf::Ptr _psf;
@@ -175,9 +183,13 @@ public:
 
 private:
     friend class grid::Initializer;
-
+    friend class boost::serialization::access;
+    template <typename Archive>
+    void serialize(Archive & ar, unsigned int const version) {}
     explicit Frame(detail::FrameBase const & other) : detail::FrameBase(other, false) {}
 };
+
+
 
 #ifndef SWIG
 std::ostream & operator<<(std::ostream & os, Frame const & frame);
@@ -185,4 +197,55 @@ std::ostream & operator<<(std::ostream & os, Frame const & frame);
 
 }}}} // namespace lsst::meas::multifit::definition
 
+namespace boost { namespace serialization {    
+template <class Archive>
+inline void save_construct_data(
+    Archive & ar, 
+    const lsst::meas::multifit::definition::Frame * frame, 
+    unsigned int const version
+) {
+    ar << make_nvp("id", frame->id);
+    ar << make_nvp("filterId", frame->getFilterId());
+    ar << make_nvp("wcs", frame->getWcs());
+    ar << make_nvp("psf", frame->getPsf());
+    lsst::meas::multifit::Footprint::ConstPtr fp = frame->getFootprint();
+    ar << make_nvp("footprint", fp);
+
+    int size = fp->getArea();
+    ar << make_nvp("data", make_array(frame->getData().getData(), size));
+    ar << make_nvp("weights", make_array(frame->getWeights().getData(), size));
+}
+
+template <class Archive>
+inline void load_construct_data(    
+    Archive & ar, 
+    lsst::meas::multifit::definition::Frame * frame, 
+    unsigned int const version
+) {
+    lsst::meas::multifit::ID id;
+    lsst::meas::multifit::FilterId filterId;
+    lsst::meas::multifit::Psf::Ptr psf;
+    lsst::meas::multifit::Wcs::Ptr wcs;
+    lsst::meas::multifit::Footprint::Ptr fp;
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel, 1, 1> data, weights;
+
+    ar >> make_nvp("id", id);
+    ar >> make_nvp("filterId", filterId);
+    ar >> make_nvp("wcs", wcs);
+    ar >> make_nvp("psf", psf);
+    ar >> make_nvp("footprint", fp);
+
+    int size = fp->getArea();
+    data = lsst::ndarray::allocate(size);
+    weights = lsst::ndarray::allocate(size);
+    ar >> make_nvp("data", make_array(data.getData(), size));
+    ar >> make_nvp("weights", make_array(weights.getData(), size));
+
+
+    ::new(frame) lsst::meas::multifit::definition::Frame(
+        id, filterId, wcs, psf, fp, data, weights
+    );
+}
+
+}} //namespace boost::serialization
 #endif // !LSST_MEAS_MULTIFIT_DEFINITION_Frame

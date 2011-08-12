@@ -28,6 +28,23 @@
 #include "lsst/ndarray/eigen.h"
 #include <vector>
 #include <string>
+#include <boost/serialization.export.hpp>
+
+namespace lsst { namespace meas { namespace multifit {
+    class CompoundShapeletModelBasis;
+}}}
+
+namespace boost { namespace serialization {
+    template <class Archive>
+    void load_construct_data(
+        Archive &, lsst::meas::multifit::CompoundShapeletModelBasis *, unsigned int const
+    );
+    
+    template <class Archive>
+    void save_construct_data(
+        Archive &, const lsst::meas::multifit::CompoundShapeletModelBasis *, unsigned int const
+    );
+}}
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -90,15 +107,34 @@ protected:
     ) const;
 
 private:
-
     friend class CompoundShapeletBuilder;
+    friend class boost::serialization::access;
+
+#ifndef SWIG
+    template <class Archive>
+    friend void boost::serialization::load_construct_data(
+        Archive & ar, CompoundShapeletModelBasis * basis, unsigned const int version
+    );
+    template <class Archive>
+    friend void boost::serialization::save_construct_data(
+        Archive & ar, const CompoundShapeletModelBasis * basis, unsigned const int version
+    );
+
+    template <typename Archive>
+    void serialize(Archive & ar, unsigned int const version) {
+        boost::serialization::base_object<ModelBasis>(*this); 
+    }; 
+#endif
+
+    explicit CompoundShapeletModelBasis(CompoundShapeletModelBasis const & other) 
+        : ModelBasis(other), _impl(other._impl) {}
 
     explicit CompoundShapeletModelBasis(
         boost::shared_ptr<Impl> const & impl,
-        ndarray::Array<Pixel const,2,2> const & multipoleMatrix,
         ndarray::Array<Pixel const,2,1> const & constraintMatrix,
         ndarray::Array<Pixel const,1,1> const & constraintVector
     );
+
 
     boost::shared_ptr<Impl> _impl;
 };
@@ -201,7 +237,7 @@ public:
     ~CompoundShapeletBuilder();
 
 private:
-
+    
     explicit CompoundShapeletBuilder(boost::shared_ptr<Impl> const & impl) : _impl(impl) {}
 
     boost::shared_ptr<Impl> _impl;
@@ -210,5 +246,95 @@ private:
 };
 
 }}} // namespace lsst::meas::multifit
+
+
+#ifndef SWIG
+BOOST_CLASS_EXPORT_GUID(lsst::meas::multifit::CompoundShapeletModelBasis, "lsst::meas::multifit::CompoundShapeletModelBasis");
+
+namespace boost { namespace serialization {
+
+template <class Archive> 
+inline void save_construct_data(
+    Archive & ar,
+    const lsst::meas::multifit::CompoundShapeletModelBasis * basis,
+    unsigned int const version
+) {
+    lsst::meas::multifit::CompoundShapeletModelBasis::ComponentVector components = 
+        basis->extractComponents();
+    int nElement = components.size();
+    ar << make_nvp("nComponents", nElement);
+    for (int i = 0; i < nElement; ++i){ 
+        int order = components[i]->getOrder();
+        double scale = components[i]->getScale();
+        ar << make_nvp("order", order);
+        ar << make_nvp("scale", scale);
+    }
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel,2,2> mapping = 
+        lsst::ndarray::copy(basis->getMapping());
+    int height = mapping.getSize<0>(), width = mapping.getSize<1>();
+    int size = width*height;
+    ar << make_nvp("height", height);
+    ar << make_nvp("width", width);
+    ar << make_array(mapping.getData(), size);
+    int nConstraint = basis->getConstraintCount();
+    ar << make_nvp("nConstraint", nConstraint);
+    if (nConstraint > 0) {
+        lsst::ndarray::Array<lsst::meas::multifit::Pixel,2,2> cMatrix = 
+            lsst::ndarray::copy(basis->getConstraintMatrix());
+        lsst::ndarray::Array<lsst::meas::multifit::Pixel,1,1> cVector = 
+            lsst::ndarray::copy(basis->getConstraintVector());
+        ar << make_array(cMatrix.getData(), cMatrix.getNumElements());
+        ar << make_array(cVector.getData(), cVector.getNumElements());
+    }
+}
+
+template <class Archive> 
+inline void load_construct_data(
+    Archive & ar,
+    lsst::meas::multifit::CompoundShapeletModelBasis * basis,
+    unsigned int const version
+){
+    int nComponents;
+    ar >> make_nvp("nComponents", nComponents);
+    lsst::meas::multifit::CompoundShapeletModelBasis::ComponentVector components(nComponents);        
+    int order;
+    double scale;
+    for (int i =0; i < nComponents; ++i) {
+        ar >> make_nvp("order", order);
+        ar >> make_nvp("scale", scale);
+        components[i] = lsst::meas::multifit::ShapeletModelBasis::make(order, scale);            
+    }
+    int width, height;
+    ar >> make_nvp("height", height);
+    ar >> make_nvp("width", width);
+    int size = width*height;
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel,2,2> mapping = lsst::ndarray::allocate(height, width);
+    ar >> make_array(mapping.getData(), size);
+
+
+    lsst::meas::multifit::CompoundShapeletBuilder builder(components, mapping);
+
+    int nConstraint;
+    ar >> make_nvp("nConstraint", nConstraint);
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel,2,2> cMatrix;
+    lsst::ndarray::Array<lsst::meas::multifit::Pixel,1,1> cVector;
+    if (nConstraint > 0) {
+        cMatrix = lsst::ndarray::allocate(nConstraint, width);
+        cVector = lsst::ndarray::allocate(nConstraint);
+
+        ar >> make_array(cMatrix.getData(), nConstraint*width);
+        ar >> make_array(cVector.getData(), nConstraint);    
+        builder.setConstraint(cMatrix, cVector);
+    }
+
+    lsst::meas::multifit::CompoundShapeletModelBasis::Ptr basisPtr = builder.build();
+
+    //shallow copy constructor
+    ::new (basis) lsst::meas::multifit::CompoundShapeletModelBasis(*basisPtr);        
+}
+
+}}
+
+#endif //!SWIG
 
 #endif // !LSST_MEAS_MULTIFIT_CompoundShapeletModelBasis

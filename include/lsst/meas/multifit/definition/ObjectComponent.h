@@ -24,10 +24,16 @@
 #ifndef LSST_MEAS_MULTIFIT_DEFINITION_ObjectComponent
 #define LSST_MEAS_MULTIFIT_DEFINITION_ObjectComponent
 
-
+#include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/definition/SharedElement.h"
 #include "lsst/meas/multifit/definition/FluxGroup.h"
 #include "lsst/meas/multifit/ModelBasis.h"
+#include <boost/serialization/nvp.hpp>
+
+namespace boost {
+namespace serialization {
+    class access;
+}}
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -37,10 +43,10 @@ namespace detail {
 class ObjectComponentBase {
 public:
 
-    ID const id;
+    lsst::meas::multifit::ID const id;
 
     /// @brief Return the basis used for extended objects.
-    ModelBasis::Ptr const getBasis() const { return _basis; }
+    lsst::meas::multifit::ModelBasis::Ptr const getBasis() const { return _basis; }
 
     /// @brief Return the ratio of the actual radius of this object to the radius parameter.
     double const getRadiusFactor() const { return _radiusFactor; }
@@ -50,15 +56,15 @@ protected:
     ObjectComponentBase(
         ID const id_, 
         double const radiusFactor,
-        ModelBasis::Ptr const & basis = ModelBasis::Ptr()
+        lsst::meas::multifit::ModelBasis::Ptr const & basis = ModelBasis::Ptr()
     ) : id(id_), _radiusFactor(radiusFactor), _basis(basis) {}
 
     ObjectComponentBase(ObjectComponentBase const & other) : 
         id(other.id), _radiusFactor(other._radiusFactor), _basis(other._basis)
     {}
-
+ 
     double _radiusFactor;
-    ModelBasis::Ptr _basis;
+    lsst::meas::multifit::ModelBasis::Ptr _basis;
 };
 
 } // namespace detail
@@ -86,7 +92,7 @@ namespace definition {
 class ObjectComponent : public detail::ObjectComponentBase {
 public:
 
-    explicit ObjectComponent(ID id_) : detail::ObjectComponentBase(id_, 1.0) {}
+    explicit ObjectComponent(ID id) : detail::ObjectComponentBase(id, 1.0) {}
 
     ObjectComponent(ObjectComponent const & other) :
         detail::ObjectComponentBase(other),
@@ -165,7 +171,16 @@ public:
 private:
 
     friend class grid::Initializer;
-
+    friend class boost::serialization::access;
+    template <typename Archive>
+    void serialize(Archive & ar, unsigned int const version) {
+        ar & boost::serialization::make_nvp("radiusFactor", _radiusFactor);
+        ar & boost::serialization::make_nvp("basis", _basis);
+        ar & boost::serialization::make_nvp("position", _position);
+        ar & boost::serialization::make_nvp("radius", _radius);
+        ar & boost::serialization::make_nvp("ellipticity", _ellipticity);
+        ar & boost::serialization::make_nvp("fluxGroup", _fluxGroup);
+    }
     explicit ObjectComponent(detail::ObjectComponentBase const & other) : 
         detail::ObjectComponentBase(other) {}
 
@@ -184,5 +199,28 @@ std::ostream & operator<<(std::ostream & os, ObjectComponent const & obj);
 #endif
 
 }}}} // namespace lsst::meas::multifit::definition
+
+namespace boost { namespace serialization {    
+template <class Archive>
+inline void save_construct_data(
+    Archive & ar, 
+    const lsst::meas::multifit::definition::ObjectComponent * object, 
+    unsigned int const version
+) {
+    ar << object->id;
+}
+
+template <class Archive>
+inline void load_construct_data(    
+    Archive & ar, 
+    lsst::meas::multifit::definition::ObjectComponent * object, 
+    unsigned int const version
+) {
+    lsst::meas::multifit::ID id;
+    ar >> id;
+    ::new(object) lsst::meas::multifit::definition::ObjectComponent(id);
+}
+
+}} //namespace boost::serialization
 
 #endif // !LSST_MEAS_MULTIFIT_DEFINITION_ObjectComponent
