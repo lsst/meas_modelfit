@@ -34,7 +34,7 @@
 #include "lsst/meas/multifit/qp.h"
 #include "lsst/ndarray/eigen.h"
 
-#include <Eigen/Array>
+#include <Eigen/Core>
 
 namespace nd = lsst::ndarray;
 

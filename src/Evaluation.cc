@@ -1,7 +1,7 @@
 #include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/meas/multifit/qp.h"
 #include "lsst/ndarray/eigen.h"
-#include <Eigen/Array>
+#include <Eigen/Core>
 #include <Eigen/SVD>
 
 namespace lsst { namespace meas { namespace multifit {

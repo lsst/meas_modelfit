@@ -54,7 +54,7 @@ public:
         Element & operator=(Element const & other) {
             if (&other != this) {
                 component = other.component;
-                mapping.setArray(other.mapping.getArray());
+                mapping.reset(other.mapping.shallow());
             }
             return *this;
         }
@@ -149,7 +149,7 @@ CompoundShapeletBase::Element &
 CompoundShapeletBase::Element::operator=(Element const & other) {
     if (&other != this) {
         component = other.component;
-        mapping.setArray(other.mapping.getArray());
+        mapping.reset(other.mapping.shallow());
     }
     return *this;
 }
@@ -427,7 +427,7 @@ void CompoundShapeletBuilder::orthogonalize() {
         ndarray::Array<Pixel,2,2> newConstraintMatrix = ndarray::allocate(_constraintMatrix.getShape());
         newConstraintMatrix.asEigen() = _constraintMatrix.asEigen() * m;
     }
-    _mapping = newMapping.getArray();
+    _mapping = newMapping.shallow();
     _resetElements();
 }
 
