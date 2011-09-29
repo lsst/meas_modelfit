@@ -96,7 +96,7 @@ void testQP(
     while (!success && ++iterations < MAX_ITER) {
         nd::Array<double,2> g = nd::allocate(nx, nx);
         Eigen::MatrixXd j = Eigen::MatrixXd::Random(nd, nx);
-        g.asEigen().part<Eigen::SelfAdjoint>() = j.transpose() * j;
+        g.asEigen() = j.transpose() * j;
 
         nd::Array<double,1> c = makeRandomVector(nx);
 

@@ -88,7 +88,7 @@ public:
     void fillFisherMatrix(ndarray::Array<Pixel,2,2> const & matrix) {
         Eigen::MatrixXd tmp = svd.singularValues().segment(0, n1).asDiagonal() 
             * svd.matrixV().block(0, 0, n, n1).transpose();
-        matrix.asEigen().selfAdjointView<Eigen::Upper>().rankUpdate(tmp.adjoint());
+        matrix.asEigen().selfadjointView<Eigen::Upper>().rankUpdate(tmp.adjoint());
         matrix.asEigen().triangularView<Eigen::StrictlyLower>() =
             matrix.asEigen().triangularView<Eigen::StrictlyUpper>().transpose();
     }
@@ -97,7 +97,7 @@ public:
         Eigen::MatrixXd tmp 
             = svd.singularValues().segment(0, n1).array().inverse().matrix().asDiagonal() 
             * svd.matrixV().block(0, 0, n, n1).transpose();
-        matrix.asEigen().selfAdjointView<Eigen::Upper>().rankUpdate(tmp.adjoint());
+        matrix.asEigen().selfadjointView<Eigen::Upper>().rankUpdate(tmp.adjoint());
         matrix.asEigen().triangularView<Eigen::StrictlyLower>() =
             matrix.asEigen().triangularView<Eigen::StrictlyUpper>().transpose();
     }
@@ -277,9 +277,8 @@ void Evaluation::ensureCoefficientFisherMatrix() const {
         _factorization->fillFisherMatrix(_coefficientFisherMatrix);
     } else {
         ensureModelMatrix();
-        _coefficientFisherMatrix.asEigen().part<Eigen::SelfAdjoint>()
-            = _modelMatrix.asEigen().transpose()
-            * _modelMatrix.asEigen();
+        _coefficientFisherMatrix.asEigen().selfadjointView<Eigen::Upper>().rankUpdate(_modelMatrix.asEigen().transpose());
+	_coefficientFisherMatrix.asEigen().triangularView<Eigen::StrictlyLower>() = _coefficientFisherMatrix.asEigen().triangularView<Eigen::StrictlyUpper>().transpose();
     }
     Bit<COEFFICIENT_FISHER_MATRIX>::set(_products);
 }

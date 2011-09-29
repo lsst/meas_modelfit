@@ -368,7 +368,7 @@ void QPSolver::Impl::subBackward(
     if (isDiagonal) {
         x.array() = y.array() / L.diagonal().array();
     } else {
-        x = L.triangularView<Eigen::Lower>().transpose().solveTriangular(y);
+        x = L.triangularView<Eigen::Lower>().transpose().solve(y);
     }
 }
 

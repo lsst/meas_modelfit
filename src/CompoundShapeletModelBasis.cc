@@ -420,7 +420,7 @@ void CompoundShapeletBuilder::orthogonalize() {
     Eigen::MatrixXd v = computeInnerProductMatrix();
     Eigen::LLT<Eigen::MatrixXd> cholesky(v);
     Eigen::MatrixXd m = Eigen::MatrixXd::Identity(v.rows(), v.cols());
-    cholesky.matrixL().transpose().solveTriangularInPlace(m);
+    cholesky.matrixL().transpose().solveInPlace(m);
     Matrix newMapping(ndarray::allocate(_mapping.getShape()));
     newMapping = _mapping.asEigen() * m;
     if (_constraintMatrix.getSize<0>() > 0) {
