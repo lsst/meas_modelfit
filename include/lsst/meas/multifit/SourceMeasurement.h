@@ -32,7 +32,7 @@
 #include "lsst/meas/multifit/Evaluation.h"
 #include "lsst/meas/multifit/Evaluator.h"
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
-#include <Eigen/Core>
+#include "Eigen/Core"
 
 namespace lsst {
 namespace meas {

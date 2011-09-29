@@ -73,7 +73,7 @@ double checkQP(
         }
     }
     if (bi.size() > 0) {
-        if (!((nd::viewAsEigen(ai) * nd::viewAsEigen(x) - nd::viewAsEigen(bi)).cwise() >= 
+        if (!((nd::viewAsEigen(ai) * nd::viewAsEigen(x) - nd::viewAsEigen(bi)).array() >= 
               -std::numeric_limits<double>::epsilon()).all()) {
             r = std::numeric_limits<double>::infinity();
         }

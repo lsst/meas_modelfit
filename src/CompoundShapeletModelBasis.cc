@@ -23,7 +23,7 @@
 
 #include "lsst/meas/multifit/CompoundShapeletModelBasis.h"
 #include "lsst/meas/multifit/qp.h"
-#include <Eigen/Cholesky>
+#include "Eigen/Cholesky"
 #include <fstream>
 #include "boost/serialization/binary_object.hpp"
 #include "boost/archive/text_iarchive.hpp"
@@ -73,7 +73,7 @@ protected:
         for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
             ndarray::Array<Pixel,1,1> front(ndarray::allocate(i->component->getSize()));
             i->component->integrate(front);
-            ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->mapping;
+            vector.asEigen().transpose() += front.asEigen().transpose() * i->mapping;
         }
     }
 
@@ -87,7 +87,7 @@ protected:
             ndarray::Array<Pixel,2,2> front =
                 ndarray::allocate(footprint->getArea(), i->component->getSize());
             i->component->evaluate(front, footprint, ellipse);
-            ndarray::viewAsEigen(matrix) += ndarray::viewAsEigen(front) * i->mapping;
+            matrix.asEigen() += front.asEigen() * i->mapping;
         }
     }
 
@@ -132,7 +132,7 @@ void CompoundShapeletBase::integrate(lsst::ndarray::Array<Pixel, 1, 1> const & v
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
         ndarray::Array<Pixel,1,1> front(ndarray::allocate(i->component->getSize()));
         i->component->integrate(front);
-        ndarray::viewAsTransposedEigen(vector) += ndarray::viewAsTransposedEigen(front) * i->mapping;
+        vector.asEigen().transpose() += front.asEigen().transpose() * i->mapping;
     }
 }
 
@@ -205,7 +205,7 @@ int CompoundShapeletBase::_computeSize(ComponentVector const & components) {
 
 ndarray::Array<Pixel,2,2> CompoundShapeletBase::_makeIdentity(int size) {
     ndarray::Array<Pixel,2,2> result(ndarray::allocate(size, size));
-    ndarray::viewAsEigen(result).setIdentity();
+    result.asEigen().setIdentity();
     return result;
 }
 
@@ -272,7 +272,7 @@ void CompoundShapeletModelBasis::_evaluate(
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
         ndarray::Array<Pixel,2,2> front(ndarray::allocate(footprint->getArea(), i->component->getSize()));
         i->component->evaluate(front, footprint, ellipse);
-        ndarray::viewAsEigen(matrix) += ndarray::viewAsEigen(front) * i->mapping;
+        matrix.asEigen() += front.asEigen() * i->mapping;
     }
 }
 
@@ -284,7 +284,7 @@ void CompoundShapeletModelBasis::_evaluateRadialProfile(
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
         ndarray::Array<Pixel,2,2> front(ndarray::allocate(radii.getSize<0>(), i->component->getSize()));
         i->component->evaluateRadialProfile(front, radii);
-        ndarray::viewAsEigen(profile) += ndarray::viewAsEigen(front) * i->mapping;
+        profile.asEigen() += front.asEigen() * i->mapping;
     }
 }
 
@@ -422,10 +422,10 @@ void CompoundShapeletBuilder::orthogonalize() {
     Eigen::MatrixXd m = Eigen::MatrixXd::Identity(v.rows(), v.cols());
     cholesky.matrixL().transpose().solveTriangularInPlace(m);
     Matrix newMapping(ndarray::allocate(_mapping.getShape()));
-    newMapping = ndarray::viewAsEigen(_mapping) * m;
+    newMapping = _mapping.asEigen() * m;
     if (_constraintMatrix.getSize<0>() > 0) {
         ndarray::Array<Pixel,2,2> newConstraintMatrix = ndarray::allocate(_constraintMatrix.getShape());
-        ndarray::viewAsEigen(newConstraintMatrix) = ndarray::viewAsEigen(_constraintMatrix) * m;
+        newConstraintMatrix.asEigen() = _constraintMatrix.asEigen() * m;
     }
     _mapping = newMapping.getArray();
     _resetElements();
@@ -578,11 +578,10 @@ CompoundShapeletBuilder CompoundShapeletBuilder::approximate(
         }
     }
     ndarray::Array<Pixel,1,1> rhs(ndarray::allocate(basis->getSize()));
-    ndarray::viewAsEigen(rhs) 
-        = -(ndarray::viewAsTransposedEigen(modelMatrix) * ndarray::viewAsEigen(dataVector)).lazy();
+    rhs.asEigen() = -(modelMatrix.asEigen().transpose() * dataVector.asEigen());
     ndarray::Array<Pixel,2,2> fisherMatrix(ndarray::allocate(basis->getSize(), basis->getSize()));
-    ndarray::viewAsEigen(fisherMatrix)
-        = ndarray::viewAsTransposedEigen(modelMatrix) * ndarray::viewAsEigen(modelMatrix);
+    fisherMatrix.asEigen()
+        = modelMatrix.asEigen().transpose() * modelMatrix.asEigen();
     ndarray::Array<Pixel,1,1> coefficients(ndarray::allocate(basis->getSize()));
 
     double r = QPSolver(fisherMatrix, rhs)
@@ -595,8 +594,8 @@ CompoundShapeletBuilder CompoundShapeletBuilder::approximate(
     }
 
     ndarray::Array<Pixel,2,2> mapping(ndarray::allocate(builder.getMapping().getSize<0>(), 1));
-    ndarray::viewAsEigen(mapping).col(0) = ndarray::viewAsEigen(builder.getMapping())
-        * ndarray::viewAsEigen(coefficients);
+    mapping.asEigen().col(0) = ndarray::viewAsEigen(builder.getMapping())
+        * coefficients.asEigen();
     builder.setMapping(mapping);
 
     builder.dataImage = expandArray(*footprint, dataVector, footprint->getBBox());

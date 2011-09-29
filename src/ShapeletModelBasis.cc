@@ -72,8 +72,8 @@ protected:
         ndarray::Array<afwShapelets::Pixel const,2,2> convolutionMatrix = 
             _convolution->evaluate(frontEllipse);
         _frontBasis->evaluate(frontMatrix, footprint, frontEllipse);
-        ndarray::viewAsEigen(matrix) = 
-            ndarray::viewAsEigen(frontMatrix) * ndarray::viewAsEigen(convolutionMatrix);
+        matrix.asEigen() = 
+            frontMatrix.asEigen() * convolutionMatrix.asEigen();
         matrix.deep() *= frontEllipse.getCore().getArea() / ellipse.getCore().getArea();
     }
 

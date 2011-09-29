@@ -44,7 +44,7 @@ public:
     
     typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::AutoAlign | Eigen::RowMajor> MatrixRM;
 
-    Eigen::SVD<MatrixRM> svd;
+    Eigen::JacobiSVD<MatrixRM> svd;
     int n1;
     int n2;
     int n;
@@ -58,8 +58,7 @@ public:
                 "Not enough data points to fit model."
             );
         }
-        svd.compute(ndarray::viewAsEigen(modelMatrix));
-        svd.sort();
+        svd.compute(modelMatrix.asEigen(), Eigen::ComputeThinU | Eigen::ComputeThinV);
         n = n1 = svd.singularValues().size();
         workspace.resize(n);
         n2 = 0;
@@ -76,26 +75,31 @@ public:
         ndarray::Array<Pixel const,2,2> const & constraintMatrix,
         ndarray::Array<Pixel const,1,1> const & constraintVector
     ) {
-        Eigen::MatrixXd A = ndarray::viewAsEigen(constraintMatrix) * svd.matrixV().block(0, 0, n, n1);
+        Eigen::MatrixXd A = constraintMatrix.asEigen() * svd.matrixV().block(0, 0, n, n1);
         Eigen::MatrixXd G = Eigen::MatrixXd::Zero(n1, n1);
         G.diagonal() = svd.singularValues().segment(0, n1);
         Eigen::VectorXd c = - svd.matrixU().block(0, 0, svd.matrixU().rows(), n1).transpose() 
-            * ndarray::viewAsEigen(data);
+            * data.asEigen();
         Eigen::VectorXd x = Eigen::VectorXd::Zero(n1);
-        QPSolver(G, c).inequality(A, ndarray::viewAsEigen(constraintVector)).solve(x);
-        ndarray::viewAsEigen(coefficients) = svd.matrixV().block(0, 0, n, n1) * x;
+        QPSolver(G, c).inequality(A, constraintVector.asEigen()).solve(x);
+        coefficients.asEigen() = svd.matrixV().block(0, 0, n, n1) * x;
     }
 
     void fillFisherMatrix(ndarray::Array<Pixel,2,2> const & matrix) {
         Eigen::MatrixXd tmp = svd.singularValues().segment(0, n1).asDiagonal() 
             * svd.matrixV().block(0, 0, n, n1).transpose();
-        ndarray::viewAsEigen(matrix).part<Eigen::SelfAdjoint>() = tmp.transpose() * tmp;
+        matrix.asEigen().selfAdjointView<Eigen::Upper>().rankUpdate(tmp.adjoint());
+        matrix.asEigen().triangularView<Eigen::StrictlyLower>() =
+            matrix.asEigen().triangularView<Eigen::StrictlyUpper>().transpose();
     }
 
     void fillCovarianceMatrix(ndarray::Array<Pixel,2,2> const & matrix) {
-        Eigen::MatrixXd tmp = svd.singularValues().segment(0, n1).cwise().inverse().asDiagonal() 
+        Eigen::MatrixXd tmp 
+            = svd.singularValues().segment(0, n1).array().inverse().matrix().asDiagonal() 
             * svd.matrixV().block(0, 0, n, n1).transpose();
-        ndarray::viewAsEigen(matrix).part<Eigen::SelfAdjoint>() = tmp.transpose() * tmp;
+        matrix.asEigen().selfAdjointView<Eigen::Upper>().rankUpdate(tmp.adjoint());
+        matrix.asEigen().triangularView<Eigen::StrictlyLower>() =
+            matrix.asEigen().triangularView<Eigen::StrictlyUpper>().transpose();
     }
 
 };
@@ -130,7 +134,7 @@ Evaluation::Evaluation(
     _parameters(ndarray::allocate(parameters.size())),
     _svThreshold(svThreshold)
 {
-    ndarray::viewAsEigen(_parameters) = parameters;
+    _parameters.asEigen() = parameters;
     initialize();
 }
 
@@ -142,7 +146,7 @@ void Evaluation::update(lsst::ndarray::Array<double const,1,1> const & parameter
 
 void Evaluation::update(Eigen::VectorXd const & parameters) {
     assert(parameters.size() == _parameters.getSize<0>());
-    ndarray::viewAsEigen(_parameters) = parameters;
+    _parameters.asEigen() = parameters;
     _products = 0;
 }
     
@@ -177,7 +181,7 @@ void Evaluation::setCoefficients(Eigen::VectorXd const & coefficients) {
         _coefficients = ndarray::allocate(_evaluator->getCoefficientCount());
     }
     assert(coefficients.size() == _evaluator->getCoefficientCount());
-    ndarray::viewAsEigen(_coefficients) = coefficients;
+    _coefficients.asEigen() = coefficients;
     _products &= ~coefficient_dependencies;
     Bit<COEFFICIENTS>::set(_products);
 }
@@ -229,8 +233,8 @@ void Evaluation::ensureModelVector() const {
     if (_modelVector.getData() == 0) {
         _modelVector = ndarray::allocate(_evaluator->getPixelCount());
     }
-    ndarray::viewAsEigen(_modelVector) 
-        = ndarray::viewAsEigen(_modelMatrix) * ndarray::viewAsEigen(_coefficients);
+    _modelVector.asEigen() 
+        = _modelMatrix.asEigen() * _coefficients.asEigen();
     Bit<MODEL_VECTOR>::set(_products);
 }
 
@@ -240,7 +244,7 @@ void Evaluation::ensureResiduals() const {
     if (_residuals.getData() == 0) {
         _residuals = ndarray::allocate(_evaluator->getPixelCount());
     }
-    ndarray::viewAsEigen(_residuals) = ndarray::viewAsEigen(_modelVector) 
+    _residuals.asEigen() = _modelVector.asEigen() 
         - ndarray::viewAsEigen(_evaluator->getDataVector());
     Bit<RESIDUALS>::set(_products);
 }
@@ -273,9 +277,9 @@ void Evaluation::ensureCoefficientFisherMatrix() const {
         _factorization->fillFisherMatrix(_coefficientFisherMatrix);
     } else {
         ensureModelMatrix();
-        ndarray::viewAsEigen(_coefficientFisherMatrix).part<Eigen::SelfAdjoint>()
-            = ndarray::viewAsTransposedEigen(_modelMatrix)
-            * ndarray::viewAsEigen(_modelMatrix);
+        _coefficientFisherMatrix.asEigen().part<Eigen::SelfAdjoint>()
+            = _modelMatrix.asEigen().transpose()
+            * _modelMatrix.asEigen();
     }
     Bit<COEFFICIENT_FISHER_MATRIX>::set(_products);
 }
@@ -295,7 +299,7 @@ void Evaluation::ensureCoefficientCovarianceMatrix() const {
 void Evaluation::ensureObjectiveValue() const {
     if (Bit<OBJECTIVE_VALUE>::test(_products)) return;
     ensureResiduals();
-    _objectiveValue = 0.5 * ndarray::viewAsEigen(_residuals).squaredNorm();
+    _objectiveValue = 0.5 * _residuals.asEigen().squaredNorm();
     Bit<OBJECTIVE_VALUE>::set(_products);
 }
 
