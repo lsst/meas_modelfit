@@ -342,7 +342,7 @@ void QPSolver::Impl::factorCholesky(Eigen::MatrixXd & matrix, bool isDiagonal) {
         matrix.diagonal().array() = matrix.diagonal().array().sqrt();
     } else {
         Eigen::LLT<Eigen::MatrixXd> cholesky(matrix);
-        if (!cholesky.isPositiveDefinite()) {
+        if (cholesky.info() != Eigen::Success) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::RuntimeErrorException, 
                 "Singular matrix in QP Cholesky decomposition."

@@ -245,7 +245,7 @@ void Evaluation::ensureResiduals() const {
         _residuals = ndarray::allocate(_evaluator->getPixelCount());
     }
     _residuals.asEigen() = _modelVector.asEigen() 
-        - ndarray::viewAsEigen(_evaluator->getDataVector());
+        - _evaluator->getDataVector().asEigen();
     Bit<RESIDUALS>::set(_products);
 }
 
@@ -261,7 +261,7 @@ void Evaluation::ensureResidualsJacobian() const {
     ndarray::EigenView<Pixel,1,1> coefficients(_coefficients);
     ndarray::EigenView<Pixel,2,2> jac(_residualsJacobian);
     for (int n = 0; n < jac.cols(); ++n) {
-        jac.col(n) = ndarray::viewAsEigen(_modelMatrixDerivative[n]) * coefficients;
+        jac.col(n) = _modelMatrixDerivative[n].asEigen() * coefficients;
     }
     Bit<RESIDUALS_JACOBIAN>::set(_products);
 }

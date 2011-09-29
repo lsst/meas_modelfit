@@ -43,14 +43,14 @@ namespace {
 nd::Array<double,2,1> makeRandomMatrix(int rows, int cols) {
     nd::Array<double,2,2> r = nd::allocate(rows, cols);
     if (rows * cols > 0)
-        nd::viewAsEigen(r).setRandom();
+        r.asEigen().setRandom();
     return r;
 }
 
 nd::Array<double,1,1> makeRandomVector(int rows) {
     nd::Array<double,1,1> r = nd::allocate(rows);
     if (rows > 0)
-        nd::viewAsEigen(r).setRandom();
+        r.asEigen().setRandom();
     return r;
 }
 
@@ -64,16 +64,16 @@ double checkQP(
     nd::Array<double,1> const & x
 ) {
     Eigen::IOFormat fmt(16);
-    double r = 0.5 * nd::viewAsEigen(x).dot(
-        nd::viewAsEigen(g) * nd::viewAsEigen(x)
-    ) + nd::viewAsEigen(c).dot(nd::viewAsEigen(x));
+    double r = 0.5 * x.asEigen().dot(
+        g.asEigen() * x.asEigen()
+    ) + c.asEigen().dot(x.asEigen());
     if (be.size() > 0) {
-        if (!nd::viewAsEigen(be).isApprox(nd::viewAsEigen(ae) * nd::viewAsEigen(x))) {
+        if (!be.asEigen().isApprox(ae.asEigen() * x.asEigen())) {
             r = std::numeric_limits<double>::infinity();
         }
     }
     if (bi.size() > 0) {
-        if (!((nd::viewAsEigen(ai) * nd::viewAsEigen(x) - nd::viewAsEigen(bi)).array() >= 
+        if (!((ai.asEigen() * x.asEigen() - bi.asEigen()).array() >= 
               -std::numeric_limits<double>::epsilon()).all()) {
             r = std::numeric_limits<double>::infinity();
         }
@@ -96,7 +96,7 @@ void testQP(
     while (!success && ++iterations < MAX_ITER) {
         nd::Array<double,2> g = nd::allocate(nx, nx);
         Eigen::MatrixXd j = Eigen::MatrixXd::Random(nd, nx);
-        nd::viewAsEigen(g).part<Eigen::SelfAdjoint>() = j.transpose() * j;
+        g.asEigen().part<Eigen::SelfAdjoint>() = j.transpose() * j;
 
         nd::Array<double,1> c = makeRandomVector(nx);
 

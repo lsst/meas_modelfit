@@ -278,13 +278,6 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
 
     if (objective < best) {
         _status &= ~algorithms::Flags::SHAPELET_PHOTOM_GALAXY_FAIL;
-        //double flux = grid::SourceComponent::computeFlux(_integration, evaluation.getCoefficients());
-        //double condition = flux / ndarray::viewAsEigen(evaluation.getCoefficients()).norm();
-        //if (condition < 1E-10) {
-        //    if (!(_status & algorithms::Flags::SHAPELET_PHOTOM_INVERSION_UNSAFE)) return;
-        //} else {
-        //    _status &= ~algorithms::Flags::SHAPELET_PHOTOM_INVERSION_UNSAFE;
-        // }
         _parameters.deep() = parameters;
         _coefficients.deep() = _evaluation->getCoefficients();
         _covariance.deep() = _evaluation->getCoefficientCovarianceMatrix();

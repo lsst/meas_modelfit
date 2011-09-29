@@ -556,9 +556,7 @@ CompoundShapeletBuilder CompoundShapeletBuilder::approximate(
     ) {
         *i = profile(*i / sersicRadius);
     }
-    ndarray::viewAsEigen(
-        iConstraintMatrix[ndarray::view(footprint->getArea(), iConstraintMatrix.getSize<0>())]
-    ).setIdentity();
+    iConstraintMatrix[ndarray::view(footprint->getArea(), iConstraintMatrix.getSize<0>())].asEigen().setIdentity();
     ndarray::Array<Pixel,2,2> modelMatrix(iConstraintMatrix[ndarray::view(0, footprint->getArea())]);
     basis->evaluate(modelMatrix, footprint, ellipse);
     ndarray::Array<Pixel,1,1> iConstraintVector(ndarray::allocate(iConstraintMatrix.getSize<0>()));
@@ -594,7 +592,7 @@ CompoundShapeletBuilder CompoundShapeletBuilder::approximate(
     }
 
     ndarray::Array<Pixel,2,2> mapping(ndarray::allocate(builder.getMapping().getSize<0>(), 1));
-    mapping.asEigen().col(0) = ndarray::viewAsEigen(builder.getMapping())
+    mapping.asEigen().col(0) = builder.getMapping().asEigen()
         * coefficients.asEigen();
     builder.setMapping(mapping);
 
