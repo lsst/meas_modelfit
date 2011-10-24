@@ -62,12 +62,12 @@ protected:
     virtual void _evaluate(
         ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
-        afw::geom::Ellipse const & ellipse
+        afw::geom::ellipses::Ellipse const & ellipse
     ) const {
         ndarray::Array<Pixel,2,2> frontMatrix(
             ndarray::allocate(footprint->getArea(), _frontBasis->getSize())
         );
-        afw::geom::Ellipse frontEllipse(ellipse);
+        afw::geom::ellipses::Ellipse frontEllipse(ellipse);
         frontEllipse.scale(_scale);
         ndarray::Array<afwShapelets::Pixel const,2,2> convolutionMatrix = 
             _convolution->evaluate(frontEllipse);
@@ -109,9 +109,9 @@ void mf::ShapeletModelBasis::_integrate(lsst::ndarray::Array<Pixel, 1, 1> const 
 void mf::ShapeletModelBasis::_evaluate(
     lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
     CONST_PTR(Footprint) const & footprint,
-    lsst::afw::geom::Ellipse const & ellipse
+    lsst::afw::geom::ellipses::Ellipse const & ellipse
 ) const {
-    afw::geom::Ellipse fullEllipse(ellipse);
+    afw::geom::ellipses::Ellipse fullEllipse(ellipse);
     fullEllipse.scale(_scale);
     afwShapelets::detail::HermiteEvaluator shapeletEvaluator(_order);
     afw::geom::AffineTransform transform = fullEllipse.getGridTransform();

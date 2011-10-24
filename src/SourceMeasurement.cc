@@ -163,7 +163,7 @@ CompoundShapeletModelBasis::Ptr SourceMeasurement::loadBasis(std::string const &
     fs::path path(utils::eups::productDir("meas_multifit"));
     path /= fs::path("data");
     path /= name + ".boost";
-    return CompoundShapeletModelBasis::load(path.native_file_string());    
+    return CompoundShapeletModelBasis::load(path.string());    
 }
 
 CompoundShapeletModelBasis::Ptr SourceMeasurement::getExponentialBasis() {
@@ -290,7 +290,7 @@ bool SourceMeasurement::solve(double e1, double e2, double r, double & objective
 }
 
 void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
-    afw::geom::Ellipse psfEllipse = _evaluator->getGrid()->sources.front().getLocalPsf()->computeMoments();
+    afw::geom::ellipses::Ellipse psfEllipse = _evaluator->getGrid()->sources.front().getLocalPsf()->computeMoments();
    
     setTestPoints(initialEllipse.getCore(), psfEllipse);
     double best = std::numeric_limits<double>::infinity();

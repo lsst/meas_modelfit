@@ -80,7 +80,7 @@ protected:
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
-        lsst::afw::geom::Ellipse const & ellipse
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
     ) const {
         matrix.deep() = 0.0;
         for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {
@@ -266,7 +266,7 @@ ModelBasis::Ptr CompoundShapeletModelBasis::convolve(
 void CompoundShapeletModelBasis::_evaluate(
     ndarray::Array<Pixel, 2, 1> const & matrix,
     CONST_PTR(Footprint) const & footprint,
-    afw::geom::Ellipse const & ellipse
+    afw::geom::ellipses::Ellipse const & ellipse
 ) const {
     matrix.deep() = 0.0;
     for (ElementVector::const_iterator i = _elements.begin(); i != _elements.end(); ++i) {

@@ -75,7 +75,7 @@ void Evaluator::_evaluateModelMatrixDerivative(
         ++object
     ) {
         if (object->getBasis()) {
-            lsst::afw::geom::Ellipse ellipse = object->makeEllipse(parameters);
+            lsst::afw::geom::ellipses::Ellipse ellipse = object->makeEllipse(parameters);
             for (
                 Grid::SourceComponentArray::const_iterator source = object->sources.begin();
                 source != object->sources.end();

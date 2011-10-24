@@ -134,7 +134,7 @@ protected:
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
-        lsst::afw::geom::Ellipse const & ellipse
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
     ) const;
 
     virtual void _evaluateRadialProfile(

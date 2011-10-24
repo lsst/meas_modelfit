@@ -3,7 +3,6 @@ import lsst.afw.geom.ellipses
 import lsst.afw.detection
 import lsst.afw.math.shapelets
 import numpy
-from matplotlib import pyplot
 
 import lsst.utils.tests as utilsTests
 import unittest
