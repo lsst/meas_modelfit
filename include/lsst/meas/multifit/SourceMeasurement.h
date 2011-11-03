@@ -107,18 +107,17 @@ public:
     template <typename ExposureT>
     int measure(
         PTR(ExposureT) exp,
-        PTR(lsst::afw::detection::Source) src
+        lsst::afw::detection::Source const& src
     ) {
         CONST_PTR(ExposureT) const_exp(exp);
-        CONST_PTR(lsst::afw::detection::Source) const_src(src);
-        return measure(const_exp, const_src);
+        return measure(const_exp, src);
     }
 
 #ifndef SWIG
     template <typename ExposureT>
     int measure(
         CONST_PTR(ExposureT) exp,
-        CONST_PTR(lsst::afw::detection::Source)
+        lsst::afw::detection::Source const& src
     );
 #endif
 

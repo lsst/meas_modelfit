@@ -352,17 +352,13 @@ void SourceMeasurement::optimize(Ellipse const & initialEllipse) {
 template <typename ExposureT>
 int SourceMeasurement::measure(
     CONST_PTR(ExposureT) exp,
-    CONST_PTR(afw::detection::Source) source
+    afw::detection::Source const& source
 ) {
     pex::logging::Debug log("photometry.multifit", LSST_MAX_DEBUG);
     _status = 0;    
-    if (!source) {
-        _status |= algorithms::Flags::PHOTOM_NO_SOURCE;
-        return _status;
-    }
-    log.debug(1, boost::format("Processing source %lld") % source->getSourceId());
+    log.debug(1, boost::format("Processing source %lld") % source.getSourceId());
 
-    if (!source->getFootprint()) {
+    if (!source.getFootprint()) {
         _status |= algorithms::Flags::PHOTOM_NO_FOOTPRINT;
         return _status;
     }
@@ -372,11 +368,11 @@ int SourceMeasurement::measure(
     }
     ShapeletModelBasis::setPsfShapeletOrder(_options.psfShapeletOrder);
     afw::detection::Footprint::Ptr fp = afw::detection::growFootprint(
-        *source->getFootprint(), _options.nGrowFp
+        *source.getFootprint(), _options.nGrowFp
     );
     boost::scoped_ptr<afw::geom::ellipses::Ellipse> ellipse;
     try{
-        ellipse.reset(new Ellipse(makeEllipse(*source, *fp)));
+        ellipse.reset(new Ellipse(makeEllipse(source, *fp)));
         _ellipse.setCenter(ellipse->getCenter());
     } catch(lsst::pex::exceptions::InvalidParameterException e) {
         _status |= algorithms::Flags::SHAPELET_PHOTOM_BAD_MOMENTS;
@@ -401,12 +397,11 @@ int SourceMeasurement::measure(
 }
 template int SourceMeasurement::measure(
     CONST_PTR(afw::image::Exposure<float>) exp,
-    CONST_PTR(afw::detection::Source) source
+    afw::detection::Source const& source
 );
-
 template int SourceMeasurement::measure(
     CONST_PTR(afw::image::Exposure<double>) exp,
-    CONST_PTR(afw::detection::Source) source
+    afw::detection::Source const& source
 );
 
 
