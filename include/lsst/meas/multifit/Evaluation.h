@@ -26,6 +26,7 @@
 
 #include "lsst/meas/multifit/BaseEvaluator.h"
 #include <boost/shared_ptr.hpp>
+
 namespace lsst { namespace meas { namespace multifit {
 
 /**
@@ -37,11 +38,12 @@ namespace lsst { namespace meas { namespace multifit {
  *  @f[
  *      \min_{\phi,x} q = \frac{1}{2}(A(\phi)x - y)^T (A(\phi)x - y)
  *  @f]
+
  *  where:
  *   - @f$\phi@f$ is the vector of nonlinear parameters (hereafter simply called "parameters")
  *   - @f$x@f$ is the vector of linear parameters ("coefficients")
  *   - @f$y@f$ is the data vector
- *   - @f$A$@f is the model matrix
+ *   - @f$A@f$ is the model matrix
  *   - @f$q@f$ is the objective value to be minimized
  *
  *  Some intermediate and derivative products produced by the Evaluation include:
@@ -168,13 +170,13 @@ public:
         return _residualsJacobian;
     }
 
-    /// @brief The coefficient Fisher matrix $F = A^T A$.
+    /// @brief The coefficient Fisher matrix @f$F = A^T A@f$.
     lsst::ndarray::Array<Pixel const,2,2> getCoefficientFisherMatrix() const {
         ensureCoefficientFisherMatrix();
         return _coefficientFisherMatrix;
     }
 
-    /// @brief The coefficient Covariance matrix $\Sigma = F^+ = (A^T A)^+$.
+    /// @brief The coefficient Covariance matrix @f$\Sigma = F^+ = (A^T A)^+@f$.
     lsst::ndarray::Array<Pixel const,2,2> getCoefficientCovarianceMatrix() const {
         ensureCoefficientCovarianceMatrix();
         return _coefficientCovarianceMatrix;
