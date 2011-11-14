@@ -53,30 +53,20 @@ public:
         COEFFICIENTS
     };
 
-    virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
-    virtual boost::int64_t getFlag() const {return _flag;}
-    static bool doConfigure(lsst::pex::policy::Policy const& policy);
-
-    template <typename ExposureT>
-    static Photometry::Ptr doMeasure(CONST_PTR(ExposureT) im,
-                                     CONST_PTR(afw::detection::Peak),
-                                     CONST_PTR(afw::detection::Source)
-                                    );
-    ShapeletModelPhotometry(boost::int64_t flag);
-    
-    ShapeletModelPhotometry(boost::int64_t flag,
+    ShapeletModelPhotometry(boost::int64_t flag, int nCoeff=0);
+    ShapeletModelPhotometry(boost::int64_t flag, int nCoeff,
         double flux, double fluxErr,
         double e1, double e2, double radius,
         ndarray::Array<double const, 1,1> coefficients
     );
 
-    static SourceMeasurement::Options options;
-    static int nCoeff;
+    virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);
+    virtual boost::int64_t getFlag() const {return get<STATUS, boost::int64_t>(); }
 
 private:
-    boost::int64_t _flag;
+    int _nCoeff;
 
-    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() {init();}
+    ShapeletModelPhotometry() : lsst::afw::detection::Photometry() { init(); }
     LSST_SERIALIZE_PARENT(lsst::afw::detection::Photometry);
 };
 

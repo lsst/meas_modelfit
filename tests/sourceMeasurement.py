@@ -86,12 +86,6 @@ class GaussianPsfTestCase(unittest.TestCase):
         del self.pol
 
     def testBadInput(self):
-        #no Source
-        meas = self.mp.measure(afwDetection.Peak(), None)        
-        photom = meas.find("SHAPELET_MODEL")
-        status = int(photom.get("status"))
-        self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_SOURCE)
-
         #bad sources
         noFp = afwDetection.Source()
         noFp.setXAstrom(self.source.getXAstrom())
@@ -99,14 +93,14 @@ class GaussianPsfTestCase(unittest.TestCase):
         noFp.setIxx(self.source.getIxx())
         noFp.setIyy(self.source.getIyy())
         noFp.setIxy(self.source.getIxy())
-        meas=self.mp.measure(afwDetection.Peak(), noFp)
+        meas=self.mp.measure(noFp, self.exp, afwGeom.Point2D())
         photom = meas.find("SHAPELET_MODEL")
         status = int(photom.get("status"))
         self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_FOOTPRINT)
 
         badMoments = afwDetection.Source(self.source)
         badMoments.setIxx(float('nan'))
-        meas=self.mp.measure(afwDetection.Peak(), badMoments)
+        meas=self.mp.measure(badMoments, self.exp, afwGeom.Point2D() )
         photom = meas.find("SHAPELET_MODEL")
         status = int(photom.get("status"))
         self.assertTrue(status & measAlgorithms.Flags.SHAPELET_PHOTOM_BAD_MOMENTS)
@@ -118,7 +112,7 @@ class GaussianPsfTestCase(unittest.TestCase):
         #self.assertTrue(status & 0x020)
 
         badMoments.setIxx(100000.0)
-        meas=self.mp.measure(afwDetection.Peak(), badMoments)
+        meas=self.mp.measure(badMoments, self.exp, afwGeom.Point2D())
         photom = meas.find("SHAPELET_MODEL")
         status = int(photom.get("status"))
         self.assertTrue(status & measAlgorithms.Flags.SHAPELET_PHOTOM_BAD_MOMENTS)
@@ -127,11 +121,7 @@ class GaussianPsfTestCase(unittest.TestCase):
         badExp = self.exp.Factory(self.exp, True)
         badExp.setPsf(None)
 
-        mp = measAlgorithms.makeMeasurePhotometry(badExp)
-        mp.configure(self.pol)
-        mp.addAlgorithm("SHAPELET_MODEL")
-
-        meas =mp.measure(afwDetection.Peak(), self.source)        
+        meas = self.mp.measure(self.source, badExp, afwGeom.Point2D())        
         photom = meas.find("SHAPELET_MODEL")
         status = int(photom.get("status"))
         self.assertTrue(status & measAlgorithms.Flags.PHOTOM_NO_PSF)
@@ -141,8 +131,7 @@ class GaussianPsfTestCase(unittest.TestCase):
         mask = badExp.getMaskedImage().getMask()
         mask |= afwImage.MaskU.getPlaneBitMask("BAD")
         
-        mp.setImage(badExp)
-        meas =mp.measure(afwDetection.Peak(), self.source)        
+        meas = self.mp.measure(self.source, badExp, afwGeom.Point2D())        
         photom = meas.find("SHAPELET_MODEL")
         status = int(photom.get("status"))
         print status
@@ -153,7 +142,7 @@ class GaussianPsfTestCase(unittest.TestCase):
         #
         # Various algorithms
         #
-        meas = self.mp.measure(afwDetection.Peak(self.xc, self.yc), self.source)
+        meas = self.mp.measure(self.source, self.exp, afwGeom.Point2D(self.xc, self.yc))
         print "SHAPELET_MODEL"
         photom = meas.find("SHAPELET_MODEL")
         print >> sys.stderr, "flux:", photom.get("flux")
@@ -189,7 +178,7 @@ class MultifitDataTestCase(unittest.TestCase):
             mp.configure(self.pol)
 
             for s in sources:
-                mp.measure(afwDetection.Peak(), s)
+                mp.measure(s, exp, afwGeom.Point2D())
 
 
 

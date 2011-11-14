@@ -2,12 +2,12 @@
 #include "lsst/meas/multifit/SourceMeasurement.h"
 #include "lsst/meas/algorithms/Measure.h"
 
+namespace pexPolicy = lsst::pex::policy;
+namespace afwDetection = lsst::afw::detection;
+
 namespace lsst {
 namespace meas {
 namespace multifit {
-
-SourceMeasurement::Options ShapeletModelPhotometry::options;
-int ShapeletModelPhotometry::nCoeff = 0;
 
 void ShapeletModelPhotometry::defineSchema(lsst::afw::detection::Schema::Ptr schema) {
     schema->clear();
@@ -19,13 +19,12 @@ void ShapeletModelPhotometry::defineSchema(lsst::afw::detection::Schema::Ptr sch
     schema->add(afw::detection::SchemaEntry("radius",  RADIUS,   afw::detection::Schema::DOUBLE, 1,
                                             "pixels"));
     schema->add(afw::detection::SchemaEntry("coefficients", COEFFICIENTS, afw::detection::Schema::DOUBLE,
-                                            nCoeff));
+                                            _nCoeff));
 }
 
 ShapeletModelPhotometry::ShapeletModelPhotometry(
-    boost::int64_t const status
-) : lsst::afw::detection::Photometry(),
-    _flag(status)
+    boost::int64_t const status, int nCoeff
+) : lsst::afw::detection::Photometry(), _nCoeff(nCoeff)
 {
     init(); 
     set<STATUS>(status);
@@ -34,19 +33,20 @@ ShapeletModelPhotometry::ShapeletModelPhotometry(
     set<E1>(std::numeric_limits<double>::quiet_NaN());
     set<E2>(std::numeric_limits<double>::quiet_NaN());
     set<RADIUS>(std::numeric_limits<double>::quiet_NaN());
-    for(int i = 0; i < nCoeff; ++i) {
+    for(int i = 0; i < _nCoeff; ++i) {
         set<COEFFICIENTS>(i, std::numeric_limits<double>::quiet_NaN());
     }
 }
 
 
 ShapeletModelPhotometry::ShapeletModelPhotometry(
-    boost::int64_t status,  
+    boost::int64_t status,
+    int nCoeff,
     double flux, double fluxErr, 
     double e1, double e2, double radius,
     ndarray::Array<double const, 1,1> coefficients
 ) : afw::detection::Photometry(),
-    _flag(status)
+    _nCoeff(nCoeff)
 {
     init();
 
@@ -56,30 +56,75 @@ ShapeletModelPhotometry::ShapeletModelPhotometry(
     set<RADIUS>(radius); 
     set<E1>(e1);
     set<E2>(e2);           
-    for(int i = 0; i < nCoeff; ++i) {
+    for(int i = 0; i < _nCoeff; ++i) {
         set<COEFFICIENTS>(i, coefficients[i]);
     }
 }
 
-template <typename ExposureT>
-ShapeletModelPhotometry::Photometry::Ptr ShapeletModelPhotometry::doMeasure(
-    CONST_PTR(ExposureT) exp,
-    CONST_PTR(afw::detection::Peak) peak,
-    CONST_PTR(afw::detection::Source) source
-) {
-    SourceMeasurement measurement(options);
 
-    int status = measurement.measure(exp, source); 
+/**
+ * @brief An algorithm to perform shapelet model photometry
+ */
+template<typename ExposureT>
+class ShapeletModelAlgorithm : public meas::algorithms::Algorithm<afwDetection::Photometry, ExposureT>
+{
+public:
+    typedef meas::algorithms::Algorithm<afwDetection::Photometry, ExposureT> AlgorithmT;
+    
+    /// Ctor
+    ShapeletModelAlgorithm(
+        SourceMeasurement::Options const& options=SourceMeasurement::readPolicy(pex::policy::Policy()),
+        int nCoeff=0
+        ) : AlgorithmT(), _options(options), _nCoeff(SourceMeasurement::computeCoefficientCount(options)) {}
+    
+    virtual std::string getName() const { return "SHAPELET_MODEL"; }
+    
+    virtual PTR(AlgorithmT) clone() const {
+        return boost::make_shared<ShapeletModelAlgorithm<ExposureT> >(_options, _nCoeff);
+    }
+    
+    virtual void configure(pexPolicy::Policy const& policy) {
+        _options = SourceMeasurement::readPolicy(policy);
+        _nCoeff = SourceMeasurement::computeCoefficientCount(_options);
+    }
+    
+    virtual PTR(afwDetection::Photometry) measureNull(void) const {
+        // XXX What is the correct flag value for "I can't measure this"???
+        boost::int64_t const flag = algorithms::Flags::SHAPELET_PHOTOM_BAD;
+        return boost::make_shared<ShapeletModelPhotometry>(flag, _nCoeff);
+    }
+    
+    virtual PTR(afwDetection::Photometry) measureSingle(
+        afwDetection::Source const&,
+        afwDetection::Source const&,
+        meas::algorithms::ExposurePatch<ExposureT> const&
+        ) const;
+private:
+    SourceMeasurement::Options _options;
+    int _nCoeff;
+};
+
+
+template <typename ExposureT>
+PTR(afw::detection::Photometry) ShapeletModelAlgorithm<ExposureT>::measureSingle( 
+    afw::detection::Source const& target,
+    afw::detection::Source const& source,
+    meas::algorithms::ExposurePatch<ExposureT> const& patch
+    ) const
+{
+    SourceMeasurement measurement(_options);
+
+    int status = measurement.measure(patch.getExposure(), source); 
     if (status & algorithms::Flags::SHAPELET_PHOTOM_BAD) {
         return ShapeletModelPhotometry::Ptr(
-            new ShapeletModelPhotometry(status)
+            new ShapeletModelPhotometry(status, _nCoeff)
         );
     }
 
     EllipseCore const & core(measurement.getEllipse().getCore());
     return ShapeletModelPhotometry::Ptr(
         new ShapeletModelPhotometry(
-            status,
+            status, _nCoeff,
             measurement.getFlux(), measurement.getFluxErr(),
             core.getE1(), core.getE2(), static_cast<double>(core.getRadius()),
             measurement.getCoefficients()
@@ -87,31 +132,7 @@ ShapeletModelPhotometry::Photometry::Ptr ShapeletModelPhotometry::doMeasure(
     );
 }
 
-bool ShapeletModelPhotometry::doConfigure(
-    lsst::pex::policy::Policy const & policy
-) {   
-    options = SourceMeasurement::readPolicy(policy);
-    nCoeff = SourceMeasurement::computeCoefficientCount(options);
-    return true;
-}
-
-
-
-/*
- * Declare the existence of a "SHAPELET_MODEL" algorithm to MeasurePhotometry
- *
- * @cond
- */
-#define INSTANTIATE(NAME, TYPE) \
-    lsst::meas::algorithms::MeasurePhotometry<lsst::afw::image::Exposure<TYPE> >::declare(NAME, \
-        &ShapeletModelPhotometry::doMeasure<lsst::afw::image::Exposure<TYPE> >, \
-        &ShapeletModelPhotometry::doConfigure               \
-    )
-
-volatile bool isInstance[] = {
-    INSTANTIATE("SHAPELET_MODEL", float),
-    INSTANTIATE("SHAPELET_MODEL", double),
-};
+LSST_DECLARE_ALGORITHM(ShapeletModelAlgorithm, afwDetection::Photometry);
 
 // \endcond
 
