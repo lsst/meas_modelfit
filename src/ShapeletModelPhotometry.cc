@@ -2,6 +2,9 @@
 #include "lsst/meas/multifit/SourceMeasurement.h"
 #include "lsst/meas/algorithms/Measure.h"
 
+namespace pexPolicy = lsst::pex::policy;
+namespace afwDetection = lsst::afw::detection;
+
 namespace lsst {
 namespace meas {
 namespace multifit {
@@ -63,10 +66,10 @@ ShapeletModelPhotometry::ShapeletModelPhotometry(
  * @brief An algorithm to perform shapelet model photometry
  */
 template<typename ExposureT>
-class ShapeletModelAlgorithm : public meas::algorithms::Algorithm<afwDet::Photometry, ExposureT>
+class ShapeletModelAlgorithm : public meas::algorithms::Algorithm<afwDetection::Photometry, ExposureT>
 {
 public:
-    typedef meas::algorithms::Algorithm<afwDet::Photometry, ExposureT> AlgorithmT;
+    typedef meas::algorithms::Algorithm<afwDetection::Photometry, ExposureT> AlgorithmT;
     
     /// Ctor
     ShapeletModelAlgorithm(
@@ -85,14 +88,17 @@ public:
         _nCoeff = SourceMeasurement::computeCoefficientCount(_options);
     }
     
-    virtual PTR(afwDet::Photometry) measureNull(void) const {
+    virtual PTR(afwDetection::Photometry) measureNull(void) const {
         // XXX What is the correct flag value for "I can't measure this"???
         boost::int64_t const flag = algorithms::Flags::SHAPELET_PHOTOM_BAD;
         return boost::make_shared<ShapeletModelPhotometry>(flag, _nCoeff);
     }
     
-    virtual PTR(afwDet::Photometry) measureSingle(afwDet::Source const&, afwDet::Source const&,
-                                                  meas::algorithms::ExposurePatch<ExposureT> const&) const;
+    virtual PTR(afwDetection::Photometry) measureSingle(
+        afwDetection::Source const&,
+        afwDetection::Source const&,
+        meas::algorithms::ExposurePatch<ExposureT> const&
+        ) const;
 private:
     SourceMeasurement::Options _options;
     int _nCoeff;
@@ -126,7 +132,7 @@ PTR(afw::detection::Photometry) ShapeletModelAlgorithm<ExposureT>::measureSingle
     );
 }
 
-LSST_DECLARE_ALGORITHM(ShapeletModelAlgorithm, afwDet::Photometry);
+LSST_DECLARE_ALGORITHM(ShapeletModelAlgorithm, afwDetection::Photometry);
 
 // \endcond
 
