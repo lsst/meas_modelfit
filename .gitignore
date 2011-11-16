@@ -1,0 +1,88 @@
+
+# /
+/testRobustCache
+/.sconf_temp
+/sersicModelTest_var.fits
+/sersicModelTest_msk.fits
+/sersicModelTest_img.fits
+/psProjection_msk.fits
+/psProjection_img.fits
+/exponentialModelTest_var.fits
+/exponentialModelTest_msk.fits
+/exponentialModelTest_img.fits
+/ellipseGridTest.fits
+/config.log
+/.sconsign.dblite
+/.os
+
+# /doc/
+/doc/htmlDir
+/doc/.os
+
+# /examples/
+/examples/eigenSVD.py
+/examples/eigenSVD_wrap.cc
+/examples/.os
+
+# /include/
+/include/.os
+
+# /include/lsst/
+/include/lsst/.os
+
+# /include/lsst/meas/
+/include/lsst/meas/.os
+
+# /include/lsst/meas/multifit/
+/include/lsst/meas/multifit/.os
+
+# /lib/
+/lib/libmeas_multifit.so
+/lib/.os
+
+# /python/
+/python/.os
+
+# /python/lsst/
+/python/lsst/.os
+
+# /python/lsst/meas/
+/python/lsst/meas/.os
+
+# /python/lsst/meas/multifit/
+/python/lsst/meas/multifit/multifitLib_wrap.cc
+/python/lsst/meas/multifit/multifitLib.py
+/python/lsst/meas/multifit/*.os
+
+# /src/
+/src/*.os
+
+# /tests/
+/tests/qp
+/tests/evaluation
+/tests/evaluator
+/tests/compound_shapelet.boost
+/tests/LevMarFitter
+/tests/PointSourceModel
+/tests/RobustSersicCache
+/tests/MinuitFitter
+/tests/ExponentialModel
+/tests/WindowedFootprint
+/tests/SingleLinearParameterFitter
+/tests/ndarray-fft
+/tests/ndarray-eigen
+/tests/ndarray
+/tests/SersicModel
+/tests/SersicCache
+/tests/ModelProjection
+/tests/ModelEvaluator
+/tests/Model
+/tests/Matrices
+/tests/FootprintUtils
+/tests/FixedAstrometry
+/tests/EllipseGridTransform
+/tests/.tests
+/tests/.os
+
+# /ups/
+/ups/.os
