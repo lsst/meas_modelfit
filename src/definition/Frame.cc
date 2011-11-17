@@ -60,12 +60,23 @@ Frame Frame::make(
     lsst::afw::detection::flattenArray(
         *maskedFp, mi.getVariance()->getArray(), variance, mi.getXY0()
     );
+#if 0
     lsst::ndarray::EigenView<Pixel,1,1,Eigen::ArrayXpr> weights(
         lsst::ndarray::allocate(
             lsst::ndarray::makeVector(maskedFp->getArea())
         )
     );
     weights = variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
+#else  // workaround a problem in/found-by clang; the direct assignment fails, so we use the augmented version
+    lsst::ndarray::EigenView<Pixel,1,1,Eigen::MatrixXpr> weights(
+        lsst::ndarray::allocate(
+            lsst::ndarray::makeVector(maskedFp->getArea())
+        )
+    );
+
+    weights.setZero();
+    weights += variance.asEigen<Eigen::MatrixXpr>().array().sqrt().inverse().matrix();
+#endif
 
     Frame frame(
         id, 

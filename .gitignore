@@ -33,6 +33,7 @@ python/lsst/meas/multifit/multifitLib.py
 python/lsst/meas/multifit/*.pyc
 python/lsst/meas/multifit/*.os
 python/lsst/meas/multifit/_multifitLib.so
+python/lsst/meas/multifit/version.py
 src/*.os
 src/definition/*.os
 src/grid/*.os
