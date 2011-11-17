@@ -91,7 +91,7 @@ public:
 
     size_type size() const { return self().end() - self().begin(); }
     
-    bool empty() const { return self.end() == self.begin(); }
+    bool empty() const { return self().end() == self().begin(); }
 
 };
 
