@@ -47,3 +47,9 @@ tests/ndarray-eigen
 tests/ndarray-fft
 tests/qp
 ups/*.cfgc
+doc/doxygen.conf
+doc/html/
+doc/meas_multifit.tag
+examples/_eigenSVD.so
+examples/eigenSVD_wrap.os
+python/lsst/meas/multifit/version.py
