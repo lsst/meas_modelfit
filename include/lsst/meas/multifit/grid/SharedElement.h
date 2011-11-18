@@ -29,7 +29,7 @@
 #include <boost/iterator/indirect_iterator.hpp>
 #include <vector>
 #include <set>
-#include <Eigen/Core>
+#include "Eigen/Core"
 
 namespace lsst { namespace meas { namespace multifit { namespace grid {
 

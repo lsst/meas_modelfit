@@ -53,7 +53,7 @@ public:
     void evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
-        lsst::afw::geom::Ellipse const & ellipse
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
     ) const;
 
     /// @brief Evaluate the integral of each basis function (with unit circle parameters).
@@ -100,7 +100,7 @@ protected:
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
-        lsst::afw::geom::Ellipse const & ellipse
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
     ) const = 0;
 
     virtual void _evaluateRadialProfile(

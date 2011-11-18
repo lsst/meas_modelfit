@@ -62,16 +62,14 @@ double SourceComponent::computeFlux(
     lsst::ndarray::Array<Pixel const,1,1> const & integration,
     lsst::ndarray::Array<Pixel const,1,1> const & coefficients
 ) {
-    return ndarray::viewAsEigen(integration).dot(ndarray::viewAsEigen(coefficients));
+    return integration.asEigen().dot(coefficients.asEigen());
 }
 
 double SourceComponent::computeFluxVariance(
     lsst::ndarray::Array<Pixel const,1,1> const & integration,
     lsst::ndarray::Array<Pixel const,2,1> const & covariance
 ) {
-    return ndarray::viewAsEigen(integration).dot(
-        ndarray::viewAsEigen(covariance) * ndarray::viewAsEigen(integration)
-    );
+    return integration.asEigen().dot(covariance.asEigen() * integration.asEigen());
 }
 
 double SourceComponent::computeFlux(
@@ -80,10 +78,11 @@ double SourceComponent::computeFlux(
     if (object.getBasis()) {
         ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
         object.getBasis()->integrate(integration);
-        return ndarray::viewAsEigen(
+        return integration.asEigen().dot(
             coefficients[
                 ndarray::view(getCoefficientOffset(), getCoefficientOffset() + getCoefficientCount())
-            ]).dot(ndarray::viewAsEigen(integration));
+            ].asEigen()
+        );
     }
     return coefficients[getCoefficientOffset()];
 }
@@ -92,7 +91,7 @@ double SourceComponent::computeFluxVariance(
     lsst::ndarray::Array<Pixel const,2,1> const & covariance
 ) const {
     if (object.getBasis()) {
-        Eigen::MatrixXd sigma = ndarray::viewAsEigen(covariance).block(
+        Eigen::MatrixXd sigma = covariance.asEigen().block(
             getCoefficientOffset(),
             getCoefficientOffset(),
             getCoefficientCount(),
@@ -100,7 +99,7 @@ double SourceComponent::computeFluxVariance(
         );
         ndarray::Array<Pixel,1,1> integration(ndarray::allocate(object.getBasis()->getSize()));
         object.getBasis()->integrate(integration);
-        return ndarray::viewAsEigen(integration).dot(sigma * ndarray::viewAsEigen(integration));
+        return integration.asEigen().dot(sigma * integration.asEigen());
     }
     return covariance[getCoefficientOffset()][getCoefficientOffset()];
 }

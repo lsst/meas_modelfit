@@ -2,7 +2,7 @@
 #include "lsst/afw/detection/FootprintArray.cc"
 #include "lsst/ndarray/eigen.h"
 #include <limits>
-#include <Eigen/Array>
+#include "Eigen/Core"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -60,12 +60,23 @@ Frame Frame::make(
     lsst::afw::detection::flattenArray(
         *maskedFp, mi.getVariance()->getArray(), variance, mi.getXY0()
     );
-    lsst::ndarray::EigenView<Pixel, 1, 1> weights(
+#if 0
+    lsst::ndarray::EigenView<Pixel,1,1,Eigen::ArrayXpr> weights(
         lsst::ndarray::allocate(
             lsst::ndarray::makeVector(maskedFp->getArea())
         )
     );
-    weights = lsst::ndarray::viewAsEigen(variance).cwise().sqrt().cwise().inverse();
+    weights = variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
+#else  // workaround a problem in/found-by clang; the direct assignment fails, so we use the augmented version
+    lsst::ndarray::EigenView<Pixel,1,1,Eigen::MatrixXpr> weights(
+        lsst::ndarray::allocate(
+            lsst::ndarray::makeVector(maskedFp->getArea())
+        )
+    );
+
+    weights.setZero();
+    weights += variance.asEigen<Eigen::MatrixXpr>().array().sqrt().inverse().matrix();
+#endif
 
     Frame frame(
         id, 
@@ -74,7 +85,7 @@ Frame Frame::make(
         exposure.getPsf()->clone(),
         maskedFp,
         data, 
-        weights.getArray()
+        weights.shallow()
     );
 
     return frame;

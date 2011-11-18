@@ -59,12 +59,11 @@
         lsst::ndarray::Array<double,1,1> const & s, 
         lsst::ndarray::Array<double,2,2> const & v
     ) {
-        Eigen::SVD<Eigen::MatrixXd> svd;
-        svd.compute(lsst::ndarray::viewAsEigen(m));
-        svd.sort();
-        lsst::ndarray::viewAsEigen(u) = svd.matrixU();
-        lsst::ndarray::viewAsEigen(s) = svd.singularValues();
-        lsst::ndarray::viewAsEigen(v) = svd.matrixV();
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd;
+        svd.compute(m.asEigen(), Eigen::ComputeThinU | Eigen::ComputeThinV);
+        u.asEigen() = svd.matrixU();
+        s.asEigen() = svd.singularValues();
+        v.asEigen() = svd.matrixV();
     }
     void _reconstruct(
         lsst::ndarray::Array<double,2,2> const & m, 
@@ -72,9 +71,8 @@
         lsst::ndarray::Array<double,1,1> const & s, 
         lsst::ndarray::Array<double,2,2> const & v
     ) {
-        lsst::ndarray::viewAsEigen(m) = lsst::ndarray::viewAsEigen(u)
-            * lsst::ndarray::viewAsEigen(s).asDiagonal()
-            * lsst::ndarray::viewAsEigen(v).transpose();
+        m.asEigen() = u.asEigen() * s.asEigen().asDiagonal()
+	    * v.asEigen().transpose();
     }
 %}
     

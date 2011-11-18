@@ -29,6 +29,10 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+namespace {
+    typedef lsst::ndarray::Array<Pixel,1,1> ArrayP11;
+}            
+
 namespace detail {
 
 /// @brief Utility (nonpolymorphic) base class for definition::Frame and grid::Frame.
@@ -65,7 +69,7 @@ protected:
         ID id_,
         Footprint::Ptr const & footprint,
         lsst::ndarray::Array<Pixel,1,1> const & data,
-        lsst::ndarray::Array<Pixel,1,1> const & weights = lsst::ndarray::Array<Pixel,1,1>()
+        lsst::ndarray::Array<Pixel,1,1> const & weights = ArrayP11()
     ) : id(id_), _footprint(footprint), _data(data), _weights(weights) {}
 
     FrameBase(FrameBase const & other, bool deep=false);
@@ -98,7 +102,7 @@ public:
         ID id_, 
         Footprint::Ptr const & footprint,
         lsst::ndarray::Array<Pixel,1,1> const & data,
-        lsst::ndarray::Array<Pixel,1,1> const & weights = lsst::ndarray::Array<Pixel,1,1>()
+        lsst::ndarray::Array<Pixel,1,1> const & weights = ArrayP11()
     ) : detail::FrameBase(id_, footprint, data, weights) {}
 
     Frame(
@@ -108,7 +112,7 @@ public:
         Psf::Ptr const & psf,
         Footprint::Ptr const & footprint,
         lsst::ndarray::Array<Pixel,1,1> const & data,
-        lsst::ndarray::Array<Pixel,1,1> const & weights = lsst::ndarray::Array<Pixel,1,1>()
+        lsst::ndarray::Array<Pixel,1,1> const & weights = ArrayP11()
     ) : detail::FrameBase(id_, footprint, data, weights) {
         _filterId = filterId; _wcs = wcs; _psf = psf;
     }

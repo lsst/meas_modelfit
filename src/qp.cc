@@ -339,10 +339,10 @@ double QPSolver::Impl::solve() {
 
 void QPSolver::Impl::factorCholesky(Eigen::MatrixXd & matrix, bool isDiagonal) {
     if (isDiagonal) {
-        matrix.diagonal() = matrix.diagonal().cwise().sqrt();
+        matrix.diagonal().array() = matrix.diagonal().array().sqrt();
     } else {
         Eigen::LLT<Eigen::MatrixXd> cholesky(matrix);
-        if (!cholesky.isPositiveDefinite()) {
+        if (cholesky.info() != Eigen::Success) {
             throw LSST_EXCEPT(
                 lsst::pex::exceptions::RuntimeErrorException, 
                 "Singular matrix in QP Cholesky decomposition."
@@ -356,9 +356,9 @@ void QPSolver::Impl::subForward(
     Eigen::MatrixXd const & L, Eigen::VectorXd & y, Eigen::VectorXd const & b, bool isDiagonal
 ) {
     if (isDiagonal) {
-        y = b.cwise() / L.diagonal();
+        y.array() = b.array() / L.diagonal().array();
     } else {
-        y = L.part<Eigen::LowerTriangular>().solveTriangular(b);
+        y = L.triangularView<Eigen::Lower>().solve(b);
     }
 }
 
@@ -366,9 +366,9 @@ void QPSolver::Impl::subBackward(
     Eigen::MatrixXd const & L, Eigen::VectorXd & x, Eigen::VectorXd const & y, bool isDiagonal
 ) {
     if (isDiagonal) {
-        x = y.cwise() / L.diagonal();
+        x.array() = y.array() / L.diagonal().array();
     } else {
-        x = L.part<Eigen::LowerTriangular>().transpose().solveTriangular(y);
+        x = L.triangularView<Eigen::Lower>().transpose().solve(y);
     }
 }
 
@@ -376,19 +376,19 @@ void QPSolver::Impl::solveCholesky(
     Eigen::MatrixXd const & L, Eigen::VectorXd & x, Eigen::VectorXd const & b, bool isDiagonal
 ) {
     if (isDiagonal) {
-        x = b.cwise() / L.diagonal().cwise().square();
+        x.array() = b.array() / L.diagonal().array().square();
     } else {
-        x = L.part<Eigen::LowerTriangular>().solveTriangular(b);
-        L.part<Eigen::LowerTriangular>().transpose().solveTriangularInPlace(x);
+        x = L.triangularView<Eigen::Lower>().solve(b);
+        L.triangularView<Eigen::Lower>().transpose().solveInPlace(x);
     }
 }
 
 void QPSolver::Impl::initializeJ(Eigen::MatrixXd const & L, Eigen::MatrixXd & J, bool isDiagonal) {
     J.setIdentity();
     if (isDiagonal) {
-        J.diagonal() = L.diagonal().cwise().inverse();
+        J.diagonal().array() = L.diagonal().array().inverse();
     } else {
-        L.part<Eigen::LowerTriangular>().transpose().solveTriangularInPlace(J);
+        L.triangularView<Eigen::Lower>().transpose().solveInPlace(J);
     }
 }
 
@@ -541,8 +541,8 @@ QPSolver::QPSolver(
         g.getSize<1>(), n, 
         "Number of QP matrix columns (%d) does not match vector size (%d)."
     );
-    _data->g = ndarray::viewAsEigen(g);
-    _data->c = ndarray::viewAsEigen(c);
+    _data->g = g.asEigen();
+    _data->c = c.asEigen();
     _data->isDiagonal = false;
     _data->maxIterations = 100;
 }
@@ -557,8 +557,8 @@ QPSolver::QPSolver(
         g.getSize<0>(), n, 
         "Size of QP matrix diagonal (%d) does not match vector size (%d)."
     );
-    _data->g = ndarray::viewAsEigen(g).asDiagonal();
-    _data->c = ndarray::viewAsEigen(c);
+    _data->g = g.asEigen().asDiagonal();
+    _data->c = c.asEigen();
     _data->isDiagonal = true;
     _data->maxIterations = 100;
 }
@@ -616,8 +616,8 @@ QPSolver & QPSolver::equality(
         a.getSize<1>(), _data->c.size(),
         "Number of columns of constraint matrix (%d) does not match size of problem (%d)."
     );
-    _data->ae = ndarray::viewAsTransposedEigen(a);
-    _data->be = ndarray::viewAsEigen(b); 
+    _data->ae = a.asEigen().transpose();
+    _data->be = b.asEigen(); 
     _data->be *= -1.0;
     return *this;
 }
@@ -652,8 +652,8 @@ QPSolver & QPSolver::inequality(
         a.getSize<1>(), _data->c.size(),
         "Number of columns of constraint matrix (%d) does not match size of problem (%d)."
     );
-    _data->ai = ndarray::viewAsTransposedEigen(a);
-    _data->bi = ndarray::viewAsEigen(b); 
+    _data->ai = a.asEigen().transpose();
+    _data->bi = b.asEigen(); 
     _data->bi *= -1.0;
     return *this;
 }
@@ -683,7 +683,7 @@ double QPSolver::solve(lsst::ndarray::Array<double,1,0> const & x) const {
         x.getSize<0>(), qp_x.size(),
         "Size of solution vector (%d) is incorrect (%d)."
     );
-    ndarray::viewAsEigen(x) = qp_x;
+    x.asEigen() = qp_x;
     return cost;
 }
 

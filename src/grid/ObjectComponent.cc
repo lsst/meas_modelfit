@@ -75,7 +75,7 @@ lsst::afw::geom::ellipses::Ellipse ObjectComponent::makeEllipse(
 ) const {
     double const * parameterIter = parameters.getData();
     requireEllipse();
-    lsst::afw::geom::Ellipse result(
+    lsst::afw::geom::ellipses::Ellipse result(
         EllipseCore(
             getEllipticity()->getValue(),
             getRadius()->getValue()

@@ -75,7 +75,7 @@ protected:
     virtual void _evaluate(
         lsst::ndarray::Array<Pixel, 2, 1> const & matrix,
         CONST_PTR(Footprint) const & footprint,
-        lsst::afw::geom::Ellipse const & ellipse
+        lsst::afw::geom::ellipses::Ellipse const & ellipse
     ) const;
 
     virtual void _integrate(lsst::ndarray::Array<Pixel, 1, 1> const & vector) const;
