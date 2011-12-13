@@ -110,8 +110,8 @@ public:
      *  parameter vector.
      */
     virtual void evaluateModelMatrixDerivative(
-        ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
-        ndarray::Array<Pixel const,1,1> const & parameters
+        lsst::ndarray::Array<Pixel,3,3> const & modelMatrixDerivative,
+        lsst::ndarray::Array<Pixel const,1,1> const & parameters
     ) const;
 
     void writeInitialParameters(lsst::ndarray::Array<Pixel,1,1> const & parameters) const;
