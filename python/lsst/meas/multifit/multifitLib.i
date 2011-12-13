@@ -37,7 +37,11 @@ Basic routines to talk to lsst::meas::multifit classes
 #pragma SWIG nowarn=362                 // operator=  ignored
 #pragma SWIG nowarn=401                 // nothin known about base class X
 %{
+#include "lsst/pex/logging.h"
+#include "lsst/afw/image.h"
 #include "lsst/afw/detection.h"
+#include "lsst/afw/detection/AperturePhotometry.h"
+#include "lsst/afw/cameraGeom.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/BaseEvaluator.h"
 #include "lsst/meas/multifit/Evaluator.h"
@@ -51,22 +55,6 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "numpy/arrayobject.h"
 #include "lsst/ndarray/python.h"
 #include "lsst/ndarray/python/eigen.h"
-%}
-
-%inline %{
-namespace boost {}
-namespace lsst { 
-    namespace afw {
-        namespace image {}
-        namespace detection {}
-        namespace math {}
-        namespace geom {}
-    }
-    namespace meas { namespace multifit {} }
-}
-
-using namespace lsst;
-using namespace lsst::meas::multifit;
 %}
 
 /******************************************************************************/
@@ -141,11 +129,9 @@ def makeSourceMeasurement(**kw):
 
 %include "lsst/meas/multifit/constants.h"
 
-SWIG_SHARED_PTR(ModelBasisPtr, lsst::meas::multifit::ModelBasis);
-SWIG_SHARED_PTR_DERIVED(ShapeletModelBasisPtr, lsst::meas::multifit::ModelBasis,
-        lsst::meas::multifit::ShapeletModelBasis);
-SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::ModelBasis,
-        lsst::meas::multifit::CompoundShapeletModelBasis);
+%shared_ptr(lsst::meas::multifit::ModelBasis);
+%shared_ptr(lsst::meas::multifit::ShapeletModelBasis);
+%shared_ptr(lsst::meas::multifit::CompoundShapeletModelBasis);
 
 %nodefaultctor lsst::meas::multifit::ModelBasis;
 %nodefaultctor lsst::meas::multifit::ShapeletModelBasis;
@@ -171,7 +157,7 @@ SWIG_SHARED_PTR_DERIVED(CompoundShapeletModelBasisPtr, lsst::meas::multifit::Mod
     }
 };
 
-SWIG_SHARED_PTR(ProfileFunctionPtr, lsst::meas::multifit::ProfileFunction);
+%shared_ptr(lsst::meas::multifit::ProfileFunction);
 
 %include "lsst/meas/multifit/ModelBasis.h"
 %include "lsst/meas/multifit/ShapeletModelBasis.h"
@@ -179,19 +165,18 @@ SWIG_SHARED_PTR(ProfileFunctionPtr, lsst::meas::multifit::ProfileFunction);
 
 %template(CompoundShapelet_ComponentVector) std::vector<boost::shared_ptr<lsst::meas::multifit::ShapeletModelBasis> >;
 
-SWIG_SHARED_PTR(BaseEvaluatorPtr, lsst::meas::multifit::BaseEvaluator);
+%include "definition.i"
+%include "grid.i"
+
+%shared_ptr(lsst::meas::multifit::BaseEvaluator);
 
 %include "lsst/meas/multifit/BaseEvaluator.h"
 
-SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator, 
-        lsst::meas::multifit::Evaluator);
+%shared_ptr(lsst::meas::multifit::Evaluator);
 
 %include "lsst/meas/multifit/Evaluator.h"
 
 %include "lsst/meas/multifit/Evaluation.h"
-
-%include "definition.i"
-%include "grid.i"
 
 %{ 
 #include "lsst/meas/multifit/SourceMeasurement.h"
@@ -200,9 +185,13 @@ SWIG_SHARED_PTR_DERIVED(EvaluatorPtr, lsst::meas::multifit::BaseEvaluator,
 
 %include "lsst/meas/multifit/SourceMeasurement.h"
 
+%define %Exposure(PIXTYPE)
+    lsst::afw::image::Exposure<PIXTYPE, lsst::afw::image::MaskPixel, lsst::afw::image::VariancePixel>
+%enddef
+
 %extend lsst::meas::multifit::SourceMeasurement {
-    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<float> >;
-    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< lsst::afw::image::Exposure<double> >;
-    %template(getModelImage) lsst::meas::multifit::SourceMeasurement::getModelImage< lsst::afw::image::Exposure<float> >;
-    %template(getModelImage) lsst::meas::multifit::SourceMeasurement::getModelImage< lsst::afw::image::Exposure<double> >;
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< %Exposure(float) >;
+    %template(measure) lsst::meas::multifit::SourceMeasurement::measure< %Exposure(double) >;
+    %template(getModelImage) lsst::meas::multifit::SourceMeasurement::getModelImage< %Exposure(float) >;
+    %template(getModelImage) lsst::meas::multifit::SourceMeasurement::getModelImage< %Exposure(double) >;
 }

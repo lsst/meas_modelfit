@@ -57,7 +57,7 @@ public:
     ShapeletModelPhotometry(boost::int64_t flag, int nCoeff,
         double flux, double fluxErr,
         double e1, double e2, double radius,
-        ndarray::Array<double const, 1,1> coefficients
+        lsst::ndarray::Array<double const, 1,1> coefficients
     );
 
     virtual void defineSchema(lsst::afw::detection::Schema::Ptr schema);

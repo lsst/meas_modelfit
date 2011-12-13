@@ -12,6 +12,9 @@
 #define LSST_MAX_DEBUG 0
 #include "lsst/pex/logging/Debug.h"
 #include <iostream>
+#include <boost/filesystem.hpp>
+
+namespace fs = boost::filesystem;
 
 namespace lsst { namespace meas { namespace multifit {
 

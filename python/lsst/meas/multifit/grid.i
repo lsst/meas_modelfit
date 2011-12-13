@@ -28,9 +28,9 @@
 #include "lsst/meas/multifit/definition/SharedElement.h"
 %}
 
-SWIG_SHARED_PTR(grid_PositionElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::POSITION>);
-SWIG_SHARED_PTR(grid_RadiusElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::RADIUS>);
-SWIG_SHARED_PTR(grid_EllipticityElementPtr, lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
+%shared_ptr(lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::POSITION>);
+%shared_ptr(lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::RADIUS>);
+%shared_ptr(lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
 
 %define %DeclareGridSharedElement(TITLE, LOWER, UPPER, CONSTRAINT)
 %template(grid_##TITLE##Element)
@@ -62,7 +62,7 @@ lsst::meas::multifit::grid::SharedElement<lsst::meas::multifit::UPPER>;
 
 %immutable lsst::meas::multifit::grid::ObjectComponent::sources;
 
-SWIG_SHARED_PTR_DERIVED(grid_ObjectComponentPtr, lsst::meas::multifit::detail::ObjectComponentBase, lsst::meas::multifit::grid::ObjectComponent);
+%shared_ptr(lsst::meas::multifit::grid::ObjectComponent);
 
 %rename(grid_ObjectComponent) lsst::meas::multifit::grid::ObjectComponent;
 %immutable lsst::meas::multifit::grid::ObjectComponent::sources;
@@ -90,7 +90,7 @@ SWIG_SHARED_PTR_DERIVED(grid_ObjectComponentPtr, lsst::meas::multifit::detail::O
 #include "lsst/meas/multifit/grid/Frame.h"
 %}
 
-SWIG_SHARED_PTR_DERIVED(grid_FramePtr, lsst::meas::multifit::detail::FrameBase, lsst::meas::multifit::grid::Frame);
+%shared_ptr(lsst::meas::multifit::grid::Frame);
 
 %rename(grid_Frame) lsst::meas::multifit::grid::Frame;
 
@@ -120,7 +120,7 @@ SWIG_SHARED_PTR_DERIVED(grid_FramePtr, lsst::meas::multifit::detail::FrameBase, 
 #include "lsst/meas/multifit/grid/SourceComponent.h"
 %}
 
-SWIG_SHARED_PTR(grid_SourceComponentPtr, lsst::meas::multifit::grid::SourceComponent);
+%shared_ptr(lsst::meas::multifit::grid::SourceComponent);
 
 %rename(grid_SourceComponent) lsst::meas::multifit::grid::SourceComponent;
 
@@ -134,7 +134,7 @@ SWIG_SHARED_PTR(grid_SourceComponentPtr, lsst::meas::multifit::grid::SourceCompo
 #include "lsst/meas/multifit/grid/FluxGroup.h"
 %}
 
-SWIG_SHARED_PTR_DERIVED(grid_FluxGroupPtr, lsst::meas::multifit::detail::FluxGroupBase, lsst::meas::multifit::grid::FluxGroup);
+%shared_ptr(lsst::meas::multifit::grid::FluxGroup);
 %rename(grid_FluxGroup) lsst::meas::multifit::grid::FluxGroup;
 %immutable lsst::meas::multifit::grid::FluxGroup::components;
 
@@ -166,6 +166,6 @@ SWIG_SHARED_PTR_DERIVED(grid_FluxGroupPtr, lsst::meas::multifit::detail::FluxGro
 %immutable lsst::meas::multifit::grid::Grid::radii;
 %immutable lsst::meas::multifit::grid::Grid::ellipticities;
 
-SWIG_SHARED_PTR(GridPtr, lsst::meas::multifit::grid::Grid);
+%shared_ptr(lsst::meas::multifit::grid::Grid);
 
 %include "lsst/meas/multifit/grid/Grid.h"

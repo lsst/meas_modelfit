@@ -57,9 +57,9 @@
 #include "lsst/meas/multifit/definition/SharedElement.h"
 %}
 
-SWIG_SHARED_PTR(definition_PositionElementPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::POSITION>);
-SWIG_SHARED_PTR(definition_RadiusElementPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::RADIUS>);
-SWIG_SHARED_PTR(definition_EllipticityElementPtr, lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
+%shared_ptr(lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::POSITION>);
+%shared_ptr(lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::RADIUS>);
+%shared_ptr(lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::ELLIPTICITY>);
 
 %define %DeclareDefinitionSharedElement(TITLE, LOWER, UPPER, CONSTRAINT)
 %template(definition_##TITLE##Element)
@@ -114,8 +114,8 @@ lsst::meas::multifit::definition::SharedElement<lsst::meas::multifit::UPPER>;
 #include "lsst/meas/multifit/definition/ObjectComponent.h"
 %}
 
-SWIG_SHARED_PTR(detail_ObjectComponentBasePtr, lsst::meas::multifit::detail::ObjectComponentBase);
-SWIG_SHARED_PTR_DERIVED(definition_ObjectComponentPtr, lsst::meas::multifit::detail::ObjectComponentBase, lsst::meas::multifit::definition::ObjectComponent);
+%shared_ptr(lsst::meas::multifit::detail::ObjectComponentBase);
+%shared_ptr(lsst::meas::multifit::definition::ObjectComponent);
 
 %rename(definition_ObjectComponent) lsst::meas::multifit::definition::ObjectComponent;
 
@@ -146,8 +146,8 @@ SWIG_SHARED_PTR_DERIVED(definition_ObjectComponentPtr, lsst::meas::multifit::det
 #include "lsst/meas/multifit/definition/Frame.h"
 %}
 
-SWIG_SHARED_PTR(detail_FrameBasePtr, lsst::meas::multifit::detail::FrameBase);
-SWIG_SHARED_PTR_DERIVED(definition_FramePtr, lsst::meas::multifit::detail::FrameBase, lsst::meas::multifit::definition::Frame);
+%shared_ptr(lsst::meas::multifit::detail::FrameBase);
+%shared_ptr(lsst::meas::multifit::definition::Frame);
 
 %rename(definition_Frame) lsst::meas::multifit::definition::Frame;
 
@@ -170,8 +170,8 @@ SWIG_SHARED_PTR_DERIVED(definition_FramePtr, lsst::meas::multifit::detail::Frame
 
 //-------------------------------------- FluxGroup -----------------------------------------
 
-SWIG_SHARED_PTR(detail_FluxGroupBasePtr, lsst::meas::multifit::detail::FluxGroupBase);
-SWIG_SHARED_PTR_DERIVED(definition_FluxGroupPtr, lsst::meas::multifit::detail::FluxGroupBase, lsst::meas::multifit::definition::FluxGroup);
+%shared_ptr(lsst::meas::multifit::detail::FluxGroupBase);
+%shared_ptr(lsst::meas::multifit::definition::FluxGroup);
 %rename(definition_FluxGroup) lsst::meas::multifit::definition::FluxGroup;
 
 %include "lsst/meas/multifit/definition/FluxGroup.h"
