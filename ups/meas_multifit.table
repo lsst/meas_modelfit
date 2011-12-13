@@ -1,8 +1,8 @@
 # For each dependency except python, list it here along with its minimum
 # version number.
 
-setupRequired(afw >= 4.3.2.0)
-setupRequired(meas_algorithms >= 4.3.1.0)
+setupRequired(afw >= 4.7.3.0)
+setupRequired(meas_algorithms >= 4.7.3.0)
 setupOptional(meas_multifitData)
 setupOptional(matplotlib)
 
