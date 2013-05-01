@@ -21,36 +21,4 @@
 #
 from .version import *
 
-import lsst.afw.geom.ellipses
-
-from .multifitLib import (
-    BaseEvaluator,
-    Grid,
-    Definition,
-    Evaluator,
-    Evaluation,
-    SourceMeasurement,
-    ModelBasis,
-    ShapeletModelBasis,
-    ProfileFunction,
-    CompoundShapeletModelBasis,
-    CompoundShapeletBuilder,
-    version,
-    makeSourceMeasurement,
-    )
-from . import multifitLib
-from . import definition
-from . import grid
-
-import os
-import eups
-
-Position = lsst.afw.geom.Point2D
-Ellipticity = lsst.afw.geom.ellipses.ConformalShear
-Radius = lsst.afw.geom.ellipses.TraceRadius
-EllipseCore = lsst.afw.geom.ellipses.Separable[(Ellipticity, Radius)];
-CompoundShapeletBuilder.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
-CompoundShapeletModelBasis.ComponentVector = multifitLib.CompoundShapelet_ComponentVector
-
-del multifitLib
-
+from .multifitLib import *

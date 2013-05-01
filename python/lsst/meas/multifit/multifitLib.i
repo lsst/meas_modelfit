@@ -33,6 +33,7 @@ Basic routines to talk to lsst::meas::multifit classes
 %{
 #include "lsst/afw/geom.h"
 #include "lsst/afw/geom/ellipses.h"
+#include "lsst/afw/geom/ellipses/PyPixelRegion.h"
 #include "lsst/meas/multifit.h"
 #include "ndarray/eigen.h"
 #include "Eigen/Core"
@@ -55,3 +56,19 @@ Basic routines to talk to lsst::meas::multifit classes
 %include "ndarray.i"
 %import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/geom/ellipses/ellipsesLib.i"
+%import "lsst/pex/config.h"
+
+namespace lsst { namespace shapelet {
+class MultiShapeletBasis;
+}}
+
+%shared_ptr(lsst::meas::multifit::Prior);
+%shared_ptr(lsst::meas::multifit::Objective);
+%shared_ptr(lsst::meas::multifit::SingleEpochObjective);
+%shared_ptr(lsst::meas::multifit::BaseSampler);
+
+%include "lsst/meas/multifit/constants.h"
+%include "lsst/meas/multifit/LogGaussian.h"
+%include "lsst/meas/multifit/priors.h"
+%include "lsst/meas/multifit/Objective.h"
+%include "lsst/meas/multifit/BaseSampler.h"
