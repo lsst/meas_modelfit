@@ -66,9 +66,11 @@ class MultiShapeletBasis;
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
+%shared_ptr(lsst::meas::multifit::NaiveGridSampler);
 
 %include "lsst/meas/multifit/constants.h"
 %include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Objective.h"
 %include "lsst/meas/multifit/BaseSampler.h"
+%include "lsst/meas/multifit/NaiveGridSampler.h"

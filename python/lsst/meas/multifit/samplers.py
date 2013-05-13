@@ -23,6 +23,9 @@
 
 import lsst.pex.config
 import lsst.pipe.base
+import lsst.afw.geom.ellipses
+
+from .multifitLib import NaiveGridSampler
 
 class BaseSamplerConfig(lsst.pipe.base.Task.ConfigClass):
     pass
@@ -60,3 +63,38 @@ class BaseSamplerTask(lsst.pipe.base.Task):
           footprint: an afw.detection.Footprint that defines the pixel region to fit
         """
         raise NotImplementedError("reset() not implemented for this sampler")
+
+class NaiveGridSamplerConfig(BaseSamplerConfig):
+    nRadiusSteps = lsst.pex.config.Field(
+        dtype=int,
+        default=20,
+        doc="Number of radius steps in grid"
+    )
+    maxRadiusFactor = lsst.pex.config.Field(
+        dtype=float,
+        default=4.0,
+        doc="Maximum radius in grid, as scaling factor multiplied by adaptive moments major axis ratio"
+    )
+    maxEllipticity = lsst.pex.config.Field(
+        dtype=float,
+        default=0.9,
+        doc="Maximum ellipticity magnitude in grid"
+    )
+    ellipticityStepSize = lsst.pex.config.Field(
+        dtype=float,
+        default=0.5,
+        doc="ellipticity grid step size"
+    )
+
+class NaiveGridSamplerTask(BaseSamplerTask):
+    ConfigClass = NaiveGridSamplerConfig
+
+    def setup(self, exposure, source):
+        axes = lsst.afw.geom.ellipses.Axes(source.getShape())
+        maxRadius = axes.getA() * self.config.maxRadiusFactor
+        return NaiveGridSampler(
+            self.config.nRadiusSteps,
+            self.config.ellipticityStepSize, 
+            maxRadius,
+            self.config.maxEllipticity
+        )

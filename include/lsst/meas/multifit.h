@@ -24,6 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_H
 #define LSST_MEAS_MULTIFIT_H
 
+#include "lsst/meas/multifit/NaiveGridSampler.h"
 #include "lsst/meas/multifit/BaseSampler.h"
 #include "lsst/meas/multifit/Objective.h"
 #include "lsst/meas/multifit/priors.h"
