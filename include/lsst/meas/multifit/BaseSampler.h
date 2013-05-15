@@ -26,6 +26,7 @@
 
 #include <vector>
 
+#include "lsst/afw/table/io/Persistable.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/Objective.h"
@@ -121,7 +122,7 @@ public:
  *
  *  @copydetails SamplePoint
  */
-class SampleSet {
+class SampleSet : public afw::table::io::PersistableFacade<SampleSet>, public afw::table::io::Persistable {
     typedef std::vector<SamplePoint> Container;
 public:
 
@@ -203,6 +204,16 @@ public:
 
     /// @copydoc computeCovariance
     Eigen::MatrixXd computeCovariance() const { return computeCovariance(computeMean()); }
+
+    bool isPersistable() const { return true; }
+
+protected:
+
+    virtual std::string getPersistenceName() const;
+
+    virtual std::string getPythonModule() const;
+
+    virtual void write(OutputArchiveHandle & handle) const;
 
 private:
     int _nonlinearDim;

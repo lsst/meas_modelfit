@@ -24,6 +24,9 @@
 #include <limits>
 
 #include "lsst/pex/exceptions.h"
+#include "lsst/afw/table/io/CatalogVector.h"
+#include "lsst/afw/table/io/InputArchive.h"
+#include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/meas/multifit/BaseSampler.h"
 #include "lsst/meas/multifit/priors.h"
 
@@ -162,6 +165,106 @@ Eigen::VectorXd SampleSet::computeMean(Eigen::MatrixXd * mcCov) const {
 Eigen::MatrixXd SampleSet::computeCovariance(Eigen::VectorXd const & mean) const {
     CovarianceExpectationFunctor f(mean);
     return f.expand(computeExpectation(f));
+}
+
+namespace {
+
+namespace tbl = afw::table;
+
+class SampleSetPersistenceHelper {
+public:
+    tbl::Schema schema;
+    tbl::Key<Pixel> joint_r;
+    tbl::Key< tbl::Array<Pixel> > joint_mu;
+    tbl::Key< tbl::Covariance<Pixel> > joint_fisher;
+    tbl::Key<Pixel> marginal;
+    tbl::Key<Pixel> proposal;
+    tbl::Key< tbl::Array<Pixel> > parameters;
+
+    SampleSetPersistenceHelper(int nonlinearDim, int linearDim) :
+        schema(),
+        joint_r(schema.addField<Pixel>("joint.r", "1/2 chi^2 at maximum likelihood point")),
+        joint_mu(schema.addField< tbl::Array<Pixel> >("joint.mu", "maximum likelihood amplitude vector",
+                                                      linearDim)),
+        joint_fisher(schema.addField< tbl::Covariance<Pixel> >("joint.fisher", "amplitude Fisher matrix",
+                                                               linearDim)),
+        marginal(schema.addField<Pixel>("marginal", "marginal posterior value at sample point")),
+        proposal(schema.addField<Pixel>("proposal", "density of the distribution used to draw samples")),
+        parameters(schema.addField< tbl::Array<Pixel> >("parameters", "nonlinear parameters at this point",
+                                                        nonlinearDim))
+    {}
+
+    explicit SampleSetPersistenceHelper(tbl::Schema const & schema_) :
+        schema(schema_),
+        joint_r(schema["joint.r"]),
+        joint_mu(schema["joint.mu"]),
+        joint_fisher(schema["joint.fisher"]),
+        marginal(schema["marginal"]),
+        proposal(schema["proposal"]),
+        parameters(schema["parameters"])
+    {}
+
+};
+
+class SampleSetFactory : public tbl::io::PersistableFactory {
+public:
+
+    virtual PTR(tbl::io::Persistable)
+    read(InputArchive const & archive, CatalogVector const & catalogs) const {
+        LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
+        SampleSetPersistenceHelper const keys(catalogs.front().getSchema());
+        int const linearDim = keys.joint_mu.getSize();
+        int const nonlinearDim = keys.parameters.getSize();
+        PTR(SampleSet) result(new SampleSet(nonlinearDim, linearDim));
+        result->reserve(catalogs.front().size());
+        for (
+            tbl::BaseCatalog::const_iterator i = catalogs.front().begin();
+            i != catalogs.front().end();
+            ++i
+        ) {
+            SamplePoint p(nonlinearDim, linearDim);
+            p.joint.r = i->get(keys.joint_r);
+            p.joint.mu = i->get(keys.joint_mu).asEigen();
+            p.joint.fisher = i->get(keys.joint_fisher);
+            p.marginal = i->get(keys.marginal);
+            p.proposal = i->get(keys.proposal);
+            p.parameters = i->get(keys.parameters).asEigen();
+            result->add(p);
+        }
+        return result;
+    }
+
+    explicit SampleSetFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}
+};
+
+std::string getSampleSetPersistenceName() { return "SampleSet"; }
+
+SampleSetFactory registration(getSampleSetPersistenceName());
+
+} // anonymous
+
+std::string SampleSet::getPersistenceName() const {
+    return getSampleSetPersistenceName();
+}
+
+std::string SampleSet::getPythonModule() const {
+    return "lsst.meas.multifit";
+}
+
+void SampleSet::write(OutputArchiveHandle & handle) const {
+    SampleSetPersistenceHelper const keys(_nonlinearDim, _linearDim);
+    tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
+    catalog.reserve(size());
+    for (const_iterator i = begin(); i != end(); ++i) {
+        PTR(tbl::BaseRecord) record = catalog.addNew();
+        record->set(keys.joint_r, i->joint.r);
+        (*record)[keys.joint_mu].asEigen() = i->joint.mu;
+        record->set(keys.joint_fisher, i->joint.fisher);
+        record->set(keys.marginal, i->marginal);
+        record->set(keys.proposal, i->proposal);
+        (*record)[keys.parameters].asEigen() = i->parameters;
+    }
+    handle.saveCatalog(catalog);
 }
 
 }}} // namespace lsst::meas::multifit

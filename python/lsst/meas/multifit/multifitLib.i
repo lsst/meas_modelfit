@@ -56,11 +56,14 @@ Basic routines to talk to lsst::meas::multifit classes
 %include "ndarray.i"
 %import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/geom/ellipses/ellipsesLib.i"
+%import "lsst/afw/table/io/ioLib.i"
 %import "lsst/pex/config.h"
 
 namespace lsst { namespace shapelet {
 class MultiShapeletBasis;
 }}
+
+%declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 
 %shared_ptr(lsst::meas::multifit::Prior);
 %shared_ptr(lsst::meas::multifit::Objective);
