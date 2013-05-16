@@ -25,6 +25,7 @@
 #define LSST_MEAS_MULTIFIT_priors_h_INCLUDED
 
 #include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/LogGaussian.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -71,6 +72,36 @@ public:
 
     virtual ~Prior() {}
 
+};
+
+/**
+ *  @brief A dead-simple prior for 2-component models that has no dependence on nonlinear parameters, and
+ *         declares that models must be either all one component or the other.
+ *
+ *  This is a nonnormalized prior; it cannot be used for computing the Bayesian evidence in a sense
+ *  that would be useful for model selection tests.
+ *
+ *  For a two-element amplitude vector @f$\alpha@f$, the value of the prior is:
+ *  @f[
+ *    P(\alpha) = \begin{cases}
+ *       \beta & \text{for $\alpha_0 > 0, \alpha_1 = 0$}\\
+ *       1-\beta & \text{for $\alpha_0 = 0, \alpha_1 > 0$}\\
+ *       0 & \text{otherwise}
+ *    \end{cases}
+ *  @f]
+ */
+class SingleComponentPrior : public Prior {
+public:
+
+    explicit SingleComponentPrior(double beta) : _beta(beta) {}
+
+    /// Return the fraction of objects expected to be pure component 0
+    double getBeta() const { return _beta; }
+
+    virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const;
+
+private:
+    double _beta;
 };
 
 }}} // namespace lsst::meas::multifit

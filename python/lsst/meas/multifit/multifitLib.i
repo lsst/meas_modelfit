@@ -66,6 +66,7 @@ class MultiShapeletBasis;
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 
 %shared_ptr(lsst::meas::multifit::Prior);
+%shared_ptr(lsst::meas::multifit::SingleComponentPrior);
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
