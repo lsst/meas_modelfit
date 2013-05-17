@@ -70,6 +70,50 @@ public:
      */
     virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const = 0;
 
+    /**
+     *  @brief Compute the nonnormalized expectation value of the flux at a nonlinear parameter point.
+     *
+     *  This is the integral
+     *  @f[
+     *     \int\!\text{flux}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *  @f]
+     *  For models in which each amplitude is the flux in a component, then
+     *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
+     */
+    virtual double computeFluxExpectation(
+        LogGaussian const & likelihood, Vector const & parameters
+    ) const = 0;
+
+    /**
+     *  @brief Compute the nonnormalized expectation value of the squared flux at a
+     *         nonlinear parameter point.
+     *
+     *  This is the integral
+     *  @f[
+     *     \int\!\left[\text{flux}(\alpha,\theta)\right]^2\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *  @f]
+     *  For models in which each amplitude is the flux in a component, then
+     *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
+     */
+    virtual double computeSquaredFluxExpectation(
+        LogGaussian const & likelihood, Vector const & parameters
+    ) const = 0;
+
+    /**
+     *  @brief Compute the nonnormalized expectation value of the fraction of flux in each component
+     *         at a nonlinear parameter point.
+     *
+     *  This is the integral
+     *  @f[
+     *     \int\!\text{fraction}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *  @f]
+     *  For models in which each amplitude is the flux in a component, then
+     *  @f$\text{fraction}(\alpha,\theta)=\frac{\alpha}{|\alpha|_1}@f$
+     */
+    virtual Vector computeFractionExpectation(
+        LogGaussian const & likelihood, Vector const & parameters
+    ) const = 0;
+
     virtual ~Prior() {}
 
 };
@@ -99,6 +143,18 @@ public:
     double getBeta() const { return _beta; }
 
     virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const;
+
+    virtual double computeFluxExpectation(
+        LogGaussian const & likelihood, Vector const & parameters
+    ) const;
+
+    virtual double computeSquaredFluxExpectation(
+        LogGaussian const & likelihood, Vector const & parameters
+    ) const;
+
+    virtual Vector computeFractionExpectation(
+        LogGaussian const & likelihood, Vector const & parameters
+    ) const;
 
 private:
     double _beta;
