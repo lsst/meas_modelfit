@@ -27,7 +27,7 @@ import lsst.afw.table
 import lsst.meas.extensions.multiShapelet
 
 from .sampler import BaseSamplerTask
-from .multifitLib import SingleEpochObjective
+from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
 from .models import BulgeDiskModelConfig
 from .fitRegion import setupFitRegion
 
@@ -60,8 +60,9 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
     def __init__(self, **kwds):
         lsst.pipe.base.CmdLineTask.__init__(self, **kwds)
         self.schemaMapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
-        self.schemaMapper.addMinimalSchema(lsst.afw.table.SimpleTable.makeMinimalSchema())
+        self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
         self.schema = self.schemaMapper.getOutputSchema()
+        self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
         self.makeSubtask("sampler", schema=self.schema, model=self.config.model)
         self.basis = self.model.apply()
         self.ObjectiveClass = SingleEpochObjective[self.basis.getSize()]
@@ -81,21 +82,17 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         """
         dataRef.put(outputs.catalog, self.dataPrefix + "modelfits")
 
-    def processObject(self, exposure, source, state):
+    def processObject(self, exposure, source, record):
         """Process a single object.
 
         @param[in] exposure    lsst.afw.image.ExposureF to fit
         @param[in] source      lsst.afw.table.SourceRecord that defines the object to be measured.
                                Must have valid "shape" and "centroid" slots.
-        @param[in] state       SamplerState that provides an initial estimate of parameter bounds
-
-        @return a SampleSet object containing the posterior probability samples for the given source
+        @param[in] record      ModelFitRecord with fields for output.
         """
         if not exposure.hasPsf():
             raise RuntimeError("Exposure has no PSF")
-        psfModel = lsst.meas.extensions.multiShapelet.FitPsfAlgorithm.apply(
-            self.config.psf.makeControl(), exposure.getPsf(), source.getCentroid()
-            )
+        psfModel = self.fitPsf.apply(record, exposure.getPsf(), source.getCentroid())
         if psfModel.hasFailed():
             raise RuntimeError("Shapelet approximation to PSF failed")
         psf = psfModel.asMultiShapelet()
@@ -105,19 +102,24 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             self.config.objective.makeControl(), basis, psf,
             exposure.getMaskedImage(), footprint
         )
-        return sampler.run(objective)
+        samples = sampler.run(objective)
+        # TODO: apply prior here!
+        record.setSamples(samples)
+        ellipse = sampler.interpret(samples.computeMean())
+        record.setCentroid(ellipse.getCenter())
+        record.setShape(ellipse.getCore())
 
     def processImage(self, exposure, catalog):
         """Process all sources in an exposure, drawing samples from each sources, returning
         the outputs as a Struct with a single 'catalog' attribute.
         """
         outputs = lsst.pipe.base.Struct(
-            catalog = lsst.afw.table.SimpleCatalog(self.schema)
+            catalog = ModelFitCatalog(self.schema)
         )
         for source in inputs.catalog:
-            samples = self.processObject(exposure=inputs.exposure, source=source)
-            results = outputs.catalog.addNew()
-            results.assign(source, self.schemaMapper)
+            record = outputs.catalog.addNew()
+            record.assign(source, self.schemaMapper)
+            self.processObject(exposure=inputs.exposure, source=source, record=record)
             samples.write(results)
         return outputs
 
@@ -132,4 +134,4 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
 
     def getSchemaCatalogs(self):
         """Return a dict of empty catalogs for each catalog dataset produced by this task."""
-        return {self.dataPrefix + "modelfits": lsst.afw.table.SimpleCatalog(self.schema)}
+        return {self.dataPrefix + "modelfits": ModelFitCatalog(self.schema)}
