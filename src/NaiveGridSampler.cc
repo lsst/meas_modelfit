@@ -183,4 +183,10 @@ SampleSet NaiveGridSampler::run(Objective const & objective) const {
     return samples;
 }
 
+afw::geom::ellipses::Ellipse NaiveGridSampler::interpret(Eigen::VectorXd const & parameters) const {
+    afw::geom::ellipses::Ellipse result = afw::geom::ellipses::Ellipse(EllipseCore());
+    result.setParameterVector(parameters);
+    return result;
+}
+
 }}} // namespace lsst::meas::multifit

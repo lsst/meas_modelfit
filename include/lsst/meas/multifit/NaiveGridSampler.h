@@ -72,6 +72,8 @@ public:
 
     virtual SampleSet run(Objective const & objective) const;
 
+    virtual afw::geom::ellipses::Ellipse interpret(Eigen::VectorXd const & parameters) const;
+
 private:
     afw::geom::Point2D _center;
     int _nRadiusSteps;

@@ -241,6 +241,9 @@ public:
     /// Draw and evaluate samples using the given object.
     virtual SampleSet run(Objective const & objective) const = 0;
 
+    /// Interpret the given parameter vector as an ellipse.
+    virtual afw::geom::ellipses::Ellipse interpret(Eigen::VectorXd const & parameters) const = 0;
+
     virtual ~BaseSampler() {}
 
 };
