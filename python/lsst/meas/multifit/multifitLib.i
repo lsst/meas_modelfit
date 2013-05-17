@@ -31,9 +31,13 @@ Basic routines to talk to lsst::meas::multifit classes
 %module(package="lsst.meas.multifit", docstring=multifitLib_DOCSTRING) multifitLib
 
 %{
+#include "lsst/pex/logging.h"
 #include "lsst/afw/geom.h"
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/afw/geom/ellipses/PyPixelRegion.h"
+#include "lsst/afw/table.h"
+#include "lsst/afw/cameraGeom.h"
+#include "lsst/afw/image.h"
 #include "lsst/meas/multifit.h"
 #include "ndarray/eigen.h"
 #include "Eigen/Core"
@@ -57,6 +61,8 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/geom/ellipses/ellipsesLib.i"
 %import "lsst/afw/table/io/ioLib.i"
+%import "lsst/afw/table/tableLib.i"
+%import "lsst/afw/image/imageLib.i"
 %import "lsst/pex/config.h"
 
 namespace lsst { namespace shapelet {
@@ -78,3 +84,26 @@ class MultiShapeletBasis;
 %include "lsst/meas/multifit/Objective.h"
 %include "lsst/meas/multifit/BaseSampler.h"
 %include "lsst/meas/multifit/NaiveGridSampler.h"
+
+
+%shared_ptr(lsst::meas::multifit::ModelFitTable);
+%shared_ptr(lsst::meas::multifit::ModelFitRecord);
+
+%include "lsst/meas/multifit/tables.h"
+
+%addCastMethod(lsst::meas::multifit::ModelFitTable, lsst::afw::table::BaseTable)
+%addCastMethod(lsst::meas::multifit::ModelFitRecord, lsst::afw::table::BaseRecord)
+
+
+%template(ModelFitColumnView) lsst::afw::table::ColumnViewT<lsst::meas::multifit::ModelFitRecord>;
+
+%include "lsst/afw/table/SortedCatalog.i"
+
+namespace lsst { namespace afw { namespace table {
+
+using meas::multifit::ModelFitRecord;
+using meas::multifit::ModelFitTable;
+
+%declareSortedCatalog(SortedCatalogT, ModelFit)
+
+}}} // namespace lsst::afw::table
