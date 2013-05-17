@@ -60,7 +60,7 @@ public:
      *
      *  Because we want to advantage of the fact that the likelihood of the linear amplitude parameters
      *  is Gaussian, at each point in the nonlinear ellipse parameter space, we compute that Gaussian
-     *  distribution in the amplitudes, in terms of the maximum likelihood vector, the Fisther matrix,
+     *  distribution in the amplitudes, in terms of the maximum likelihood vector, the Fisher matrix,
      *  and the sum of squared residuals at the maximum likelihood point.  See LogGaussian for more
      *  information.
      */
@@ -113,18 +113,13 @@ public:
      *                       location of the galaxy.
      *  @param[in] image     MaskedImage to fit to.
      *  @param[in] footprint Footprint that defines the pixel region to include in the fit.
-     *  @param[in] origin    Origin of the parameter system that ellipses will be specified.
-     *                       Using a fiducial center rather than the origin of the image may
-     *                       provide better numerical stability, especially if the image's xy0
-     *                       is large.
      */
     explicit SingleEpochObjective(
         SingleEpochObjectiveControl const & ctrl,
         shapelet::MultiShapeletBasis const & basis,
         shapelet::MultiShapeletFunction const & psf,
         afw::image::MaskedImage<Pixel> const & image,
-        afw::detection::Footprint const & footprint,
-        afw::geom::Point2D const & origin
+        afw::detection::Footprint const & footprint
     );
 
 private:

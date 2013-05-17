@@ -103,7 +103,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         sampler = self.sampler.setup(exposure=inputs.exposure, source=source)
         objective = self.ObjectiveClass(
             self.config.objective.makeControl(), basis, psf,
-            exposure.getMaskedImage(), footprint, source.getCentroid()
+            exposure.getMaskedImage(), footprint
         )
         return sampler.run(objective)
 

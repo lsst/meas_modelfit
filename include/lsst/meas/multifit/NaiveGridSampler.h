@@ -51,6 +51,7 @@ public:
     /**
      *  @brief Construct with grid size parameters.
      *
+     *  @param[in] center               Center point of the elliptical model for all samples
      *  @param[in] nRadiusSteps         Number of steps in radius on the grid
      *  @param[in] ellipticityStepSize  Size of step in e1 and e2
      *  @param[in] maxRadius            Maximum radius value
@@ -62,6 +63,7 @@ public:
      *  more natural step size parameter to set the grid there.
      */
     NaiveGridSampler(
+        afw::geom::Point2D const & center,
         int nRadiusSteps,
         double ellipticityStepSize,
         double maxRadius,
@@ -71,6 +73,7 @@ public:
     virtual SampleSet run(Objective const & objective) const;
 
 private:
+    afw::geom::Point2D _center;
     int _nRadiusSteps;
     double _ellipticityStepSize;
     double _maxRadius;

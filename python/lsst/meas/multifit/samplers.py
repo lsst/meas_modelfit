@@ -93,8 +93,9 @@ class NaiveGridSamplerTask(BaseSamplerTask):
         axes = lsst.afw.geom.ellipses.Axes(source.getShape())
         maxRadius = axes.getA() * self.config.maxRadiusFactor
         return NaiveGridSampler(
+            source.getCentroid(),
             self.config.nRadiusSteps,
-            self.config.ellipticityStepSize, 
+            self.config.ellipticityStepSize,
             maxRadius,
             self.config.maxEllipticity
         )

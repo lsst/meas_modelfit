@@ -28,6 +28,8 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
+// Function to iterate over all ellipticities in the grid, to we ensure that we use
+// exactly the same grid everywhere
 template <typename Functor>
 void forEachEllipticity(Functor & f, double maxEllipticity, double ellipticityStepSize) {
     // we compare squared values so we can make e1 and e2 behave more similarly in the precence of
@@ -116,11 +118,13 @@ int NaiveGridSampler::computeSampleSetSize(
 }
 
 NaiveGridSampler::NaiveGridSampler(
+    afw::geom::Point2D const & center,
     int nRadiusSteps,
     double ellipticityStepSize,
     double maxRadius,
     double maxEllipticity
-) : _nRadiusSteps(nRadiusSteps),
+) : _center(center),
+    _nRadiusSteps(nRadiusSteps),
     _ellipticityStepSize(ellipticityStepSize),
     _maxRadius(maxRadius),
     _maxEllipticity(maxEllipticity)
@@ -152,14 +156,14 @@ NaiveGridSampler::NaiveGridSampler(
 }
 
 SampleSet NaiveGridSampler::run(Objective const & objective) const {
-    int nonlinearDim = 3;
+    int nonlinearDim = 5;
     int linearDim = objective.getLinearDim();
     SampleSet samples(nonlinearDim, linearDim);
     double density = 1.0 / (_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
-    afw::geom::ellipses::Ellipse ellipse = afw::geom::ellipses::Ellipse(EllipseCore());
+    afw::geom::ellipses::Ellipse ellipse = afw::geom::ellipses::Ellipse(EllipseCore(), _center);
     ellipse.getCore().scale(0.0);
     SamplePoint p(nonlinearDim, linearDim);
-    p.parameters = ellipse.getCore().getParameterVector().head(nonlinearDim).cast<Pixel>();
+    p.parameters = ellipse.getParameterVector().head(nonlinearDim).cast<Pixel>();
     p.joint = objective.evaluate(ellipse);
     p.proposal = density;
     // At r=0, we only evaluate e1=0, e2=0 and use that likelihood for all ellipticities.

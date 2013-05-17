@@ -39,8 +39,7 @@ shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
     SingleEpochObjectiveControl const & ctrl,
     shapelet::MultiShapeletBasis const & basis,
     shapelet::MultiShapeletFunction const & psf,
-    afw::detection::Footprint const & footprint,
-    afw::geom::PointD const & origin
+    afw::detection::Footprint const & footprint
 ) {
     Array1 x = ndarray::allocate(footprint.getArea());
     Array1 y = ndarray::allocate(footprint.getArea());
@@ -51,8 +50,8 @@ shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
         ++i
     ) {
         for (afw::geom::Span::Iterator j = (**i).begin(); j != (**i).end(); ++j, ++n) {
-            x[n] = j->getX() - origin.getX();
-            y[n] = j->getY() - origin.getY();
+            x[n] = j->getX();
+            y[n] = j->getY();
         }
     }
     return shapelet::MultiShapeletMatrixBuilder<Pixel>(basis, psf, x, y, ctrl.useApproximateExp);
@@ -65,8 +64,7 @@ SingleEpochObjective::SingleEpochObjective(
     shapelet::MultiShapeletBasis const & basis,
     shapelet::MultiShapeletFunction const & psf,
     afw::image::MaskedImage<Pixel> const & image,
-    afw::detection::Footprint const & footprint,
-    afw::geom::Point2D const & origin
+    afw::detection::Footprint const & footprint
 ) :
     _weights(afw::detection::flattenArray(footprint, image.getVariance()->getArray(), image.getXY0())),
     _weightedData(afw::detection::flattenArray(footprint, image.getImage()->getArray(), image.getXY0())),
@@ -75,7 +73,7 @@ SingleEpochObjective::SingleEpochObjective(
         ctrl.useSVD ? afw::math::LeastSquares::DIRECT_SVD : afw::math::LeastSquares::NORMAL_EIGENSYSTEM,
         basis.getSize()
     ),
-    _matrixBuilder(makeShapeletMatrixBuilder(ctrl, basis, psf, footprint, origin))
+    _matrixBuilder(makeShapeletMatrixBuilder(ctrl, basis, psf, footprint))
 {
     _leastSquares.setThreshold(std::numeric_limits<Pixel>::epsilon());
     // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
