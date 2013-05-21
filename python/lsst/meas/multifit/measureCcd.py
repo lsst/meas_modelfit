@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -19,10 +20,25 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-from .version import *
-from .multifitLib import *
-from .measureCcd import *
-from .measureImage import *
-from .fitRegion import *
-from .models import *
-from .samplers import *
+
+import lsst.pipe.base
+
+from .measureImage import MeasureImageTask
+
+__all__ = ("MeasureCcdConfig", "MeasureCcdTask")
+
+MeasureCcdConfig = MeasureImageTask.ConfigClass
+
+class MeasureCcdTask(MeasureImageTask):
+    """Specialization of MeasureImageTask for running on calexps, after processCcd.py or processEimage.py
+    """
+
+    _DefaultName = "measureCcd"
+
+    @classmethod
+    def _makeArgumentParser(cls):
+        """Create an argument parser
+        """
+        parser = lsst.pipe.base.ArgumentParser(name=cls._DefaultName)
+        parser.add_id_argument("--id", "calexp", help="data ID, e.g. --id visit=1 raft=2,2 sensor=1,1")
+        return parser

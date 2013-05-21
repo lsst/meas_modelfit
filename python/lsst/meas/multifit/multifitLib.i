@@ -85,6 +85,11 @@ class MultiShapeletBasis;
 %include "lsst/meas/multifit/BaseSampler.h"
 %include "lsst/meas/multifit/NaiveGridSampler.h"
 
+%pythoncode %{
+import lsst.pex.config
+SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
+SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
+%}
 
 %shared_ptr(lsst::meas::multifit::ModelFitTable);
 %shared_ptr(lsst::meas::multifit::ModelFitRecord);

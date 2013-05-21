@@ -26,18 +26,20 @@ import lsst.pipe.base
 import lsst.afw.table
 import lsst.meas.extensions.multiShapelet
 
-from .sampler import BaseSamplerTask
+from .samplers import BaseSamplerTask, NaiveGridSamplerTask
 from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
 from .models import BulgeDiskModelConfig
 from .fitRegion import setupFitRegion
 
-class MeasureImageConfig(lsst.pipe.base.CmdLineTask.ConfigClass):
+__all__ = ("MeasureImageConfig", "MeasureImageTask")
+
+class MeasureImageConfig(lsst.pex.config.Config):
     sampler = lsst.pex.config.ConfigurableField(
-        target=BaseSamplerTask,  # TODO: make default a concrete class
+        target=NaiveGridSamplerTask,
         doc="Subtask that generates samples from the probability of a galaxy model given image data"
     )
     objective = lsst.pex.config.ConfigField(
-        dtype=SingleEpochObjective.ConfigClass
+        dtype=SingleEpochObjective.ConfigClass,
         doc="Config for objective object that computes model probability at given parameters"
     )
     model = lsst.pex.config.ConfigurableField(
@@ -73,8 +75,8 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
           - catalog ------ lsst.afw.table.SourceCatalog with initial measurements
         """
         return lsst.pipe.base.Struct(
-            exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True)
-            catalog = dataRef.get(self.dataPrefix + "src", immediate=True)
+            exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True),
+            catalog = dataRef.get(self.dataPrefix + "src", immediate=True),
             )
 
     def writeOutputs(self, dataRef, outputs):

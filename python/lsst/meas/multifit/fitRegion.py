@@ -25,6 +25,8 @@ import lsst.pex.config
 import lsst.pipe.base
 import lsst.afw.detection
 
+__all__ = ("FitRegionConfig", "setupFitRegion")
+
 class FitRegionConfig(lsst.pex.config.Config):
     """Config class for setupFitRegion() function
     """
@@ -43,7 +45,7 @@ def setupFitRegion(config, exposure, source):
     """Given a SourceRecord (with Footprint) and the Exposure it was detected on,
     return a new Footprint containing the pixels that should be used in a model
     fit of the given source.
-    
+
     In the future, this might do something fancier than just grow the footprint, such as masking
     out bad pixels or ORing the detection footprint with an ellipse derived from the source, but
     we don't anticipate needing any of that for S13.

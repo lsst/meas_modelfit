@@ -27,8 +27,9 @@ import lsst.afw.geom.ellipses
 
 from .multifitLib import NaiveGridSampler
 
-class BaseSamplerConfig(lsst.pipe.base.Task.ConfigClass):
-    pass
+__all__ = ("BaseSamplerConfig", "BaseSamplerTask", "NaiveGridSamplerConfig", "NaiveGridSamplerTask")
+
+BaseSamplerConfig = lsst.pex.config.Config
 
 class BaseSamplerTask(lsst.pipe.base.Task):
     """Base class for sampler subtask; responsible for constructing BaseSample subclass instances
@@ -39,7 +40,7 @@ class BaseSamplerTask(lsst.pipe.base.Task):
     different initialization options provided by setup() and reset().
     """
 
-    ConfigClass = BaseSamperConfig
+    ConfigClass = BaseSamplerConfig
 
     def __init__(self, schema, model, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
