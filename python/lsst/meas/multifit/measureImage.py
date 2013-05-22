@@ -24,12 +24,14 @@
 import lsst.pex.config
 import lsst.pipe.base
 import lsst.afw.table
+import lsst.afw.geom.ellipses
 import lsst.meas.extensions.multiShapelet
 
 from .samplers import BaseSamplerTask, NaiveGridSamplerTask
 from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
 from .fitRegion import setupFitRegion
 from . import models
+from . import priors
 
 __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
@@ -45,6 +47,10 @@ class MeasureImageConfig(lsst.pex.config.Config):
     model = models.registry.makeField(
         default="bulge+disk",
         doc="Definition of the galaxy model to fit"
+    )
+    prior = priors.registry.makeField(
+        default="single-component",
+        doc="Bayesian prior on galaxy parameters"
     )
     psf = lsst.pex.config.ConfigField(
         dtype=lsst.meas.extensions.multiShapelet.FitPsfConfig,
@@ -73,6 +79,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         self.makeSubtask("sampler", schema=self.schema, model=self.config.model)
         self.nPixKey = self.schema.addField("npix", type=int, doc="Number of pixels used in model fit")
         self.basis = self.config.model.apply()
+        self.prior = self.config.prior.apply()
 
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing:
@@ -112,11 +119,11 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             exposure.getMaskedImage(), footprint
         )
         samples = sampler.run(objective)
-        # TODO: apply prior here!
+        samples.applyPrior(self.prior)
         record.setSamples(samples)
-        #ellipse = sampler.interpret(samples.computeMean())
-        #record.setCentroid(ellipse.getCenter())
-        #record.setShape(ellipse.getCore())
+        ellipse = sampler.interpret(samples.computeMean())
+        record.setCentroid(ellipse.getCenter())
+        record.setShape(lsst.afw.geom.ellipses.Quadrupole(ellipse.getCore()))
 
     def processImage(self, exposure, catalog):
         """Process all sources in an exposure, drawing samples from each sources, returning
