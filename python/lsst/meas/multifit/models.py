@@ -22,13 +22,6 @@
 #
 """
 Config classes used to define various galaxy models.
-
-Any of the configs defined in this module can be used in the MeasureImageConfig.model field,
-by retargeting it to the config's makeBasis method:
-@code
-mic = MeasureImageConfig()
-mic.model.retarget(GaussianModelConfig.makeBasis)
-@endcode
 """
 
 import numpy
@@ -36,26 +29,26 @@ import numpy
 import lsst.pex.config
 import lsst.shapelet.tractor
 
-__all__ = ("GaussianModelConfig", "TractorModelConfig", "BulgeDiskModelConfig")
+registry = lsst.pex.config.makeRegistry(
+    """Registry for galaxy model definitions
 
-# TODO: move this into pex_config
-def configurable(method):
-    """Class decorator used to mark a Config staticmethod as a Configurable, by setting its
-    ConfigClass attribute, i.e.:
-    @code
-    @configurable("myMethod")
-    class MyConfig(lsst.pex.config):
-        def myMethod(config):
-            return False
-    assert MyConfig.myMethod.ConfigClass == MyConfig
-    @endcode
+    A galaxy definition is a Configurable (a callable that takes a Config object
+    as its first and, in this case, only argument) that returns a
+    shapelet.MultiShapeletBasis.
+    """
+)
+
+def registerModel(name):
+    """Decorator to add a Config class with a makeBasis static method to the
+    model registry.
     """
     def decorate(cls):
-        getattr(cls, method).ConfigClass = cls
+        cls.makeBasis.ConfigClass = cls
+        registry.register(name, cls.makeBasis)
         return cls
     return decorate
 
-@configurable("makeBasis")
+@registerModel("gaussian")
 class GaussianModelConfig(lsst.pex.config.Config):
     """Config class used to define a simple Gaussian galaxy model.
     """
@@ -71,7 +64,7 @@ class GaussianModelConfig(lsst.pex.config.Config):
         basis.addComponent(config.radius, 0, numpy.array([[1.0]], dtypef=float))
         return basis
 
-@configurable("makeBasis")
+@registerModel("tractor")
 class TractorModelConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
     as optimized by Hogg and Lang's The Tractor.
@@ -101,7 +94,7 @@ class TractorModelConfig(lsst.pex.config.Config):
             maxRadius=config.maxRadius
             )
 
-@configurable("makeBasis")
+@registerModel("bulge+disk")
 class BulgeDiskModelConfig(lsst.pex.config.Config):
     """Config that defines the model used in two-component galaxy model fits.
     """

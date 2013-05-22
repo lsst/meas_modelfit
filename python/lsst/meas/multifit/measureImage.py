@@ -28,8 +28,8 @@ import lsst.meas.extensions.multiShapelet
 
 from .samplers import BaseSamplerTask, NaiveGridSamplerTask
 from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
-from .models import BulgeDiskModelConfig
 from .fitRegion import setupFitRegion
+from . import models
 
 __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
@@ -42,8 +42,8 @@ class MeasureImageConfig(lsst.pex.config.Config):
         dtype=SingleEpochObjective.ConfigClass,
         doc="Config for objective object that computes model probability at given parameters"
     )
-    model = lsst.pex.config.ConfigurableField(
-        target=BulgeDiskModelConfig.makeBasis,
+    model = models.registry.makeField(
+        default="bulge+disk",
         doc="Definition of the galaxy model to fit"
     )
     psf = lsst.pex.config.ConfigField(
