@@ -40,7 +40,7 @@ __all__ = ("GaussianModelConfig", "TractorModelConfig", "BulgeDiskModelConfig")
 
 # TODO: move this into pex_config
 def configurable(method):
-    """Class decorator used to mark a Config method as a Configurable, by setting its
+    """Class decorator used to mark a Config staticmethod as a Configurable, by setting its
     ConfigClass attribute, i.e.:
     @code
     @configurable("myMethod")
@@ -51,7 +51,7 @@ def configurable(method):
     @endcode
     """
     def decorate(cls):
-        getattr(cls, method).im_func.ConfigClass = cls
+        getattr(cls, method).ConfigClass = cls
         return cls
     return decorate
 
@@ -64,6 +64,7 @@ class GaussianModelConfig(lsst.pex.config.Config):
         dtype=float, default=1.0,
         )
 
+    @staticmethod
     def makeBasis(config):
         """Create and return a MultiShapeletBasis corresponding to the config."""
         basis = lsst.shapelet.MultiShapeletBasis(1)
@@ -91,6 +92,7 @@ class TractorModelConfig(lsst.pex.config.Config):
         dtype=int, optional=True,
         )
 
+    @staticmethod
     def makeBasis(config):
         """Load and return a MultiShapeletBasis corresponding to the config."""
         return lsst.shapelet.tractor.loadBasis(
@@ -121,11 +123,12 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
         self.disk.profile = "lux"
         self.bulge.profile = "luv"
 
+    @staticmethod
     def makeBasis(config):
         """Return a MultiShapeletBasis with both disk and bulge components.
         """
         bulge = config.bulge.apply()
-        bulge.scale(config.config.bulgeRadius)
+        bulge.scale(config.bulgeRadius)
         disk = config.disk.apply()
         disk.merge(bulge)
         return disk
