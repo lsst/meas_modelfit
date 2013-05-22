@@ -54,6 +54,11 @@ class MeasureImageConfig(lsst.pex.config.Config):
         dtype=setupFitRegion.ConfigClass,
         doc="Parameters that control which pixels to include in the model fit"
     )
+    snrMax = lsst.pex.config.Field(
+        dtype=float,
+        doc="Don't fit objects with SNR above the given value",
+        default=50.0
+    )
 
 class MeasureImageTask(lsst.pipe.base.CmdLineTask):
     ConfigClass = MeasureImageConfig
@@ -66,8 +71,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         self.schema = self.schemaMapper.getOutputSchema()
         self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
         self.makeSubtask("sampler", schema=self.schema, model=self.config.model)
-        self.basis = self.model.apply()
-        self.ObjectiveClass = SingleEpochObjective[self.basis.getSize()]
+        self.basis = self.config.model.apply()
 
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing:
@@ -84,6 +88,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         """
         dataRef.put(outputs.catalog, self.dataPrefix + "modelfits")
 
+    @lsst.pipe.base.timeMethod
     def processObject(self, exposure, source, record):
         """Process a single object.
 
@@ -99,17 +104,17 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             raise RuntimeError("Shapelet approximation to PSF failed")
         psf = psfModel.asMultiShapelet()
         footprint = setupFitRegion(self.config.fitRegion, exposure, source)
-        sampler = self.sampler.setup(exposure=inputs.exposure, source=source)
-        objective = self.ObjectiveClass(
-            self.config.objective.makeControl(), basis, psf,
+        sampler = self.sampler.setup(exposure=exposure, source=source)
+        objective = SingleEpochObjective(
+            self.config.objective.makeControl(), self.basis, psf,
             exposure.getMaskedImage(), footprint
         )
         samples = sampler.run(objective)
         # TODO: apply prior here!
         record.setSamples(samples)
-        ellipse = sampler.interpret(samples.computeMean())
-        record.setCentroid(ellipse.getCenter())
-        record.setShape(ellipse.getCore())
+        #ellipse = sampler.interpret(samples.computeMean())
+        #record.setCentroid(ellipse.getCenter())
+        #record.setShape(ellipse.getCore())
 
     def processImage(self, exposure, catalog):
         """Process all sources in an exposure, drawing samples from each sources, returning
@@ -118,11 +123,18 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         outputs = lsst.pipe.base.Struct(
             catalog = ModelFitCatalog(self.schema)
         )
-        for source in inputs.catalog:
+        nGalaxies = ((catalog.getApFlux() / catalog.getApFluxErr()) <= self.config.snrMax).sum()
+        i = 0
+        for source in catalog:
+            snr = source.getApFlux() / source.getApFluxErr()
+            if snr > self.config.snrMax:
+                continue
             record = outputs.catalog.addNew()
             record.assign(source, self.schemaMapper)
-            self.processObject(exposure=inputs.exposure, source=source, record=record)
-            samples.write(results)
+            self.processObject(exposure=exposure, source=source, record=record)
+            i += 1
+            if i % 100 == 0:
+                self.log.info("Processed %d/%d objects (%4.1f%%)" % (i, nGalaxies, i*100.0/nGalaxies))
         return outputs
 
     def run(self, dataRef):
