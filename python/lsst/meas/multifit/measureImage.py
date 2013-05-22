@@ -71,6 +71,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         self.schema = self.schemaMapper.getOutputSchema()
         self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
         self.makeSubtask("sampler", schema=self.schema, model=self.config.model)
+        self.nPixKey = self.schema.addField("npix", type=int, doc="Number of pixels used in model fit")
         self.basis = self.config.model.apply()
 
     def readInputs(self, dataRef):
@@ -104,6 +105,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             raise RuntimeError("Shapelet approximation to PSF failed")
         psf = psfModel.asMultiShapelet()
         footprint = setupFitRegion(self.config.fitRegion, exposure, source)
+        record.set(self.nPixKey, footprint.getArea())
         sampler = self.sampler.setup(exposure=exposure, source=source)
         objective = SingleEpochObjective(
             self.config.objective.makeControl(), self.basis, psf,
