@@ -75,7 +75,6 @@ SingleEpochObjective::SingleEpochObjective(
     ),
     _matrixBuilder(makeShapeletMatrixBuilder(ctrl, basis, psf, footprint))
 {
-    _leastSquares.setThreshold(std::numeric_limits<Pixel>::epsilon());
     // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
     // weighting, because we implicitly square it later.
     _weights.asEigen<Eigen::ArrayXpr>() = _weights.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
@@ -101,6 +100,7 @@ LogGaussian SingleEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & 
         Vector rhs = _modelMatrix.asEigen().adjoint() * _weightedData.asEigen();
         _leastSquares.setNormalEquations(result.fisher, rhs);
     }
+    _leastSquares.setThreshold(std::numeric_limits<Pixel>::epsilon());
     result.mu = _leastSquares.getSolution().asEigen().cast<Pixel>();
     Vector residuals = _modelMatrix.asEigen() * result.mu - _weightedData.asEigen();
     result.r = 0.5 * residuals.squaredNorm();
