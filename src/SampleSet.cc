@@ -23,11 +23,14 @@
 
 #include <limits>
 
+#include "ndarray/eigen.h"
+
 #include "lsst/pex/exceptions.h"
 #include "lsst/afw/table/io/CatalogVector.h"
 #include "lsst/afw/table/io/InputArchive.h"
 #include "lsst/afw/table/io/OutputArchive.h"
-#include "lsst/meas/multifit/BaseSampler.h"
+#include "lsst/meas/multifit/SampleSet.h"
+#include "lsst/meas/multifit/ExpectationFunctor.h"
 #include "lsst/meas/multifit/priors.h"
 
 namespace lsst { namespace meas { namespace multifit {
