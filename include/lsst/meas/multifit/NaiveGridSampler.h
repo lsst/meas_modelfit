@@ -30,6 +30,9 @@ namespace lsst { namespace meas { namespace multifit {
 
 /**
  *  @brief SamplerState class that evaluates on a simple grid in (radius, e1, e2).
+ *
+ *  For each radius, we evaluate each grid point (e_1, e_2) with spacing e_step
+ *  such that |e| < e_max.
  */
 class NaiveGridSampler : public BaseSampler {
 public:
@@ -70,8 +73,10 @@ public:
         double maxEllipticity
     );
 
+    /// Generate and evaluate samples on the grid
     virtual SampleSet run(Objective const & objective) const;
 
+    /// Interpret a parameter vector in a SampleSet as an Ellipse
     virtual afw::geom::ellipses::Ellipse interpret(Eigen::VectorXd const & parameters) const;
 
 private:

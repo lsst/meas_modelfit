@@ -37,19 +37,7 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief Point in a Monte-Carlo SampleSet.
  *
- *  For linear amplitudes @f$\alpha@f$ and nonlinear parameters @f$\theta@f$,
- *  each SamplePoint @f$n@f$ in a SampleSet contains:
- *   - the nonlinear parameters @f$\theta_n@f$ at that point
- *   - the joint likelihood @f$P(D|\alpha,\theta_n) = e^{-L_n(\alpha)}@f$ (see LogGaussian)
- *   - the nonnormalized marginal posterior
- *     @f$m_n=P(\theta_n|D)P(D)=P(D|\theta_n)P(\theta_n)@f$ (the Bayesian evidence @f$P(D)@f$
- *     is the normalization factor), as obtained applying a Prior to the joint
- *     likelihood at each SamplePoint.
- *   - the density @f$q_n@f$ of the distribution from which the samples were drawn
- *
- *  Together with the Prior, these indirectly provide a full representation of the
- *  joint posterior (see ExpectationFunctor for mathematical details of how expectation values
- *  on the full posterior are computed).
+ *  See SampleSet for more information.
  */
 class SamplePoint {
 public:
@@ -96,7 +84,7 @@ public:
  *  can be brought outside the integral, which is then just @f$m_n@f$, and the computation reduces
  *  to
  *  @f[
- *    \frac{1}{P(D)N}\sum_{n=1}^N \frac{f(\cdot,\theta_n\,m_n)}{q_n}
+ *    \frac{1}{P(D)N}\sum_{n=1}^N \frac{f(\cdot,\theta_n)\,m_n}{q_n}
  *  @f]
  */
 class ExpectationFunctor {
@@ -120,7 +108,19 @@ public:
  *  @brief Representation of a probability distribution as a set of Monte Carlo samples that
  *         distinguishes linear amplitude parameters from other nonlinear parameters.
  *
- *  @copydetails SamplePoint
+ *  For linear amplitudes @f$\alpha@f$ and nonlinear parameters @f$\theta@f$,
+ *  each SamplePoint @f$n@f$ in a SampleSet contains:
+ *   - the nonlinear parameters @f$\theta_n@f$ at that point
+ *   - the joint likelihood @f$P(D|\alpha,\theta_n) = e^{-L_n(\alpha)}@f$ (see LogGaussian)
+ *   - the nonnormalized marginal posterior
+ *     @f$m_n=P(\theta_n|D)P(D)=P(D|\theta_n)P(\theta_n)@f$ (the Bayesian evidence @f$P(D)@f$
+ *     is the normalization factor), as obtained applying a Prior to the joint
+ *     likelihood at each SamplePoint.
+ *   - the density @f$q_n@f$ of the distribution from which the samples were drawn
+ *
+ *  Together with the Prior, these indirectly provide a full representation of the
+ *  joint posterior (see ExpectationFunctor for mathematical details of how expectation values
+ *  on the full posterior are computed).
  */
 class SampleSet : public afw::table::io::PersistableFacade<SampleSet>, public afw::table::io::Persistable {
     typedef std::vector<SamplePoint> Container;
@@ -180,6 +180,8 @@ public:
      *  If the Monte Carlo covariance matrix is requested, it will represent the uncertainty due only to
      *  the finite number of samples and non-optimality of the proposal distribution, not the uncertainty
      *  due to the width of the distribution itself.
+     *
+     *  See ExpectationFunctor for more information.
      */
     Eigen::VectorXd computeExpectation(ExpectationFunctor const & functor, Eigen::MatrixXd * mcCov=0) const;
 

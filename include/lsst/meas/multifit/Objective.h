@@ -58,7 +58,7 @@ public:
     /**
      *  @brief Evaluate the likelihood at the given point given an ellipse.
      *
-     *  Because we want to advantage of the fact that the likelihood of the linear amplitude parameters
+     *  Because we want to take advantage of the fact that the likelihood of the linear amplitude parameters
      *  is Gaussian, at each point in the nonlinear ellipse parameter space, we compute that Gaussian
      *  distribution in the amplitudes, in terms of the maximum likelihood vector, the Fisher matrix,
      *  and the sum of squared residuals at the maximum likelihood point.  See LogGaussian for more
