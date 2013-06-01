@@ -71,6 +71,13 @@ namespace lsst { namespace shapelet {
 class MultiShapeletBasis;
 }}
 
+%declareNumPyConverters(lsst::meas::multifit::Vector);
+%declareNumPyConverters(lsst::meas::multifit::Matrix);
+%declareNumPyConverters(Eigen::VectorXd);
+%declareNumPyConverters(Eigen::MatrixXd);
+%declareNumPyConverters(ndarray::Array<double,1,1>);
+%declareNumPyConverters(ndarray::Array<double,2,2>);
+
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 
 %shared_ptr(lsst::meas::multifit::Prior);
@@ -89,6 +96,7 @@ class MultiShapeletBasis;
 
 %pythoncode %{
 import lsst.pex.config
+import numpy
 SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
 SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
 %}
