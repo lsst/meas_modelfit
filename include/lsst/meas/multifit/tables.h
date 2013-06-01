@@ -35,7 +35,7 @@ namespace lsst { namespace meas { namespace multifit {
 class ModelFitTable;
 
 /**
- *  @brief Record class used to store exposure metadata.
+ *  @brief Record class used to store galaxy model fitting results
  */
 class ModelFitRecord : public afw::table::BaseRecord {
 public:
@@ -73,7 +73,7 @@ private:
 };
 
 /**
- *  @brief Table class used to store exposure metadata.
+ *  @brief Table class used to store galaxy model fitting results
  *
  *  @copydetails ModelFitRecord
  */
