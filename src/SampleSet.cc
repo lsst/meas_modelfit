@@ -33,6 +33,8 @@
 #include "lsst/meas/multifit/ExpectationFunctor.h"
 #include "lsst/meas/multifit/priors.h"
 
+namespace tbl = lsst::afw::table;
+
 namespace lsst { namespace meas { namespace multifit {
 
 SamplePoint::SamplePoint(int nonlinearDim, int linearDim) :
@@ -172,8 +174,6 @@ Eigen::MatrixXd SampleSet::computeCovariance(Eigen::VectorXd const & mean) const
 
 namespace {
 
-namespace tbl = afw::table;
-
 class SampleSetPersistenceHelper {
 public:
     tbl::Schema schema;
@@ -244,7 +244,31 @@ std::string getSampleSetPersistenceName() { return "SampleSet"; }
 
 SampleSetFactory registration(getSampleSetPersistenceName());
 
+void fillCatalog(
+    SampleSet const & samples,
+    tbl::BaseCatalog & catalog,
+    SampleSetPersistenceHelper const & keys
+) {
+    catalog.reserve(samples.size());
+    for (SampleSet::const_iterator i = samples.begin(); i != samples.end(); ++i) {
+        PTR(tbl::BaseRecord) record = catalog.addNew();
+        record->set(keys.joint_r, i->joint.r);
+        (*record)[keys.joint_mu].asEigen() = i->joint.mu;
+        record->set(keys.joint_fisher, i->joint.fisher);
+        record->set(keys.marginal, i->marginal);
+        record->set(keys.proposal, i->proposal);
+        (*record)[keys.parameters].asEigen() = i->parameters;
+    }
+}
+
 } // anonymous
+
+tbl::BaseCatalog SampleSet::asCatalog() const {
+    SampleSetPersistenceHelper const keys(_nonlinearDim, _linearDim);
+    tbl::BaseCatalog catalog(keys.schema);
+    fillCatalog(*this, catalog, keys);
+    return catalog;
+}
 
 std::string SampleSet::getPersistenceName() const {
     return getSampleSetPersistenceName();
@@ -257,16 +281,7 @@ std::string SampleSet::getPythonModule() const {
 void SampleSet::write(OutputArchiveHandle & handle) const {
     SampleSetPersistenceHelper const keys(_nonlinearDim, _linearDim);
     tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
-    catalog.reserve(size());
-    for (const_iterator i = begin(); i != end(); ++i) {
-        PTR(tbl::BaseRecord) record = catalog.addNew();
-        record->set(keys.joint_r, i->joint.r);
-        (*record)[keys.joint_mu].asEigen() = i->joint.mu;
-        record->set(keys.joint_fisher, i->joint.fisher);
-        record->set(keys.marginal, i->marginal);
-        record->set(keys.proposal, i->proposal);
-        (*record)[keys.parameters].asEigen() = i->parameters;
-    }
+    fillCatalog(*this, catalog, keys);
     handle.saveCatalog(catalog);
 }
 
