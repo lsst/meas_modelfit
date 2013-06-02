@@ -67,12 +67,12 @@ class BaseSamplerTask(lsst.pipe.base.Task):
 class NaiveGridSamplerConfig(BaseSamplerConfig):
     nRadiusSteps = lsst.pex.config.Field(
         dtype=int,
-        default=20,
+        default=12,
         doc="Number of radius steps in grid"
     )
     maxRadiusFactor = lsst.pex.config.Field(
         dtype=float,
-        default=4.0,
+        default=1.5,
         doc="Maximum radius in grid, as scaling factor multiplied by adaptive moments major axis ratio"
     )
     maxEllipticity = lsst.pex.config.Field(
@@ -82,7 +82,7 @@ class NaiveGridSamplerConfig(BaseSamplerConfig):
     )
     ellipticityStepSize = lsst.pex.config.Field(
         dtype=float,
-        default=0.5,
+        default=0.15,
         doc="ellipticity grid step size"
     )
 
