@@ -21,6 +21,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+import numpy
+
 import lsst.pex.config
 import lsst.pipe.base
 import lsst.afw.table
@@ -59,11 +61,6 @@ class MeasureImageConfig(lsst.pex.config.Config):
     fitRegion = lsst.pex.config.ConfigField(
         dtype=setupFitRegion.ConfigClass,
         doc="Parameters that control which pixels to include in the model fit"
-    )
-    snrMax = lsst.pex.config.Field(
-        dtype=float,
-        doc="Don't fit objects with SNR above the given value",
-        default=50.0
     )
 
 class MeasureImageTask(lsst.pipe.base.CmdLineTask):
@@ -140,11 +137,11 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         outputs = lsst.pipe.base.Struct(
             catalog = ModelFitCatalog(self.schema)
         )
-        nGalaxies = ((catalog.getApFlux() / catalog.getApFluxErr()) <= self.config.snrMax).sum()
+        starKey = catalog.getSchema().find("calib.psf.candidate").key
+        nGalaxies = numpy.logical_not(catalog.get(starKey)).sum()
         i = 0
         for source in catalog:
-            snr = source.getApFlux() / source.getApFluxErr()
-            if snr > self.config.snrMax:
+            if source.getFlag(starKey):
                 continue
             record = outputs.catalog.addNew()
             record.assign(source, self.schemaMapper)
