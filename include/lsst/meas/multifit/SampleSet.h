@@ -26,6 +26,7 @@
 
 #include <vector>
 
+#include "lsst/afw/table/Catalog.h"
 #include "lsst/afw/table/io/Persistable.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/LogGaussian.h"
@@ -84,6 +85,9 @@ public:
      *  Any SamplePoints added to the SampleSet must have the same dimensions.
      */
     SampleSet(int nonlinearDim, int linearDim);
+
+    /// @brief Return an afw::table::BaseCatalog representation of the SampleSet.
+    afw::table::BaseCatalog asCatalog() const;
 
     //@{
     /**
