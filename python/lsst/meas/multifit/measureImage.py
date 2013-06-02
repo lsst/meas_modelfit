@@ -62,6 +62,16 @@ class MeasureImageConfig(lsst.pex.config.Config):
         dtype=setupFitRegion.ConfigClass,
         doc="Parameters that control which pixels to include in the model fit"
     )
+    useRefCat = lsst.pex.config.Field(
+        dtype=bool,
+        default=True,
+        doc="Whether to use the reference catalog to identify objects to fit"
+    )
+    prepOnly = lsst.pex.config.Field(
+        dtype=bool,
+        default=False,
+        doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
+    )
 
 class MeasureImageTask(lsst.pipe.base.CmdLineTask):
     """Driver class for S13-specific galaxy modeling work
@@ -82,83 +92,155 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
         self.schema = self.schemaMapper.getOutputSchema()
         self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
-        self.nPixKey = self.schema.addField("npix", type=int, doc="Number of pixels used in model fit")
         self.basis = self.config.model.apply()
         self.prior = self.config.prior.apply()
+        self.snrKey = self.schema.addField("snr", type=float,
+                                           doc="signal to noise ratio from source apFlux/apFluxErr")
+        self.meanEllipseKey = self.schema.addField("mean.ellipse", type="MomentsD",
+                                                   doc="Posterior mean ellipse")
+        self.meanCenterKey = self.schema.addField("mean.center", type="PointD",
+                                                  doc="Posterior mean center position")
+        self.meanFluxKey = self.schema.addField("mean.flux", type=float, doc="Posterior mean flux")
+        self.meanFractionKey = self.schema.addField("mean.fraction", type="ArrayD", size=self.basis.getSize(),
+                                                    doc="Posterior mean flux fraction in each component")
+        if self.config.useRefCat:
+            self.refEllipseKey = self.schema.addField("ref.ellipse", type="MomentsD",
+                                                      doc="ellipse from reference catalog")
+            self.refFluxKey = self.schema.addField("ref.flux", type=float, doc="flux from reference catalog")
+            self.refSIndexKey = self.schema.addField("ref.sindex", type=float,
+                                                     doc="Sersic index from reference catalog")
 
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing:
           - exposure ----- lsst.afw.image.ExposureF to fit
-          - catalog ------ lsst.afw.table.SourceCatalog with initial measurements
+          - srcCat ------- lsst.afw.table.SourceCatalog with initial measurements
+          - refCat ------- lsst.afw.table.SimpleCatalog with truth values (may be
+                           None if !config.useRefCat)
         """
+        try:
+            refCat = dataRef.get("refcat", immediate=True)
+        except:
+            refCat = None
         return lsst.pipe.base.Struct(
             exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True),
-            catalog = dataRef.get(self.dataPrefix + "src", immediate=True),
+            srcCat = dataRef.get(self.dataPrefix + "src", immediate=True),
+            refCat = refCat
             )
 
-    def writeOutputs(self, dataRef, outputs):
+    def writeOutputs(self, dataRef, outCat):
         """Write task outputs using the butler.
         """
-        dataRef.put(outputs.catalog, self.dataPrefix + "modelfits")
+        self.log.info("Writing output catalog")
+        outCat.sort()  # want to sort by ID before saving, so when we load it's contiguous
+        dataRef.put(outCat, self.dataPrefix + "modelfits")
 
     @lsst.pipe.base.timeMethod
-    def processObject(self, exposure, source, record):
+    def processObject(self, exposure, record):
         """Process a single object.
 
         @param[in] exposure    lsst.afw.image.ExposureF to fit
-        @param[in] source      lsst.afw.table.SourceRecord that defines the object to be measured.
-                               Must have valid "shape" and "centroid" slots.
-        @param[in,out] record  ModelFitRecord with fields for output.
+        @param[in,out] record  ModelFitRecord to fill, as prepared by prepCatalog
+
+        @return the Objective object used to do the fitting
         """
-        if not exposure.hasPsf():
-            raise RuntimeError("Exposure has no PSF")
-        psfModel = self.fitPsf.apply(record, exposure.getPsf(), source.getCentroid())
-        if psfModel.hasFailed():
-            raise RuntimeError("Shapelet approximation to PSF failed")
+        psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
-        footprint = setupFitRegion(self.config.fitRegion, exposure, source)
-        record.set(self.nPixKey, footprint.getArea())
-        sampler = self.sampler.setup(exposure=exposure, source=source)
+        sampler = self.sampler.setup(exposure=exposure, record=record)
         objective = SingleEpochObjective(
             self.config.objective.makeControl(), self.basis, psf,
-            exposure.getMaskedImage(), footprint
+            exposure.getMaskedImage(), record.getFootprint()
         )
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
         ellipse = sampler.interpret(samples.computeMean())
-        record.setCentroid(ellipse.getCenter())
-        record.setShape(lsst.afw.geom.ellipses.Quadrupole(ellipse.getCore()))
+        record.set(self.meanEllipseKey, lsst.afw.geom.ellipses.Quadrupole(ellipse.getCore()))
+        record.set(self.meanCenterKey, ellipse.getCenter())
+        # TODO: fill fraction, flux keys, also error fields
+        return lsst.pipe.base.Struct(objective=objective, sampler=sampler, record=record)
 
-    def processImage(self, exposure, catalog):
-        """Process all sources in an exposure, drawing samples from each sources, returning
-        the outputs as a Struct with a single 'catalog' attribute.
+    def prepCatalog(self, exposure, srcCat, refCat=None, where=None):
+        """Create a ModelFitCatalog with initial parameters and fitting regions
+        to be used later by fillCatalog.
+
+        @param[in]   exposure         Exposure object that will be fit; only used to
+                                      extract the Psf, Wcs, Calib, and bounding box.
+        @param[in]   srcCat           SourceCatalog containing processCcd measurements
+        @param[in]   refCat           Simulation reference catalog used to add truth
+                                      values for comparison to each record, and to
+                                      set which objects should be fit (i.e. reject stars).
+                                      Ignored if !config.useRefCat.
+        @param[in]   where            Callable with signature f(src, ref=None) that takes
+                                      a SourceRecord and optional SimpleRecord and returns
+                                      True if a ModelFitRecord should be created for that
+                                      object.  Ignored if None.
         """
-        outputs = lsst.pipe.base.Struct(
-            catalog = ModelFitCatalog(self.schema)
-        )
-        starKey = catalog.getSchema().find("calib.psf.candidate").key
-        nGalaxies = numpy.logical_not(catalog.get(starKey)).sum()
-        i = 0
-        for source in catalog:
-            if source.getFlag(starKey):
-                continue
-            record = outputs.catalog.addNew()
-            record.assign(source, self.schemaMapper)
-            self.processObject(exposure=exposure, source=source, record=record)
-            i += 1
-            if i % 100 == 0:
-                self.log.info("Processed %d/%d objects (%4.1f%%)" % (i, nGalaxies, i*100.0/nGalaxies))
-        return outputs
+        self.log.info("Setting up fitting and transferring source/reference fields")
+        outCat = ModelFitCatalog(self.schema)
+        if not exposure.hasPsf():
+            raise lsst.pipe.base.TaskError("Exposure has no PSF")
+
+        def prepRecord(outRecord, srcRecord):
+            psfModel = self.fitPsf.apply(outRecord, exposure.getPsf(), srcRecord.getCentroid())
+            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
+            outRecord.setD(self.snrKey, srcRecord.getApFlux() / srcRecord.getApFluxErr())
+            outRecord.setCentroid(srcRecord.getCentroid())
+            outRecord.setShape(srcRecord.getShape())
+            outRecord.assign(srcRecord, self.schemaMapper)
+
+        if self.config.useRefCat:
+            matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
+            keyA = refCat.getSchema().find("ellipse.a").key
+            keyB = refCat.getSchema().find("ellipse.b").key
+            keyTheta = refCat.getSchema().find("ellipse.theta").key
+            keyMag = refCat.getSchema().find("mag.%s" % exposure.getFilter().getName()).key
+            keySIndex = refCat.getSchema().find("sindex").key
+            wcs = exposure.getWcs()
+            calib = exposure.getCalib()
+            for match in matches:
+                if where is not None and not where(src=match.second, ref=match.first):
+                    continue
+                ellipse1 = lsst.afw.geom.ellipses.Axes(
+                    (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
+                    (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
+                    match.first.getAngle(keyTheta).asRadians()
+                    )
+                transform = wcs.linearizeSkyToPixel(match.first.getCoord())
+                ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
+                outRecord = outCat.addNew()
+                outRecord.setMomentsD(self.refEllipseKey, ellipse2)
+                outRecord.setD(self.refFluxKey, calib.getFlux(match.first.getD(keyMag)))
+                outRecord.setD(self.refSIndexKey, match.first.getD(keySIndex))
+                prepRecord(outRecord, match.second)
+        else:
+            starKey = srcCat.getSchema().find("calib.psf.candidate").key
+            for srcRecord in srcCat:
+                if srcRecord.getFlag(starKey):
+                    continue
+                if where is not None and not where(src=srcRecord):
+                    continue
+                outRecord = outCat.addNew()
+                prepRecord(outRecord, srcRecord)
+        return outCat
+
+    def fillCatalog(self, exposure, outCat):
+        """For each empty ModelFitRecord in catalog, call processObject()
+        """
+        for n, record in enumerate(outCat):
+            if n % 100 == 0:
+                self.log.info("Processing object %d/%d (%3.2f%%)" % (n, len(outCat), (100.0*n)/len(outCat)))
+            self.processObject(exposure=exposure, record=record)
 
     def run(self, dataRef):
         """Process the exposure/catalog associated with the given dataRef, and write the
         output catalog using the butler.
         """
         inputs = self.readInputs(dataRef)
-        outputs = self.processImage(exposure=inputs.exposure, catalog=inputs.catalog)
-        self.writeOutputs(dataRef, outputs)
-        return outputs
+        outCat = self.prepCatalog(inputs.exposure, srcCat=inputs.srcCat, refCat=inputs.refCat)
+        if not self.config.prepOnly:
+            self.fillCatalog(inputs.exposure, outCat)
+        self.writeOutputs(dataRef, outCat)
+        return outCat
 
     def getSchemaCatalogs(self):
         """Return a dict of empty catalogs for each catalog dataset produced by this task."""

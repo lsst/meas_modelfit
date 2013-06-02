@@ -45,9 +45,9 @@ class BaseSamplerTask(lsst.pipe.base.Task):
     def __init__(self, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
 
-    def setup(self, exposure, source):
+    def setup(self, exposure, record):
         """Bootstrap the sampler for an object with no prior samples, using measurements from
-        the given source and operations on the pixels of the given exposure.
+        the given record and operations on the pixels of the given exposure.
 
         @return an instance of a subclass of BaseSampler
         """
@@ -89,11 +89,11 @@ class NaiveGridSamplerConfig(BaseSamplerConfig):
 class NaiveGridSamplerTask(BaseSamplerTask):
     ConfigClass = NaiveGridSamplerConfig
 
-    def setup(self, exposure, source):
-        axes = lsst.afw.geom.ellipses.Axes(source.getShape())
+    def setup(self, exposure, record):
+        axes = lsst.afw.geom.ellipses.Axes(record.getShape())
         maxRadius = axes.getA() * self.config.maxRadiusFactor
         return NaiveGridSampler(
-            source.getCentroid(),
+            record.getCentroid(),
             self.config.nRadiusSteps,
             self.config.ellipticityStepSize,
             maxRadius,
