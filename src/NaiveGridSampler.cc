@@ -159,7 +159,7 @@ SampleSet NaiveGridSampler::run(Objective const & objective) const {
     int nonlinearDim = 3;
     int linearDim = objective.getLinearDim();
     SampleSet samples(nonlinearDim, linearDim);
-    double density = 1.0 / (_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
+    double density = std::log(_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
     afw::geom::ellipses::Ellipse ellipse = afw::geom::ellipses::Ellipse(EllipseCore(), _center);
     ellipse.getCore().scale(0.0);
     SamplePoint p(nonlinearDim, linearDim);

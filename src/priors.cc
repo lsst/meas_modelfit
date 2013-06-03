@@ -64,7 +64,7 @@ void assert2d(LogGaussian const & likelihood) {
 
 double SingleComponentPrior::apply(LogGaussian const & likelihood, Vector const & parameters) const {
     assert2d(likelihood);
-    return std::exp(-0.5 * likelihood.r) * (
+    return likelihood.r - std::log(
         _beta * integral(0, likelihood.mu[0], likelihood.fisher(0,0))
         + (1.0 - _beta) * integral(0, likelihood.mu[1], likelihood.fisher(1,1))
     );
@@ -74,7 +74,7 @@ double SingleComponentPrior::computeFluxExpectation(
     LogGaussian const & likelihood, Vector const & parameters
 ) const {
     assert2d(likelihood);
-    return std::exp(-0.5 * likelihood.r) * (
+    return likelihood.r - std::log(
         _beta * integral(1, likelihood.mu[0], likelihood.fisher(0,0))
         + (1.0 - _beta) * integral(1, likelihood.mu[1], likelihood.fisher(1,1))
     );
@@ -84,7 +84,7 @@ double SingleComponentPrior::computeSquaredFluxExpectation(
     LogGaussian const & likelihood, Vector const & parameters
 ) const {
     assert2d(likelihood);
-    return std::exp(-0.5 * likelihood.r) * (
+    return likelihood.r - std::log(
         _beta * integral(2, likelihood.mu[0], likelihood.fisher(0,0))
         + (1.0 - _beta) * integral(2, likelihood.mu[1], likelihood.fisher(1,1))
     );
@@ -95,8 +95,8 @@ Vector SingleComponentPrior::computeFractionExpectation(
 ) const {
     assert2d(likelihood);
     Vector result(2);
-    result[0] = _beta * integral(0, likelihood.mu[0], likelihood.fisher(0,0));
-    result[1] = (1 - _beta) * integral(0, likelihood.mu[1], likelihood.fisher(1,1));
+    result[0] = likelihood.r - std::log(_beta * integral(0, likelihood.mu[0], likelihood.fisher(0,0)));
+    result[1] = likelihood.r - std::log((1 - _beta) * integral(0, likelihood.mu[1], likelihood.fisher(1,1)));
     return result;
 }
 

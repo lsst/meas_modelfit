@@ -40,7 +40,8 @@ namespace lsst { namespace meas { namespace multifit {
 SamplePoint::SamplePoint(int nonlinearDim, int linearDim) :
     joint(linearDim),
     marginal(std::numeric_limits<Pixel>::quiet_NaN()),
-    proposal(1.0),
+    proposal(0.0),
+    weight(std::numeric_limits<Pixel>::quiet_NaN()),
     parameters(Vector::Zero(nonlinearDim))
 {}
 
@@ -64,17 +65,52 @@ void SampleSet::add(SamplePoint const & p) {
              % _nonlinearDim % p.joint.mu.size()).str()
         );
     }
-    _samples.push_back(p);
     if (_prior) {
-        _prior->apply(_samples.back().joint, _samples.back().parameters);
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "Cannot add new samples after applyPrior() has been called; use dropPrior() to revert"
+        );
     }
+    _samples.push_back(p);
 }
 
-void SampleSet::applyPrior(PTR(Prior) const & prior) {
+double SampleSet::applyPrior(PTR(Prior) const & prior) {
     for (iterator i = begin(); i != end(); ++i) {
         i->marginal = prior->apply(i->joint, i->parameters);
+        // for numerical reasons, in the first pass, we set w_i = ln(m_i/q_i);
+        // note that i->proposal == -ln(q_i) and i->marginal == -ln(m_i)
+        i->weight = i->proposal - i->marginal;
+    }
+    // sort by ascending probability, so when we accumulate, we add small numbers together
+    // before adding them to large numbers
+    _samples.sort();
+    // we now compute z, the arithmetic mean of ln(m_i/q_i)
+    double z = 0.0;
+    for (iterator i = begin(); i != end(); ++i) {
+        z += i->weight;
+    }
+    z /= _samples.size();
+    // we now subtract z from w_i and exponentiate, accumulating the sums
+    // this now makes w_i = e^{-z} m_i/q_i, which is proportional to the
+    // desired m_i/q_i.
+    double wSum = 0.0;
+    for (iterator i = begin(); i != end(); ++i) {
+        wSum += i->weight = std::exp(i->weight - z);
+    }
+    // finally, we normalize w_i...
+    for (iterator i = begin(); i != end(); ++i) {
+        i->weight /= wSum;
     }
     _prior = prior;
+    // ..and return the log of wSum, corrected for the z term we took out earlier
+    return -z - std::log(wSum / _samples.size());
+}
+
+void SampleSet::dropPrior() {
+    for (iterator i = begin(); i != end(); ++i) {
+        i->weight = i->marginal = std::numeric_limits<double>::quiet_NaN();
+    }
+    _prior.reset();
 }
 
 namespace {
@@ -131,33 +167,23 @@ Eigen::VectorXd SampleSet::computeExpectation(
     if (!_prior) {
         throw LSST_EXCEPT(
             pex::exceptions::LogicErrorException,
-            "Cannot compute expectation values without marginalizing over amplitudes"
+            "Cannot compute expectation values without attaching a prior"
         );
     }
-    // n.b. we could probably write this as a single-pass algorithm, which would only involve
-    // evaluating the expectation functor once for each point, but the single-pass algorithm
-    // is a lot easier to read than a robust single-pass algorithm.
-    double alpha = 0.0;
     Eigen::VectorXd r = Eigen::VectorXd::Zero(functor.outputDim);
     for (const_iterator i = begin(); i != end(); ++i) {
-        double w = i->marginal / i->proposal;
-        alpha += w;
-        r += w * functor(*i, *_prior).cast<double>();
+        r += i->weight * functor(*i, *_prior);
     }
-    r /= alpha;
     if (mcCov) {
         mcCov->setZero();
-        alpha /= size();
-        double alphaVar = 0.0;
+        double w2 = 0.0;
         for (const_iterator i = begin(); i != end(); ++i) {
-            double w = i->marginal / i->proposal;
-            alphaVar += (w - alpha);
-            Eigen::VectorXd delta = functor(*i, *_prior).cast<double>() - r;
-            mcCov->selfadjointView<Eigen::Lower>().rankUpdate(delta, 1.0);
+            Eigen::VectorXd delta = functor(*i, *_prior) - r;
+            mcCov->selfadjointView<Eigen::Lower>().rankUpdate(delta, i->weight);
+            w2 += i->weight * i->weight;
         }
-        mcCov->selfadjointView<Eigen::Lower>().rankUpdate(r, alphaVar);
         *mcCov = mcCov->selfadjointView<Eigen::Lower>();
-        *mcCov /= (alpha * alpha * size() * (size() - 1));
+        *mcCov /= (1.0 - w2);
     }
     return r;
 }
@@ -182,6 +208,7 @@ public:
     tbl::Key< tbl::Covariance<Pixel> > joint_fisher;
     tbl::Key<Pixel> marginal;
     tbl::Key<Pixel> proposal;
+    tbl::Key<double> weight;
     tbl::Key< tbl::Array<Pixel> > parameters;
 
     SampleSetPersistenceHelper(int nonlinearDim, int linearDim) :
@@ -191,8 +218,10 @@ public:
                                                       linearDim)),
         joint_fisher(schema.addField< tbl::Covariance<Pixel> >("joint.fisher", "amplitude Fisher matrix",
                                                                linearDim)),
-        marginal(schema.addField<Pixel>("marginal", "marginal posterior value at sample point")),
-        proposal(schema.addField<Pixel>("proposal", "density of the distribution used to draw samples")),
+        marginal(schema.addField<Pixel>("marginal", "negative log marginal posterior value at sample point")),
+        proposal(schema.addField<Pixel>("proposal",
+                                        "negative log density of the distribution used to draw samples")),
+        weight(schema.addField<double>("weight", "normalized Monte Carlo weight")),
         parameters(schema.addField< tbl::Array<Pixel> >("parameters", "nonlinear parameters at this point",
                                                         nonlinearDim))
     {}
@@ -204,6 +233,7 @@ public:
         joint_fisher(schema["joint.fisher"]),
         marginal(schema["marginal"]),
         proposal(schema["proposal"]),
+        weight(schema["weight"]),
         parameters(schema["parameters"])
     {}
 
@@ -219,7 +249,6 @@ public:
         int const linearDim = keys.joint_mu.getSize();
         int const nonlinearDim = keys.parameters.getSize();
         PTR(SampleSet) result(new SampleSet(nonlinearDim, linearDim));
-        result->reserve(catalogs.front().size());
         for (
             tbl::BaseCatalog::const_iterator i = catalogs.front().begin();
             i != catalogs.front().end();
@@ -231,6 +260,7 @@ public:
             p.joint.fisher = i->get(keys.joint_fisher);
             p.marginal = i->get(keys.marginal);
             p.proposal = i->get(keys.proposal);
+            p.weight = i->get(keys.weight);
             p.parameters = i->get(keys.parameters).asEigen();
             result->add(p);
         }
@@ -257,6 +287,7 @@ void fillCatalog(
         record->set(keys.joint_fisher, i->joint.fisher);
         record->set(keys.marginal, i->marginal);
         record->set(keys.proposal, i->proposal);
+        record->set(keys.weight, i->weight);
         (*record)[keys.parameters].asEigen() = i->parameters;
     }
 }

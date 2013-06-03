@@ -46,6 +46,9 @@ namespace lsst { namespace meas { namespace multifit {
  *  @f]
  *  Thus, we marginalize the likelihood in @f$\alpha@f$ at fixed @f$\theta@f$, and then multiply
  *  by the prior on @f$\theta@f$.
+ *
+ *  @note All return values of prior integral member functions are negative logarithms, to avoid
+ *        floating-point underflow when expoentiating large numbers.
  */
 class Prior {
 public:
@@ -59,23 +62,25 @@ public:
      *  @param[in]  parameters     The nonlinear parameters @f$\theta@f$, considered fixed for
      *                             this calculation.
      *
-     *  @return The marginal likelihood multiplied by the prior on @f$\theta@f$:
+     *  @return The marginal negative log likelihood multiplied by the prior on @f$\theta@f$
+     *          (i.e. a nonnormalized log posterior):
      *  @f[
      *    P(D|\theta)P(\theta) =
      *       P(\theta)\int\!P(D|\alpha,\theta)\,P(\alpha|\theta)\,d\alpha
      *  @f]
      *
-     *  Note that while the joint likelihood is passed in in logarithmic parameters, the return value
-     *  should be not be the log likelihood.
+     *  Note that both the joint likelihood passed in and the marginal likelihood returned
+     *  are the negative natural log of the probabilities densities.
      */
     virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized expectation value of the flux at a nonlinear parameter point.
+     *  @brief Compute the nonnormalized negative log expectation value of the flux at a
+     *         nonlinear parameter point.
      *
      *  This is the integral
      *  @f[
-     *     \int\!\text{flux}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *     -\ln\int\!\text{flux}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
      *  @f]
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
@@ -85,12 +90,12 @@ public:
     ) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized expectation value of the squared flux at a
+     *  @brief Compute the nonnormalized negative log expectation value of the squared flux at a
      *         nonlinear parameter point.
      *
      *  This is the integral
      *  @f[
-     *     \int\!\left[\text{flux}(\alpha,\theta)\right]^2\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *     -\ln\int\!\left[\text{flux}(\alpha,\theta)\right]^2\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
      *  @f]
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
@@ -100,12 +105,12 @@ public:
     ) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized expectation value of the fraction of flux in each component
-     *         at a nonlinear parameter point.
+     *  @brief Compute the nonnormalized negative log expectation value of the fraction of flux
+     *         in each component at a nonlinear parameter point.
      *
      *  This is the integral
      *  @f[
-     *     \int\!\text{fraction}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *     -\ln\int\!\text{fraction}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
      *  @f]
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{fraction}(\alpha,\theta)=\frac{\alpha}{|\alpha|_1}@f$

@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_SampleSet_h_INCLUDED
 #define LSST_MEAS_MULTIFIT_SampleSet_h_INCLUDED
 
-#include <vector>
+#include <list>
 
 #include "lsst/afw/table/Catalog.h"
 #include "lsst/afw/table/io/Persistable.h"
@@ -45,9 +45,13 @@ class SamplePoint {
 public:
 
     LogGaussian joint; ///< Log likelihood w.r.t. linear amplitudes @f$L_n(\alpha)@f$
-    Pixel marginal;    ///< Marginal nonnormalized posterior @f$m_n@f$
-    Pixel proposal;    ///< Density @f$q_n@f$ of the distribution from which the samples were drawn
+    Pixel marginal;    ///< Marginal nonnormalized log posterior @f$\ln m_n@f$
+    Pixel proposal;    ///< Log density @f$\ln q_n@f$ of the distribution from which the samples were drawn
+    double weight;     ///< Weight of this sample point; @f$m_n/q_n@f$
     Vector parameters; ///< Nonlinear parameters @f$\theta_n@f$ at this point
+
+    /// Comparison used to sort SamplePoints by weight in order to avoid round-off error
+    bool operator<(SamplePoint const & other) const { return weight < other.weight; }
 
     /// Initialize to zeros with the given dimensions
     SamplePoint(int nonlinearDim, int linearDim);
@@ -73,7 +77,7 @@ public:
  *  on the full posterior are computed).
  */
 class SampleSet : public afw::table::io::PersistableFacade<SampleSet>, public afw::table::io::Persistable {
-    typedef std::vector<SamplePoint> Container;
+    typedef std::list<SamplePoint> Container;
 public:
 
     typedef Container::iterator iterator;
@@ -105,25 +109,27 @@ public:
     /// Return the number of samples.
     std::size_t size() const { return _samples.size(); }
 
-    /// Reserve space for the given total number of samples.
-    void reserve(std::size_t capacity) { _samples.reserve(capacity); }
-
-    /// Return the total number of samples that space has been allocated for.
-    std::size_t capacity() const { return _samples.capacity(); }
-
     /**
-     *  @brief Add a new sample point to the SampleSet, applying the prior
-     *         if applyPrior() has been called.
+     *  @brief Add a new sample point to the SampleSet.
+     *
+     *  If a prior has already been applied to the SampleSet, new points may not
+     *  be added (throws LogicErrorException).
      */
     void add(SamplePoint const & p);
 
     /**
      *  @brief Attach the given prior to the SampleSet and apply it to all existing samples.
      *
-     *  Attaching a prior recomputes the "marginal" value for each SamplePoint, and causes any
-     *  the prior to be applied to any future samples automatically.
+     *  Attaching a prior recomputes the "marginal" and "weight" values for each SamplePoint,
+     *  sorts the samples by weight, and prevents new SamplePoints from being added.
+     *
+     *  Return the negative log of the sum of weights before normalizing them, which is the
+     *  negative log of the Bayesian "evidence" for a normalized prior.
      */
-    void applyPrior(PTR(Prior) const & prior);
+    double applyPrior(PTR(Prior) const & prior);
+
+    /// Remove the prior from the SampleSet, allowing new SamplePoints to be added.
+    void dropPrior();
 
     /**
      *  @brief Compute an expectation integral and optionally its Monte Carlo covariance.
@@ -133,6 +139,8 @@ public:
      *  If the Monte Carlo covariance matrix is requested, it will represent the uncertainty due only to
      *  the finite number of samples and non-optimality of the proposal distribution, not the uncertainty
      *  due to the width of the distribution itself.
+     *
+     *  A prior must be attached before computeExpecation is called.
      *
      *  See ExpectationFunctor for more information.
      */
@@ -146,6 +154,8 @@ public:
      *
      *  As with computeExpectation, the optional "mcCov" output represents only the uncertainty due to the
      *  finite number of samples, and is not the covariance matrix of the distribution.
+     *
+     *  A prior must be attached before computeExpecation is called.
      */
     Eigen::VectorXd computeMean(Eigen::MatrixXd * mcCov=0) const;
 
@@ -154,6 +164,8 @@ public:
      *
      *  Using the notation of ExpectationFunctor, this is the expectation value for
      *  @f$f(\alpha,\theta)=\theta\theta^T@f$.
+     *
+     *  A prior must be attached before computeExpecation is called.
      */
     Eigen::MatrixXd computeCovariance(Eigen::VectorXd const & mean) const;
 
