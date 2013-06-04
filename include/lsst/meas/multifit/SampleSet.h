@@ -87,8 +87,42 @@ public:
      *  @brief Initialize the SampleSet with the given parameter dimensions.
      *
      *  Any SamplePoints added to the SampleSet must have the same dimensions.
+     *
+     *  @param[in] nonlinearDim   Number of nonlinear parameters (size of SamplePoint::parameters).
+     *  @param[in] linearDim      Number of linear amplitude parameters (dimension of SamplePoint::joint).
+     *  @param[in] ellipseType    Name of the afw::geom::ellipses::BaseCore subclass that defines the
+     *                            ellipse part of the nonlinear parameters.
      */
-    SampleSet(int nonlinearDim, int linearDim);
+    SampleSet(int nonlinearDim, int linearDim, std::string const & ellipseType);
+
+    /// Return the number of nonlinear parameters
+    int getNonlinearDim() const { return _nonlinearDim; }
+
+    /// Return the number of linear amplitude parameters
+    int getLinearDim() const { return _linearDim; }
+
+    /// Return the name of the afw::geom::ellipses type used to interpret the nonlinear parameters.
+    std::string const & getEllipseType() const { return _ellipseType; }
+
+    /**
+     *  @brief Convert the ellipse part of the nonlinear parameters to a parametrization
+     *
+     *  @param[in] ellipseType    Name of the afw::geom::ellipses::BaseCore subclass will define the
+     *                            new parametrization for the ellipse part of the nonlinear parameters.
+     */
+    void setEllipseType(std::string const & ellipseType);
+
+    /**
+     *  @brief Given a nonlinear parameter vector, return an Ellipse object
+     *
+     *  The first three parameters are always intrepreted as an afw::geom::ellipses::BaseCore object
+     *  with type set by getEllipseType().  The next two parameters, if present, are used as the ellipse
+     *  center; if there are only 3 parameters, the center argument will be used instead.
+     */
+    afw::geom::ellipses::Ellipse interpret(
+        Eigen::VectorXd const & parameters,
+        afw::geom::Point2D const & center=afw::geom::Point2D()
+    ) const;
 
     /// @brief Return an afw::table::BaseCatalog representation of the SampleSet.
     afw::table::BaseCatalog asCatalog() const;
@@ -186,6 +220,7 @@ private:
     int _nonlinearDim;
     int _linearDim;
     Container _samples;
+    std::string _ellipseType;
     PTR(Prior) _prior;
 };
 

@@ -76,9 +76,6 @@ public:
     /// Generate and evaluate samples on the grid
     virtual SampleSet run(Objective const & objective) const;
 
-    /// Interpret a parameter vector in a SampleSet as an Ellipse
-    virtual afw::geom::ellipses::Ellipse interpret(Eigen::VectorXd const & parameters) const;
-
 private:
     afw::geom::Point2D _center;
     int _nRadiusSteps;

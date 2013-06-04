@@ -45,10 +45,35 @@ SamplePoint::SamplePoint(int nonlinearDim, int linearDim) :
     parameters(Vector::Zero(nonlinearDim))
 {}
 
-SampleSet::SampleSet(int nonlinearDim, int linearDim) :
-    _nonlinearDim(nonlinearDim), _linearDim(linearDim)
+SampleSet::SampleSet(int nonlinearDim, int linearDim, std::string const & ellipseType) :
+    _nonlinearDim(nonlinearDim), _linearDim(linearDim), _ellipseType(ellipseType)
 {}
 
+void SampleSet::setEllipseType(std::string const & ellipseType) {
+    if (ellipseType == _ellipseType) return;
+    PTR(afw::geom::ellipses::BaseCore) oldEllipse = afw::geom::ellipses::BaseCore::make(_ellipseType);
+    PTR(afw::geom::ellipses::BaseCore) newEllipse = afw::geom::ellipses::BaseCore::make(ellipseType);
+    for (iterator i = begin(); i != end(); ++i) {
+        oldEllipse->setParameterVector(i->parameters.segment<3>(0).cast<double>());
+        *newEllipse = *oldEllipse;
+        i->parameters.segment<3>(0) = newEllipse->getParameterVector().cast<float>();
+    }
+    _ellipseType = ellipseType;
+}
+
+afw::geom::ellipses::Ellipse SampleSet::interpret(
+    Eigen::VectorXd const & parameters,
+    afw::geom::Point2D const & center
+) const {
+    afw::geom::ellipses::Ellipse result(
+        afw::geom::ellipses::BaseCore::make(_ellipseType, parameters.segment<3>(0)),
+        center
+    );
+    if (parameters.size() >= 5) {
+        result.setCenter(afw::geom::Point2D(parameters.segment<2>(3)));
+    }
+    return result;
+}
 
 void SampleSet::add(SamplePoint const & p) {
     if (p.parameters.size() != _nonlinearDim) {
@@ -200,7 +225,8 @@ Eigen::MatrixXd SampleSet::computeCovariance(Eigen::VectorXd const & mean) const
 
 namespace {
 
-class SampleSetPersistenceHelper {
+// Schema and keys for multi-record, dimension-dependent catalog
+class SampleSetPersistenceHelper1 {
 public:
     tbl::Schema schema;
     tbl::Key<Pixel> joint_r;
@@ -211,7 +237,7 @@ public:
     tbl::Key<double> weight;
     tbl::Key< tbl::Array<Pixel> > parameters;
 
-    SampleSetPersistenceHelper(int nonlinearDim, int linearDim) :
+    SampleSetPersistenceHelper1(int nonlinearDim, int linearDim) :
         schema(),
         joint_r(schema.addField<Pixel>("joint.r", "1/2 chi^2 at maximum likelihood point")),
         joint_mu(schema.addField< tbl::Array<Pixel> >("joint.mu", "maximum likelihood amplitude vector",
@@ -226,7 +252,7 @@ public:
                                                         nonlinearDim))
     {}
 
-    explicit SampleSetPersistenceHelper(tbl::Schema const & schema_) :
+    explicit SampleSetPersistenceHelper1(tbl::Schema const & schema_) :
         schema(schema_),
         joint_r(schema["joint.r"]),
         joint_mu(schema["joint.mu"]),
@@ -239,29 +265,56 @@ public:
 
 };
 
+// schema and keys for single-record (per SampleSet), dimension-independent catalog
+class SampleSetPersistenceHelper2 : private boost::noncopyable {
+public:
+    tbl::Schema schema;
+    tbl::Key<std::string> ellipseType;
+
+    static SampleSetPersistenceHelper2 const & get() {
+        static SampleSetPersistenceHelper2 const instance;
+        return instance;
+    }
+
+private:
+
+    SampleSetPersistenceHelper2() :
+        schema(),
+        ellipseType(schema.addField<std::string>("ellipsetype", "name of ellipse parametrization", 48))
+    {
+        schema.getCitizen().markPersistent();
+    }
+
+};
+
+
 class SampleSetFactory : public tbl::io::PersistableFactory {
 public:
 
     virtual PTR(tbl::io::Persistable)
     read(InputArchive const & archive, CatalogVector const & catalogs) const {
-        LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
-        SampleSetPersistenceHelper const keys(catalogs.front().getSchema());
-        int const linearDim = keys.joint_mu.getSize();
-        int const nonlinearDim = keys.parameters.getSize();
-        PTR(SampleSet) result(new SampleSet(nonlinearDim, linearDim));
+        LSST_ARCHIVE_ASSERT(catalogs.size() == 2u);
+        LSST_ARCHIVE_ASSERT(catalogs.back().size() == 1u);
+        SampleSetPersistenceHelper1 const keys1(catalogs.front().getSchema());
+        SampleSetPersistenceHelper2 const & keys2 = SampleSetPersistenceHelper2::get();
+        LSST_ARCHIVE_ASSERT(catalogs.back().getSchema() == keys2.schema);
+        int const linearDim = keys1.joint_mu.getSize();
+        int const nonlinearDim = keys1.parameters.getSize();
+        tbl::BaseRecord const & record2 = catalogs.back().front();
+        PTR(SampleSet) result(new SampleSet(nonlinearDim, linearDim, record2.get(keys2.ellipseType)));
         for (
             tbl::BaseCatalog::const_iterator i = catalogs.front().begin();
             i != catalogs.front().end();
             ++i
         ) {
             SamplePoint p(nonlinearDim, linearDim);
-            p.joint.r = i->get(keys.joint_r);
-            p.joint.mu = i->get(keys.joint_mu).asEigen();
-            p.joint.fisher = i->get(keys.joint_fisher);
-            p.marginal = i->get(keys.marginal);
-            p.proposal = i->get(keys.proposal);
-            p.weight = i->get(keys.weight);
-            p.parameters = i->get(keys.parameters).asEigen();
+            p.joint.r = i->get(keys1.joint_r);
+            p.joint.mu = i->get(keys1.joint_mu).asEigen();
+            p.joint.fisher = i->get(keys1.joint_fisher);
+            p.marginal = i->get(keys1.marginal);
+            p.proposal = i->get(keys1.proposal);
+            p.weight = i->get(keys1.weight);
+            p.parameters = i->get(keys1.parameters).asEigen();
             result->add(p);
         }
         return result;
@@ -277,7 +330,7 @@ SampleSetFactory registration(getSampleSetPersistenceName());
 void fillCatalog(
     SampleSet const & samples,
     tbl::BaseCatalog & catalog,
-    SampleSetPersistenceHelper const & keys
+    SampleSetPersistenceHelper1 const & keys
 ) {
     catalog.reserve(samples.size());
     for (SampleSet::const_iterator i = samples.begin(); i != samples.end(); ++i) {
@@ -295,7 +348,7 @@ void fillCatalog(
 } // anonymous
 
 tbl::BaseCatalog SampleSet::asCatalog() const {
-    SampleSetPersistenceHelper const keys(_nonlinearDim, _linearDim);
+    SampleSetPersistenceHelper1 const keys(_nonlinearDim, _linearDim);
     tbl::BaseCatalog catalog(keys.schema);
     fillCatalog(*this, catalog, keys);
     return catalog;
@@ -310,10 +363,15 @@ std::string SampleSet::getPythonModule() const {
 }
 
 void SampleSet::write(OutputArchiveHandle & handle) const {
-    SampleSetPersistenceHelper const keys(_nonlinearDim, _linearDim);
-    tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
-    fillCatalog(*this, catalog, keys);
-    handle.saveCatalog(catalog);
+    SampleSetPersistenceHelper1 const keys1(_nonlinearDim, _linearDim);
+    SampleSetPersistenceHelper2 const & keys2 = SampleSetPersistenceHelper2::get();
+    tbl::BaseCatalog catalog1 = handle.makeCatalog(keys1.schema);
+    fillCatalog(*this, catalog1, keys1);
+    handle.saveCatalog(catalog1);
+    tbl::BaseCatalog catalog2 = handle.makeCatalog(keys2.schema);
+    PTR(tbl::BaseRecord) record2 = catalog2.addNew();
+    record2->set(keys2.ellipseType, _ellipseType);
+    handle.saveCatalog(catalog2);
 }
 
 }}} // namespace lsst::meas::multifit
