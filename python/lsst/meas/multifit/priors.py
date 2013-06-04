@@ -30,7 +30,9 @@ import lsst.pex.config
 
 from . import multifitLib
 
-registry = lsst.pex.config.makeRegistry(
+__all__ = ("priorRegistry", "registerPrior")
+
+priorRegistry = lsst.pex.config.makeRegistry(
     """Registry for Bayesian priors on galaxy parameters
 
     The Configurables (callables that take a Config as their first and, in this case, only argument)

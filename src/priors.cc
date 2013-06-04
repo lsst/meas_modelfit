@@ -51,15 +51,19 @@ double integral(int n, double mu, double f) {
     );
 }
 
-} // anonymous
-
-double SingleComponentPrior::apply(LogGaussian const & likelihood, Vector const & parameters) const {
+void assert2d(LogGaussian const & likelihood) {
     if (likelihood.mu.size() != 2) {
         throw LSST_EXCEPT(
             pex::exceptions::LogicErrorException,
             "SingleComponentPrior is only valid for two-component models"
         );
     }
+}
+
+} // anonymous
+
+double SingleComponentPrior::apply(LogGaussian const & likelihood, Vector const & parameters) const {
+    assert2d(likelihood);
     return std::exp(-0.5 * likelihood.r) * (
         _beta * integral(0, likelihood.mu[0], likelihood.fisher(0,0))
         + (1.0 - _beta) * integral(0, likelihood.mu[1], likelihood.fisher(1,1))
@@ -69,12 +73,7 @@ double SingleComponentPrior::apply(LogGaussian const & likelihood, Vector const 
 double SingleComponentPrior::computeFluxExpectation(
     LogGaussian const & likelihood, Vector const & parameters
 ) const {
-    if (likelihood.mu.size() != 2) {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
-            "SingleComponentPrior is only valid for two-component models"
-        );
-    }
+    assert2d(likelihood);
     return std::exp(-0.5 * likelihood.r) * (
         _beta * integral(1, likelihood.mu[0], likelihood.fisher(0,0))
         + (1.0 - _beta) * integral(1, likelihood.mu[1], likelihood.fisher(1,1))
@@ -84,12 +83,7 @@ double SingleComponentPrior::computeFluxExpectation(
 double SingleComponentPrior::computeSquaredFluxExpectation(
     LogGaussian const & likelihood, Vector const & parameters
 ) const {
-    if (likelihood.mu.size() != 2) {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
-            "SingleComponentPrior is only valid for two-component models"
-        );
-    }
+    assert2d(likelihood);
     return std::exp(-0.5 * likelihood.r) * (
         _beta * integral(2, likelihood.mu[0], likelihood.fisher(0,0))
         + (1.0 - _beta) * integral(2, likelihood.mu[1], likelihood.fisher(1,1))
@@ -99,12 +93,7 @@ double SingleComponentPrior::computeSquaredFluxExpectation(
 Vector SingleComponentPrior::computeFractionExpectation(
     LogGaussian const & likelihood, Vector const & parameters
 ) const {
-    if (likelihood.mu.size() != 2) {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
-            "SingleComponentPrior is only valid for two-component models"
-        );
-    }
+    assert2d(likelihood);
     Vector result(2);
     result[0] = _beta * integral(0, likelihood.mu[0], likelihood.fisher(0,0));
     result[1] = (1 - _beta) * integral(0, likelihood.mu[1], likelihood.fisher(1,1));

@@ -25,5 +25,5 @@ from .measureCcd import *
 from .measureImage import *
 from .fitRegion import *
 from .samplers import *
-
-from . import models
+from .models import *
+from .priors import *

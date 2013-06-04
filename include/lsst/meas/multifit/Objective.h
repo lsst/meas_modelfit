@@ -56,7 +56,7 @@ public:
     virtual int getLinearDim() const = 0;
 
     /**
-     *  @brief Evaluate the likelihood at the given point given the an ellipse.
+     *  @brief Evaluate the likelihood at the given point given an ellipse.
      *
      *  Because we want to advantage of the fact that the likelihood of the linear amplitude parameters
      *  is Gaussian, at each point in the nonlinear ellipse parameter space, we compute that Gaussian

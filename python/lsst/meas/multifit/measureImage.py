@@ -30,8 +30,8 @@ import lsst.meas.extensions.multiShapelet
 from .samplers import BaseSamplerTask, NaiveGridSamplerTask
 from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
 from .fitRegion import setupFitRegion
-from . import models
-from . import priors
+from .models import *
+from .priors import *
 
 __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
@@ -44,11 +44,11 @@ class MeasureImageConfig(lsst.pex.config.Config):
         dtype=SingleEpochObjective.ConfigClass,
         doc="Config for objective object that computes model probability at given parameters"
     )
-    model = models.registry.makeField(
+    model = modelRegistry.makeField(
         default="bulge+disk",
         doc="Definition of the galaxy model to fit"
     )
-    prior = priors.registry.makeField(
+    prior = priorRegistry.makeField(
         default="single-component",
         doc="Bayesian prior on galaxy parameters"
     )
@@ -67,16 +67,24 @@ class MeasureImageConfig(lsst.pex.config.Config):
     )
 
 class MeasureImageTask(lsst.pipe.base.CmdLineTask):
+    """Driver class for S13-specific galaxy modeling work
+
+    Like ProcessImageTask, MeasureImageTask is intended to be used as a base
+    class with CCD and coadd derived-class specializations.  It is run
+    after processCcd.py (or processEImage.py), and generates a single output
+    catalog with the mapper name 'modelfits'.
+    """
+
     ConfigClass = MeasureImageConfig
     dataPrefix = ""
 
     def __init__(self, **kwds):
         lsst.pipe.base.CmdLineTask.__init__(self, **kwds)
+        self.makeSubtask("sampler")
         self.schemaMapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
         self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
         self.schema = self.schemaMapper.getOutputSchema()
         self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
-        self.makeSubtask("sampler", schema=self.schema, model=self.config.model)
         self.nPixKey = self.schema.addField("npix", type=int, doc="Number of pixels used in model fit")
         self.basis = self.config.model.apply()
         self.prior = self.config.prior.apply()
@@ -103,7 +111,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         @param[in] exposure    lsst.afw.image.ExposureF to fit
         @param[in] source      lsst.afw.table.SourceRecord that defines the object to be measured.
                                Must have valid "shape" and "centroid" slots.
-        @param[in] record      ModelFitRecord with fields for output.
+        @param[in,out] record  ModelFitRecord with fields for output.
         """
         if not exposure.hasPsf():
             raise RuntimeError("Exposure has no PSF")

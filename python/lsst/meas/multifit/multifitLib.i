@@ -41,6 +41,8 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/meas/multifit.h"
 #include "ndarray/eigen.h"
 #include "Eigen/Core"
+
+// namespace-ish hack required by NumPy C-API; see NumPy docs for more info
 #define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
 #include "numpy/arrayobject.h"
 #include "ndarray/swig.h"

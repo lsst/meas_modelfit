@@ -67,7 +67,7 @@ private:
 
 };
 
-// Schema prepended when saving an ModelFit table
+// Schema prepended when saving a ModelFit table
 struct PersistenceSchema : private boost::noncopyable {
     afw::table::Schema schema;
     afw::table::Key<int> samples;
@@ -77,7 +77,7 @@ struct PersistenceSchema : private boost::noncopyable {
         return instance;
     }
 
-    // Create a SchemaMapper that maps an ModelFitRecord to a BaseRecord with IDs for Psf and Wcs.
+    // Create a SchemaMapper that maps a ModelFitRecord to a BaseRecord with ID for SampleSet
     afw::table::SchemaMapper makeWriteMapper(afw::table::Schema const & inputSchema) const {
         std::vector<afw::table::Schema> inSchemas;
         inSchemas.push_back(PersistenceSchema::get().schema);
@@ -85,12 +85,12 @@ struct PersistenceSchema : private boost::noncopyable {
         return afw::table::SchemaMapper::join(inSchemas).back(); // don't need front; it's an identity mapper
     }
 
-    // Create a SchemaMapper that maps a BaseRecord with IDs for Psf and Wcs to an ModelFitRecord
+    // Create a SchemaMapper that maps a BaseRecord with ID for SampleSet to a ModelFitRecord
     afw::table::SchemaMapper makeReadMapper(afw::table::Schema const & inputSchema) const {
         return afw::table::SchemaMapper::removeMinimalSchema(inputSchema, schema);
     }
 
-    // Convert an ModelFitRecord to a BaseRecord with IDs for Psf and Wcs.
+    // Convert a ModelFitRecord to a BaseRecord with IDs for Psf and Wcs.
     template <typename OutputArchiveIsh>
     void writeRecord(
         ModelFitRecord const & input, afw::table::BaseRecord & output,

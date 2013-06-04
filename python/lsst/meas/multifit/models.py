@@ -29,7 +29,9 @@ import numpy
 import lsst.pex.config
 import lsst.shapelet.tractor
 
-registry = lsst.pex.config.makeRegistry(
+__all__ = ("modelRegistry", "registerModel")
+
+modelRegistry = lsst.pex.config.makeRegistry(
     """Registry for galaxy model definitions
 
     A galaxy definition is a Configurable (a callable that takes a Config object

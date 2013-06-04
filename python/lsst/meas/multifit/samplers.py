@@ -42,9 +42,8 @@ class BaseSamplerTask(lsst.pipe.base.Task):
 
     ConfigClass = BaseSamplerConfig
 
-    def __init__(self, schema, model, **kwds):
+    def __init__(self, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
-        self.model = model
 
     def setup(self, exposure, source):
         """Bootstrap the sampler for an object with no prior samples, using measurements from
