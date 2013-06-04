@@ -71,6 +71,7 @@ private:
 struct PersistenceSchema : private boost::noncopyable {
     afw::table::Schema schema;
     afw::table::Key<int> samples;
+    afw::table::Key<int> footprint;
 
     static PersistenceSchema const & get() {
         static PersistenceSchema const instance;
@@ -98,6 +99,7 @@ struct PersistenceSchema : private boost::noncopyable {
     ) const {
         output.assign(input, mapper);
         output.set(samples, archive.put(input.getSamples()));
+        output.set(footprint, archive.put(input.getFootprint()));
     }
 
     void readRecord(
@@ -106,12 +108,14 @@ struct PersistenceSchema : private boost::noncopyable {
     ) const {
         output.assign(input, mapper);
         output.setSamples(archive.get<SampleSet>(input.get(samples)));
+        output.setFootprint(archive.get<afw::detection::Footprint>(input.get(footprint)));
     }
 
 private:
     PersistenceSchema() :
         schema(),
-        samples(schema.addField<int>("samples", "archive ID for SampleSet object"))
+        samples(schema.addField<int>("samples", "archive ID for SampleSet object")),
+        footprint(schema.addField<int>("samplesfootpring", "archive ID for Footprint object"))
     {
         schema.getCitizen().markPersistent();
     }
@@ -242,6 +246,7 @@ void ModelFitRecord::_assign(afw::table::BaseRecord const & other) {
     try {
         ModelFitRecord const & s = dynamic_cast<ModelFitRecord const &>(other);
         _samples = s._samples;
+        _footprint = s._footprint;
     } catch (std::bad_cast&) {}
 }
 
