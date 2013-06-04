@@ -158,9 +158,9 @@ NaiveGridSampler::NaiveGridSampler(
 SampleSet NaiveGridSampler::run(Objective const & objective) const {
     int nonlinearDim = 3;
     int linearDim = objective.getLinearDim();
-    SampleSet samples(nonlinearDim, linearDim);
-    double density = std::log(_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
     afw::geom::ellipses::Ellipse ellipse = afw::geom::ellipses::Ellipse(EllipseCore(), _center);
+    SampleSet samples(nonlinearDim, linearDim, ellipse.getCore().getName());
+    double density = std::log(_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
     ellipse.getCore().scale(0.0);
     SamplePoint p(nonlinearDim, linearDim);
     p.parameters = ellipse.getCore().getParameterVector().head(nonlinearDim).cast<Pixel>();
@@ -181,10 +181,6 @@ SampleSet NaiveGridSampler::run(Objective const & objective) const {
         forEachEllipticity(f, _maxEllipticity, _ellipticityStepSize);
     }
     return samples;
-}
-
-afw::geom::ellipses::Ellipse NaiveGridSampler::interpret(Eigen::VectorXd const & parameters) const {
-    return afw::geom::ellipses::Ellipse(EllipseCore(parameters), _center);
 }
 
 }}} // namespace lsst::meas::multifit

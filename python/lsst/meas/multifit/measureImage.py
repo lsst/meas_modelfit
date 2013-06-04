@@ -153,7 +153,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
-        ellipse = sampler.interpret(samples.computeMean())
+        ellipse = samples.interpret(samples.computeMean(), record.getCentroid())
         record.set(self.meanEllipseKey, lsst.afw.geom.ellipses.Quadrupole(ellipse.getCore()))
         record.set(self.meanCenterKey, ellipse.getCenter())
         # TODO: fill fraction, flux keys, also error fields

@@ -77,6 +77,7 @@ class MultiShapeletBasis;
 %declareNumPyConverters(Eigen::MatrixXd);
 %declareNumPyConverters(ndarray::Array<double,1,1>);
 %declareNumPyConverters(ndarray::Array<double,2,2>);
+%declareNumPyConverters(ndarray::Array<double,2,-2>);
 
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 
