@@ -46,7 +46,7 @@ def registerModel(name):
     """
     def decorate(cls):
         cls.makeBasis.ConfigClass = cls
-        registry.register(name, cls.makeBasis)
+        modelRegistry.register(name, cls.makeBasis)
         return cls
     return decorate
 

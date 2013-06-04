@@ -46,7 +46,7 @@ def registerPrior(name):
     """
     def decorate(cls):
         cls.makePrior.ConfigClass = cls
-        registry.register(name, cls.makePrior)
+        priorRegistry.register(name, cls.makePrior)
         return cls
     return decorate
 
