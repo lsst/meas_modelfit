@@ -31,11 +31,18 @@ Basic routines to talk to lsst::meas::multifit classes
 %module(package="lsst.meas.multifit", docstring=multifitLib_DOCSTRING) multifitLib
 
 %{
+#include "lsst/pex/logging.h"
 #include "lsst/afw/geom.h"
 #include "lsst/afw/geom/ellipses.h"
+#include "lsst/afw/geom/ellipses/PyPixelRegion.h"
+#include "lsst/afw/table.h"
+#include "lsst/afw/cameraGeom.h"
+#include "lsst/afw/image.h"
 #include "lsst/meas/multifit.h"
 #include "ndarray/eigen.h"
 #include "Eigen/Core"
+
+// namespace-ish hack required by NumPy C-API; see NumPy docs for more info
 #define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MULTIFIT_NUMPY_ARRAY_API
 #include "numpy/arrayobject.h"
 #include "ndarray/swig.h"
@@ -55,3 +62,55 @@ Basic routines to talk to lsst::meas::multifit classes
 %include "ndarray.i"
 %import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/geom/ellipses/ellipsesLib.i"
+%import "lsst/afw/table/io/ioLib.i"
+%import "lsst/afw/table/tableLib.i"
+%import "lsst/afw/image/imageLib.i"
+%import "lsst/pex/config.h"
+
+namespace lsst { namespace shapelet {
+class MultiShapeletBasis;
+}}
+
+%declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
+
+%shared_ptr(lsst::meas::multifit::Prior);
+%shared_ptr(lsst::meas::multifit::SingleComponentPrior);
+%shared_ptr(lsst::meas::multifit::Objective);
+%shared_ptr(lsst::meas::multifit::SingleEpochObjective);
+%shared_ptr(lsst::meas::multifit::BaseSampler);
+%shared_ptr(lsst::meas::multifit::NaiveGridSampler);
+
+%include "lsst/meas/multifit/constants.h"
+%include "lsst/meas/multifit/LogGaussian.h"
+%include "lsst/meas/multifit/priors.h"
+%include "lsst/meas/multifit/Objective.h"
+%include "lsst/meas/multifit/BaseSampler.h"
+%include "lsst/meas/multifit/NaiveGridSampler.h"
+
+%pythoncode %{
+import lsst.pex.config
+SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
+SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
+%}
+
+%shared_ptr(lsst::meas::multifit::ModelFitTable);
+%shared_ptr(lsst::meas::multifit::ModelFitRecord);
+
+%include "lsst/meas/multifit/tables.h"
+
+%addCastMethod(lsst::meas::multifit::ModelFitTable, lsst::afw::table::BaseTable)
+%addCastMethod(lsst::meas::multifit::ModelFitRecord, lsst::afw::table::BaseRecord)
+
+
+%template(ModelFitColumnView) lsst::afw::table::ColumnViewT<lsst::meas::multifit::ModelFitRecord>;
+
+%include "lsst/afw/table/SortedCatalog.i"
+
+namespace lsst { namespace afw { namespace table {
+
+using meas::multifit::ModelFitRecord;
+using meas::multifit::ModelFitTable;
+
+%declareSortedCatalog(SortedCatalogT, ModelFit)
+
+}}} // namespace lsst::afw::table

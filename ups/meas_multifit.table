@@ -1,8 +1,10 @@
 setupRequired(afw)
 setupRequired(meas_algorithms)
+setupRequired(meas_extensions_multiShapelet)
 setupRequired(shapelet)
 setupOptional(matplotlib)
 
+envPrepend(PATH, ${PRODUCT_DIR}/bin)
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
 envPrepend(DYLD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
