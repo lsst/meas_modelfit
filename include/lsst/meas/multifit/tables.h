@@ -28,6 +28,7 @@
 #include "lsst/afw/table/SortedCatalog.h"
 #include "lsst/afw/table/BaseColumnView.h"
 #include "lsst/afw/table/io/FitsWriter.h"
+#include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/multifit/BaseSampler.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -58,8 +59,14 @@ public:
     afw::geom::Point2D getCentroid() const;
     void setCentroid(afw::geom::Point2D const & centroid);
 
+    double getX() const;
+    double getY() const;
+
     PTR(SampleSet) getSamples() const { return _samples; }
     void setSamples(PTR(SampleSet) samples) { _samples = samples; }
+
+    PTR(afw::detection::Footprint) getFootprint() const { return _footprint; }
+    void setFootprint(PTR(afw::detection::Footprint) footprint) { _footprint = footprint; }
 
 protected:
 
@@ -70,6 +77,7 @@ protected:
 private:
 
     PTR(SampleSet) _samples;
+    PTR(afw::detection::Footprint) _footprint;
 };
 
 /**
@@ -193,6 +201,13 @@ inline afw::geom::Point2D ModelFitRecord::getCentroid() const {
 }
 inline void ModelFitRecord::setCentroid(afw::geom::Point2D const & centroid) {
     return set(ModelFitTable::getCentroidKey(), centroid);
+}
+
+inline double ModelFitRecord::getX() const {
+   return get(ModelFitTable::getCentroidKey().getX());
+}
+inline double ModelFitRecord::getY() const {
+   return get(ModelFitTable::getCentroidKey().getY());
 }
 
 #endif // !SWIG
