@@ -77,7 +77,6 @@ class MultiShapeletBasis;
 %declareNumPyConverters(Eigen::MatrixXd);
 %declareNumPyConverters(ndarray::Array<double,1,1>);
 %declareNumPyConverters(ndarray::Array<double,2,2>);
-%declareNumPyConverters(ndarray::Array<double,2,-2>);
 
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 
@@ -93,6 +92,7 @@ class MultiShapeletBasis;
 %include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Objective.h"
+%include "lsst/meas/multifit/KernelDensityEstimator.h"
 %include "lsst/meas/multifit/SampleSet.h"
 %include "lsst/meas/multifit/ExpectationFunctor.h"
 %include "lsst/meas/multifit/BaseSampler.h"

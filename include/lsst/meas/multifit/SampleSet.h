@@ -31,6 +31,7 @@
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/KernelDensityEstimator.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -126,6 +127,23 @@ public:
 
     /// @brief Return an afw::table::BaseCatalog representation of the SampleSet.
     afw::table::BaseCatalog asCatalog() const;
+
+    /**
+     *  @brief Create a 1-d estimate of the density of a single parameter (marginalized over the others)
+     */
+    ndarray::Array<double,1,1> computeDensity(KernelDensityEstimatorControl const & ctrl) const;
+
+    /**
+     *  @brief Create a 2-d estimate of the density of two parameters (marginalized over the others)
+     *
+     *  Note that the returned object follows the usual [Y][X] convention for ndarray images;
+     *  the range specified in ctrlY defines the rows (zeroth dimension) of the returned Array, while
+     *  ctrlX specifies the columns (first dimension).
+     */
+    ndarray::Array<double,2,2> computeDensity(
+        KernelDensityEstimatorControl const & ctrlX,
+        KernelDensityEstimatorControl const & ctrlY
+    ) const;
 
     //@{
     /**

@@ -75,6 +75,33 @@ afw::geom::ellipses::Ellipse SampleSet::interpret(
     return result;
 }
 
+ndarray::Array<double,1,1> SampleSet::computeDensity(KernelDensityEstimatorControl const & ctrl) const {
+    ndarray::Array<double,1,1> result = ndarray::allocate(ctrl.getCount());
+    result.deep() = 0.0;
+    for (const_iterator s = begin(); s != end(); ++s) {
+        ctrl.apply(result, s->parameters[ctrl.getIndex()], s->weight);
+    }
+    return result;
+}
+
+ndarray::Array<double,2,2> SampleSet::computeDensity(
+    KernelDensityEstimatorControl const & ctrlX,
+    KernelDensityEstimatorControl const & ctrlY
+) const {
+    ndarray::Array<double,2,2> result = ndarray::allocate(ctrlY.getCount(), ctrlX.getCount());
+    ndarray::Array<double,1,1> tmpY = ndarray::allocate(ctrlY.getCount());
+    ndarray::Array<double,1,1> tmpX = ndarray::allocate(ctrlX.getCount());
+    result.deep() = 0.0;
+    for (const_iterator s = begin(); s != end(); ++s) {
+        tmpY.deep() = 0.0;
+        tmpX.deep() = 0.0;
+        ctrlY.apply(tmpY, s->parameters[ctrlY.getIndex()], 1.0);
+        ctrlX.apply(tmpX, s->parameters[ctrlX.getIndex()], 1.0);
+        result.asEigen() += tmpY.asEigen() * tmpX.asEigen().adjoint();
+    }
+    return result;
+}
+
 void SampleSet::add(SamplePoint const & p) {
     if (p.parameters.size() != _nonlinearDim) {
         throw LSST_EXCEPT(
