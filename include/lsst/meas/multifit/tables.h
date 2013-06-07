@@ -23,8 +23,7 @@
 #ifndef MEAS_MULTIFIT_tables_h_INCLUDED
 #define MEAS_MULTIFIT_tables_h_INCLUDED
 
-#include "lsst/afw/table/BaseRecord.h"
-#include "lsst/afw/table/BaseTable.h"
+#include "lsst/afw/table/Simple.h"
 #include "lsst/afw/table/SortedCatalog.h"
 #include "lsst/afw/table/BaseColumnView.h"
 #include "lsst/afw/table/io/FitsWriter.h"
@@ -38,7 +37,7 @@ class ModelFitTable;
 /**
  *  @brief Record class used to store galaxy model fitting results
  */
-class ModelFitRecord : public afw::table::BaseRecord {
+class ModelFitRecord : public afw::table::SimpleRecord {
 public:
 
     typedef ModelFitTable Table;
@@ -49,18 +48,6 @@ public:
     CONST_PTR(ModelFitTable) getTable() const {
         return boost::static_pointer_cast<ModelFitTable const>(afw::table::BaseRecord::getTable());
     }
-
-    afw::table::RecordId getId() const;
-    void setId(afw::table::RecordId id);
-
-    afw::geom::ellipses::Quadrupole getShape() const;
-    void setShape(afw::geom::ellipses::Quadrupole const & shape);
-
-    afw::geom::Point2D getCentroid() const;
-    void setCentroid(afw::geom::Point2D const & centroid);
-
-    double getX() const;
-    double getY() const;
 
     PTR(SampleSet) getSamples() const { return _samples; }
     void setSamples(PTR(SampleSet) samples) { _samples = samples; }
@@ -85,7 +72,7 @@ private:
  *
  *  @copydetails ModelFitRecord
  */
-class ModelFitTable : public afw::table::BaseTable {
+class ModelFitTable : public afw::table::SimpleTable {
 public:
 
     typedef ModelFitRecord Record;
@@ -100,38 +87,6 @@ public:
      */
     static PTR(ModelFitTable) make(afw::table::Schema const & schema);
 
-    /**
-     *  @brief Return a minimal schema for ModelFit tables and records.
-     *
-     *  The returned schema can and generally should be modified further,
-     *  but many operations on ModelFitRecords will assume that at least the fields
-     *  provided by this routine are present.
-     */
-    static afw::table::Schema makeMinimalSchema() { return getMinimalSchema().schema; }
-
-    /**
-     *  @brief Return true if the given schema is a valid ModelFitTable schema.
-     *
-     *  This will always be true if the given schema was originally constructed
-     *  using makeMinimalSchema(), and will rarely be true otherwise.
-     */
-    static bool checkSchema(afw::table::Schema const & other) {
-        return other.contains(getMinimalSchema().schema);
-    }
-
-    /// @brief Key for the unique ID.
-    static afw::table::Key<afw::table::RecordId> getIdKey() { return getMinimalSchema().id; }
-
-    /// @brief Key for the centroid
-    static afw::table::Key< afw::table::Point<double> > getCentroidKey() {
-        return getMinimalSchema().centroid;
-    }
-
-    /// @brief Key for the shape
-    static afw::table::Key< afw::table::Moments<double> > getShapeKey() {
-        return getMinimalSchema().shape;
-    }
-
     /// @copydoc afw::table::BaseTable::clone
     PTR(ModelFitTable) clone() const { return boost::static_pointer_cast<ModelFitTable>(_clone()); }
 
@@ -140,7 +95,7 @@ public:
 
     /// @copydoc afw::table::BaseTable::copyRecord
     PTR(ModelFitRecord) copyRecord(afw::table::BaseRecord const & other) {
-        return boost::static_pointer_cast<ModelFitRecord>(BaseTable::copyRecord(other));
+        return boost::static_pointer_cast<ModelFitRecord>(SimpleTable::copyRecord(other));
     }
 
     /// @copydoc afw::table::BaseTable::copyRecord
@@ -148,7 +103,7 @@ public:
         afw::table::BaseRecord const & other,
         afw::table::SchemaMapper const & mapper
     ) {
-        return boost::static_pointer_cast<ModelFitRecord>(afw::table::BaseTable::copyRecord(other, mapper));
+        return boost::static_pointer_cast<ModelFitRecord>(afw::table::SimpleTable::copyRecord(other, mapper));
     }
 
 protected:
@@ -158,19 +113,6 @@ protected:
     ModelFitTable(ModelFitTable const & other);
 
 private:
-
-    // Struct that holds the minimal schema and the special keys we've added to it.
-    struct MinimalSchema {
-        afw::table::Schema schema;
-        afw::table::Key<afw::table::RecordId> id;
-        afw::table::Key< afw::table::Point<double> > centroid;
-        afw::table::Key< afw::table::Moments<double> > shape;
-
-        MinimalSchema();
-    };
-
-    // Return the singleton minimal schema.
-    static MinimalSchema & getMinimalSchema();
 
     friend class afw::table::io::FitsWriter;
 
@@ -185,30 +127,6 @@ private:
 typedef afw::table::ColumnViewT<ModelFitRecord> ModelFitColumnView;
 typedef afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
 typedef afw::table::SortedCatalogT<ModelFitRecord const> ConstModelFitCatalog;
-
-inline afw::table::RecordId ModelFitRecord::getId() const { return get(ModelFitTable::getIdKey()); }
-inline void ModelFitRecord::setId(afw::table::RecordId id) { set(ModelFitTable::getIdKey(), id); }
-
-inline afw::geom::ellipses::Quadrupole ModelFitRecord::getShape() const {
-    return get(ModelFitTable::getShapeKey());
-}
-inline void ModelFitRecord::setShape(afw::geom::ellipses::Quadrupole const & shape) {
-    return set(ModelFitTable::getShapeKey(), shape);
-}
-
-inline afw::geom::Point2D ModelFitRecord::getCentroid() const {
-   return get(ModelFitTable::getCentroidKey());
-}
-inline void ModelFitRecord::setCentroid(afw::geom::Point2D const & centroid) {
-    return set(ModelFitTable::getCentroidKey(), centroid);
-}
-
-inline double ModelFitRecord::getX() const {
-   return get(ModelFitTable::getCentroidKey().getX());
-}
-inline double ModelFitRecord::getY() const {
-   return get(ModelFitTable::getCentroidKey().getY());
-}
 
 #endif // !SWIG
 

@@ -240,7 +240,7 @@ static afw::table::io::FitsReader::FactoryT<ModelFitFitsReader> referenceFitsRea
 //----- ModelFitTable/Record member function implementations -----------------------------------------------
 //-----------------------------------------------------------------------------------------------------------
 
-ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) : afw::table::BaseRecord(table) {}
+ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) : afw::table::SimpleRecord(table) {}
 
 void ModelFitRecord::_assign(afw::table::BaseRecord const & other) {
     try {
@@ -261,24 +261,10 @@ PTR(ModelFitTable) ModelFitTable::make(afw::table::Schema const & schema) {
 }
 
 ModelFitTable::ModelFitTable(afw::table::Schema const & schema) :
-    afw::table::BaseTable(schema) {}
+    afw::table::SimpleTable(schema, PTR(afw::table::IdFactory)()) {}
 
 ModelFitTable::ModelFitTable(ModelFitTable const & other) :
-    afw::table::BaseTable(other) {}
-
-ModelFitTable::MinimalSchema::MinimalSchema() :
-    schema(),
-    id(schema.addField<afw::table::RecordId>("id", "unique ID")),
-    centroid(schema.addField< afw::table::Point<double> >("centroid", "best-fit center point")),
-    shape(schema.addField< afw::table::Moments<double> >("shape", "best-fit ellipse"))
-{
-    schema.getCitizen().markPersistent();
-}
-
-ModelFitTable::MinimalSchema & ModelFitTable::getMinimalSchema() {
-    static MinimalSchema it;
-    return it;
-}
+    afw::table::SimpleTable(other) {}
 
 PTR(afw::table::io::FitsWriter)
 ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const {
