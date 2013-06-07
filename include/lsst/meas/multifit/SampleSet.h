@@ -184,6 +184,33 @@ public:
     void dropPrior();
 
     /**
+     *  @brief Compute quantiles of a single nonlinear parameters
+     *
+     *  A quantile is the point at which the cumulative distribution reaches a certain value.
+     *  For instance, the median is the quantile at 0.5, and a pair of quantiles at (0.05, 0.95)
+     *  is a 90% confidence interval.
+     *
+     *  @param[in] fractions       A sorted array of fractions (floating point numbers in the range [0,1])
+     *                             at which to compute a quantile value (e.g. 0.5 == median).
+     *  @param[in] parameterIndex  Index of the parameter over which to compute the quantile; an
+     *                             integer between 0 and (getNonlinearDim()-1).  All other parameters
+     *                             are ignored (meaning they areeffectively marginalized over).
+     */
+    Eigen::VectorXd computeQuantiles(Eigen::VectorXd const & fractions, int parameterIndex) const;
+
+    /**
+     *  @brief Compute the same quantiles for all nonlinear parameters
+     *
+     *  A quantile is the point at which the cumulative distribution reaches a certain value.
+     *  For instance, the median is the quantile at 0.5, and a pair of quantiles at (0.05, 0.95)
+     *  is a 90% confidence interval.
+     *
+     *  @param[in] fractions       A sorted array of fractions (floating point numbers in the range [0,1])
+     *                             at which to compute a quantile value (e.g. 0.5 == median).
+     */
+    Eigen::MatrixXd computeQuantiles(Eigen::VectorXd const & fractions) const;
+
+    /**
      *  @brief Compute an expectation integral and optionally its Monte Carlo covariance.
      *
      *  See ExpectationFunctor for details of the calculation.
