@@ -165,6 +165,54 @@ void SampleSet::dropPrior() {
     _prior.reset();
 }
 
+Eigen::VectorXd SampleSet::computeQuantiles(Eigen::VectorXd const & fraction, int parameterIndex) const {
+    // in all std::pairs below, first == parameter value, second == (possibly cumulative) weight
+    Eigen::VectorXd result = Eigen::VectorXd::Zero(fraction.size());
+    if (!_samples.empty()) {
+        // use map to sort by parameter value, merge entries with exactly equal parameter values
+        std::map<double,double> map;
+        for (const_iterator i = begin(); i != end(); ++i) {
+            std::pair<std::map<double,double>::iterator,bool> r = map.insert(
+                std::pair<double,double>(i->parameters[parameterIndex], i->weight)
+            );
+            if (!r.second) r.first->second += i->weight;
+        }
+        double cumulative = 0.0;
+        int iFraction = 0;
+        std::map<double,double>::const_iterator current = map.begin(), end = map.end();
+        std::pair<double,double> last(current->first, 0.0);
+        for (; current != end; ++current) {
+            cumulative += current->second;
+            while (cumulative >= fraction[iFraction]) {
+                double delta = current->first - last.first;
+                double w = (fraction[iFraction] - last.second) / current->second;
+                result[iFraction] = current->first + w * delta;
+                if (result[iFraction] > current->first) {  // can happen due to round-off error
+                    result[iFraction] = current->first;
+                }
+                ++iFraction;
+                if (iFraction == fraction.size()) break;
+            }
+            if (iFraction == fraction.size()) break;
+            last.first = current->first;
+            last.second = cumulative;
+        }
+        while (iFraction < fraction.size()) {
+            result[iFraction] = last.first;
+            ++iFraction;
+        }
+    }
+    return result;
+}
+
+Eigen::MatrixXd SampleSet::computeQuantiles(Eigen::VectorXd const & fractions) const {
+    Eigen::MatrixXd result(fractions.size(), _nonlinearDim);
+    for (int i = 0; i < _nonlinearDim; ++i) {
+        result.col(i) = computeQuantiles(fractions, i);
+    }
+    return result;
+}
+
 namespace {
 
 class MeanExpectationFunctor : public ExpectationFunctor {
