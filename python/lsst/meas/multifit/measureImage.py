@@ -94,21 +94,23 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
         self.basis = self.config.model.apply()
         self.prior = self.config.prior.apply()
-        self.snrKey = self.schema.addField("snr", type=float,
-                                           doc="signal to noise ratio from source apFlux/apFluxErr")
-        self.meanEllipseKey = self.schema.addField("mean.ellipse", type="MomentsD",
-                                                   doc="Posterior mean ellipse")
-        self.meanCenterKey = self.schema.addField("mean.center", type="PointD",
-                                                  doc="Posterior mean center position")
-        self.meanFluxKey = self.schema.addField("mean.flux", type=float, doc="Posterior mean flux")
-        self.meanFractionKey = self.schema.addField("mean.fraction", type="ArrayD", size=self.basis.getSize(),
-                                                    doc="Posterior mean flux fraction in each component")
+        self.keys = {}
+        def addKeys(prefix, doc):
+            self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
+                                                                    doc=("%s ellipse" % doc))
+            self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
+                                                                   doc=("%s center position" % doc))
+        addKeys("source", "Uncorrected source")
+        addKeys("mean", "Posterior mean")
+        addKeys("median", "Posterior median")
+        self.keys["snr"] = self.schema.addField("snr", type=float,
+                                                doc="signal to noise ratio from source apFlux/apFluxErr")
         if self.config.useRefCat:
-            self.refEllipseKey = self.schema.addField("ref.ellipse", type="MomentsD",
-                                                      doc="ellipse from reference catalog")
-            self.refFluxKey = self.schema.addField("ref.flux", type=float, doc="flux from reference catalog")
-            self.refSIndexKey = self.schema.addField("ref.sindex", type=float,
-                                                     doc="Sersic index from reference catalog")
+            addKeys("ref", "Reference catalog")
+            self.keys["ref.sindex"] = self.schema.addField("ref.sindex", type=float,
+                                                           doc="Reference catalog Sersic index")
+            self.keys["ref.flux"] = self.schema.addField("ref.flux", type=float,
+                                                         doc="Reference catalog flux")
 
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing:
@@ -145,7 +147,8 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         """
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
-        sampler = self.sampler.setup(exposure=exposure, record=record)
+        sampler = self.sampler.setup(exposure=exposure, center=record.getPointD(self.keys["source.center"]),
+                                     ellipse=record.getMomentsD(self.keys["source.ellipse"]))
         objective = SingleEpochObjective(
             self.config.objective.makeControl(), self.basis, psf,
             exposure.getMaskedImage(), record.getFootprint()
@@ -153,10 +156,13 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
-        ellipse = samples.interpret(samples.computeMean(), record.getCentroid())
-        record.set(self.meanEllipseKey, lsst.afw.geom.ellipses.Quadrupole(ellipse.getCore()))
-        record.set(self.meanCenterKey, ellipse.getCenter())
-        # TODO: fill fraction, flux keys, also error fields
+        mean = samples.interpret(samples.computeMean(), record.getPointD(self.keys["source.center"]))
+        record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
+        record.set(self.keys["mean.center"], mean.getCenter())
+        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
+                                   record.getPointD(self.keys["source.center"]))
+        record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
+        record.set(self.keys["median.center"], median.getCenter())
         return lsst.pipe.base.Struct(objective=objective, sampler=sampler, record=record)
 
     def prepCatalog(self, exposure, srcCat, refCat=None, where=None):
@@ -183,9 +189,9 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         def prepRecord(outRecord, srcRecord):
             psfModel = self.fitPsf.apply(outRecord, exposure.getPsf(), srcRecord.getCentroid())
             outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
-            outRecord.setD(self.snrKey, srcRecord.getApFlux() / srcRecord.getApFluxErr())
-            outRecord.setCentroid(srcRecord.getCentroid())
-            outRecord.setShape(srcRecord.getShape())
+            outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
+            outRecord.setPointD(self.keys["source.center"], srcRecord.getCentroid())
+            outRecord.setMomentsD(self.keys["source.ellipse"], srcRecord.getShape())
             outRecord.assign(srcRecord, self.schemaMapper)
 
         if self.config.useRefCat:
@@ -208,9 +214,10 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
                 transform = wcs.linearizeSkyToPixel(match.first.getCoord())
                 ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
                 outRecord = outCat.addNew()
-                outRecord.setMomentsD(self.refEllipseKey, ellipse2)
-                outRecord.setD(self.refFluxKey, calib.getFlux(match.first.getD(keyMag)))
-                outRecord.setD(self.refSIndexKey, match.first.getD(keySIndex))
+                outRecord.setMomentsD(self.keys["ref.ellipse"], ellipse2)
+                outRecord.setD(self.keys["ref.flux"], calib.getFlux(match.first.getD(keyMag)))
+                outRecord.setD(self.keys["ref.sindex"], match.first.getD(keySIndex))
+                outRecord.setPointD(self.keys["ref.center"], wcs.skyToPixel(match.first.getCoord()))
                 prepRecord(outRecord, match.second)
         else:
             starKey = srcCat.getSchema().find("calib.psf.candidate").key
