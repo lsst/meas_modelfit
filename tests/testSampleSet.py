@@ -60,7 +60,7 @@ class SampleSetTestCase(lsst.shapelet.tests.ShapeletTestCase):
         del self.sigma
 
     def testEstimators(self):
-        logSum1 = self.samples.applyPrior(lsst.meas.multifit.FlatPrior())
+        logSum1 = self.samples.applyPrior(lsst.meas.multifit.FlatPrior.get())
         cat = self.samples.asCatalog()
         self.assertClose(cat['marginal'], cat['proposal'], rtol=1E-6)
         self.assertClose(cat['weight'], 1.0 / self.samples.size(), rtol=1E-6)
