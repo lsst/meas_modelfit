@@ -163,7 +163,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
                                    record.getPointD(self.keys["source.center"]))
         record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
         record.set(self.keys["median.center"], median.getCenter())
-        return lsst.pipe.base.Struct(objective=objective, sampler=sampler, record=record)
+        return lsst.pipe.base.Struct(objective=objective, sampler=sampler, psf=psf, record=record)
 
     def prepCatalog(self, exposure, srcCat, refCat=None, where=None):
         """Create a ModelFitCatalog with initial parameters and fitting regions
