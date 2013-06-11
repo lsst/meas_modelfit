@@ -76,8 +76,6 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.assertClose(cat1.get("parameters"), cat2.get("parameters"), rtol=0.0, atol=0.0)
         fisherKey = cat1.schema.find("joint.fisher").key
         self.assertClose(cat1.get(fisherKey[0,0]), cat2.get(fisherKey[0,0]), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get(fisherKey[0,1]), cat2.get(fisherKey[0,1]), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get(fisherKey[1,1]), cat2.get(fisherKey[1,1]), rtol=0.0, atol=0.0)
         os.remove(filename)
 
 def suite():
