@@ -206,10 +206,12 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             for match in matches:
                 if where is not None and not where(src=match.second, ref=match.first):
                     continue
+                # n.b. I'm not sure of the position angle convention in the reference catalog,
+                # and in fact no convention I can think of seems to be correct for all objects
                 ellipse1 = lsst.afw.geom.ellipses.Axes(
                     (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
                     (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
-                    match.first.getAngle(keyTheta).asRadians()
+                    (match.first.getD(keyTheta)*lsst.afw.geom.degrees).asRadians()
                     )
                 transform = wcs.linearizeSkyToPixel(match.first.getCoord())
                 ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
