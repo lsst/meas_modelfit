@@ -125,8 +125,11 @@ public:
 };
 
 /**
- *  @brief A nonnormalized flat prior that throws exceptions when the amplitude likelihood
- *         unconstrained in one or more directions.
+ *  @brief A nonnormalized flat prior.
+ *
+ *  FlatPrior should only be used for single-component fits or test cases with no
+ *  degeneracies; a more informative prior is necessary to regularize fitting even
+ *  high S/N data with more than one component at radius=0.
  *
  *  @note FlatPrior is a singleton, accessed only via the get() static member function.
  */

@@ -36,9 +36,17 @@ import lsst.afw.display.ds9
 from .measureCcd import *
 from .multifitLib import *
 
-__all__ = ("makeHistogramGrid", "makeDensityPlots", "InteractiveFitter")
+__all__ = ("makeHistogramGrid", "InteractiveFitter")
 
 def makeHistogramGrid(figure, names):
+    """Function to create a grid of subplots for use in plotting
+    the an N-dimensional density.
+
+    The returned grid is a object-type numpy array containing
+    matplotlib.axes.Axes objects.  The off-diagonal subplots are
+    intended for contour plots, and the diagonal plots are
+    intended for 1-d histogram plots.
+    """
     n = len(names)
     grid = numpy.empty((n,n), dtype=object)
     for j in range(n):
@@ -63,18 +71,38 @@ def makeHistogramGrid(figure, names):
     return grid
 
 class Interactive(object):
+    """Interactive analysis helper class
 
-    def __init__(self, rerun, dataId=None, config=None):
+    This class manages a butler, calexp, modelfits catalog, and an instance
+    of the MeasureCcdTask, allowing individual objects to be re-fit and plotted.
+    """
+
+    def __init__(self, rerun, config=None, dataId=None):
+        """Construct an interactive analysis object.
+
+        @param[in]  rerun    Output directory, relative to $S13_DATA_DIR/output.
+                             measureCcd.py must have been run (possibly with
+                             prepOnly=True) previously with this output directory.
+        @param[in]  config   MeasureCcdTask.ConfigClass instance; if None, it
+                             will be loaded from disk.
+        @param[in]  dataId   Butler data ID of the image to analyze.
+        """
         if dataId is None:
             dataId = dict(visit=1, raft="2,2", sensor="1,1")
         root = os.environ["S13_DATA_DIR"]
         self.butler = lsst.daf.persistence.Butler(os.path.join(root, "output", rerun))
         self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
+        if config is None:
+            config = self.butler.get("measureCcd_config", immediate=True)
         self.exposure = self.dataRef.get("calexp", immediate=True)
         self.modelfits = self.dataRef.get("modelfits", immediate=True)
         self.task = MeasureCcdTask(config=config)
 
     def fit(self, index=0, id=None):
+        """Re-fit the object indicated by the given record sequential index
+        or source ID, returning the Struct object returned by
+        MeasureImageTask.processObject.
+        """
         if id is not None:
             record = self.modelfits.find(id)
         else:
@@ -82,6 +110,15 @@ class Interactive(object):
         return self.task.processObject(self.exposure, record)
 
     def plotSamples(self, record, threshold=1E-15, **kwds):
+        """Plot the samples corresponding to the given ModelFitRecord
+        as a 3-d scatter plot.
+
+        The 'threshold' parameter is used to restrict which sample points
+        are plotted; points with weight < max(weight)*threshold are skipped.
+
+        Additional keyword arguments are passed to the matplotlib scatter
+        command.
+        """
         samples = record.getSamples()
         mean = samples.computeMean()
         median = samples.computeQuantiles(numpy.array([0.5]))
@@ -117,6 +154,11 @@ class Interactive(object):
         return ax
 
     def displayResiduals(self, r, parameters=None):
+        """Display the data postage stamp along with the model image and residuals in ds9.
+
+        @param[in] r            Result Struct returned by fit()
+        @param[in] parameters   Parameter vector for the model; defaults to the posterior mean.
+        """
         center = r.record.getPointD(self.task.keys["source.center"])
         samples = r.record.getSamples()
         if parameters == "truth":
@@ -167,19 +209,3 @@ class Interactive(object):
             ds9box = mosaic.getBBox(i)
             center = ellipse.getCenter() + lsst.afw.geom.Extent2D(ds9box.getMin() - bbox.getMin())
             lsst.afw.display.ds9.dot(ellipse.getCore(), center.getX(), center.getY())
-
-    def displayImage(self):
-        lsst.afw.display.ds9.mtv(self.exposure)
-        with lsst.afw.display.ds9.Buffering():
-            for record in self.modelfits:
-                lsst.afw.display.ds9.dot(
-                    record.getShape(),
-                    record.getX(),
-                    record.getY()
-                )
-                lsst.afw.display.ds9.dot(
-                    str(record.getId()),
-                    record.getX(),
-                    record.getY()
-                )
-
