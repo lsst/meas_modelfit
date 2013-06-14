@@ -25,7 +25,7 @@
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/afw/table/io/InputArchive.h"
 
-#include "lsst/meas/multifit/tables.h"
+#include "lsst/meas/multifit/ModelFitRecord.h"
 
 namespace lsst { namespace meas { namespace multifit {
 

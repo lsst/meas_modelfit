@@ -108,7 +108,7 @@ SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
 %shared_ptr(lsst::meas::multifit::ModelFitTable);
 %shared_ptr(lsst::meas::multifit::ModelFitRecord);
 
-%include "lsst/meas/multifit/tables.h"
+%include "lsst/meas/multifit/ModelFitRecord.h"
 
 %addCastMethod(lsst::meas::multifit::ModelFitTable, lsst::afw::table::BaseTable)
 %addCastMethod(lsst::meas::multifit::ModelFitRecord, lsst::afw::table::BaseRecord)

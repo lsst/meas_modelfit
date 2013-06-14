@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef MEAS_MULTIFIT_tables_h_INCLUDED
-#define MEAS_MULTIFIT_tables_h_INCLUDED
+#ifndef MEAS_MULTIFIT_ModelFitRecord_h_INCLUDED
+#define MEAS_MULTIFIT_ModelFitRecord_h_INCLUDED
 
 #include "lsst/afw/table/Simple.h"
 #include "lsst/afw/table/SortedCatalog.h"
@@ -132,4 +132,4 @@ typedef afw::table::SortedCatalogT<ModelFitRecord const> ConstModelFitCatalog;
 
 }}} // namespace lsst::afw::table
 
-#endif // !MEAS_MULTIFIT_tables_h_INCLUDED
+#endif // !MEAS_MULTIFIT_ModelFitRecord_h_INCLUDED

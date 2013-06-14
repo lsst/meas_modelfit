@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_H
 #define LSST_MEAS_MULTIFIT_H
 
-#include "lsst/meas/multifit/tables.h"
+#include "lsst/meas/multifit/ModelFitRecord.h"
 #include "lsst/meas/multifit/NaiveGridSampler.h"
 #include "lsst/meas/multifit/BaseSampler.h"
 #include "lsst/meas/multifit/ExpectationFunctor.h"
