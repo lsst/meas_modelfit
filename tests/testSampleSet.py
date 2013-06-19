@@ -40,19 +40,19 @@ class SampleSetTestCase(lsst.shapelet.tests.ShapeletTestCase):
         return 0.5*numpy.sum(((p - self.mu) / self.sigma)**2) + self.norm1
 
     def setUp(self):
-        point = lsst.meas.multifit.SamplePoint(2, 1)
-        point.joint.mu = numpy.array([25.0], dtype=numpy.float32)
-        point.joint.fisher = numpy.array([[1.0]], dtype=numpy.float32)
+        joint = lsst.meas.multifit.LogGaussian(1)
+        joint.mu = numpy.array([25.0])
+        joint.fisher = numpy.array([[1.0]])
         self.samples = lsst.meas.multifit.SampleSet(2, 1, "SeparableConformalShearLogTraceRadius")
         self.mu = numpy.array([0.15, -0.12], dtype=float)
         self.sigma = numpy.array([1.1, 0.9], dtype=float)
         self.norm1 = -numpy.log(numpy.product(self.sigma)/(2.0*numpy.pi))
         self.norm2 = 0.5*numpy.log(2.0*numpy.pi)
         for n in range(20000):
-            point.parameters = (numpy.random.randn(2) * self.sigma + self.mu).astype(numpy.float32)
-            point.proposal = self.logDist(point.parameters)
-            point.joint.r = point.proposal + self.norm2
-            self.samples.add(point)
+            parameters = (numpy.random.randn(2) * self.sigma + self.mu)
+            proposal = self.logDist(parameters)
+            joint.r = proposal + self.norm2
+            self.samples.add(joint, proposal, parameters)
 
     def tearDown(self):
         del self.samples
@@ -61,7 +61,7 @@ class SampleSetTestCase(lsst.shapelet.tests.ShapeletTestCase):
 
     def testEstimators(self):
         logSum1 = self.samples.applyPrior(lsst.meas.multifit.FlatPrior.get())
-        cat = self.samples.asCatalog()
+        cat = self.samples.getCatalog().copy(deep=True)
         self.assertClose(cat['marginal'], cat['proposal'], rtol=1E-6)
         self.assertClose(cat['weight'], 1.0 / self.samples.size(), rtol=1E-6)
         self.assertClose(numpy.exp(-logSum1), 1.0, rtol=1E-7)

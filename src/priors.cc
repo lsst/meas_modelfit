@@ -34,18 +34,18 @@ PTR(FlatPrior) FlatPrior::get() {
     return instance;
 }
 
-double FlatPrior::apply(LogGaussian const & likelihood, Vector const & parameters) const {
+samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
     return likelihood.r + 0.5*std::log((likelihood.fisher / (2.0 * M_PI)).determinant());
 }
 
-double FlatPrior::computeFluxExpectation(
-    LogGaussian const & likelihood, Vector const & parameters
+samples::Scalar FlatPrior::computeFluxExpectation(
+    LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
     return apply(likelihood, parameters) - std::log(likelihood.mu.sum());
 }
 
-double FlatPrior::computeSquaredFluxExpectation(
-    LogGaussian const & likelihood, Vector const & parameters
+samples::Scalar FlatPrior::computeSquaredFluxExpectation(
+    LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
     throw LSST_EXCEPT(
         pex::exceptions::LogicErrorException,
@@ -53,8 +53,8 @@ double FlatPrior::computeSquaredFluxExpectation(
     );
 }
 
-Vector FlatPrior::computeFractionExpectation(
-    LogGaussian const & likelihood, Vector const & parameters
+samples::Vector FlatPrior::computeFractionExpectation(
+    LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
     throw LSST_EXCEPT(
         pex::exceptions::LogicErrorException,

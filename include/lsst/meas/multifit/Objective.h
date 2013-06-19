@@ -123,9 +123,9 @@ public:
     );
 
 private:
-    Array1 _weights;
-    Array1 _weightedData;
-    Array2CM _modelMatrix;
+    PixelArray1 _weights;
+    PixelArray1 _weightedData;
+    PixelArray2CM _modelMatrix;
     mutable afw::math::LeastSquares _leastSquares;
     shapelet::MultiShapeletMatrixBuilder<Pixel> _matrixBuilder;
 };

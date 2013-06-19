@@ -24,8 +24,8 @@
 #ifndef LSST_MEAS_MULTIFIT_SampleSet_h_INCLUDED
 #define LSST_MEAS_MULTIFIT_SampleSet_h_INCLUDED
 
-#include <list>
-
+#include "lsst/afw/table/BaseRecord.h"
+#include "lsst/afw/table/BaseTable.h"
 #include "lsst/afw/table/Catalog.h"
 #include "lsst/afw/table/io/Persistable.h"
 #include "lsst/meas/multifit/constants.h"
@@ -37,26 +37,46 @@ namespace lsst { namespace meas { namespace multifit {
 
 class ExpectationFunctor;
 
-/*
- *  @brief Point in a Monte-Carlo SampleSet.
- *
- *  See SampleSet for more information.
- */
-class SamplePoint {
+class SampleSetKeys {
 public:
+    afw::table::Schema schema;
+    samples::ScalarKey jointR;
+    samples::ArrayKey jointMu;
+    samples::ArrayKey jointFisher;
+    samples::ScalarKey marginal;
+    samples::ScalarKey proposal;
+    samples::ScalarKey weight;
+    samples::ArrayKey parameters;
 
-    LogGaussian joint; ///< Log likelihood w.r.t. linear amplitudes @f$L_n(\alpha)@f$
-    Pixel marginal;    ///< Marginal nonnormalized log posterior @f$\ln m_n@f$
-    Pixel proposal;    ///< Log density @f$\ln q_n@f$ of the distribution from which the samples were drawn
-    double weight;     ///< Weight of this sample point; @f$m_n/q_n@f$
-    Vector parameters; ///< Nonlinear parameters @f$\theta_n@f$ at this point
+    /// Return the number of nonlinear parameters
+    int getNonlinearDim() const { return parameters.getSize(); }
 
-    /// Comparison used to sort SamplePoints by weight in order to avoid round-off error
-    bool operator<(SamplePoint const & other) const { return weight < other.weight; }
+    /// Return the number of linear amplitude parameters
+    int getLinearDim() const { return jointMu.getSize(); }
 
-    /// Initialize to zeros with the given dimensions
-    SamplePoint(int nonlinearDim, int linearDim);
+    /// Extract a LogGaussian object from the given record
+    LogGaussian getJoint(afw::table::BaseRecord const & record) const;
 
+    /// Set LogGaussian fields in the given record
+    void setJoint(afw::table::BaseRecord & record, LogGaussian const & joint);
+
+#ifndef SWIG
+
+    /// Extract the nonlinear parameter vector as a const Eigen Map object
+    samples::VectorCMap getParameters(afw::table::BaseRecord const & record) const {
+        return samples::VectorCMap(record.getElement(parameters), getNonlinearDim());
+    }
+
+    /// Set nonlinear parameter fields in the given record
+    void setParameters(afw::table::BaseRecord & record, samples::Vector const & parameters_) const {
+        samples::VectorMap(record.getElement(parameters), getNonlinearDim()) = parameters_;
+    }
+
+#endif // !SWIG
+
+    SampleSetKeys(int nonlinearDim, int linearDim);
+
+    explicit SampleSetKeys(afw::table::Schema const & schema_);
 };
 
 /**
@@ -64,7 +84,7 @@ public:
  *         distinguishes linear amplitude parameters from other nonlinear parameters.
  *
  *  For linear amplitudes @f$\alpha@f$ and nonlinear parameters @f$\theta@f$,
- *  each SamplePoint @f$n@f$ in a SampleSet contains:
+ *  each element @f$n@f$ in a SampleSet contains:
  *   - the nonlinear parameters @f$\theta_n@f$ at that point
  *   - the joint likelihood @f$P(D|\alpha,\theta_n) = e^{-L_n(\alpha)}@f$ (see LogGaussian)
  *   - the nonnormalized marginal posterior
@@ -78,11 +98,7 @@ public:
  *  on the full posterior are computed).
  */
 class SampleSet : public afw::table::io::PersistableFacade<SampleSet>, public afw::table::io::Persistable {
-    typedef std::list<SamplePoint> Container;
 public:
-
-    typedef Container::iterator iterator;
-    typedef Container::const_iterator const_iterator;
 
     /**
      *  @brief Initialize the SampleSet with the given parameter dimensions.
@@ -96,11 +112,20 @@ public:
      */
     SampleSet(int nonlinearDim, int linearDim, std::string const & ellipseType);
 
+    /**
+     *  @brief Construct a SampleSet from an existing catalog of sample records.
+     *
+     *  @param[in] records        Catalog of records with schema compatible with SampleSetKeys
+     *  @param[in] ellipseType    Name of the afw::geom::ellipses::BaseCore subclass that defines the
+     *                            ellipse part of the nonlinear parameters.
+     */
+    SampleSet(afw::table::BaseCatalog const & records, std::string const & ellipseType);
+
     /// Return the number of nonlinear parameters
-    int getNonlinearDim() const { return _nonlinearDim; }
+    int getNonlinearDim() const { return _keys.getNonlinearDim(); }
 
     /// Return the number of linear amplitude parameters
-    int getLinearDim() const { return _linearDim; }
+    int getLinearDim() const { return _keys.getLinearDim(); }
 
     /// Return the name of the afw::geom::ellipses type used to interpret the nonlinear parameters.
     std::string const & getEllipseType() const { return _ellipseType; }
@@ -121,12 +146,12 @@ public:
      *  center; if there are only 3 parameters, the center argument will be used instead.
      */
     afw::geom::ellipses::Ellipse interpret(
-        Eigen::VectorXd const & parameters,
+        samples::Vector const & parameters,
         afw::geom::Point2D const & center=afw::geom::Point2D()
     ) const;
 
     /// @brief Return an afw::table::BaseCatalog representation of the SampleSet.
-    afw::table::BaseCatalog asCatalog() const;
+    afw::table::BaseCatalog getCatalog() const { return _records; }
 
     /**
      *  @brief Create a 1-d estimate of the density of a single parameter (marginalized over the others)
@@ -145,21 +170,8 @@ public:
         KernelDensityEstimatorControl const & ctrlY
     ) const;
 
-    //@{
-    /**
-     *  Iterate over SamplePoints.
-     *
-     *  Iterators are std::vector-based, and may be invalidated when adding new points
-     *  unless the new size is less than capacity().
-     */
-    iterator begin() { return _samples.begin(); }
-    iterator end() { return _samples.end(); }
-    const_iterator begin() const { return _samples.begin(); }
-    const_iterator end() const { return _samples.end(); }
-    //@}
-
     /// Return the number of samples.
-    std::size_t size() const { return _samples.size(); }
+    std::size_t size() const { return _records.size(); }
 
     /**
      *  @brief Add a new sample point to the SampleSet.
@@ -167,7 +179,7 @@ public:
      *  If a prior has already been applied to the SampleSet, new points may not
      *  be added (throws LogicErrorException).
      */
-    void add(SamplePoint const & p);
+    void add(LogGaussian const & joint, samples::Scalar proposal, samples::Vector const & parameters);
 
     /**
      *  @brief Attach the given prior to the SampleSet and apply it to all existing samples.
@@ -196,7 +208,7 @@ public:
      *                             integer between 0 and (getNonlinearDim()-1).  All other parameters
      *                             are ignored (meaning they areeffectively marginalized over).
      */
-    Eigen::VectorXd computeQuantiles(Eigen::VectorXd const & fractions, int parameterIndex) const;
+    samples::Vector computeQuantiles(samples::Vector const & fractions, int parameterIndex) const;
 
     /**
      *  @brief Compute the same quantiles for all nonlinear parameters
@@ -208,7 +220,7 @@ public:
      *  @param[in] fractions       A sorted array of fractions (floating point numbers in the range [0,1])
      *                             at which to compute a quantile value (e.g. 0.5 == median).
      */
-    Eigen::MatrixXd computeQuantiles(Eigen::VectorXd const & fractions) const;
+    samples::Matrix computeQuantiles(samples::Vector const & fractions) const;
 
     /**
      *  @brief Compute an expectation integral and optionally its Monte Carlo covariance.
@@ -223,7 +235,7 @@ public:
      *
      *  See ExpectationFunctor for more information.
      */
-    Eigen::VectorXd computeExpectation(ExpectationFunctor const & functor, Eigen::MatrixXd * mcCov=0) const;
+    samples::Vector computeExpectation(ExpectationFunctor const & functor, samples::Matrix * mcCov=0) const;
 
     /**
      *  @brief Compute the empirical mean of the marginal distribution.
@@ -236,7 +248,7 @@ public:
      *
      *  A prior must be attached before computeExpecation is called.
      */
-    Eigen::VectorXd computeMean(Eigen::MatrixXd * mcCov=0) const;
+    samples::Vector computeMean(samples::Matrix * mcCov=0) const;
 
     /**
      *  @brief Compute the empirical covariance of the marginal distribution.
@@ -246,14 +258,16 @@ public:
      *
      *  A prior must be attached before computeExpecation is called.
      */
-    Eigen::MatrixXd computeCovariance(Eigen::VectorXd const & mean) const;
+    samples::Matrix computeCovariance(samples::Vector const & mean) const;
 
     /// @copydoc computeCovariance
-    Eigen::MatrixXd computeCovariance() const { return computeCovariance(computeMean()); }
+    samples::Matrix computeCovariance() const { return computeCovariance(computeMean()); }
 
     bool isPersistable() const { return true; }
 
 protected:
+
+    friend class SampleSetFactory;
 
     virtual std::string getPersistenceName() const;
 
@@ -262,9 +276,8 @@ protected:
     virtual void write(OutputArchiveHandle & handle) const;
 
 private:
-    int _nonlinearDim;
-    int _linearDim;
-    Container _samples;
+    SampleSetKeys _keys;
+    afw::table::BaseCatalog _records;
     std::string _ellipseType;
     PTR(Prior) _prior;
 };

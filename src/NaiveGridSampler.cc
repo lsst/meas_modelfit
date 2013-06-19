@@ -67,14 +67,18 @@ struct CountSamples {
 struct AddConstantSample {
 
     void operator()(double e1, double e2) {
-        p->parameters[NaiveGridSampler::EllipseCore::E1] = e1;
-        p->parameters[NaiveGridSampler::EllipseCore::E2] = e2;
-        samples->add(*p);
+        (*parameters)[NaiveGridSampler::EllipseCore::E1] = e1;
+        (*parameters)[NaiveGridSampler::EllipseCore::E2] = e2;
+        samples->add(*joint, proposal, *parameters);
     }
 
-    AddConstantSample(SamplePoint * p_, SampleSet * samples_) : p(p_), samples(samples_) {}
+    AddConstantSample(
+        LogGaussian * joint_, samples::Scalar proposal_, samples::Vector * parameters_, SampleSet * samples_
+    ) : joint(joint_), proposal(proposal_), parameters(parameters_), samples(samples_) {}
 
-    SamplePoint * p;
+    LogGaussian * joint;
+    samples::Scalar proposal;
+    samples::Vector * parameters;
     SampleSet * samples;
 };
 
@@ -85,20 +89,23 @@ struct AddNewSample {
             = static_cast<NaiveGridSampler::EllipseCore &>(ellipse->getCore());
         ec.setE1(e1);
         ec.setE2(e2);
-        p->parameters[NaiveGridSampler::EllipseCore::E1] = e1;
-        p->parameters[NaiveGridSampler::EllipseCore::E2] = e2;
-        p->joint = objective->evaluate(*ellipse);
-        samples->add(*p);
+        (*parameters)[NaiveGridSampler::EllipseCore::E1] = e1;
+        (*parameters)[NaiveGridSampler::EllipseCore::E2] = e2;
+        *joint = objective->evaluate(*ellipse);
+        samples->add(*joint, proposal, *parameters);
     }
 
     AddNewSample(
-        SamplePoint * p_,
+        LogGaussian * joint_, samples::Scalar proposal_, samples::Vector * parameters_,
         SampleSet * samples_,
         afw::geom::ellipses::Ellipse * ellipse_,
         Objective const * objective_
-    ) : p(p_), samples(samples_), ellipse(ellipse_), objective(objective_) {}
+    ) : joint(joint_), proposal(proposal_), parameters(parameters_),
+        samples(samples_), ellipse(ellipse_), objective(objective_) {}
 
-    SamplePoint * p;
+    LogGaussian * joint;
+    samples::Scalar proposal;
+    samples::Vector * parameters;
     SampleSet * samples;
     afw::geom::ellipses::Ellipse * ellipse;
     Objective const * objective;
@@ -160,24 +167,22 @@ SampleSet NaiveGridSampler::run(Objective const & objective) const {
     int linearDim = objective.getLinearDim();
     afw::geom::ellipses::Ellipse ellipse = afw::geom::ellipses::Ellipse(EllipseCore(), _center);
     SampleSet samples(nonlinearDim, linearDim, ellipse.getCore().getName());
-    double density = std::log(_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
+    double proposal = std::log(_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
     ellipse.getCore().scale(0.0);
-    SamplePoint p(nonlinearDim, linearDim);
-    p.parameters = ellipse.getCore().getParameterVector().head(nonlinearDim).cast<Pixel>();
-    p.joint = objective.evaluate(ellipse);
-    p.proposal = density;
+    samples::Vector parameters = ellipse.getCore().getParameterVector().head(nonlinearDim);
+    LogGaussian joint = objective.evaluate(ellipse);
     // At r=0, we only evaluate e1=0, e2=0 and use that likelihood for all ellipticities.
     // It's a waste of space, but it makes analysis easier, and at least it's not a waste
     // of cycles.
     {
-        AddConstantSample f(&p, &samples);
+        AddConstantSample f(&joint, proposal, &parameters, &samples);
         forEachEllipticity(f, _maxEllipticity, _ellipticityStepSize);
     }
     double radiusStepSize = _maxRadius / (_nRadiusSteps - 1);
     for (int i = 1; i < _nRadiusSteps; ++i) {
-        p.parameters[EllipseCore::RADIUS] = radiusStepSize * i;
-        static_cast<EllipseCore &>(ellipse.getCore()).setRadius(p.parameters[EllipseCore::RADIUS]);
-        AddNewSample f(&p, &samples, &ellipse, &objective);
+        parameters[EllipseCore::RADIUS] = radiusStepSize * i;
+        static_cast<EllipseCore &>(ellipse.getCore()).setRadius(parameters[EllipseCore::RADIUS]);
+        AddNewSample f(&joint, proposal, &parameters, &samples, &ellipse, &objective);
         forEachEllipticity(f, _maxEllipticity, _ellipticityStepSize);
     }
     return samples;

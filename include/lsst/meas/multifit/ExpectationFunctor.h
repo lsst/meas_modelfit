@@ -31,37 +31,16 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief Functor base class for use with computing expectation values of SampleSets.
  *
- *  SampleSet::computeExpectation() computes the integral
+ *  SampleSet::computeExpectation() computes an appoximation to the integral
  *  @f[
- *    \int\!\int\! f(\alpha,\theta)\,P(\alpha,\theta|D)\,d\alpha\,d\theta
+ *    \int\!\int\! f(\theta)\,P(\theta|D)\,d\theta
  *  @f]
- *  where @f$P(\alpha,\theta|D)@f$ is the joint posterior defined indirectly by the
- *  SampleSet and @f$f(\alpha,\theta)@f$ is the vector quantity whose expectation we want
- *  to compute, using the Monte Carlo approximation
- *  @f[
- *    \frac{1}{P(D)N}\sum_{n=1}^N \frac{1}{q_n}
- *            \int\!e^{-L_n(\alpha)}\,P(\alpha,\theta_n)\,f(\alpha,\theta_n)\,d\alpha
- *  @f]
- *  with
- *  @f[
- *    P(D) \approx \frac{1}{N}\sum_{n=1}^N \frac{m_n}{q_n}
- *  @f]
- *
- *  For expectation functions that depend on the amplitudes, this calculation is complex and
- *  involves the particular form of the prior @f$P(\alpha,\theta)@f$ on the amplitude; it is
- *  the job of the ExpectationFunctor to compute the integral
- *  @f[
- *    \int\!e^{-L_n(\alpha)}\,P(\alpha,\theta_n)\,f(\alpha,\theta_n)\,d\alpha
- *  @f]
- *  Because Prior is also a polymorphic class hierarchy, this requires some degree of
- *  double-dispatch between arbitrary Priors and arbitrary ExpectationFunctors.
- *
- *  However, for expectation functions that do not depend on the amplitudes, @f$f(\cdot,\theta)@f$
- *  can be brought outside the integral, which is then just @f$m_n@f$, and the computation reduces
- *  to
+ *  where @f$P(\theta|D)@f$ is the marginal posterior defined by the SampleSet, as
  *  @f[
  *    \frac{1}{P(D)N}\sum_{n=1}^N \frac{f(\cdot,\theta_n)m_n}{q_n}
  *  @f]
+ *
+ *  It is the responsibility of ExpectationFunctor simply to compute @f$f(\theta)@f$.
  */
 class ExpectationFunctor {
 public:
@@ -70,7 +49,7 @@ public:
     explicit ExpectationFunctor(int outputDim_) : outputDim(outputDim_) {}
 
     /// Compute the expectation quantity at the given sample point; see ExpectationFunctor.
-    virtual Eigen::VectorXd operator()(SamplePoint const & sample, Prior const & prior) const = 0;
+    virtual samples::Vector operator()(samples::VectorCMap const & parameters) const = 0;
 
     virtual ~ExpectationFunctor() {}
 

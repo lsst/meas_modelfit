@@ -71,8 +71,8 @@ namespace lsst { namespace shapelet {
 class MultiShapeletBasis;
 }}
 
-%declareNumPyConverters(lsst::meas::multifit::Vector);
-%declareNumPyConverters(lsst::meas::multifit::Matrix);
+%declareNumPyConverters(lsst::meas::multifit::samples::Vector);
+%declareNumPyConverters(lsst::meas::multifit::samples::Matrix);
 %declareNumPyConverters(Eigen::VectorXd);
 %declareNumPyConverters(Eigen::MatrixXd);
 %declareNumPyConverters(ndarray::Array<double,1,1>);

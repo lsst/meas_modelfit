@@ -126,7 +126,7 @@ class Interactive(object):
             key = self.task.keys["ref.ellipse"]
             ellipse = lsst.afw.geom.ellipses.BaseCore.make(samples.getEllipseType(), record.get(key))
             truth = ellipse.getParameterVector()
-        cat = samples.asCatalog()
+        cat = samples.getCatalog().copy(deep=True)
         maxR = cat["parameters"][:,2].max()
         mask = cat["weight"] / cat["weight"].max() > threshold
         cat = cat[mask].copy()

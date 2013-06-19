@@ -48,22 +48,25 @@ namespace lsst { namespace meas { namespace multifit {
 class LogGaussian {
 public:
 
-    Pixel r;           ///< negative log-likelihood at mu; @f$\chi^2/2@f$
-    Vector mu;          ///< maximum likelihood point
-    Matrix fisher;      ///< Fisher matrix at mu (inverse of the covariance matrix)
+    samples::Scalar r;           ///< negative log-likelihood at mu; @f$\chi^2/2@f$
+    samples::Vector mu;          ///< maximum likelihood point
+    samples::Matrix fisher;      ///< Fisher matrix at mu (inverse of the covariance matrix)
 
     /// Evaluate the negative log-likelihood at the given point.
-    double operator()(Vector const & alpha) const {
-        Vector delta = alpha - mu;
+    double operator()(samples::Vector const & alpha) const {
+        samples::Vector delta = alpha - mu;
         return r + 0.5*delta.dot(fisher*delta);
     }
 
     /// Initialize from parameters
-    LogGaussian(Pixel r_, Vector const & mu_, Matrix const & fisher_) : r(r_), mu(mu_), fisher(fisher_) {}
-
+    LogGaussian(samples::Scalar r_, samples::Vector const & mu_, samples::Matrix const & fisher_) :
+        r(r_), mu(mu_), fisher(fisher_)
+    {}
 
     /// Initialize with zeros of the given dimension
-    LogGaussian(int dim) : r(0.0), mu(Vector::Zero(dim)), fisher(Matrix::Zero(dim, dim)) {}
+    explicit LogGaussian(int dim) :
+        r(0.0), mu(samples::Vector::Zero(dim)), fisher(samples::Matrix::Zero(dim, dim))
+    {}
 
 };
 

@@ -41,8 +41,8 @@ shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
     shapelet::MultiShapeletFunction const & psf,
     afw::detection::Footprint const & footprint
 ) {
-    Array1 x = ndarray::allocate(footprint.getArea());
-    Array1 y = ndarray::allocate(footprint.getArea());
+    PixelArray1 x = ndarray::allocate(footprint.getArea());
+    PixelArray1 y = ndarray::allocate(footprint.getArea());
     int n = 0;
     for (
         afw::detection::Footprint::SpanList::const_iterator i = footprint.getSpans().begin();
@@ -92,17 +92,12 @@ LogGaussian SingleEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & 
     _matrixBuilder.build(_modelMatrix, ellipse);
     _modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
     LogGaussian result(_leastSquares.getDimension());
-    if (_leastSquares.getFactorization() == afw::math::LeastSquares::DIRECT_SVD) {
-        _leastSquares.setDesignMatrix(_modelMatrix, _weightedData);
-        result.fisher = _leastSquares.getFisherMatrix().asEigen().adjoint().cast<Pixel>();
-    } else {
-        result.fisher.selfadjointView<Eigen::Lower>().rankUpdate(_modelMatrix.asEigen().adjoint(), 1.0);
-        Vector rhs = _modelMatrix.asEigen().adjoint() * _weightedData.asEigen();
-        _leastSquares.setNormalEquations(result.fisher, rhs);
-    }
+    _leastSquares.setDesignMatrix(_modelMatrix, _weightedData);
     _leastSquares.setThreshold(std::numeric_limits<Pixel>::epsilon());
-    result.mu = _leastSquares.getSolution().asEigen().cast<Pixel>();
-    Vector residuals = _modelMatrix.asEigen() * result.mu - _weightedData.asEigen();
+    result.mu = _leastSquares.getSolution().asEigen();
+    result.fisher = _leastSquares.getFisherMatrix().asEigen();
+    samples::Vector residuals = _modelMatrix.asEigen().cast<samples::Scalar>() * result.mu
+        - _weightedData.asEigen().cast<samples::Scalar>();
     result.r = 0.5 * residuals.squaredNorm();
     return result;
 }

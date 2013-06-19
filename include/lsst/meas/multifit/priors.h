@@ -73,7 +73,8 @@ public:
      *  Note that both the joint likelihood passed in and the marginal likelihood returned
      *  are the negative natural log of the probabilities densities.
      */
-    virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const = 0;
+    virtual samples::Scalar apply(LogGaussian const & likelihood,
+                                  samples::Vector const & parameters) const = 0;
 
     /**
      *  @brief Compute the nonnormalized negative log expectation value of the flux at a
@@ -86,8 +87,8 @@ public:
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
      */
-    virtual double computeFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const = 0;
 
     /**
@@ -101,8 +102,8 @@ public:
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
      */
-    virtual double computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeSquaredFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const = 0;
 
     /**
@@ -116,8 +117,8 @@ public:
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{fraction}(\alpha,\theta)=\frac{\alpha}{|\alpha|_1}@f$
      */
-    virtual Vector computeFractionExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Vector computeFractionExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const = 0;
 
     virtual ~Prior() {}
@@ -138,18 +139,18 @@ public:
 
     static PTR(FlatPrior) get();
 
-    virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const;
+    virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
 
-    virtual double computeFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const;
 
-    virtual double computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeSquaredFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const;
 
-    virtual Vector computeFractionExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Vector computeFractionExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const;
 
 private:

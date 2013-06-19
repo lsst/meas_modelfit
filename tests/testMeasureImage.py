@@ -63,8 +63,8 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.assertEqual(len(self.modelfits), len(loaded))
         samples1 = self.modelfits[0].getSamples()
         samples2 = loaded[0].getSamples()
-        cat1 = samples1.asCatalog()
-        cat2 = samples2.asCatalog()
+        cat1 = samples1.getCatalog().copy(deep=True)
+        cat2 = samples2.getCatalog().copy(deep=True)
         self.assertEqual(len(cat1), len(cat2))
         self.assertEqual(samples1.getEllipseType(), samples2.getEllipseType())
         # n.b. just using assertClose because it lets us test arrays
@@ -74,8 +74,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.assertClose(cat1.get("proposal"), cat2.get("proposal"), rtol=0.0, atol=0.0)
         self.assertClose(cat1.get("weight"), cat2.get("weight"), rtol=0.0, atol=0.0)
         self.assertClose(cat1.get("parameters"), cat2.get("parameters"), rtol=0.0, atol=0.0)
-        fisherKey = cat1.schema.find("joint.fisher").key
-        self.assertClose(cat1.get(fisherKey[0,0]), cat2.get(fisherKey[0,0]), rtol=0.0, atol=0.0)
+        self.assertClose(cat1.get("joint.fisher"), cat2.get("joint.fisher"), rtol=0.0, atol=0.0)
         os.remove(filename)
 
 def suite():
