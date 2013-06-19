@@ -38,34 +38,36 @@ namespace lsst { namespace meas { namespace multifit {
  *  linear parameters @f$\alpha@f$, we solve for the maximum likelihood point @f$\mu@f$,
  *  so we can expand to second-order with no first-order term:
  *  @f[
- *  L(\alpha) = r
- *     + \frac{1}{2}\left(\alpha - \mu\right)^T F\left(\alpha - \mu\right)
+ *  L(\alpha) = \frac{1}{2}r + g^T\alpha + \frac{1}{2}\alpha^T F \alpha
  *  @f]
- *  where @f$r=L(\mu)@f$ and
- *  @f$F=\left.\frac{\partial^2 L}{\partial\alpha^2}\right|_{\mu}@f$ is
- *  the Fisher matrix.
+ *  where @f$r=2L(0.0)@f$,
+ *  @f$g=\left.\frac{\partial L}{\partial\alpha}\right|_{0}@f$ is the gradient, and
+ *  @f$F=\frac{\partial^2 L}{\partial\alpha^2}@f$ is the Fisher matrix.
+ *
+ *  Because the constant @f$r@f$ has the same value for all samples in a SampleSet,
+ *  it is is not saved with each LogGaussian even though it is logically associated
+ *  with it (see SampleSet::getDataSquaredNorm()).
  */
 class LogGaussian {
 public:
 
-    samples::Scalar r;           ///< negative log-likelihood at mu; @f$\chi^2/2@f$
-    samples::Vector mu;          ///< maximum likelihood point
-    samples::Matrix fisher;      ///< Fisher matrix at mu (inverse of the covariance matrix)
+    samples::Vector grad;        ///< gradient of log likelihood at @f$\alpha=0@f$
+    samples::Matrix fisher;      ///< Fisher matrix (inverse of the covariance matrix)
 
     /// Evaluate the negative log-likelihood at the given point.
-    double operator()(samples::Vector const & alpha) const {
-        samples::Vector delta = alpha - mu;
-        return r + 0.5*delta.dot(fisher*delta);
+    double operator()(double r, samples::Vector const & alpha) const {
+        samples::Vector delta = alpha - grad;
+        return 0.5*r + 0.5*delta.dot(fisher*delta);
     }
 
     /// Initialize from parameters
-    LogGaussian(samples::Scalar r_, samples::Vector const & mu_, samples::Matrix const & fisher_) :
-        r(r_), mu(mu_), fisher(fisher_)
+    LogGaussian(samples::Vector const & grad_, samples::Matrix const & fisher_) :
+        grad(grad_), fisher(fisher_)
     {}
 
     /// Initialize with zeros of the given dimension
     explicit LogGaussian(int dim) :
-        r(0.0), mu(samples::Vector::Zero(dim)), fisher(samples::Matrix::Zero(dim, dim))
+        grad(samples::Vector::Zero(dim)), fisher(samples::Matrix::Zero(dim, dim))
     {}
 
 };

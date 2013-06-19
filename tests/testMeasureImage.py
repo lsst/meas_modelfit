@@ -62,14 +62,28 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
                          lsst.afw.table.Schema.IDENTICAL)
         self.assertEqual(len(self.modelfits), len(loaded))
         samples1 = self.modelfits[0].getSamples()
+        # next two tests are just regression tests, using previous values from a known-to-be working
+        # version of the code
+        self.assertClose(
+            samples1.computeMean(),
+            numpy.array([-0.0203723581804957, -0.4533529067560995,  1.2015263966223042]),
+            rtol=1E-8
+            )
+        self.assertClose(
+            samples1.computeCovariance(),
+            numpy.array([[ 2.6440116376509762e-03, 2.1921308406327466e-04, 2.4199734233957120e-08],
+                         [ 2.1921308406327466e-04, 1.2419244839306910e-03, 1.1391011642511022e-08],
+                         [ 2.4199734233957120e-08, 1.1391011642511022e-08, 4.4603646720624631e-07]]),
+            rtol=1E-8
+            )
         samples2 = loaded[0].getSamples()
         cat1 = samples1.getCatalog().copy(deep=True)
         cat2 = samples2.getCatalog().copy(deep=True)
         self.assertEqual(len(cat1), len(cat2))
         self.assertEqual(samples1.getEllipseType(), samples2.getEllipseType())
+        self.assertEqual(samples1.getDataSquaredNorm(), samples2.getDataSquaredNorm())
         # n.b. just using assertClose because it lets us test arrays
-        self.assertClose(cat1.get("joint.r"), cat2.get("joint.r"), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get("joint.mu"), cat2.get("joint.mu"), rtol=0.0, atol=0.0)
+        self.assertClose(cat1.get("joint.grad"), cat2.get("joint.grad"), rtol=0.0, atol=0.0)
         self.assertClose(cat1.get("marginal"), cat2.get("marginal"), rtol=0.0, atol=0.0)
         self.assertClose(cat1.get("proposal"), cat2.get("proposal"), rtol=0.0, atol=0.0)
         self.assertClose(cat1.get("weight"), cat2.get("weight"), rtol=0.0, atol=0.0)

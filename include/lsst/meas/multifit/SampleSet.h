@@ -41,7 +41,7 @@ class SampleSetKeys {
 public:
     afw::table::Schema schema;
     samples::ScalarKey jointR;
-    samples::ArrayKey jointMu;
+    samples::ArrayKey jointGrad;
     samples::ArrayKey jointFisher;
     samples::ScalarKey marginal;
     samples::ScalarKey proposal;
@@ -52,7 +52,7 @@ public:
     int getNonlinearDim() const { return parameters.getSize(); }
 
     /// Return the number of linear amplitude parameters
-    int getLinearDim() const { return jointMu.getSize(); }
+    int getLinearDim() const { return jointGrad.getSize(); }
 
     /// Extract a LogGaussian object from the given record
     LogGaussian getJoint(afw::table::BaseRecord const & record) const;
@@ -149,6 +149,22 @@ public:
         samples::Vector const & parameters,
         afw::geom::Point2D const & center=afw::geom::Point2D()
     ) const;
+
+    /**
+     *  @brief Return the squared norm of weighted data values
+     *
+     *  This is the @f$r@f$ quantity logically associated with each LogGaussian, but
+     *  because it is a constant shared by all samples, it is not stored with each
+     *  LogGaussian.
+     */
+    double getDataSquaredNorm() const { return _dataSquaredNorm; }
+
+    /**
+     *  @brief Set the squared norm of weighted data values
+     *
+     *  @sa getDataSquaredNorm()
+     */
+    void setDataSquaredNorm(double r) { _dataSquaredNorm = r; }
 
     /// @brief Return an afw::table::BaseCatalog representation of the SampleSet.
     afw::table::BaseCatalog getCatalog() const { return _records; }
@@ -278,6 +294,7 @@ protected:
 private:
     SampleSetKeys _keys;
     afw::table::BaseCatalog _records;
+    double _dataSquaredNorm;
     std::string _ellipseType;
     PTR(Prior) _prior;
 };

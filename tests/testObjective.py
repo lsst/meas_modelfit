@@ -52,7 +52,8 @@ class ObjectiveTestCase(lsst.shapelet.tests.ShapeletTestCase):
             )
         ellipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Quadrupole(0.0, 0.0, 0.0))
         lg = objective.evaluate(ellipse)
-        self.assertFalse(numpy.isnan(lg.r))
+        self.assertFalse(numpy.isnan(lg.grad).any())
+        self.assertFalse(numpy.isnan(lg.fisher).any())
 
 def suite():
     """Returns a suite containing all the test cases in this module."""

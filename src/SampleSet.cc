@@ -40,9 +40,8 @@ namespace lsst { namespace meas { namespace multifit {
 
 SampleSetKeys::SampleSetKeys(int nonlinearDim, int linearDim) :
     schema(),
-    jointR(schema.addField<samples::Scalar>("joint.r", "1/2 chi^2 at maximum likelihood point")),
-    jointMu(schema.addField<samples::ArrayTag>(
-                "joint.mu", "maximum likelihood amplitude vector", linearDim)),
+    jointGrad(schema.addField<samples::ArrayTag>(
+                "joint.grad", "amplitude log-likelihood gradient at amplitude=0", linearDim)),
     jointFisher(schema.addField<samples::ArrayTag>("joint.fisher", "amplitude Fisher matrix", linearDim)),
     marginal(schema.addField<samples::Scalar>(
                  "marginal", "negative log marginal posterior value at sample point")),
@@ -55,8 +54,7 @@ SampleSetKeys::SampleSetKeys(int nonlinearDim, int linearDim) :
 
 SampleSetKeys::SampleSetKeys(tbl::Schema const & schema_) :
     schema(schema_),
-    jointR(schema["joint.r"]),
-    jointMu(schema["joint.mu"]),
+    jointGrad(schema["joint.grad"]),
     jointFisher(schema["joint.fisher"]),
     marginal(schema["marginal"]),
     proposal(schema["proposal"]),
@@ -66,15 +64,13 @@ SampleSetKeys::SampleSetKeys(tbl::Schema const & schema_) :
 
 LogGaussian SampleSetKeys::getJoint(tbl::BaseRecord const & record) const {
     LogGaussian joint(getLinearDim());
-    joint.r = record.get(jointR);
-    joint.mu = samples::VectorCMap(record.getElement(jointMu), getLinearDim());
+    joint.grad = samples::VectorCMap(record.getElement(jointGrad), getLinearDim());
     joint.fisher = samples::MatrixCMap(record.getElement(jointFisher), getLinearDim(), getLinearDim());
     return joint;
 }
 
 void SampleSetKeys::setJoint(tbl::BaseRecord & record, LogGaussian const & joint) {
-    record.set(jointR, joint.r);
-    samples::VectorMap(record.getElement(jointMu), getLinearDim()) = joint.mu;
+    samples::VectorMap(record.getElement(jointGrad), getLinearDim()) = joint.grad;
     samples::MatrixMap(record.getElement(jointFisher), getLinearDim(), getLinearDim()) = joint.fisher;
     assert(*record.getElement(jointFisher) == joint.fisher(0,0));
 }
@@ -82,6 +78,7 @@ void SampleSetKeys::setJoint(tbl::BaseRecord & record, LogGaussian const & joint
 SampleSet::SampleSet(int nonlinearDim, int linearDim, std::string const & ellipseType) :
     _keys(nonlinearDim, linearDim),
     _records(_keys.schema),
+    _dataSquaredNorm(0.0),
     _ellipseType(ellipseType),
     _prior()
 {}
@@ -89,6 +86,7 @@ SampleSet::SampleSet(int nonlinearDim, int linearDim, std::string const & ellips
 SampleSet::SampleSet(tbl::BaseCatalog const & records, std::string const & ellipseType) :
     _keys(records.getSchema()),
     _records(records),
+    _dataSquaredNorm(0.0),
     _ellipseType(ellipseType),
     _prior()
 {}
@@ -158,11 +156,11 @@ void SampleSet::add(LogGaussian const & joint, double proposal, samples::Vector 
              % getNonlinearDim() % parameters.size()).str()
         );
     }
-    if (joint.mu.size() != getLinearDim()) {
+    if (joint.grad.size() != getLinearDim()) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterException,
             (boost::format("Incorrect linear dimension for SamplePoint: expected %d, got %d")
-             % getNonlinearDim() % joint.mu.size()).str()
+             % getNonlinearDim() % joint.grad.size()).str()
         );
     }
     if (_prior) {
@@ -205,8 +203,9 @@ double SampleSet::applyPrior(PTR(Prior) const & prior) {
         (*i)[_keys.weight] /= wSum;
     }
     _prior = prior;
-    // ..and return the log of wSum, corrected for the z term we took out earlier
-    return -z - std::log(wSum / _records.size());
+    // ..and return the log of wSum, corrected for the z term we took out earlier,
+    // and including the r/2 term we've ignored all along.
+    return 0.5*_dataSquaredNorm - z - std::log(wSum / _records.size());
 }
 
 void SampleSet::dropPrior() {
@@ -357,6 +356,7 @@ namespace {
 class SampleSetPersistenceKeys : private boost::noncopyable {
 public:
     tbl::Schema schema;
+    tbl::Key<double> dataSquaredNorm;
     tbl::Key<std::string> ellipseType;
 
     static SampleSetPersistenceKeys const & get() {
@@ -368,6 +368,7 @@ private:
 
     SampleSetPersistenceKeys() :
         schema(),
+        dataSquaredNorm(schema.addField<double>("joint.r", "squared norm of weighted data vector")),
         ellipseType(schema.addField<std::string>("ellipsetype", "name of ellipse parametrization", 48))
     {
         schema.getCitizen().markPersistent();
@@ -386,6 +387,7 @@ public:
         LSST_ARCHIVE_ASSERT(catalogs.back().getSchema() == keys2.schema);
         tbl::BaseRecord const & record2 = catalogs.back().front();
         PTR(SampleSet) result(new SampleSet(catalogs.front(), record2.get(keys2.ellipseType)));
+        result->setDataSquaredNorm(record2.get(keys2.dataSquaredNorm));
         return result;
     }
 
@@ -414,6 +416,7 @@ void SampleSet::write(OutputArchiveHandle & handle) const {
     tbl::BaseCatalog catalog2 = handle.makeCatalog(keys2.schema);
     PTR(tbl::BaseRecord) record2 = catalog2.addNew();
     record2->set(keys2.ellipseType, _ellipseType);
+    record2->set(keys2.dataSquaredNorm, _dataSquaredNorm);
     handle.saveCatalog(catalog2);
 }
 

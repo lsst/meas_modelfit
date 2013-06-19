@@ -167,6 +167,7 @@ SampleSet NaiveGridSampler::run(Objective const & objective) const {
     int linearDim = objective.getLinearDim();
     afw::geom::ellipses::Ellipse ellipse = afw::geom::ellipses::Ellipse(EllipseCore(), _center);
     SampleSet samples(nonlinearDim, linearDim, ellipse.getCore().getName());
+    samples.setDataSquaredNorm(objective.getDataSquaredNorm());
     double proposal = std::log(_maxRadius * _maxEllipticity * _maxEllipticity * M_PI);
     ellipse.getCore().scale(0.0);
     samples::Vector parameters = ellipse.getCore().getParameterVector().head(nonlinearDim);

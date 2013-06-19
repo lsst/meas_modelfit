@@ -47,9 +47,6 @@ namespace lsst { namespace meas { namespace multifit {
  *  @f]
  *  Thus, we marginalize the likelihood in @f$\alpha@f$ at fixed @f$\theta@f$, and then multiply
  *  by the prior on @f$\theta@f$.
- *
- *  @note All return values of prior integral member functions are negative logarithms, to avoid
- *        floating-point underflow when expoentiating large numbers.
  */
 class Prior {
 public:
@@ -71,7 +68,7 @@ public:
      *  @f]
      *
      *  Note that both the joint likelihood passed in and the marginal likelihood returned
-     *  are the negative natural log of the probabilities densities.
+     *  are the negative natural log of the probability densities.
      */
     virtual samples::Scalar apply(LogGaussian const & likelihood,
                                   samples::Vector const & parameters) const = 0;
@@ -82,7 +79,7 @@ public:
      *
      *  This is the integral
      *  @f[
-     *     -\ln\int\!\text{flux}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *     \int\!\text{flux}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
      *  @f]
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
