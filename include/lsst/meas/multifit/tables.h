@@ -169,7 +169,7 @@ private:
     template <typename RecordT> friend class afw::table::SortedCatalogT;
 
      // Return a writer object that knows how to save in FITS format.  See also FitsWriter.
-    virtual PTR(afw::table::io::FitsWriter) makeFitsWriter(afw::fits::Fits * fitsfile) const;
+    virtual PTR(afw::table::io::FitsWriter) makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const;
 };
 
 #ifndef SWIG
