@@ -143,7 +143,11 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         @param[in] exposure    lsst.afw.image.ExposureF to fit
         @param[in,out] record  ModelFitRecord to fill, as prepared by prepCatalog
 
-        @return the Objective object used to do the fitting
+        @return a Struct containing various intermediate objects and results:
+          - objective: the Objective object used to evaluate likelihoods
+          - sampler: the Sampler object used to draw samples
+          - psf: a shapelet.MultiShapeletFunction representation of the PSF
+          - record: the output record (same as what's passed in and modified in-place)
         """
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
@@ -169,8 +173,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         """Create a ModelFitCatalog with initial parameters and fitting regions
         to be used later by fillCatalog.
 
-        @param[in]   exposure         Exposure object that will be fit; only used to
-                                      extract the Psf, Wcs, Calib, and bounding box.
+        @param[in]   exposure         Exposure object that will be fit.
         @param[in]   srcCat           SourceCatalog containing processCcd measurements
         @param[in]   refCat           Simulation reference catalog used to add truth
                                       values for comparison to each record, and to
