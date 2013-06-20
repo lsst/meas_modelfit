@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "boost/math/special_functions/erf.hpp"
 #include "Eigen/LU"
 
 #include "lsst/pex/exceptions.h"

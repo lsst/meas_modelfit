@@ -21,18 +21,33 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_H
-#define LSST_MEAS_MULTIFIT_H
+#ifndef LSST_MEAS_MULTIFIT_integrals_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_integrals_h_INCLUDED
 
-#include "lsst/meas/multifit/ModelFitRecord.h"
-#include "lsst/meas/multifit/NaiveGridSampler.h"
-#include "lsst/meas/multifit/BaseSampler.h"
-#include "lsst/meas/multifit/ExpectationFunctor.h"
-#include "lsst/meas/multifit/KernelDensityEstimator.h"
-#include "lsst/meas/multifit/SampleSet.h"
-#include "lsst/meas/multifit/Objective.h"
-#include "lsst/meas/multifit/priors.h"
-#include "lsst/meas/multifit/LogGaussian.h"
-#include "lsst/meas/multifit/integrals.h"
+#include "Eigen/Core"
+#include "lsst/meas/multifit/constants.h"
 
-#endif // !LSST_MEAS_MULTIFIT_H
+namespace lsst { namespace meas { namespace multifit {
+
+namespace detail {
+
+double phid(double z);
+double bvnu(double h, double k, double rho);
+
+} // namespace detail
+
+/**
+ *  @brief Compute a multidimensional Gaussian integral over the space of all nonnegative vectors.
+ *
+ *  This routine performs the integral
+ *  @f[
+ *  \int_0^{\inf} dx e^{-g^T x - \frac{1}{2}x^T F x}
+ *  @f]
+ *
+ *  Currently only the 1-d and 2-d cases are supported.
+ */
+double integrateGaussian(samples::Vector const & grad, samples::Matrix const & fisher);
+
+}}} // namespace lsst::meas::multifit
+
+#endif // !LSST_MEAS_MULTIFIT_integrals_h_INCLUDED

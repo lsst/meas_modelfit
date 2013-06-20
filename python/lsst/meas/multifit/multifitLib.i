@@ -126,3 +126,6 @@ using meas::multifit::ModelFitTable;
 %declareSortedCatalog(SortedCatalogT, ModelFit)
 
 }}} // namespace lsst::afw::table
+
+
+%include "lsst/meas/multifit/integrals.h"

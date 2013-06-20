@@ -1,3 +1,5 @@
 # -*- python -*-
-from lsst.sconsUtils import scripts
+from lsst.sconsUtils import scripts, targets
 scripts.BasicSConscript.tests()
+
+SConscript("reference/SConstruct")
