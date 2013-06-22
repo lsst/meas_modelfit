@@ -25,6 +25,7 @@
 
 #include "ndarray/eigen.h"
 
+#include "lsst/utils/ieee.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/afw/table/BaseColumnView.h"
 #include "lsst/afw/table/io/CatalogVector.h"
@@ -181,6 +182,7 @@ double SampleSet::applyPrior(PTR(Prior) const & prior) {
         // for numerical reasons, in the first pass, we set w_i = ln(m_i/q_i);
         // note that i->proposal == -ln(q_i) and i->marginal == -ln(m_i)
         i->set(_keys.weight, i->get(_keys.proposal) - i->get(_keys.marginal));
+        assert(utils::isfinite(i->get(_keys.marginal)));
     }
     // sort by ascending probability, so when we accumulate, we add small numbers together
     // before adding them to large numbers
@@ -198,6 +200,7 @@ double SampleSet::applyPrior(PTR(Prior) const & prior) {
     for (tbl::BaseCatalog::iterator i = _records.begin(); i != _records.end(); ++i) {
         wSum += (*i)[_keys.weight] = std::exp(i->get(_keys.weight) - z);
     }
+    assert(wSum > 0.0);
     // finally, we normalize w_i...
     for (tbl::BaseCatalog::iterator i = _records.begin(); i != _records.end(); ++i) {
         (*i)[_keys.weight] /= wSum;
