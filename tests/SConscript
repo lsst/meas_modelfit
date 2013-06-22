@@ -2,4 +2,4 @@
 from lsst.sconsUtils import scripts, targets
 scripts.BasicSConscript.tests()
 
-SConscript("reference/SConstruct")
+SConscript("reference/SConscript")
