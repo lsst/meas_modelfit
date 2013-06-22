@@ -22,7 +22,7 @@
  */
 
 #include "boost/math/special_functions/erf.hpp"
-#include "Eigen/LU"
+#include "Eigen/Eigenvalues"
 
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/multifit/integrals.h"
@@ -56,7 +56,7 @@ double bvnu(double h, double k, double rho) {
     Eigen::ArrayXd x0;
     Eigen::ArrayXd w;
     Eigen::ArrayXd x;
-    // setup Gaussin Legendre quadrature points and weights
+    // setup Gauss-Legendre quadrature points and weights
     if (std::abs(rho) < 0.3) {
         w0.resize(3);
         x0.resize(3);
@@ -151,10 +151,76 @@ double bvnu(double h, double k, double rho) {
 
 } // namespace detail
 
+namespace {
+
+static double const THRESHOLD = 1E-15;
+
+bool factor(Eigen::Matrix2d const & m, Eigen::Vector2d & x, double & det) {
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eigh;
+    eigh.computeDirect(m);
+    if (eigh.eigenvalues()[0] < eigh.eigenvalues()[1] * THRESHOLD) {
+        det = 0.0;
+        x = eigh.eigenvectors().col(1) * (eigh.eigenvectors().col(1).dot(x) / eigh.eigenvalues()[1]);
+        return true;
+    } else {
+        det = eigh.eigenvalues()[0] * eigh.eigenvalues()[1];
+        Eigen::Vector2d tmp = eigh.eigenvectors().adjoint() * x;
+        tmp.array() /= eigh.eigenvalues().array();
+        x = eigh.eigenvectors() * tmp;
+        return false;
+    }
+}
+
+} // anonymous
+
 double integrateGaussian(samples::Vector const & grad, samples::Matrix const & fisher) {
+    if (fisher.rows() != grad.size() || fisher.cols() != grad.size()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LengthErrorException,
+            (boost::format("Mismatch between grad size (%d) and fisher dimensions (%d, %d)")
+             % grad.size() % fisher.rows() % fisher.cols()).str()
+        );
+    }
+    if (grad.size() == 1) {
+        double g = grad[0];
+        double f = fisher(0,0);
+        return 0.5*std::log((2.0*f)/M_PI) - 0.5*g*g/f - std::log(boost::math::erfc(g/std::sqrt(2.0*f)));
+    } else if (grad.size() == 2) {
+        // Switch to static-size objects, rescale problem by maximum coefficient value
+        Eigen::Matrix2d F = fisher.block<2,2>(0,0);
+        Eigen::Vector2d g = grad.head<2>();
+        Eigen::Vector2d mu = -g;
+        double det = 0.0;
+        bool isSingular = factor(F, mu, det);
+        double k = 0.5*g.dot(mu);
+        if (isSingular) {
+            if (!g.isApprox(-F*mu, std::sqrt(THRESHOLD))) {
+                throw LSST_EXCEPT(
+                    pex::exceptions::RuntimeErrorException,
+                    "Integral diverges: F \\mu = -g has no solution"
+                );
+            }
+            double d = F(0,0);
+            double r = F(0,1) / F(0,0);
+            if (r < 0) {
+                throw LSST_EXCEPT(
+                    pex::exceptions::RuntimeErrorException,
+                    "Integral diverges"
+                );
+            }
+            k += std::log(2.0*d*r);
+            double t = (mu[0] + r*mu[1])*std::sqrt(d);
+            return k - std::log(2.0*std::exp(-0.5*t*t)
+                                + std::sqrt(2.0*M_PI)*t*(1.0 + boost::math::erf(t/M_SQRT2)));
+        } else {
+            double rho = -F(0,1) / std::sqrt(F(0,0) * F(1,1));
+            return k + std::log(std::sqrt(det) / (2.0*M_PI))
+                - std::log(detail::bvnu(-std::sqrt(det/F(1,1))*mu[0], -std::sqrt(det/F(0,0))*mu[1], rho));
+        }
+    }
     throw LSST_EXCEPT(
         pex::exceptions::LogicErrorException,
-        "Not implemented"
+        "integrateGaussian not implemented for n > 2"
     );
 }
 

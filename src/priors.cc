@@ -25,26 +25,9 @@
 
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/integrals.h"
 
 namespace lsst { namespace meas { namespace multifit {
-
-namespace {
-
-double solveFlat(LogGaussian const & likelihood, samples::Vector & z) {
-    static double const LOG_2PI = std::log(2.0 * M_PI);
-    Eigen::FullPivLU<samples::Matrix> lu(likelihood.fisher);
-    if (!lu.isInvertible()) {
-        throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
-            "Amplitude Fisher matrix is singular; please use a non-flat Prior"
-        );
-    }
-    z = lu.solve(likelihood.grad);
-    return - 0.5 * likelihood.grad.dot(z) - 0.5*LOG_2PI*likelihood.grad.size()
-        + 0.5*std::log(lu.determinant());
-}
-
-} // anonymous
 
 PTR(FlatPrior) FlatPrior::get() {
     static PTR(FlatPrior) instance(new FlatPrior());
@@ -52,16 +35,16 @@ PTR(FlatPrior) FlatPrior::get() {
 }
 
 samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
-    samples::Vector z(likelihood.grad.size());
-    return solveFlat(likelihood, z);
+    return integrateGaussian(likelihood.grad, likelihood.fisher);
 }
 
 samples::Scalar FlatPrior::computeFluxExpectation(
     LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
-    samples::Vector z(likelihood.grad.size());
-    solveFlat(likelihood, z);
-    return -z.sum();
+    throw LSST_EXCEPT(
+        pex::exceptions::LogicErrorException,
+        "NOT IMPLEMENTED"
+    );
 }
 
 samples::Scalar FlatPrior::computeSquaredFluxExpectation(

@@ -37,11 +37,12 @@ double bvnu(double h, double k, double rho);
 } // namespace detail
 
 /**
- *  @brief Compute a multidimensional Gaussian integral over the space of all nonnegative vectors.
+ *  @brief Compute a multidimensional Gaussian integral over the space of all nonnegative vectors,
+ *         returning the log of the integral for stability.
  *
- *  This routine performs the integral
+ *  This routine computes:
  *  @f[
- *  \int_0^{\inf} dx e^{-g^T x - \frac{1}{2}x^T F x}
+ *  -\ln\int_0^{\inf} dx e^{-g^T x - \frac{1}{2}x^T F x}
  *  @f]
  *
  *  Currently only the 1-d and 2-d cases are supported.
