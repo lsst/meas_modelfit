@@ -47,7 +47,7 @@ class MeasureImageConfig(lsst.pex.config.Config):
         doc="Config for objective object that computes model probability at given parameters"
     )
     model = modelRegistry.makeField(
-        default="tractor",
+        default="bulge+disk",
         doc="Definition of the galaxy model to fit"
     )
     prior = priorRegistry.makeField(
