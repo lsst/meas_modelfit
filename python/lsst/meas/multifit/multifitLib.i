@@ -248,3 +248,5 @@ using meas::multifit::ModelFitTable;
 
 %template(SampleSetVector) std::vector<PTR(lsst::meas::multifit::SampleSet)>;
 %template(SampleSetMap) std::map< int, std::vector<PTR(lsst::meas::multifit::SampleSet)> >;
+
+%include "lsst/meas/multifit/optimizer.h"

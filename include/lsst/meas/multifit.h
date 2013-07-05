@@ -38,5 +38,6 @@
 #include "lsst/meas/multifit/integrals.h"
 #include "lsst/meas/multifit/parameters.h"
 #include "lsst/meas/multifit/Mixture.h"
+#include "lsst/meas/multifit/optimizer.h"
 
 #endif // !LSST_MEAS_MULTIFIT_H
