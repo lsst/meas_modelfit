@@ -131,7 +131,7 @@ namespace {
 class ModelFitFitsWriter : public afw::table::io::FitsWriter {
 public:
 
-    ModelFitFitsWriter(Fits * fits) : afw::table::io::FitsWriter(fits), _archive() {}
+    ModelFitFitsWriter(Fits * fits, int flags) : afw::table::io::FitsWriter(fits, flags), _archive() {}
 
 protected:
 
@@ -181,8 +181,8 @@ namespace {
 class ModelFitFitsReader : public afw::table::io::FitsReader {
 public:
 
-    explicit ModelFitFitsReader(Fits * fits, PTR(afw::table::io::InputArchive) archive) :
-        afw::table::io::FitsReader(fits, archive), _archive(archive)
+    explicit ModelFitFitsReader(Fits * fits, PTR(afw::table::io::InputArchive) archive, int flags) :
+        afw::table::io::FitsReader(fits, archive, flags), _archive(archive)
     {
         if (!_archive) {
             int oldHdu = _fits->getHdu();
@@ -276,8 +276,8 @@ ModelFitTable::MinimalSchema & ModelFitTable::getMinimalSchema() {
 }
 
 PTR(afw::table::io::FitsWriter)
-ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile) const {
-    return boost::make_shared<ModelFitFitsWriter>(fitsfile);
+ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const {
+    return boost::make_shared<ModelFitFitsWriter>(fitsfile, flags);
 }
 
 }}} // namespace lsst::meas::multifit
