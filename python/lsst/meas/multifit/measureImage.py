@@ -212,7 +212,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
                 ellipse1 = lsst.afw.geom.ellipses.Axes(
                     (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
                     (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
-                    match.first.getD(keyTheta) - 0.5*numpy.pi
+                    (match.first.getD(keyTheta)*lsst.afw.geom.degrees).asRadians()
                     )
                 transform = wcs.linearizeSkyToPixel(match.first.getCoord())
                 ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
