@@ -209,3 +209,17 @@ class Interactive(object):
             ds9box = mosaic.getBBox(i)
             center = ellipse.getCenter() + lsst.afw.geom.Extent2D(ds9box.getMin() - bbox.getMin())
             lsst.afw.display.ds9.dot(ellipse.getCore(), center.getX(), center.getY())
+
+    def displayExposure(self, doLabel=False):
+        lsst.afw.display.ds9.mtv(self.exposure)
+        ellipseKey = self.modelfits.schema.find("ref.ellipse").key
+        centerKey = self.modelfits.schema.find("ref.center").key
+        with lsst.afw.display.ds9.Buffering():
+            for record in self.modelfits:
+                lsst.afw.display.ds9.dot(record.get(ellipseKey),
+                                         record.get(centerKey.getX()), record.get(centerKey.getY()),
+                                         ctype="green")
+                if doLabel:
+                    lsst.afw.display.ds9.dot(str(record.getId()),
+                                             record.get(centerKey.getX()), record.get(centerKey.getY()),
+                                             ctype="cyan")
