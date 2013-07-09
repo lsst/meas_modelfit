@@ -205,8 +205,14 @@ public:
      *
      *  Return the negative log of the sum of weights before normalizing them, which is the
      *  negative log of the Bayesian "evidence" for a normalized prior.
+     *
+     *  The clip parameter is used to clip samples with weights less than clip*max(weights);
+     *  if set to a reasonable value, this can dramatically reduce the number of samples
+     *  that need to be saved without affecting the distribution when using a naive sampler.
+     *  If the given value is less than std::numeric_limits<double>::min(), it will be reset
+     *  to that value to avoid numerical issues.
      */
-    double applyPrior(PTR(Prior) const & prior);
+    double applyPrior(PTR(Prior) const & prior, double clip=0);
 
     /// Remove the prior from the SampleSet, allowing new SamplePoints to be added.
     void dropPrior();

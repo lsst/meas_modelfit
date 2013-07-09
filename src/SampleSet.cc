@@ -43,7 +43,8 @@ SampleSetKeys::SampleSetKeys(int nonlinearDim, int linearDim) :
     schema(),
     jointGrad(schema.addField<samples::ArrayTag>(
                 "joint.grad", "amplitude log-likelihood gradient at amplitude=0", linearDim)),
-    jointFisher(schema.addField<samples::ArrayTag>("joint.fisher", "amplitude Fisher matrix", linearDim)),
+    jointFisher(schema.addField<samples::ArrayTag>("joint.fisher", "amplitude Fisher matrix",
+                                                   linearDim*linearDim)),
     marginal(schema.addField<samples::Scalar>(
                  "marginal", "negative log marginal posterior value at sample point")),
     proposal(schema.addField<samples::Scalar>(
@@ -176,20 +177,35 @@ void SampleSet::add(LogGaussian const & joint, double proposal, samples::Vector 
     _keys.setParameters(*newRecord, parameters);
 }
 
-double SampleSet::applyPrior(PTR(Prior) const & prior) {
-    for (tbl::BaseCatalog::iterator i = _records.begin(); i != _records.end(); ++i) {
+double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
+    _prior = prior;
+    std::size_t origSize = _records.size();
+    tbl::BaseCatalog::iterator i = _records.begin();
+    for (; i != _records.end(); ++i) {
         i->set(_keys.marginal, prior->apply(_keys.getJoint(*i), _keys.getParameters(*i)));
         // for numerical reasons, in the first pass, we set w_i = ln(m_i/q_i);
         // note that i->proposal == -ln(q_i) and i->marginal == -ln(m_i)
         i->set(_keys.weight, i->get(_keys.proposal) - i->get(_keys.marginal));
-        assert(utils::isfinite(i->get(_keys.marginal)));
     }
     // sort by ascending probability, so when we accumulate, we add small numbers together
     // before adding them to large numbers
     _records.sort(_keys.weight);
+    // now we clip weights that are much smaller than the maximum weight, as we know they're
+    // insignificant in the full sum, and they can cause numerical issues later on
+    clip = std::max(clip, std::numeric_limits<double>::min());
+    double const tau = std::log(clip) + _records.back().get(_keys.weight);
+    i = _records.begin();
+    while (i != _records.end()) {
+        if (i->get(_keys.weight) >= tau) break;
+        ++i;
+    }
+    _records.erase(_records.begin(), i);
+    if (_records.empty()) {
+        return std::numeric_limits<double>::infinity();
+    }
     // we now compute z, the arithmetic mean of ln(m_i/q_i)
     double z = 0.0;
-    for (tbl::BaseCatalog::iterator i = _records.begin(); i != _records.end(); ++i) {
+    for (i = _records.begin(); i != _records.end(); ++i) {
         z += i->get(_keys.weight);
     }
     z /= _records.size();
@@ -197,18 +213,19 @@ double SampleSet::applyPrior(PTR(Prior) const & prior) {
     // this now makes w_i = e^{-z} m_i/q_i, which is proportional to the
     // desired m_i/q_i.
     double wSum = 0.0;
-    for (tbl::BaseCatalog::iterator i = _records.begin(); i != _records.end(); ++i) {
+    for (i = _records.begin(); i != _records.end(); ++i) {
         wSum += (*i)[_keys.weight] = std::exp(i->get(_keys.weight) - z);
+        assert(utils::isfinite(i->get(_keys.weight)));
     }
     assert(wSum > 0.0);
     // finally, we normalize w_i...
-    for (tbl::BaseCatalog::iterator i = _records.begin(); i != _records.end(); ++i) {
+    for (i = _records.begin(); i != _records.end(); ++i) {
         (*i)[_keys.weight] /= wSum;
+        assert(utils::isfinite(i->get(_keys.weight)));
     }
-    _prior = prior;
     // ..and return the log of wSum, corrected for the z term we took out earlier,
     // and including the r/2 term we've ignored all along.
-    return 0.5*_dataSquaredNorm - z - std::log(wSum / _records.size());
+    return 0.5*_dataSquaredNorm - z - std::log(wSum / origSize);
 }
 
 void SampleSet::dropPrior() {
