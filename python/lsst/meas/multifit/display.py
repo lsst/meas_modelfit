@@ -88,7 +88,7 @@ class Interactive(object):
         @param[in]  dataId   Butler data ID of the image to analyze.
         """
         if dataId is None:
-            dataId = dict(visit=1, raft="2,2", sensor="1,1")
+            dataId = dict(visit=100, raft="2,2", sensor="1,1")
         root = os.environ["S13_DATA_DIR"]
         self.butler = lsst.daf.persistence.Butler(os.path.join(root, "output", rerun))
         self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
