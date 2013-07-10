@@ -98,4 +98,41 @@ Eigen::VectorXd solveTrustRegion(
     return x;
 }
 
+
+PosteriorOptimizer::PosteriorOptimizer(
+    PTR(Objective const) objective,
+    Eigen::VectorXd const & parameters,
+    Control const & ctrl
+) :
+    _objective(objective),
+    _ctrl(ctrl),
+    _parameters(parameters),
+    _testParameters(objective->parameterSize),
+    _residuals(objective->dataSize),
+    _testResiduals(objective->dataSize),
+    _jacobian(objective->dataSize, objective->parameterSize),
+    _testJacobian(objective->dataSize, objective->parameterSize),
+    _gradient(objective->parameterSize),
+    _hessian(objective->parameterSize, objective->parameterSize),
+    _sr1b(objective->parameterSize, objective->parameterSize)
+{
+    if (_parameters.size() != objective->parameterSize) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LengthErrorException,
+            (boost::format("Parameter vector size (%d) does not match objective (%d)")
+             % _parameters.size() % objective->parameterSize).str()
+        );
+    }
+    _residuals.setZero();
+    _objective->computeResiduals(_parameters, _residuals);
+    for (int n = 0; n < objective->parameterSize; ++n) {
+        double numDiffStep = _ctrl.numDiffRelStep * _testParameters[n] + _ctrl.numDiffAbsStep;
+        _testParameters = _parameters;
+        _testParameters[n] += numDiffStep;
+        _objective->computeResiduals(_testParameters, _testResiduals);
+        _jacobian.col(n) = (_testResiduals - _residuals) / numDiffStep;
+    }
+}
+
+
 }}} // namespace lsst::meas::multifit
