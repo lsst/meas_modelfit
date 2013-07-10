@@ -34,6 +34,7 @@ import lsst.afw.geom.ellipses
 import lsst.afw.display.ds9
 
 from .measureCcd import *
+from .measureCoadd import *
 from .multifitLib import *
 
 __all__ = ("makeHistogramGrid", "InteractiveFitter")
@@ -77,26 +78,39 @@ class Interactive(object):
     of the MeasureCcdTask, allowing individual objects to be re-fit and plotted.
     """
 
-    def __init__(self, rerun, config=None, dataId=None):
+    def __init__(self, rerun, config=None, dataId=None, coadd=False):
         """Construct an interactive analysis object.
 
         @param[in]  rerun    Output directory, relative to $S13_DATA_DIR/output.
-                             measureCcd.py must have been run (possibly with
-                             prepOnly=True) previously with this output directory.
+                             measureCcd.py (or measureCoadd.py if coadd=True) must
+                             have been run (possibly with prepOnly=True) previously
+                             with this output directory.
         @param[in]  config   MeasureCcdTask.ConfigClass instance; if None, it
                              will be loaded from disk.
         @param[in]  dataId   Butler data ID of the image to analyze.
+        @param[in]  coadd    Whether to process on the coadd instead of single-frame.
         """
         if dataId is None:
-            dataId = dict(visit=100, raft="2,2", sensor="1,1")
+            if not coadd:
+                dataId = dict(visit=100, raft="2,2", sensor="1,1")
+            else:
+                dataId = dict(tract=0, patch="2,2", filter="i")
         root = os.environ["S13_DATA_DIR"]
         self.butler = lsst.daf.persistence.Butler(os.path.join(root, "output", rerun))
-        self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
-        if config is None:
-            config = self.butler.get("measureCcd_config", immediate=True)
-        self.exposure = self.dataRef.get("calexp", immediate=True)
-        self.modelfits = self.dataRef.get("modelfits", immediate=True)
-        self.task = MeasureCcdTask(config=config)
+        if not coadd:
+            self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
+            if config is None:
+                config = self.butler.get("measureCcd_config", immediate=True)
+            self.exposure = self.dataRef.get("calexp", immediate=True)
+            self.modelfits = self.dataRef.get("modelfits", immediate=True)
+            self.task = MeasureCcdTask(config=config)
+        else:
+            self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
+            if config is None:
+                config = self.butler.get("deep_measureCoadd_config", immediate=True)
+            self.exposure = self.dataRef.get("deepCoadd_calexp", immediate=True)
+            self.modelfits = self.dataRef.get("deepCoadd_modelfits", immediate=True)
+            self.task = MeasureCoaddTask(config=config)
 
     def fit(self, index=0, id=None):
         """Re-fit the object indicated by the given record sequential index
@@ -210,8 +224,8 @@ class Interactive(object):
             center = ellipse.getCenter() + lsst.afw.geom.Extent2D(ds9box.getMin() - bbox.getMin())
             lsst.afw.display.ds9.dot(ellipse.getCore(), center.getX(), center.getY())
 
-    def displayExposure(self, doLabel=False):
-        lsst.afw.display.ds9.mtv(self.exposure)
+    def displayExposure(self, frame=0, doLabel=False):
+        lsst.afw.display.ds9.mtv(self.exposure, frame=frame)
         ellipseKey = self.modelfits.schema.find("ref.ellipse").key
         centerKey = self.modelfits.schema.find("ref.center").key
         with lsst.afw.display.ds9.Buffering():
