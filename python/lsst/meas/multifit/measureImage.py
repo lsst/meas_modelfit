@@ -67,6 +67,11 @@ class MeasureImageConfig(lsst.pex.config.Config):
         default=True,
         doc="Whether to use the reference catalog to identify objects to fit"
     )
+    progressChunk = lsst.pex.config.Field(
+        dtype=int,
+        default=100,
+        doc="Show progress log message every [progressChunk] objects"
+    )
     prepOnly = lsst.pex.config.Field(
         dtype=bool,
         default=False,
@@ -237,7 +242,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         """For each empty ModelFitRecord in catalog, call processObject()
         """
         for n, record in enumerate(outCat):
-            if n % 100 == 0:
+            if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
                 self.log.info("Processing object %d/%d (%3.2f%%)" % (n, len(outCat), (100.0*n)/len(outCat)))
             self.processObject(exposure=exposure, record=record)
 
