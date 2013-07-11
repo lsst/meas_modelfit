@@ -214,6 +214,8 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             for match in matches:
                 if where is not None and not where(src=match.second, ref=match.first):
                     continue
+                if match.second.getShapeFlag():
+                    continue
                 ellipse1 = lsst.afw.geom.ellipses.Axes(
                     (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
                     (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),

@@ -154,7 +154,7 @@ NaiveGridSampler::NaiveGridSampler(
             "ellipticityStepSize must be >= 0.0"
         );
     }
-    if (_maxRadius < 0.0) {
+    if (!(_maxRadius >= 0.0)) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterException,
             "maxRadius must be >= 0.0"
