@@ -36,6 +36,12 @@ public:
 
     int getBasisSize() const;
 
+    int getOrder() const;
+
+    int getDegree() const { return getOrder() - 1; }
+
+    ndarray::Array<double const,1,0> getKnots() const;
+
     void evaluate(double x, ndarray::Array<double,1,1> const & b) const;
 
     ndarray::Array<double,1,1> evaluate(double x) const;
@@ -52,6 +58,10 @@ public:
     void evaluateDerivatives(double x, ndarray::Array<double,2,1> const & db) const;
 
     ndarray::Array<double,2,2> evaluateDerivatives(double x, int nDeriv) const;
+
+    void evaluateIntegral(ndarray::Array<double,1,1> const & ib) const;
+
+    ndarray::Array<double,1,1> evaluateIntegral() const;
 
     ~BasisSpline(); // needs to be in .cc so compiler can see ~Impl()
 

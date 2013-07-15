@@ -80,6 +80,8 @@ public:
         gsl_bspline_deriv_free(_dw);
     }
 
+    double _min;
+    double _max;
     gsl_bspline_workspace * _w;
     gsl_bspline_deriv_workspace * _dw;
 };
@@ -87,12 +89,42 @@ public:
 BasisSpline::BasisSpline(ndarray::Array<double const,1,1> const & knots, int degree) :
     _impl(new Impl(knots.getSize<0>(), degree))
 {
+    if (knots.getSize<0>() < 2) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "Knots vector must have at least 2 elements"
+        );
+    }
+    for (int i = 1, n = knots.getSize<0>(); i < n; ++i) {
+        if (knots[i] < knots[i - 1]) {
+            throw LSST_EXCEPT(
+                pex::exceptions::LogicErrorException,
+                "Knots vector must be nondecreasing"
+            );
+        }
+    }
+    _impl->_min = knots[0];
+    _impl->_max = knots[knots.getSize<0>() - 1];
     gsl_vector_const_view gknots = gsl_vector_const_view_array(knots.getData(), knots.getSize<0>());
     gsl_bspline_knots(&gknots.vector, _impl->_w);
 }
 
 int BasisSpline::getBasisSize() const {
     return gsl_bspline_ncoeffs(_impl->_w);
+}
+
+int BasisSpline::getOrder() const {
+    return gsl_bspline_order(_impl->_w);
+}
+
+ndarray::Array<double const,1,0> BasisSpline::getKnots() const {
+    ndarray::Array<double const,1,0> knots = ndarray::external(
+        _impl->_w->knots->data,
+        ndarray::Vector<int,1>(_impl->_w->knots->size),
+        ndarray::Vector<int,1>(_impl->_w->knots->stride),
+        _impl
+    );
+    return knots;
 }
 
 void BasisSpline::evaluate(double x, ndarray::Array<double,1,1> const & b) const {
@@ -103,8 +135,12 @@ void BasisSpline::evaluate(double x, ndarray::Array<double,1,1> const & b) const
              % getBasisSize() % b.getSize<1>()).str()
         );
     }
-    gsl_vector_view gb = gsl_vector_view_array(b.getData(), b.getSize<0>());
-    checkStatus(gsl_bspline_eval(x, &gb.vector, _impl->_w), "In basis spline evaluation: ");
+    if (x < _impl->_min || x > _impl->_max) {
+        b.deep() = 0.0;
+    } else {
+        gsl_vector_view gb = gsl_vector_view_array(b.getData(), b.getSize<0>());
+        checkStatus(gsl_bspline_eval(x, &gb.vector, _impl->_w), "In basis spline evaluation: ");
+    }
 }
 
 ndarray::Array<double,1,1> BasisSpline::evaluate(double x) const {
@@ -136,8 +172,12 @@ void BasisSpline::evaluate(
     );
     int const nx = x.getSize<0>();
     for (int i = 0; i < nx; ++i) {
-        gsl_vector_view gbi = gsl_matrix_row(&gb.matrix, i);
-        checkStatus(gsl_bspline_eval(x[i], &gbi.vector, _impl->_w), "In basis spline evaluation: ");
+        if (x[i] < _impl->_min || x[i] > _impl->_max) {
+            b[i] = 0.0;
+        } else {
+            gsl_vector_view gbi = gsl_matrix_row(&gb.matrix, i);
+            checkStatus(gsl_bspline_eval(x[i], &gbi.vector, _impl->_w), "In basis spline evaluation: ");
+        }
     }
 }
 
@@ -169,6 +209,26 @@ ndarray::Array<double,2,2> BasisSpline::evaluateDerivatives(double x, int nDeriv
     ndarray::Array<double,2,2> db = ndarray::allocate(getBasisSize(), nDeriv);
     evaluateDerivatives(x, db);
     return db;
+}
+
+void BasisSpline::evaluateIntegral(ndarray::Array<double,1,1> const & ib) const {
+    if (ib.getSize<0>() != getBasisSize()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LengthErrorException,
+            (boost::format("Basis size (%d) does not match columns of ib (%d)")
+             % getBasisSize() % ib.getSize<1>()).str()
+        );
+    }
+    int const order = getOrder(), basisSize = getBasisSize();
+    for (int i = 0; i < basisSize; ++i) {
+        ib[i] = (gsl_vector_get(_impl->_w->knots, i + order) - gsl_vector_get(_impl->_w->knots, i)) / order;
+    }
+}
+
+ndarray::Array<double,1,1> BasisSpline::evaluateIntegral() const {
+    ndarray::Array<double,1,1> ib = ndarray::allocate(getBasisSize());
+    evaluateIntegral(ib);
+    return ib;
 }
 
 BasisSpline::~BasisSpline() {}
