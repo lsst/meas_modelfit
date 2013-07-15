@@ -26,6 +26,7 @@
 
 #include "Eigen/Core"
 
+#include "lsst/base.h"
 #include "lsst/pex/config.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -155,7 +156,7 @@ public:
 
     PTR(Objective const) getObjective() const { return _objective; }
 
-    Control const & getControl() const { return _control; }
+    Control const & getControl() const { return _ctrl; }
 
     bool step();
 
@@ -176,7 +177,7 @@ private:
     Eigen::VectorXd _testResiduals;
     Eigen::MatrixXd _jacobian;
     Eigen::MatrixXd _testJacobian;
-    Eigen::MatrixXd _gradient;
+    Eigen::VectorXd _gradient;
     Eigen::MatrixXd _hessian;
     Eigen::MatrixXd _sr1b;
 };
