@@ -77,7 +77,11 @@ class MultiShapeletBasis;
 %declareNumPyConverters(Eigen::VectorXd);
 %declareNumPyConverters(Eigen::MatrixXd);
 %declareNumPyConverters(ndarray::Array<double,1,1>);
+%declareNumPyConverters(ndarray::Array<double const,1,1>);
+%declareNumPyConverters(ndarray::Array<double,2,1>);
+%declareNumPyConverters(ndarray::Array<double const,2,1>);
 %declareNumPyConverters(ndarray::Array<double,2,2>);
+%declareNumPyConverters(ndarray::Array<double const,2,2>);
 
 %include "lsst/meas/multifit/constants.h"
 
@@ -244,3 +248,5 @@ using meas::multifit::ModelFitTable;
 %ignore lsst::meas::multifit::PosteriorOptimizer;
 
 %include "lsst/meas/multifit/optimizer.h"
+
+%include "lsst/meas/multifit/splines.h"
