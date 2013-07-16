@@ -67,7 +67,7 @@ void checkStatus(int status, std::string const & message) {
 
 } // anonymous
 
-class BasisSpline::Impl : private boost::noncopyable {
+class SplineBasis::Impl : private boost::noncopyable {
 public:
 
     explicit Impl(int nKnots, int degree) {
@@ -86,7 +86,7 @@ public:
     gsl_bspline_deriv_workspace * _dw;
 };
 
-BasisSpline::BasisSpline(ndarray::Array<double const,1,1> const & knots, int degree) :
+SplineBasis::SplineBasis(ndarray::Array<double const,1,1> const & knots, int degree) :
     _impl(new Impl(knots.getSize<0>(), degree))
 {
     if (knots.getSize<0>() < 2) {
@@ -109,15 +109,15 @@ BasisSpline::BasisSpline(ndarray::Array<double const,1,1> const & knots, int deg
     gsl_bspline_knots(&gknots.vector, _impl->_w);
 }
 
-int BasisSpline::getBasisSize() const {
+int SplineBasis::getBasisSize() const {
     return gsl_bspline_ncoeffs(_impl->_w);
 }
 
-int BasisSpline::getOrder() const {
+int SplineBasis::getOrder() const {
     return gsl_bspline_order(_impl->_w);
 }
 
-ndarray::Array<double const,1,0> BasisSpline::getKnots() const {
+ndarray::Array<double const,1,0> SplineBasis::getKnots() const {
     ndarray::Array<double const,1,0> knots = ndarray::external(
         _impl->_w->knots->data,
         ndarray::Vector<int,1>(_impl->_w->knots->size),
@@ -127,7 +127,7 @@ ndarray::Array<double const,1,0> BasisSpline::getKnots() const {
     return knots;
 }
 
-void BasisSpline::evaluate(double x, ndarray::Array<double,1,1> const & b) const {
+void SplineBasis::evaluate(double x, ndarray::Array<double,1,1> const & b) const {
     if (b.getSize<0>() != getBasisSize()) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthErrorException,
@@ -143,13 +143,13 @@ void BasisSpline::evaluate(double x, ndarray::Array<double,1,1> const & b) const
     }
 }
 
-ndarray::Array<double,1,1> BasisSpline::evaluate(double x) const {
+ndarray::Array<double,1,1> SplineBasis::evaluate(double x) const {
     ndarray::Array<double,1,1> b = ndarray::allocate(getBasisSize());
     evaluate(x, b);
     return b;
 }
 
-void BasisSpline::evaluate(
+void SplineBasis::evaluate(
     ndarray::Array<double const,1,1> const & x,
     ndarray::Array<double,2,1> const & b
 ) const {
@@ -181,7 +181,7 @@ void BasisSpline::evaluate(
     }
 }
 
-ndarray::Array<double,2,2> BasisSpline::evaluate(
+ndarray::Array<double,2,2> SplineBasis::evaluate(
     ndarray::Array<double const,1,1> const & x
 ) const {
     ndarray::Array<double,2,2> b = ndarray::allocate(x.getSize<0>(), getBasisSize());
@@ -190,7 +190,7 @@ ndarray::Array<double,2,2> BasisSpline::evaluate(
 }
 
 
-void BasisSpline::evaluateDerivatives(double x, ndarray::Array<double,2,1> const & db) const {
+void SplineBasis::evaluateDerivatives(double x, ndarray::Array<double,2,1> const & db) const {
     if (db.getSize<0>() != getBasisSize()) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthErrorException,
@@ -205,13 +205,13 @@ void BasisSpline::evaluateDerivatives(double x, ndarray::Array<double,2,1> const
                 "In basis spline derivative evaluation: ");
 }
 
-ndarray::Array<double,2,2> BasisSpline::evaluateDerivatives(double x, int nDeriv) const {
+ndarray::Array<double,2,2> SplineBasis::evaluateDerivatives(double x, int nDeriv) const {
     ndarray::Array<double,2,2> db = ndarray::allocate(getBasisSize(), nDeriv);
     evaluateDerivatives(x, db);
     return db;
 }
 
-void BasisSpline::evaluateIntegral(ndarray::Array<double,1,1> const & ib) const {
+void SplineBasis::evaluateIntegral(ndarray::Array<double,1,1> const & ib) const {
     if (ib.getSize<0>() != getBasisSize()) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthErrorException,
@@ -225,12 +225,12 @@ void BasisSpline::evaluateIntegral(ndarray::Array<double,1,1> const & ib) const 
     }
 }
 
-ndarray::Array<double,1,1> BasisSpline::evaluateIntegral() const {
+ndarray::Array<double,1,1> SplineBasis::evaluateIntegral() const {
     ndarray::Array<double,1,1> ib = ndarray::allocate(getBasisSize());
     evaluateIntegral(ib);
     return ib;
 }
 
-BasisSpline::~BasisSpline() {}
+SplineBasis::~SplineBasis() {}
 
 }}} // namespace lsst::meas::multifit

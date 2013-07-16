@@ -29,10 +29,10 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-class BasisSpline {
+class SplineBasis {
 public:
 
-    explicit BasisSpline(ndarray::Array<double const,1,1> const & knots, int degree=3);
+    explicit SplineBasis(ndarray::Array<double const,1,1> const & knots, int degree=3);
 
     int getBasisSize() const;
 
@@ -63,12 +63,13 @@ public:
 
     ndarray::Array<double,1,1> evaluateIntegral() const;
 
-    ~BasisSpline(); // needs to be in .cc so compiler can see ~Impl()
+    ~SplineBasis(); // needs to be in .cc so compiler can see ~Impl()
 
 private:
     class Impl;
     PTR(Impl) _impl;
 };
+
 
 
 }}} // namespace lsst::meas::multifit
