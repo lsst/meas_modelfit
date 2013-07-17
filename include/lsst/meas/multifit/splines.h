@@ -149,6 +149,25 @@ private:
     Eigen::MatrixXd _q2;
 };
 
+class SplineFunction {
+public:
+
+    SplineFunction(SplineBasis const & basis, ndarray::Array<double const,1,1> const & coefficients) :
+        _basis(basis), _coefficients(coefficients), _ws(ndarray::allocate(coefficients.getShape()))
+    {}
+
+    double operator()(double x) const;
+
+    void operator()(ndarray::Array<double const,1,0> const & x, ndarray::Array<double,1,0> const & v) const;
+
+    ndarray::Array<double,1,1> operator()(ndarray::Array<double const,1,1> const & x) const;
+
+private:
+    SplineBasis _basis;
+    ndarray::Array<double const,1,1> _coefficients;
+    ndarray::Array<double,1,1> _ws;
+};
+
 }}} // namespace lsst::meas::multifit
 
 #endif // !LSST_MEAS_MULTIFIT_splines_h_INCLUDED

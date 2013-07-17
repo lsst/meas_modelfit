@@ -332,5 +332,34 @@ void ConstrainedSplineBasis::addManualConstraint(ndarray::Array<double const,1,0
     _q2 = q.rightCols(ns - nc);
 }
 
+double SplineFunction::operator()(double x) const {
+    _basis.evaluate(x, _ws);
+    return _ws.asEigen().dot(_coefficients.asEigen());
+}
+
+void SplineFunction::operator()(
+    ndarray::Array<double const,1,0> const & x, ndarray::Array<double,1,0> const & v
+) const {
+    if (x.getSize<0>() != v.getSize<0>()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LengthErrorException,
+            (boost::format("Sizes of x (%d) and v (%d) do not agree")
+             % x.getSize<0>() % v.getSize<0>()).str()
+        );
+    }
+    ndarray::Array<double const,1,0>::Iterator ix = x.begin(), xend = x.end();
+    ndarray::Array<double,1,0>::Iterator iv = v.begin();
+    for (; ix != xend; ++ix, ++iv) {
+        *iv = (*this)(*ix);
+    }
+}
+
+ndarray::Array<double,1,1> SplineFunction::operator()(ndarray::Array<double const,1,1> const & x) const {
+    ndarray::Array<double,1,1> v = ndarray::allocate(x.getShape());
+    (*this)(x, v);
+    return v;
+}
+
+
 
 }}} // namespace lsst::meas::multifit
