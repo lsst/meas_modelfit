@@ -21,11 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "Eigen/QR"
 #include "boost/noncopyable.hpp"
 #include "boost/format.hpp"
 #include "gsl/gsl_bspline.h"
 #include "gsl/gsl_vector.h"
 
+#include "ndarray/eigen.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/multifit/splines.h"
 
@@ -201,12 +203,12 @@ void SplineBasis::evaluateDerivatives(double x, ndarray::Array<double,2,1> const
     gsl_matrix_view gdb = gsl_matrix_view_array_with_tda(
         db.getData(), db.getSize<0>(), db.getSize<1>(), db.getStride<0>()
     );
-    checkStatus(gsl_bspline_deriv_eval(x, db.getSize<0>()-1, &gdb.matrix, _impl->_w, _impl->_dw),
+    checkStatus(gsl_bspline_deriv_eval(x, db.getSize<1>()-1, &gdb.matrix, _impl->_w, _impl->_dw),
                 "In basis spline derivative evaluation: ");
 }
 
 ndarray::Array<double,2,2> SplineBasis::evaluateDerivatives(double x, int nDeriv) const {
-    ndarray::Array<double,2,2> db = ndarray::allocate(getBasisSize(), nDeriv);
+    ndarray::Array<double,2,2> db = ndarray::allocate(getBasisSize(), nDeriv + 1);
     evaluateDerivatives(x, db);
     return db;
 }
@@ -232,5 +234,74 @@ ndarray::Array<double,1,1> SplineBasis::evaluateIntegral() const {
 }
 
 SplineBasis::~SplineBasis() {}
+
+
+
+ConstrainedSplineBasis::ConstrainedSplineBasis(SplineBasis const & spline) :
+    _spline(spline), _constraintMatrix(), _constraintVector(),
+    _y1(Eigen::VectorXd::Zero(spline.getBasisSize())),
+    _q2(Eigen::MatrixXd::Identity(spline.getBasisSize(), spline.getBasisSize()))
+{}
+
+
+void ConstrainedSplineBasis::evaluate(double x, ndarray::Array<double,1,1> const & b, double & c) const {
+    ndarray::Array<double,1,1> sb = _spline.evaluate(x);
+    b.asEigen() = sb.asEigen() * _q2;
+    c = sb.asEigen().dot(_y1);
+}
+
+void ConstrainedSplineBasis::evaluate(
+    ndarray::Array<double const,1,1> const & x,
+    ndarray::Array<double,2,1> const & b,
+    ndarray::Array<double,1,1> const & c
+) const {
+    ndarray::Array<double,2,2> sb = _spline.evaluate(x);
+    b.asEigen() = sb.asEigen() * _q2;
+    c.asEigen() = sb.asEigen() * _y1;
+}
+
+void ConstrainedSplineBasis::addConstraint(double x, double v, int n) {
+    ndarray::Array<double,2,-2> derivatives = _spline.evaluateDerivatives(x, n).transpose();
+    addManualConstraint(derivatives[n], v);
+}
+
+void ConstrainedSplineBasis::addIntegralConstraint(double i) {
+    ndarray::Array<double,1,1> k = _spline.evaluateIntegral();
+    addManualConstraint(k, i);
+}
+
+void ConstrainedSplineBasis::addManualConstraint(ndarray::Array<double const,1,0> const & k, double c) {
+    int nc = _constraintMatrix.getSize<0>();
+    int ns = _spline.getBasisSize();
+    if (k.getSize<0>() != ns) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LengthErrorException,
+            (boost::format("Size of constraint vector (%d) does not match unconstrained basis size (%d)")
+             % k.getSize<0>() % ns).str()
+        );
+    }
+    ndarray::Array<double,2,2> newConstraintMatrix = ndarray::allocate(nc + 1, ns);
+    ndarray::Array<double,1,1> newConstraintVector = ndarray::allocate(nc + 1);
+    if (nc > 0) {
+        newConstraintMatrix[ndarray::view(0, nc)] = _constraintMatrix;
+        newConstraintVector[ndarray::view(0, nc)] = _constraintVector;
+    }
+    double scaling = std::max(k.asEigen().lpNorm<Eigen::Infinity>(), std::abs(c));
+    newConstraintMatrix[nc] = k / scaling;
+    newConstraintVector[nc] = c / scaling;
+    ++nc;
+    newConstraintMatrix.swap(_constraintMatrix);
+    newConstraintVector.swap(_constraintVector);
+    Eigen::HouseholderQR<Eigen::MatrixXd> qr(_constraintMatrix.asEigen().adjoint());
+    Eigen::MatrixXd q = qr.householderQ();
+    Eigen::MatrixXd r = qr.matrixQR().triangularView<Eigen::Upper>();
+    assert(r.cols() == nc);
+    assert(r.rows() == ns);
+    Eigen::VectorXd z1 = _constraintVector.asEigen();
+    r.topRows(nc).triangularView<Eigen::Upper>().adjoint().solveInPlace(z1);
+    _y1 = q.leftCols(nc) * z1;
+    _q2 = q.rightCols(ns - nc);
+}
+
 
 }}} // namespace lsst::meas::multifit
