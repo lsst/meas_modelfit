@@ -31,7 +31,7 @@ import lsst.pex.config
 
 from . import multifitLib
 
-__all__ = ("priorRegistry", "registerPrior")
+__all__ = ("priorRegistry", "registerPrior", "fitEllipticitySpline")
 
 priorRegistry = lsst.pex.config.makeRegistry(
     """Registry for Bayesian priors on galaxy parameters
@@ -111,4 +111,62 @@ def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20,
     for i in range(nIterations):
         mixture.updateEM(data, restriction)
     return mixture
+
+def fitEllipticitySpline(ellipticity, histBins=100, outerKnotSpacing=0.01, nInteriorKnots=5, doPlot=False):
+    import scipy.optimize
+    import scipy.stats
+
+    h, eg = numpy.histogram(ellipticity, bins=histBins, normed=True)
+    de = (eg[1:] - eg[:-1]).mean()
+    eh = 0.5*(eg[1:] + eg[:-1])
+    knots = numpy.concatenate(
+        ([0.0],
+         numpy.linspace(outerKnotSpacing, eg[-1], nInteriorKnots),
+         [eg[-1] + outerKnotSpacing, eg[-1] + 2*outerKnotSpacing]
+         )
+        )
+    basis = multifitLib.ConstrainedSplineBasis(multifitLib.SplineBasis(knots, 3))
+    basis.addConstraint(knots[0], 0.0, 1)  # constrain first derivative to zero at lower bound
+    basis.addConstraint(knots[-1], 0.0, 1) # constrain first derivative to zero at upper bound
+    basis.addConstraint(knots[-1], 0.0, 0) # constrain value to zero at upper bound
+    basis.addIntegralConstraint()
+    bh = numpy.zeros((eh.size, basis.getBasisSize()), dtype=float)
+    ch = numpy.zeros((eh.size,), dtype=float)
+    basis.evaluate(eh, bh, ch)
+
+    h1 = h - h.min()
+    kappa1 = (h1*de).sum() / (h*de).sum()
+    def model1(e, x):
+        return scipy.stats.t.pdf(e, x[1], scale=x[0])
+    def func1(x):
+        return kappa1*model1(eh, x) - h1
+    sigma1, flags = scipy.optimize.leastsq(func1, numpy.array([0.3, 3.0]))
+
+    eta1, residues, rank, sv = numpy.linalg.lstsq(bh, h.min() - ch)
+    x1 = numpy.array([kappa1] + list(sigma1) + list(eta1))
+
+    def modelh(x):
+        return x[0] * model1(eh, x[1:3]) + (1.0 - x[0])*(numpy.dot(bh, x[3:]) + ch)
+    def funch(x):
+        return modelh(x) - h
+    x2, flags = scipy.optimize.leastsq(funch, x1)
+
+    if doPlot:
+        from matplotlib import pyplot
+        ep = numpy.linspace(0.0, 1.8, 5000)
+        bp = numpy.zeros((ep.size, basis.getBasisSize()), dtype=float)
+        cp = numpy.zeros((ep.size,), dtype=float)
+        basis.evaluate(ep, bp, cp)
+        def modelp(x):
+            return x[0] * model1(ep, x[1:3]) + (1.0 - x[0])*(numpy.dot(bp, x[3:]) + cp)
+        pyplot.plot(eh, h, 'ok')
+        pyplot.plot(ep, kappa1*model1(ep, sigma1) + h.min(), '-r')
+        pyplot.plot(ep, modelp(x1), '-b')
+        pyplot.plot(ep, modelp(x2), '-g')
+        for k in knots:
+            pyplot.axvline(k, color='c')
+        pyplot.xlim(0, eg[-1]+0.2)
+        pyplot.show()
+
+    return x2
 
