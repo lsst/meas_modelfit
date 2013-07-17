@@ -38,7 +38,7 @@ class MeasureCoaddConfig(MeasureImageTask.ConfigClass):
     )
 
 class MeasureCoaddTask(MeasureImageTask):
-    """Specialization of MeasureImageTask for running on calexps, after processCcd.py or processEimage.py
+    """Specialization of MeasureImageTask for running on coadds, after processCoadd.py
     """
 
     _DefaultName = "measureCoadd"

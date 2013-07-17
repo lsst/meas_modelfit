@@ -36,6 +36,9 @@ class ModelFitTable;
 
 /**
  *  @brief Record class used to store galaxy model fitting results
+ *
+ *  ModelFitRecord simply adds a Footprint (indicating the pixels used in the fit, which is not
+ *  necessarily the detection Footprint) and a SampleSet to a BaseRecord.
  */
 class ModelFitRecord : public afw::table::SimpleRecord {
 public:

@@ -177,6 +177,7 @@ SampleSet NaiveGridSampler::run(Objective const & objective) const {
     // of cycles.
     {
         AddConstantSample f(&joint, proposal, &parameters, &samples);
+        // the loop over ellipticities happen inside this function, which calls f repeatedly.
         forEachEllipticity(f, _maxEllipticity, _ellipticityStepSize);
     }
     double radiusStepSize = _maxRadius / (_nRadiusSteps - 1);

@@ -87,9 +87,13 @@ SingleEpochObjective::SingleEpochObjective(
 }
 
 LogGaussian SingleEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
+    // construct a matrix that maps component amplitudes (columns) to flattened pixel values (rows)
     _matrixBuilder.build(_modelMatrix, ellipse);
     _modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
     LogGaussian result(_modelMatrix.getSize<1>());
+    // grad and fisher are the first and second derivatives of the log-likelihood for a zero
+    // amplitude vector, and they're also the terms in the normal equations we'd solve for
+    // the maximum likelihood solution
     result.grad = -_modelMatrix.asEigen().adjoint().cast<samples::Scalar>()
         * _weightedData.asEigen().cast<samples::Scalar>();
     result.fisher.selfadjointView<Eigen::Lower>().rankUpdate(

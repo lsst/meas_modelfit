@@ -372,7 +372,8 @@ samples::Matrix SampleSet::computeCovariance(samples::Vector const & mean) const
 
 namespace {
 
-// schema and keys for single-record (per SampleSet), dimension-independent catalog
+// schema and keys for single-record (per SampleSet), dimension-independent catalog,
+// used to persist all the SampleSet data members besides the actual catalog of samples
 class SampleSetPersistenceKeys : private boost::noncopyable {
 public:
     tbl::Schema schema;
@@ -396,6 +397,7 @@ private:
 
 };
 
+// factory class used to unpersist a SampleSet
 class SampleSetFactory : public tbl::io::PersistableFactory {
 public:
 
@@ -416,6 +418,7 @@ public:
 
 std::string getSampleSetPersistenceName() { return "SampleSet"; }
 
+// constructor for this instance registers the factor in a singleton in afw::table::io
 SampleSetFactory registration(getSampleSetPersistenceName());
 
 } // anonymous

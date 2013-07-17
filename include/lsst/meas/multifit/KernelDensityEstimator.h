@@ -30,11 +30,19 @@ namespace lsst { namespace meas { namespace multifit {
 
 class SampleSet;
 
+/**
+ *  @brief Control object used along with SampleSet::computeDensity to create a kernel-density estimate
+ *         (roughly, a smoothed histogram) of a dimension of the samples.
+ *
+ *  See e.g. https://en.wikipedia.org/wiki/Kernel_density_estimation
+ */
 class KernelDensityEstimatorControl {
 public:
 
+    /// Basic constructor; see corresponding accessors for argument descriptions.
     KernelDensityEstimatorControl(int index, double min, double max, int count, double fwhm);
 
+    /// Construct while automatically setting the FWHM to 3 times the step size.
     KernelDensityEstimatorControl(int index, double min, double max, int count);
 
     /// Return the index of the parameter to which this histogram range applies

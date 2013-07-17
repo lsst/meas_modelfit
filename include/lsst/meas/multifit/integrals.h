@@ -45,6 +45,11 @@ double bvnu(double h, double k, double rho);
  *  -\ln\int_0^{\inf} dx e^{-g^T x - \frac{1}{2}x^T F x}
  *  @f]
  *
+ *  @param[in]  grad        The 'g' vector in the above formula; so-called because it's usually
+ *                          the gradient vector of a log-likelihood function.
+ *  @param[in]  fisher      The 'F' matrix in the above formula; so-called because it's usually
+ *                          the Fisher (second-derivative) matrix of a log-likelihood function.
+ *
  *  Currently only the 1-d and 2-d cases are supported.
  */
 double integrateGaussian(samples::Vector const & grad, samples::Matrix const & fisher);
