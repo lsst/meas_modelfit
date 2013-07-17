@@ -151,6 +151,10 @@ def fitEllipticitySpline(ellipticity, histBins=100, outerKnotSpacing=0.01, nInte
         return modelh(x) - h
     x2, flags = scipy.optimize.leastsq(funch, x1)
 
+    sf = multifitLib.SplineFunction(basis.getSplineBasis(), basis.unconstrainCoefficients(x2[3:]))
+    kappa = x2[0]
+    tdist = scipy.stats.t(x2[2], scale=x2[1])
+
     if doPlot:
         from matplotlib import pyplot
         ep = numpy.linspace(0.0, 1.8, 5000)
@@ -162,11 +166,12 @@ def fitEllipticitySpline(ellipticity, histBins=100, outerKnotSpacing=0.01, nInte
         pyplot.plot(eh, h, 'ok')
         pyplot.plot(ep, kappa1*model1(ep, sigma1) + h.min(), '-r')
         pyplot.plot(ep, modelp(x1), '-b')
-        pyplot.plot(ep, modelp(x2), '-g')
+        pyplot.plot(ep, kappa*tdist.pdf(ep) + (1.0 - kappa)*sf(ep), '-m', linewidth=2)
+        pyplot.plot(ep, modelp(x2), ':g')
         for k in knots:
             pyplot.axvline(k, color='c')
         pyplot.xlim(0, eg[-1]+0.2)
         pyplot.show()
 
-    return x2
+    return kappa, tdisk, sf
 
