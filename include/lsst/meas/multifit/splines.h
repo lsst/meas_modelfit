@@ -113,6 +113,15 @@ public:
         ndarray::Array<double,1,1> const & c
     ) const;
 
+    void unconstrainCoefficients(
+        ndarray::Array<double const,1,1> const & constrained,
+        ndarray::Array<double,1,1> const & unconstrained
+    ) const;
+
+    ndarray::Array<double,1,1> unconstrainCoefficients(
+        ndarray::Array<double const,1,1> const & constrained
+    ) const;
+
     /**
      *  @brief Add a constraint that fixes the nth derivative at x to v.
      *

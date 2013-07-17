@@ -260,6 +260,35 @@ void ConstrainedSplineBasis::evaluate(
     c.asEigen() = sb.asEigen() * _y1;
 }
 
+void ConstrainedSplineBasis::unconstrainCoefficients(
+    ndarray::Array<double const,1,1> const & constrained,
+    ndarray::Array<double,1,1> const & unconstrained
+) const {
+    if (constrained.getSize<0>() != getBasisSize()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LengthErrorException,
+            (boost::format("Constrained coefficient vector size (%d) does not match basis size (%d)")
+             % constrained.getSize<0>() % getBasisSize()).str()
+        );
+    }
+    if (unconstrained.getSize<0>() != _spline.getBasisSize()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LengthErrorException,
+            (boost::format("Unconstrained coefficient vector size (%d) does not match spline basis size (%d)")
+             % unconstrained.getSize<0>() % _spline.getBasisSize()).str()
+        );
+    }
+    unconstrained.asEigen() = _y1 + _q2 * constrained.asEigen();
+}
+
+ndarray::Array<double,1,1> ConstrainedSplineBasis::unconstrainCoefficients(
+    ndarray::Array<double const,1,1> const & constrained
+) const {
+    ndarray::Array<double,1,1> unconstrained = ndarray::allocate(_spline.getBasisSize());
+    unconstrainCoefficients(constrained, unconstrained);
+    return unconstrained;
+}
+
 void ConstrainedSplineBasis::addConstraint(double x, double v, int n) {
     ndarray::Array<double,2,-2> derivatives = _spline.evaluateDerivatives(x, n).transpose();
     addManualConstraint(derivatives[n], v);
