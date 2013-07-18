@@ -41,8 +41,8 @@ shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
     shapelet::MultiShapeletFunction const & psf,
     afw::detection::Footprint const & footprint
 ) {
-    Array1 x = ndarray::allocate(footprint.getArea());
-    Array1 y = ndarray::allocate(footprint.getArea());
+    PixelArray1 x = ndarray::allocate(footprint.getArea());
+    PixelArray1 y = ndarray::allocate(footprint.getArea());
     int n = 0;
     for (
         afw::detection::Footprint::SpanList::const_iterator i = footprint.getSpans().begin();
@@ -66,13 +66,10 @@ SingleEpochObjective::SingleEpochObjective(
     afw::image::MaskedImage<Pixel> const & image,
     afw::detection::Footprint const & footprint
 ) :
+    _dataSquaredNorm(0.0),
     _weights(afw::detection::flattenArray(footprint, image.getVariance()->getArray(), image.getXY0())),
     _weightedData(afw::detection::flattenArray(footprint, image.getImage()->getArray(), image.getXY0())),
     _modelMatrix(ndarray::allocate(footprint.getArea(), basis.getSize())),
-    _leastSquares(
-        ctrl.useSVD ? afw::math::LeastSquares::DIRECT_SVD : afw::math::LeastSquares::NORMAL_EIGENSYSTEM,
-        basis.getSize()
-    ),
     _matrixBuilder(makeShapeletMatrixBuilder(ctrl, basis, psf, footprint))
 {
     // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
@@ -86,24 +83,23 @@ SingleEpochObjective::SingleEpochObjective(
         );
     }
     _weightedData.asEigen<Eigen::ArrayXpr>() *= _weights.asEigen<Eigen::ArrayXpr>();
+    _dataSquaredNorm = _weightedData.asEigen().cast<double>().squaredNorm();
 }
 
 LogGaussian SingleEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
+    // construct a matrix that maps component amplitudes (columns) to flattened pixel values (rows)
     _matrixBuilder.build(_modelMatrix, ellipse);
     _modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
-    LogGaussian result(_leastSquares.getDimension());
-    if (_leastSquares.getFactorization() == afw::math::LeastSquares::DIRECT_SVD) {
-        _leastSquares.setDesignMatrix(_modelMatrix, _weightedData);
-        result.fisher = _leastSquares.getFisherMatrix().asEigen().adjoint().cast<Pixel>();
-    } else {
-        result.fisher.selfadjointView<Eigen::Lower>().rankUpdate(_modelMatrix.asEigen().adjoint(), 1.0);
-        Vector rhs = _modelMatrix.asEigen().adjoint() * _weightedData.asEigen();
-        _leastSquares.setNormalEquations(result.fisher, rhs);
-    }
-    _leastSquares.setThreshold(std::numeric_limits<Pixel>::epsilon());
-    result.mu = _leastSquares.getSolution().asEigen().cast<Pixel>();
-    Vector residuals = _modelMatrix.asEigen() * result.mu - _weightedData.asEigen();
-    result.r = 0.5 * residuals.squaredNorm();
+    LogGaussian result(_modelMatrix.getSize<1>());
+    // grad and fisher are the first and second derivatives of the log-likelihood for a zero
+    // amplitude vector, and they're also the terms in the normal equations we'd solve for
+    // the maximum likelihood solution
+    result.grad = -_modelMatrix.asEigen().adjoint().cast<samples::Scalar>()
+        * _weightedData.asEigen().cast<samples::Scalar>();
+    result.fisher.selfadjointView<Eigen::Lower>().rankUpdate(
+        _modelMatrix.asEigen().adjoint().cast<samples::Scalar>(), 1.0
+    );
+    result.fisher = result.fisher.selfadjointView<Eigen::Lower>();
     return result;
 }
 

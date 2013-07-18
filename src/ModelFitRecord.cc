@@ -25,7 +25,7 @@
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/afw/table/io/InputArchive.h"
 
-#include "lsst/meas/multifit/tables.h"
+#include "lsst/meas/multifit/ModelFitRecord.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -71,6 +71,7 @@ private:
 struct PersistenceSchema : private boost::noncopyable {
     afw::table::Schema schema;
     afw::table::Key<int> samples;
+    afw::table::Key<int> footprint;
 
     static PersistenceSchema const & get() {
         static PersistenceSchema const instance;
@@ -98,6 +99,7 @@ struct PersistenceSchema : private boost::noncopyable {
     ) const {
         output.assign(input, mapper);
         output.set(samples, archive.put(input.getSamples()));
+        output.set(footprint, archive.put(input.getFootprint()));
     }
 
     void readRecord(
@@ -106,12 +108,14 @@ struct PersistenceSchema : private boost::noncopyable {
     ) const {
         output.assign(input, mapper);
         output.setSamples(archive.get<SampleSet>(input.get(samples)));
+        output.setFootprint(archive.get<afw::detection::Footprint>(input.get(footprint)));
     }
 
 private:
     PersistenceSchema() :
         schema(),
-        samples(schema.addField<int>("samples", "archive ID for SampleSet object"))
+        samples(schema.addField<int>("samples", "archive ID for SampleSet object")),
+        footprint(schema.addField<int>("samplesfootpring", "archive ID for Footprint object"))
     {
         schema.getCitizen().markPersistent();
     }
@@ -236,12 +240,13 @@ static afw::table::io::FitsReader::FactoryT<ModelFitFitsReader> referenceFitsRea
 //----- ModelFitTable/Record member function implementations -----------------------------------------------
 //-----------------------------------------------------------------------------------------------------------
 
-ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) : afw::table::BaseRecord(table) {}
+ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) : afw::table::SimpleRecord(table) {}
 
 void ModelFitRecord::_assign(afw::table::BaseRecord const & other) {
     try {
         ModelFitRecord const & s = dynamic_cast<ModelFitRecord const &>(other);
         _samples = s._samples;
+        _footprint = s._footprint;
     } catch (std::bad_cast&) {}
 }
 
@@ -256,24 +261,10 @@ PTR(ModelFitTable) ModelFitTable::make(afw::table::Schema const & schema) {
 }
 
 ModelFitTable::ModelFitTable(afw::table::Schema const & schema) :
-    afw::table::BaseTable(schema) {}
+    afw::table::SimpleTable(schema, PTR(afw::table::IdFactory)()) {}
 
 ModelFitTable::ModelFitTable(ModelFitTable const & other) :
-    afw::table::BaseTable(other) {}
-
-ModelFitTable::MinimalSchema::MinimalSchema() :
-    schema(),
-    id(schema.addField<afw::table::RecordId>("id", "unique ID")),
-    centroid(schema.addField< afw::table::Point<double> >("centroid", "best-fit center point")),
-    shape(schema.addField< afw::table::Moments<double> >("shape", "best-fit ellipse"))
-{
-    schema.getCitizen().markPersistent();
-}
-
-ModelFitTable::MinimalSchema & ModelFitTable::getMinimalSchema() {
-    static MinimalSchema it;
-    return it;
-}
+    afw::table::SimpleTable(other) {}
 
 PTR(afw::table::io::FitsWriter)
 ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const {

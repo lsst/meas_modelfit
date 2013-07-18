@@ -46,23 +46,13 @@ def registerPrior(name):
     """
     def decorate(cls):
         cls.makePrior.ConfigClass = cls
-        registry.register(name, cls.makePrior)
+        priorRegistry.register(name, cls.makePrior)
         return cls
     return decorate
 
-@registerPrior("single-component")
-class SingleComponentPriorConfig(lsst.pex.config.Config):
-    """Config class used to define a prior for 2-component models that demands
-    that each object be purely one component or the other, with a predetermined
-    probability (beta) for each possibility, and is otherwise flat.
-
-    @sa SingleComponentPrior.
-    """
-    beta = lsst.pex.config.Field(
-        "Probability that an object is pure zeroth-component",
-        dtype=float, default=0.3,
-        )
+@registerPrior("flat")
+class FlatPriorConfig(lsst.pex.config.Config):
 
     @staticmethod
     def makePrior(config):
-        return multifitLib.SingleComponentPrior(config.beta)
+        return multifitLib.FlatPrior.get()

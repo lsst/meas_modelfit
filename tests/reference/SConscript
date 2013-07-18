@@ -1,0 +1,2 @@
+from lsst.sconsUtils.state import env
+prog = env.Program("bvn", ["driver.cc", "bvn.f"])

@@ -13,3 +13,5 @@ doc/meas_multifit.tag
 *Lib.py
 *Lib_wrap.cc
 version.py
+tests/.tests
+tests/reference/bvn

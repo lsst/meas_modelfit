@@ -30,7 +30,6 @@
 #include "lsst/afw/geom/ellipses/Ellipse.h"
 #include "lsst/afw/image/MaskedImage.h"
 #include "lsst/afw/detection/Footprint.h"
-#include "lsst/afw/math/LeastSquares.h"
 #include "lsst/shapelet/MultiShapeletBasis.h"
 
 #include "lsst/meas/multifit/constants.h"
@@ -55,10 +54,13 @@ public:
     /// Return the number of linear dimensions
     virtual int getLinearDim() const = 0;
 
+    /// Return the sum of squares of the variance-weighted data vector
+    virtual double getDataSquaredNorm() const = 0;
+
     /**
      *  @brief Evaluate the likelihood at the given point given an ellipse.
      *
-     *  Because we want to advantage of the fact that the likelihood of the linear amplitude parameters
+     *  Because we want to take advantage of the fact that the likelihood of the linear amplitude parameters
      *  is Gaussian, at each point in the nonlinear ellipse parameter space, we compute that Gaussian
      *  distribution in the amplitudes, in terms of the maximum likelihood vector, the Fisher matrix,
      *  and the sum of squared residuals at the maximum likelihood point.  See LogGaussian for more
@@ -101,6 +103,9 @@ public:
     /// @copydoc Objective::getLinearDim
     virtual int getLinearDim() const { return _modelMatrix.getSize<1>(); }
 
+    /// Return the sum of squares of the variance-weighted data vector
+    virtual double getDataSquaredNorm() const { return _dataSquaredNorm; }
+
     /// @copydoc Objective::evaluate
     virtual LogGaussian evaluate(afw::geom::ellipses::Ellipse const & ellipse) const;
 
@@ -123,10 +128,10 @@ public:
     );
 
 private:
-    Array1 _weights;
-    Array1 _weightedData;
-    Array2CM _modelMatrix;
-    mutable afw::math::LeastSquares _leastSquares;
+    double _dataSquaredNorm;
+    PixelArray1 _weights;
+    PixelArray1 _weightedData;
+    PixelArray2CM _modelMatrix;
     shapelet::MultiShapeletMatrixBuilder<Pixel> _matrixBuilder;
 };
 

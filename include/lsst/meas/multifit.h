@@ -24,11 +24,15 @@
 #ifndef LSST_MEAS_MULTIFIT_H
 #define LSST_MEAS_MULTIFIT_H
 
-#include "lsst/meas/multifit/tables.h"
+#include "lsst/meas/multifit/ModelFitRecord.h"
 #include "lsst/meas/multifit/NaiveGridSampler.h"
 #include "lsst/meas/multifit/BaseSampler.h"
+#include "lsst/meas/multifit/ExpectationFunctor.h"
+#include "lsst/meas/multifit/KernelDensityEstimator.h"
+#include "lsst/meas/multifit/SampleSet.h"
 #include "lsst/meas/multifit/Objective.h"
 #include "lsst/meas/multifit/priors.h"
 #include "lsst/meas/multifit/LogGaussian.h"
+#include "lsst/meas/multifit/integrals.h"
 
 #endif // !LSST_MEAS_MULTIFIT_H

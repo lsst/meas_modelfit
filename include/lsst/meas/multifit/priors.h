@@ -24,6 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_priors_h_INCLUDED
 #define LSST_MEAS_MULTIFIT_priors_h_INCLUDED
 
+#include "lsst/base.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 
@@ -59,19 +60,22 @@ public:
      *  @param[in]  parameters     The nonlinear parameters @f$\theta@f$, considered fixed for
      *                             this calculation.
      *
-     *  @return The marginal likelihood multiplied by the prior on @f$\theta@f$:
+     *  @return The marginal negative log likelihood multiplied by the prior on @f$\theta@f$
+     *          (i.e. a nonnormalized log posterior):
      *  @f[
      *    P(D|\theta)P(\theta) =
      *       P(\theta)\int\!P(D|\alpha,\theta)\,P(\alpha|\theta)\,d\alpha
      *  @f]
      *
-     *  Note that while the joint likelihood is passed in in logarithmic parameters, the return value
-     *  should be not be the log likelihood.
+     *  Note that both the joint likelihood passed in and the marginal likelihood returned
+     *  are the negative natural log of the probability densities.
      */
-    virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const = 0;
+    virtual samples::Scalar apply(LogGaussian const & likelihood,
+                                  samples::Vector const & parameters) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized expectation value of the flux at a nonlinear parameter point.
+     *  @brief Compute the nonnormalized negative log expectation value of the flux at a
+     *         nonlinear parameter point.
      *
      *  This is the integral
      *  @f[
@@ -80,38 +84,38 @@ public:
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
      */
-    virtual double computeFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized expectation value of the squared flux at a
+     *  @brief Compute the nonnormalized negative log expectation value of the squared flux at a
      *         nonlinear parameter point.
      *
      *  This is the integral
      *  @f[
-     *     \int\!\left[\text{flux}(\alpha,\theta)\right]^2\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *     -\ln\int\!\left[\text{flux}(\alpha,\theta)\right]^2\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
      *  @f]
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
      */
-    virtual double computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeSquaredFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized expectation value of the fraction of flux in each component
-     *         at a nonlinear parameter point.
+     *  @brief Compute the nonnormalized negative log expectation value of the fraction of flux
+     *         in each component at a nonlinear parameter point.
      *
      *  This is the integral
      *  @f[
-     *     \int\!\text{fraction}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *     -\ln\int\!\text{fraction}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
      *  @f]
      *  For models in which each amplitude is the flux in a component, then
      *  @f$\text{fraction}(\alpha,\theta)=\frac{\alpha}{|\alpha|_1}@f$
      */
-    virtual Vector computeFractionExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Vector computeFractionExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const = 0;
 
     virtual ~Prior() {}
@@ -119,45 +123,35 @@ public:
 };
 
 /**
- *  @brief A dead-simple prior for 2-component models that has no dependence on nonlinear parameters, and
- *         declares that models must be either all one component or the other.
+ *  @brief A nonnormalized flat prior.
  *
- *  This is a nonnormalized prior; it cannot be used for computing the Bayesian evidence in a sense
- *  that would be useful for model selection tests.
+ *  FlatPrior should only be used for single-component fits or test cases with no
+ *  degeneracies; a more informative prior is necessary to regularize fitting even
+ *  high S/N data with more than one component at radius=0.
  *
- *  For a two-element amplitude vector @f$\alpha@f$, the value of the prior is:
- *  @f[
- *    P(\alpha) = \begin{cases}
- *       \beta & \text{for $\alpha_0 > 0, \alpha_1 = 0$}\\
- *       1-\beta & \text{for $\alpha_0 = 0, \alpha_1 > 0$}\\
- *       0 & \text{otherwise}
- *    \end{cases}
- *  @f]
+ *  @note FlatPrior is a singleton, accessed only via the get() static member function.
  */
-class SingleComponentPrior : public Prior {
+class FlatPrior : public Prior, private boost::noncopyable {
 public:
 
-    explicit SingleComponentPrior(double beta) : _beta(beta) {}
+    static PTR(FlatPrior) get();
 
-    /// Return the fraction of objects expected to be pure component 0
-    double getBeta() const { return _beta; }
+    virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
 
-    virtual double apply(LogGaussian const & likelihood, Vector const & parameters) const;
-
-    virtual double computeFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const;
 
-    virtual double computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Scalar computeSquaredFluxExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const;
 
-    virtual Vector computeFractionExpectation(
-        LogGaussian const & likelihood, Vector const & parameters
+    virtual samples::Vector computeFractionExpectation(
+        LogGaussian const & likelihood, samples::Vector const & parameters
     ) const;
 
 private:
-    double _beta;
+    FlatPrior() {}
 };
 
 }}} // namespace lsst::meas::multifit

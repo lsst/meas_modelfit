@@ -21,83 +21,48 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "boost/math/special_functions/erf.hpp"
+#include "Eigen/LU"
 
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/integrals.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-namespace {
+PTR(FlatPrior) FlatPrior::get() {
+    static PTR(FlatPrior) instance(new FlatPrior());
+    return instance;
+}
 
-// a 1-d integrals we use repeatedly below
-// @f$\int_0^{\infty} \alpha^n e^{-(\alpha-\mu)^2 f / 2} d\alpha
-double integral(int n, double mu, double f) {
-    double i0 = std::sqrt(0.5 * M_PI / f) * (1.0 + boost::math::erf(std::sqrt(0.5 * f) * mu));
-    if (n == 0) {
-        return i0;
-    } else {
-        double t1 = std::exp(-0.5 * f * mu * mu) / f;
-        if (n == 1) {
-            return t1 + i0 * mu;
-        }
-        if (n == 2) {
-            return t1 * mu + i0 * (mu * mu + 1.0 / f);
-        }
-    }
+samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
+    return integrateGaussian(likelihood.grad, likelihood.fisher);
+}
+
+samples::Scalar FlatPrior::computeFluxExpectation(
+    LogGaussian const & likelihood, samples::Vector const & parameters
+) const {
     throw LSST_EXCEPT(
         pex::exceptions::LogicErrorException,
-        "Moment must be <= 2"
+        "NOT IMPLEMENTED"
     );
 }
 
-void assert2d(LogGaussian const & likelihood) {
-    if (likelihood.mu.size() != 2) {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
-            "SingleComponentPrior is only valid for two-component models"
-        );
-    }
-}
-
-} // anonymous
-
-double SingleComponentPrior::apply(LogGaussian const & likelihood, Vector const & parameters) const {
-    assert2d(likelihood);
-    return std::exp(-0.5 * likelihood.r) * (
-        _beta * integral(0, likelihood.mu[0], likelihood.fisher(0,0))
-        + (1.0 - _beta) * integral(0, likelihood.mu[1], likelihood.fisher(1,1))
-    );
-}
-
-double SingleComponentPrior::computeFluxExpectation(
-    LogGaussian const & likelihood, Vector const & parameters
+samples::Scalar FlatPrior::computeSquaredFluxExpectation(
+    LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
-    assert2d(likelihood);
-    return std::exp(-0.5 * likelihood.r) * (
-        _beta * integral(1, likelihood.mu[0], likelihood.fisher(0,0))
-        + (1.0 - _beta) * integral(1, likelihood.mu[1], likelihood.fisher(1,1))
+    throw LSST_EXCEPT(
+        pex::exceptions::LogicErrorException,
+        "NOT IMPLEMENTED"
     );
 }
 
-double SingleComponentPrior::computeSquaredFluxExpectation(
-    LogGaussian const & likelihood, Vector const & parameters
+samples::Vector FlatPrior::computeFractionExpectation(
+    LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
-    assert2d(likelihood);
-    return std::exp(-0.5 * likelihood.r) * (
-        _beta * integral(2, likelihood.mu[0], likelihood.fisher(0,0))
-        + (1.0 - _beta) * integral(2, likelihood.mu[1], likelihood.fisher(1,1))
+    throw LSST_EXCEPT(
+        pex::exceptions::LogicErrorException,
+        "NOT IMPLEMENTED"
     );
-}
-
-Vector SingleComponentPrior::computeFractionExpectation(
-    LogGaussian const & likelihood, Vector const & parameters
-) const {
-    assert2d(likelihood);
-    Vector result(2);
-    result[0] = _beta * integral(0, likelihood.mu[0], likelihood.fisher(0,0));
-    result[1] = (1 - _beta) * integral(0, likelihood.mu[1], likelihood.fisher(1,1));
-    return result;
 }
 
 }}} // namespace lsst::meas::multifit

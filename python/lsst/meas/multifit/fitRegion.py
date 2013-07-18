@@ -23,6 +23,7 @@
 
 import lsst.pex.config
 import lsst.pipe.base
+import lsst.afw.image
 import lsst.afw.detection
 
 __all__ = ("FitRegionConfig", "setupFitRegion")
@@ -50,5 +51,7 @@ def setupFitRegion(config, exposure, source):
     out bad pixels or ORing the detection footprint with an ellipse derived from the source, but
     we don't anticipate needing any of that for S13.
     """
-    return lsst.afw.detection.growFootprint(source.getFootprint(), config.nGrow, config.growIsotropic)
+    fp = lsst.afw.detection.growFootprint(source.getFootprint(), config.nGrow, config.growIsotropic)
+    fp.clipTo(exposure.getBBox(lsst.afw.image.PARENT))
+    return fp
 setupFitRegion.ConfigClass = FitRegionConfig

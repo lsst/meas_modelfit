@@ -45,9 +45,9 @@ class BaseSamplerTask(lsst.pipe.base.Task):
     def __init__(self, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
 
-    def setup(self, exposure, source):
-        """Bootstrap the sampler for an object with no prior samples, using measurements from
-        the given source and operations on the pixels of the given exposure.
+    def setup(self, exposure, ellipse, center):
+        """Bootstrap the sampler for an object with no prior samples, using the given (PSF-uncorrected)
+        ellipse (an afw.geom.ellipses.BaseCore object) and center position.
 
         @return an instance of a subclass of BaseSampler
         """
@@ -67,12 +67,12 @@ class BaseSamplerTask(lsst.pipe.base.Task):
 class NaiveGridSamplerConfig(BaseSamplerConfig):
     nRadiusSteps = lsst.pex.config.Field(
         dtype=int,
-        default=20,
+        default=12,
         doc="Number of radius steps in grid"
     )
     maxRadiusFactor = lsst.pex.config.Field(
         dtype=float,
-        default=4.0,
+        default=1.5,
         doc="Maximum radius in grid, as scaling factor multiplied by adaptive moments major axis ratio"
     )
     maxEllipticity = lsst.pex.config.Field(
@@ -82,18 +82,18 @@ class NaiveGridSamplerConfig(BaseSamplerConfig):
     )
     ellipticityStepSize = lsst.pex.config.Field(
         dtype=float,
-        default=0.5,
+        default=0.15,
         doc="ellipticity grid step size"
     )
 
 class NaiveGridSamplerTask(BaseSamplerTask):
     ConfigClass = NaiveGridSamplerConfig
 
-    def setup(self, exposure, source):
-        axes = lsst.afw.geom.ellipses.Axes(source.getShape())
+    def setup(self, exposure, ellipse, center):
+        axes = lsst.afw.geom.ellipses.Axes(ellipse)
         maxRadius = axes.getA() * self.config.maxRadiusFactor
         return NaiveGridSampler(
-            source.getCentroid(),
+            center,
             self.config.nRadiusSteps,
             self.config.ellipticityStepSize,
             maxRadius,

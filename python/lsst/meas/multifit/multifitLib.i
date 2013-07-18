@@ -71,10 +71,18 @@ namespace lsst { namespace shapelet {
 class MultiShapeletBasis;
 }}
 
+%declareNumPyConverters(lsst::meas::multifit::samples::Vector);
+%declareNumPyConverters(lsst::meas::multifit::samples::Matrix);
+%declareNumPyConverters(Eigen::VectorXd);
+%declareNumPyConverters(Eigen::MatrixXd);
+%declareNumPyConverters(ndarray::Array<double,1,1>);
+%declareNumPyConverters(ndarray::Array<double,2,2>);
+
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 
 %shared_ptr(lsst::meas::multifit::Prior);
-%shared_ptr(lsst::meas::multifit::SingleComponentPrior);
+%shared_ptr(lsst::meas::multifit::FlatPrior);
+%shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
@@ -84,11 +92,15 @@ class MultiShapeletBasis;
 %include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Objective.h"
+%include "lsst/meas/multifit/KernelDensityEstimator.h"
+%include "lsst/meas/multifit/SampleSet.h"
+%include "lsst/meas/multifit/ExpectationFunctor.h"
 %include "lsst/meas/multifit/BaseSampler.h"
 %include "lsst/meas/multifit/NaiveGridSampler.h"
 
 %pythoncode %{
 import lsst.pex.config
+import numpy
 SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
 SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
 %}
@@ -96,7 +108,7 @@ SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
 %shared_ptr(lsst::meas::multifit::ModelFitTable);
 %shared_ptr(lsst::meas::multifit::ModelFitRecord);
 
-%include "lsst/meas/multifit/tables.h"
+%include "lsst/meas/multifit/ModelFitRecord.h"
 
 %addCastMethod(lsst::meas::multifit::ModelFitTable, lsst::afw::table::BaseTable)
 %addCastMethod(lsst::meas::multifit::ModelFitRecord, lsst::afw::table::BaseRecord)
@@ -114,3 +126,6 @@ using meas::multifit::ModelFitTable;
 %declareSortedCatalog(SortedCatalogT, ModelFit)
 
 }}} // namespace lsst::afw::table
+
+
+%include "lsst/meas/multifit/integrals.h"
