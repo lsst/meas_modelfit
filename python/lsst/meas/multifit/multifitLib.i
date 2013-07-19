@@ -88,6 +88,14 @@ class MultiShapeletBasis;
 %shared_ptr(lsst::meas::multifit::BaseSampler);
 %shared_ptr(lsst::meas::multifit::NaiveGridSampler);
 
+namespace lsst { namespace meas { namespace multifit {
+
+template <int N> class Mixture;
+template <int N> class MixtureUpdateRestriction;
+template <int N> class MixtureComponent;
+
+}}} // namespace lsst::meas::multifit
+
 %include "lsst/meas/multifit/constants.h"
 %include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/priors.h"
@@ -129,3 +137,68 @@ using meas::multifit::ModelFitTable;
 
 
 %include "lsst/meas/multifit/integrals.h"
+
+%include "lsst/meas/multifit/Mixture.h"
+
+%pythoncode %{
+    Mixture = dict()
+    MixtureComponent = dict()
+%}
+
+%addStreamRepr(lsst::meas::multifit::MixtureComponent);
+%addStreamRepr(lsst::meas::multifit::Mixture);
+
+%define %instantiateMixture(N)
+%declareTablePersistable(Mixture ## N, lsst::meas::multifit::Mixture<N>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar const,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar const,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar const,2,1>);
+%declareNumPyConverters(lsst::meas::multifit::MixtureComponent<N>::Vector);
+%declareNumPyConverters(lsst::meas::multifit::MixtureComponent<N>::Matrix);
+%template(MixtureComponent ## N) lsst::meas::multifit::MixtureComponent<N>;
+%template(MixtureUpdateRestriction ## N) lsst::meas::multifit::MixtureUpdateRestriction<N>;
+%template(MixtureComponent ## N ## List) std::vector<
+    lsst::meas::multifit::Mixture<N>::Component,
+    Eigen::aligned_allocator<lsst::meas::multifit::Mixture<N>::Component>
+    >;
+%ignore lsst::meas::multifit::Mixture<N>::begin;
+%ignore lsst::meas::multifit::Mixture<N>::end;
+%ignore lsst::meas::multifit::Mixture<N>::operator[];
+%rename(__len__) lsst::meas::multifit::Mixture<N>::size;
+%extend lsst::meas::multifit::Mixture<N> {
+    lsst::meas::multifit::MixtureComponent<N> & __getitem__(std::size_t i) {
+        return (*($self))[i];
+    }
+    lsst::meas::multifit::Mixture<N>::Scalar evaluate(
+        lsst::meas::multifit::MixtureComponent<N> const & component,
+        lsst::meas::multifit::MixtureComponent<N>::Vector const & x
+    ) const {
+        return $self->evaluate(component, x);
+    }
+    lsst::meas::multifit::Mixture<N>::Scalar evaluate(
+        lsst::meas::multifit::MixtureComponent<N>::Vector const & x
+    ) const {
+        return $self->evaluate(x);
+    }
+    %pythoncode %{
+        UpdateRestriction = MixtureUpdateRestriction##N
+        Component = MixtureComponent##N
+        ComponentList = MixtureComponent##N##List
+        def __iter__(self):
+            for i in xrange(len(self)):
+                yield self[i]
+    %}
+}
+%template(Mixture ## N) lsst::meas::multifit::Mixture<N>;
+%pythoncode %{
+MixtureComponent[N] = MixtureComponent ## N
+Mixture[N] = Mixture ## N
+%}
+%enddef
+
+%instantiateMixture(1)
+%instantiateMixture(2)
+%instantiateMixture(3)
