@@ -25,16 +25,12 @@
 
 #include "ndarray/eigen.h"
 
-#include "lsst/afw/detection/FootprintArray.cc"
+#include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
 #include "lsst/shapelet/MultiShapeletBasis.h"
 #include "lsst/meas/multifit/Objective.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-namespace {
-
-// We need to build the ctor args for MultiShapeletMatrixBuilder from SingleEpochObjective ctor args,
-// and we can't do that directly in the SingleEpochObjective ctor.
 shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
     SingleEpochObjectiveControl const & ctrl,
     shapelet::MultiShapeletBasis const & basis,
@@ -56,8 +52,6 @@ shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
     }
     return shapelet::MultiShapeletMatrixBuilder<Pixel>(basis, psf, x, y, ctrl.useApproximateExp);
 }
-
-} // anonymous
 
 SingleEpochObjective::SingleEpochObjective(
     SingleEpochObjectiveControl const & ctrl,
