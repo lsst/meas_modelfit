@@ -56,3 +56,23 @@ class FlatPriorConfig(lsst.pex.config.Config):
     @staticmethod
     def makePrior(config):
         return multifitLib.FlatPrior.get()
+
+def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):
+    components = lsst.meas.multifit.Mixture3.ComponentList()
+    rMu = data[:,2].mean()
+    rSigma = data[:,2].var()
+    eSigma = 0.5*(data[:,0].var() + data[:,1].var())
+    mu = numpy.array([0.0, 0.0, rMu], dtype=float)
+    baseSigma = numpy.array([[eSigma, 0.0, 0.0],
+                             [0.0, eSigma, 0.0],
+                             [0.0, 0.0, rSigma]])
+    for factor in numpy.linspace(minFactor, maxFactor, nComponents):
+        sigma = baseSigma.copy()
+        sigma[:2,:2] *= factor
+        components.append(lsst.meas.multifit.Mixture3.Component(1.0, mu, sigma))
+    mixture = lsst.meas.multifit.Mixture3(components, df)
+    restriction = lsst.meas.multifit.MixturePrior.getUpdateRestriction()
+    for i in range(nIterations):
+        mixture.updateEM(data, restriction)
+    return mixture
+

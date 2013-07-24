@@ -38,31 +38,38 @@ samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector
     return integrateGaussian(likelihood.grad, likelihood.fisher);
 }
 
-samples::Scalar FlatPrior::computeFluxExpectation(
+samples::Scalar MixturePrior::apply(
     LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "NOT IMPLEMENTED"
-    );
+    return FlatPrior::get()->apply(likelihood, parameters)
+        - std::log(_mixture.evaluate(parameters.head<3>()));
 }
 
-samples::Scalar FlatPrior::computeSquaredFluxExpectation(
-    LogGaussian const & likelihood, samples::Vector const & parameters
-) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "NOT IMPLEMENTED"
-    );
-}
+MixturePrior::MixturePrior(Mixture<3> const & mixture) : _mixture(mixture) {}
 
-samples::Vector FlatPrior::computeFractionExpectation(
-    LogGaussian const & likelihood, samples::Vector const & parameters
-) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "NOT IMPLEMENTED"
-    );
+namespace {
+
+class EllipseUpdateRestriction : public Mixture<3>::UpdateRestriction {
+public:
+
+    virtual void restrictMu(Vector & mu) const {
+        mu[0] = 0.0;
+        mu[1] = 0.0;
+    }
+
+    virtual void restrictSigma(Matrix & sigma) const {
+        sigma(0,0) = sigma(1,1) = 0.5*(sigma(0,0) + sigma(1,1));
+        sigma(0,1) = sigma(0,1) = 0.0;
+        sigma(0,2) = sigma(2,0) = sigma(1,2) = sigma(2,1) = 0.5*(sigma(0,2) + sigma(1,2));
+    }
+
+};
+
+} // anonymous
+
+Mixture<3>::UpdateRestriction const & MixturePrior::getUpdateRestriction() {
+    static EllipseUpdateRestriction const instance;
+    return instance;
 }
 
 }}} // namespace lsst::meas::multifit
