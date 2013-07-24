@@ -97,6 +97,7 @@ class MultiShapeletBasis;
 %shared_ptr(lsst::meas::multifit::MultiEpochObjective);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
 %shared_ptr(lsst::meas::multifit::NaiveGridSampler);
+%shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
 
 //----------- Mixtures --------------------------------------------------------------------------------------
 
@@ -190,6 +191,22 @@ Mixture[N] = Mixture ## N
 %include "lsst/meas/multifit/ExpectationFunctor.h"
 %include "lsst/meas/multifit/BaseSampler.h"
 %include "lsst/meas/multifit/NaiveGridSampler.h"
+%include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
+
+%include "std_map.i"
+%template(ImportanceSamplerControlMap) std::map<int,lsst::meas::multifit::ImportanceSamplerControl>;
+
+%extend lsst::meas::multifit::AdaptiveImportanceSampler {
+%pythoncode %{
+@property
+def iterations(self):
+    d = {}
+    for k, v in self.getIterations().items():
+        for i, s in enumerate(v):
+            d[k,i] = s
+    return d
+%}
+}
 
 %pythoncode %{
 import lsst.pex.config
@@ -228,3 +245,6 @@ using meas::multifit::ModelFitTable;
 
 
 %include "lsst/meas/multifit/integrals.h"
+
+%template(SampleSetVector) std::vector<PTR(lsst::meas::multifit::SampleSet)>;
+%template(SampleSetMap) std::map< int, std::vector<PTR(lsst::meas::multifit::SampleSet)> >;
