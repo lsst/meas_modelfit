@@ -31,6 +31,7 @@
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/parameters.h"
 #include "lsst/meas/multifit/KernelDensityEstimator.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -107,19 +108,17 @@ public:
      *
      *  @param[in] nonlinearDim   Number of nonlinear parameters (size of SamplePoint::parameters).
      *  @param[in] linearDim      Number of linear amplitude parameters (dimension of SamplePoint::joint).
-     *  @param[in] ellipseType    Name of the afw::geom::ellipses::BaseCore subclass that defines the
-     *                            ellipse part of the nonlinear parameters.
+     *  @param[in] parameterDefinition    Object that defines the interpretation of the nonlinear parameters.
      */
-    SampleSet(int nonlinearDim, int linearDim, std::string const & ellipseType);
+    SampleSet(int nonlinearDim, int linearDim, ParameterDefinition const & parameterDefinition);
 
     /**
      *  @brief Construct a SampleSet from an existing catalog of sample records.
      *
      *  @param[in] records        Catalog of records with schema compatible with SampleSetKeys
-     *  @param[in] ellipseType    Name of the afw::geom::ellipses::BaseCore subclass that defines the
-     *                            ellipse part of the nonlinear parameters.
+     *  @param[in] parameterDefinition    Object that defines the interpretation of the nonlinear parameters.
      */
-    SampleSet(afw::table::BaseCatalog const & records, std::string const & ellipseType);
+    SampleSet(afw::table::BaseCatalog const & records, ParameterDefinition const & parameterDefinition);
 
     /// Return the number of nonlinear parameters
     int getNonlinearDim() const { return _keys.getNonlinearDim(); }
@@ -127,28 +126,11 @@ public:
     /// Return the number of linear amplitude parameters
     int getLinearDim() const { return _keys.getLinearDim(); }
 
-    /// Return the name of the afw::geom::ellipses type used to interpret the nonlinear parameters.
-    std::string const & getEllipseType() const { return _ellipseType; }
+    /// Return the object that defines how to interpret the nonlinear parameters
+    ParameterDefinition const & getParameterDefinition() const { return *_parameterDefinition; }
 
-    /**
-     *  @brief Convert the ellipse part of the nonlinear parameters to a parametrization
-     *
-     *  @param[in] ellipseType    Name of the afw::geom::ellipses::BaseCore subclass will define the
-     *                            new parametrization for the ellipse part of the nonlinear parameters.
-     */
-    void setEllipseType(std::string const & ellipseType);
-
-    /**
-     *  @brief Given a nonlinear parameter vector, return an Ellipse object
-     *
-     *  The first three parameters are always intrepreted as an afw::geom::ellipses::BaseCore object
-     *  with type set by getEllipseType().  The next two parameters, if present, are used as the ellipse
-     *  center; if there are only 3 parameters, the center argument will be used instead.
-     */
-    afw::geom::ellipses::Ellipse interpret(
-        samples::Vector const & parameters,
-        afw::geom::Point2D const & center=afw::geom::Point2D()
-    ) const;
+    /// Convert the nonlinear parameters according to a new ParameterDefinition
+    void setParameterDefinition(ParameterDefinition const & parameterDefinition);
 
     /**
      *  @brief Return the squared norm of weighted data values
@@ -301,7 +283,7 @@ private:
     SampleSetKeys _keys;
     afw::table::BaseCatalog _records;
     double _dataSquaredNorm;
-    std::string _ellipseType;
+    ParameterDefinition const * _parameterDefinition;
     PTR(Prior) _prior;
 };
 

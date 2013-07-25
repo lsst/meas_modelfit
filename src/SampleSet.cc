@@ -77,47 +77,30 @@ void SampleSetKeys::setJoint(tbl::BaseRecord & record, LogGaussian const & joint
     assert(*record.getElement(jointFisher) == joint.fisher(0,0));
 }
 
-SampleSet::SampleSet(int nonlinearDim, int linearDim, std::string const & ellipseType) :
+SampleSet::SampleSet(int nonlinearDim, int linearDim, ParameterDefinition const & parameterDefinition) :
     _keys(nonlinearDim, linearDim),
     _records(_keys.schema),
     _dataSquaredNorm(0.0),
-    _ellipseType(ellipseType),
+    _parameterDefinition(&parameterDefinition),
     _prior()
 {}
 
-SampleSet::SampleSet(tbl::BaseCatalog const & records, std::string const & ellipseType) :
+SampleSet::SampleSet(tbl::BaseCatalog const & records, ParameterDefinition const & parameterDefinition) :
     _keys(records.getSchema()),
     _records(records),
     _dataSquaredNorm(0.0),
-    _ellipseType(ellipseType),
+    _parameterDefinition(&parameterDefinition),
     _prior()
 {}
 
-void SampleSet::setEllipseType(std::string const & ellipseType) {
-    if (ellipseType == _ellipseType) return;
-    PTR(afw::geom::ellipses::BaseCore) oldEllipse = afw::geom::ellipses::BaseCore::make(_ellipseType);
-    PTR(afw::geom::ellipses::BaseCore) newEllipse = afw::geom::ellipses::BaseCore::make(ellipseType);
+void SampleSet::setParameterDefinition(ParameterDefinition const & parameterDefinition) {
+    if (*_parameterDefinition == parameterDefinition) return;
+    PTR(ParameterConverter const) converter = _parameterDefinition->makeConverterTo(parameterDefinition);
     ndarray::Array<samples::Scalar,2,1> parameters = _records.getColumnView()[_keys.parameters];
     for (ndarray::Array<samples::Scalar,2,1>::Iterator i = parameters.begin(); i != parameters.end(); ++i) {
-        oldEllipse->setParameterVector(i->asEigen().segment<3>(0));
-        *newEllipse = *oldEllipse;
-        i->asEigen().segment<3>(0) = newEllipse->getParameterVector();
+        converter->apply(*i, *i);
     }
-    _ellipseType = ellipseType;
-}
-
-afw::geom::ellipses::Ellipse SampleSet::interpret(
-    samples::Vector const & parameters,
-    afw::geom::Point2D const & center
-) const {
-    afw::geom::ellipses::Ellipse result(
-        afw::geom::ellipses::BaseCore::make(_ellipseType, parameters.segment<3>(0)),
-        center
-    );
-    if (parameters.size() >= 5) {
-        result.setCenter(afw::geom::Point2D(parameters.segment<2>(3)));
-    }
-    return result;
+    _parameterDefinition = &parameterDefinition;
 }
 
 ndarray::Array<double,1,1> SampleSet::computeDensity(KernelDensityEstimatorControl const & ctrl) const {
@@ -378,7 +361,7 @@ class SampleSetPersistenceKeys : private boost::noncopyable {
 public:
     tbl::Schema schema;
     tbl::Key<double> dataSquaredNorm;
-    tbl::Key<std::string> ellipseType;
+    tbl::Key<std::string> parameterDefinition;
 
     static SampleSetPersistenceKeys const & get() {
         static SampleSetPersistenceKeys const instance;
@@ -390,7 +373,8 @@ private:
     SampleSetPersistenceKeys() :
         schema(),
         dataSquaredNorm(schema.addField<double>("joint.r", "squared norm of weighted data vector")),
-        ellipseType(schema.addField<std::string>("ellipsetype", "name of ellipse parametrization", 48))
+        parameterDefinition(schema.addField<std::string>("parameterdefinition",
+                                                         "name of ParameterDefinition", 48))
     {
         schema.getCitizen().markPersistent();
     }
@@ -408,7 +392,11 @@ public:
         SampleSetPersistenceKeys const & keys2 = SampleSetPersistenceKeys::get();
         LSST_ARCHIVE_ASSERT(catalogs.back().getSchema() == keys2.schema);
         tbl::BaseRecord const & record2 = catalogs.back().front();
-        PTR(SampleSet) result(new SampleSet(catalogs.front(), record2.get(keys2.ellipseType)));
+        PTR(SampleSet) result(
+            new SampleSet(
+                catalogs.front(), ParameterDefinition::lookup(record2.get(keys2.parameterDefinition))
+            )
+        );
         result->setDataSquaredNorm(record2.get(keys2.dataSquaredNorm));
         return result;
     }
@@ -438,7 +426,7 @@ void SampleSet::write(OutputArchiveHandle & handle) const {
     handle.saveCatalog(catalog1);
     tbl::BaseCatalog catalog2 = handle.makeCatalog(keys2.schema);
     PTR(tbl::BaseRecord) record2 = catalog2.addNew();
-    record2->set(keys2.ellipseType, _ellipseType);
+    record2->set(keys2.parameterDefinition, _parameterDefinition->name);
     record2->set(keys2.dataSquaredNorm, _dataSquaredNorm);
     handle.saveCatalog(catalog2);
 }

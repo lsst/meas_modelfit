@@ -164,12 +164,13 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         )
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
+        parameterDef = samples.getParameterDefinition()
         record.setSamples(samples)
-        mean = samples.interpret(samples.computeMean(), record.getPointD(self.keys["source.center"]))
+        mean = parameterDef.makeEllipse(samples.computeMean(), record.getPointD(self.keys["source.center"]))
         record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
         record.set(self.keys["mean.center"], mean.getCenter())
-        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
-                                   record.getPointD(self.keys["source.center"]))
+        median = parameterDef.makeEllipse(samples.computeQuantiles(numpy.array([0.5])),
+                                          record.getPointD(self.keys["source.center"]))
         record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
         record.set(self.keys["median.center"], median.getCenter())
         return lsst.pipe.base.Struct(objective=objective, sampler=sampler, psf=psf, record=record)
