@@ -52,10 +52,14 @@ def registerPrior(name):
 
 @registerPrior("flat")
 class FlatPriorConfig(lsst.pex.config.Config):
+    maxRadius = lsst.pex.config.Field(dtype=float, default=10.0, doc="Maximum radius in pixels")
+    maxEllipticity = lsst.pex.config.Field(dtype=float, default=1.0,
+                                           doc="Maximum ellipticity, in ReducedShear parametrization")
 
     @staticmethod
     def makePrior(config):
-        return multifitLib.FlatPrior.get()
+        return multifitLib.FlatPrior(config.maxRadius, config.maxEllipticity)
+
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):
     components = lsst.meas.multifit.Mixture3.ComponentList()

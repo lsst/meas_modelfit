@@ -26,6 +26,7 @@
 
 #include "lsst/base.h"
 #include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/parameters.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/Mixture.h"
 
@@ -49,8 +50,11 @@ namespace lsst { namespace meas { namespace multifit {
  *  Thus, we marginalize the likelihood in @f$\alpha@f$ at fixed @f$\theta@f$, and then multiply
  *  by the prior on @f$\theta@f$.
  */
-class Prior {
+class Prior : private boost::noncopyable {
 public:
+
+    /// Return the definition of the parameter vector the prior assumes
+    ParameterDefinition const & getParameterDefinition() const { return *_parameterDefinition; }
 
     /**
      *  @brief Marginalize over the amplitude likelihood at the given point in nonlinear parameter space,
@@ -76,22 +80,33 @@ public:
 
     virtual ~Prior() {}
 
+protected:
+    explicit Prior(ParameterDefinition const & parameterDefinition) :
+        _parameterDefinition(&parameterDefinition) {}
+private:
+    ParameterDefinition const * _parameterDefinition;
 };
 
 /**
- *  @brief A nonnormalized flat prior.
- *
- *  @note FlatPrior is a singleton, accessed only via the get() static member function.
+ *  @brief A flat prior with upper bounds on radius and ellipticity (and implicit lower bounds),
+ *         and a nonnegative requirement on component amplitudes.
  */
-class FlatPrior : public Prior, private boost::noncopyable {
+class FlatPrior : public Prior {
 public:
-
-    static PTR(FlatPrior) get();
 
     virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
 
+    /**
+     *  @brief Construct a FlatPrior.
+     *
+     *  @param[in] maxRadius   Maximum radius in pixel coordinates.
+     *  @param[in] maxEllipticity   Maximum ellipticity (in ReducedShear parametrization).
+     */
+    explicit FlatPrior(double maxRadius, double maxEllipticity=1.0);
+
 private:
-    FlatPrior() {}
+    double _maxRadius;
+    double _maxEllipticity;
 };
 
 /**

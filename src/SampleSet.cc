@@ -164,8 +164,21 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
     _prior = prior;
     std::size_t origSize = _records.size();
     tbl::BaseCatalog::iterator i = _records.begin();
+    ndarray::Array<double,1,1> priorParameters;
+    PTR(ParameterConverter const) converter;
+    if (prior->getParameterDefinition() != getParameterDefinition()) {
+        converter = getParameterDefinition().makeConverterTo(prior->getParameterDefinition());
+        priorParameters = ndarray::allocate(getNonlinearDim());
+    }
+    double logJacobian = 0.0;
     for (; i != _records.end(); ++i) {
-        i->set(_keys.marginal, prior->apply(_keys.getJoint(*i), _keys.getParameters(*i)));
+        if (converter) {
+            converter->apply(i->get(_keys.parameters), priorParameters);
+            logJacobian = std::log(converter->computeJacobian(i->get(_keys.parameters)));
+        } else {
+            priorParameters = (*i)[_keys.parameters];
+        }
+        i->set(_keys.marginal, prior->apply(_keys.getJoint(*i), priorParameters.asEigen()) + logJacobian);
         // for numerical reasons, in the first pass, we set w_i = ln(m_i/q_i);
         // note that i->proposal == -ln(q_i) and i->marginal == -ln(m_i)
         i->set(_keys.weight, i->get(_keys.proposal) - i->get(_keys.marginal));

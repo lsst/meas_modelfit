@@ -29,23 +29,28 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-PTR(FlatPrior) FlatPrior::get() {
-    static PTR(FlatPrior) instance(new FlatPrior());
-    return instance;
+samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
+    return integrateGaussian(likelihood.grad, likelihood.fisher)
+        + std::log(_maxRadius * _maxEllipticity * _maxEllipticity * 2 * M_PI);
 }
 
-samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
-    return integrateGaussian(likelihood.grad, likelihood.fisher);
-}
+FlatPrior::FlatPrior(double maxRadius, double maxEllipticity) :
+    Prior(ParameterDefinition::lookup("SeparableReducedShearTraceRadius")),
+    _maxRadius(maxRadius),
+    _maxEllipticity(maxEllipticity)
+{}
 
 samples::Scalar MixturePrior::apply(
     LogGaussian const & likelihood, samples::Vector const & parameters
 ) const {
-    return FlatPrior::get()->apply(likelihood, parameters)
+    return integrateGaussian(likelihood.grad, likelihood.fisher)
         - std::log(_mixture.evaluate(parameters.head<3>()));
 }
 
-MixturePrior::MixturePrior(Mixture<3> const & mixture) : _mixture(mixture) {}
+MixturePrior::MixturePrior(Mixture<3> const & mixture) :
+    Prior(ParameterDefinition::lookup("SeparableConformalShearLogTraceRadius")),
+    _mixture(mixture)
+{}
 
 namespace {
 
