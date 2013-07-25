@@ -80,6 +80,7 @@ class MultiShapeletBasis;
 
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 
+%shared_ptr(lsst::meas::multifit::ParameterConverter);
 %shared_ptr(lsst::meas::multifit::Prior);
 %shared_ptr(lsst::meas::multifit::FlatPrior);
 %shared_ptr(lsst::meas::multifit::MixturePrior);
@@ -99,6 +100,7 @@ template <int N> class MixtureComponent;
 
 %include "lsst/meas/multifit/constants.h"
 %include "lsst/meas/multifit/LogGaussian.h"
+%include "lsst/meas/multifit/parameters.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Objective.h"
 %include "lsst/meas/multifit/KernelDensityEstimator.h"
