@@ -63,9 +63,10 @@ public:
 /**
  *  @brief Class that defines how to intepret a nonlinear parameter vector.
  *
- *  All ParameterDefinition classes are named singletons, stored in a global registry.
+ *  All ParameterDefinition classes are named and stored in a global registry.
  *  The registration is performed by the base class constructor, so each derived class
- *  should instantiate itself exactly once in a static-scope variable.
+ *  should instantiate itself exactly once per name in a static-scope variable.
+ *  A subclass may be registered multiple times with different names.
  *
  *  All afw::geom::ellipse::BaseCore subclass names are valid size-3 ParameterDefinitions,
  *  and will be registered on first use.
