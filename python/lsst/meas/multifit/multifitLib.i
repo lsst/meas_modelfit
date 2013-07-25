@@ -82,6 +82,7 @@ class MultiShapeletBasis;
 
 %shared_ptr(lsst::meas::multifit::Prior);
 %shared_ptr(lsst::meas::multifit::FlatPrior);
+%shared_ptr(lsst::meas::multifit::MixturePrior);
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);
