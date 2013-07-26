@@ -79,11 +79,11 @@ class MultiShapeletBasis;
 %declareNumPyConverters(ndarray::Array<double,2,2>);
 
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
+%declareTablePersistable(Prior, lsst::meas::multifit::Prior);
+%declareTablePersistable(FlatPrior, lsst::meas::multifit::FlatPrior);
+%declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
 
 %shared_ptr(lsst::meas::multifit::ParameterConverter);
-%shared_ptr(lsst::meas::multifit::Prior);
-%shared_ptr(lsst::meas::multifit::FlatPrior);
-%shared_ptr(lsst::meas::multifit::MixturePrior);
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);
