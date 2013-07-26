@@ -24,6 +24,7 @@
 Config classes and registry for Bayesian priors
 """
 
+import os
 import numpy
 
 import lsst.pex.config
@@ -59,6 +60,22 @@ class FlatPriorConfig(lsst.pex.config.Config):
     @staticmethod
     def makePrior(config):
         return multifitLib.FlatPrior(config.maxRadius, config.maxEllipticity)
+
+@registerPrior("mixture")
+class MixturePriorConfig(lsst.pex.config.Config):
+    filename = lsst.pex.config.Field(
+        dtype=str, default="s13-v2-disk-08.fits",
+        doc="Filename for mixture data file to load; relative to $MEAS_MULTIFIT_DIR/data unless absolute"
+        )
+
+    @staticmethod
+    def makePrior(config):
+        if os.path.isabs(config.filename):
+            path = config.filename
+        else:
+            path = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "data", config.filename)
+        mixture = multifitLib.Mixture3.readFits(path)
+        return multifitLib.MixturePrior(mixture)
 
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):
