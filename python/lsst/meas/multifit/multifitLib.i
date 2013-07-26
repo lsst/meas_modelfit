@@ -78,6 +78,8 @@ class MultiShapeletBasis;
 %declareNumPyConverters(ndarray::Array<double,1,1>);
 %declareNumPyConverters(ndarray::Array<double,2,2>);
 
+%include "lsst/meas/multifit/constants.h"
+
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 %declareTablePersistable(Prior, lsst::meas::multifit::Prior);
 %declareTablePersistable(FlatPrior, lsst::meas::multifit::FlatPrior);
@@ -90,6 +92,8 @@ class MultiShapeletBasis;
 %shared_ptr(lsst::meas::multifit::BaseSampler);
 %shared_ptr(lsst::meas::multifit::NaiveGridSampler);
 
+//----------- Mixtures --------------------------------------------------------------------------------------
+
 namespace lsst { namespace meas { namespace multifit {
 
 template <int N> class Mixture;
@@ -97,49 +101,6 @@ template <int N> class MixtureUpdateRestriction;
 template <int N> class MixtureComponent;
 
 }}} // namespace lsst::meas::multifit
-
-%include "lsst/meas/multifit/constants.h"
-%include "lsst/meas/multifit/LogGaussian.h"
-%include "lsst/meas/multifit/parameters.h"
-%include "lsst/meas/multifit/priors.h"
-%include "lsst/meas/multifit/Objective.h"
-%include "lsst/meas/multifit/KernelDensityEstimator.h"
-%include "lsst/meas/multifit/SampleSet.h"
-%include "lsst/meas/multifit/ExpectationFunctor.h"
-%include "lsst/meas/multifit/BaseSampler.h"
-%include "lsst/meas/multifit/NaiveGridSampler.h"
-
-%pythoncode %{
-import lsst.pex.config
-import numpy
-SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
-SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
-%}
-
-%shared_ptr(lsst::meas::multifit::ModelFitTable);
-%shared_ptr(lsst::meas::multifit::ModelFitRecord);
-
-%include "lsst/meas/multifit/ModelFitRecord.h"
-
-%addCastMethod(lsst::meas::multifit::ModelFitTable, lsst::afw::table::BaseTable)
-%addCastMethod(lsst::meas::multifit::ModelFitRecord, lsst::afw::table::BaseRecord)
-
-
-%template(ModelFitColumnView) lsst::afw::table::ColumnViewT<lsst::meas::multifit::ModelFitRecord>;
-
-%include "lsst/afw/table/SortedCatalog.i"
-
-namespace lsst { namespace afw { namespace table {
-
-using meas::multifit::ModelFitRecord;
-using meas::multifit::ModelFitTable;
-
-%declareSortedCatalog(SortedCatalogT, ModelFit)
-
-}}} // namespace lsst::afw::table
-
-
-%include "lsst/meas/multifit/integrals.h"
 
 %include "lsst/meas/multifit/Mixture.h"
 
@@ -205,3 +166,49 @@ Mixture[N] = Mixture ## N
 %instantiateMixture(1)
 %instantiateMixture(2)
 %instantiateMixture(3)
+
+//----------- Miscellaneous ---------------------------------------------------------------------------------
+
+%include "lsst/meas/multifit/LogGaussian.h"
+%include "lsst/meas/multifit/parameters.h"
+%include "lsst/meas/multifit/priors.h"
+%include "lsst/meas/multifit/Objective.h"
+%include "lsst/meas/multifit/KernelDensityEstimator.h"
+%include "lsst/meas/multifit/SampleSet.h"
+%include "lsst/meas/multifit/ExpectationFunctor.h"
+%include "lsst/meas/multifit/BaseSampler.h"
+%include "lsst/meas/multifit/NaiveGridSampler.h"
+
+%pythoncode %{
+import lsst.pex.config
+import numpy
+SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
+SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
+%}
+
+//----------- ModelFitRecord/Table/Catalog ------------------------------------------------------------------
+
+%shared_ptr(lsst::meas::multifit::ModelFitTable);
+%shared_ptr(lsst::meas::multifit::ModelFitRecord);
+
+%include "lsst/meas/multifit/ModelFitRecord.h"
+
+%addCastMethod(lsst::meas::multifit::ModelFitTable, lsst::afw::table::BaseTable)
+%addCastMethod(lsst::meas::multifit::ModelFitRecord, lsst::afw::table::BaseRecord)
+
+
+%template(ModelFitColumnView) lsst::afw::table::ColumnViewT<lsst::meas::multifit::ModelFitRecord>;
+
+%include "lsst/afw/table/SortedCatalog.i"
+
+namespace lsst { namespace afw { namespace table {
+
+using meas::multifit::ModelFitRecord;
+using meas::multifit::ModelFitTable;
+
+%declareSortedCatalog(SortedCatalogT, ModelFit)
+
+}}} // namespace lsst::afw::table
+
+
+%include "lsst/meas/multifit/integrals.h"
