@@ -62,6 +62,18 @@ class FlatPriorConfig(lsst.pex.config.Config):
 
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):
+    """Fit a Mixture distribution to a set of (e1, e2, r) data points
+
+    @param[in] data           array of data points to fit; shape=(N,3)
+    @param[in] nComponents    number of components in the mixture distribution
+    @param[in] minFactor      ellipticity variance of the smallest component in the initial mixture,
+                              relative to the measured variance
+    @param[in] maxFactor      ellipticity variance of the largest component in the initial mixture,
+                              relative to the measured variance
+    @param[in] nIterations    number of expectation-maximization update iterations
+    @param[in] df             number of degrees of freedom for component Student's T distributions
+                              (inf=Gaussian).
+    """
     components = lsst.meas.multifit.Mixture3.ComponentList()
     rMu = data[:,2].mean()
     rSigma = data[:,2].var()
