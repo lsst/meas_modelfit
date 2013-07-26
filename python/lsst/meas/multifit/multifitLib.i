@@ -85,10 +85,10 @@ class MultiShapeletBasis;
 %include "lsst/meas/multifit/constants.h"
 
 %declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
+%declareTablePersistable(Prior, lsst::meas::multifit::Prior);
+%declareTablePersistable(FlatPrior, lsst::meas::multifit::FlatPrior);
 
 %shared_ptr(lsst::meas::multifit::ParameterConverter);
-%shared_ptr(lsst::meas::multifit::Prior);
-%shared_ptr(lsst::meas::multifit::FlatPrior);
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);

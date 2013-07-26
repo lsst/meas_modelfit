@@ -25,6 +25,7 @@
 #define LSST_MEAS_MULTIFIT_priors_h_INCLUDED
 
 #include "lsst/base.h"
+#include "lsst/afw/table/io/Persistable.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/parameters.h"
 #include "lsst/meas/multifit/LogGaussian.h"
@@ -49,7 +50,11 @@ namespace lsst { namespace meas { namespace multifit {
  *  Thus, we marginalize the likelihood in @f$\alpha@f$ at fixed @f$\theta@f$, and then multiply
  *  by the prior on @f$\theta@f$.
  */
-class Prior : private boost::noncopyable {
+class Prior :
+    public afw::table::io::PersistableFacade<Prior>,
+    public afw::table::io::Persistable,
+    private boost::noncopyable
+{
 public:
 
     /// Return the definition of the parameter vector the prior assumes
@@ -80,6 +85,9 @@ public:
     virtual ~Prior() {}
 
 protected:
+
+    virtual std::string getPythonModule() const { return "lsst.meas.multifit"; }
+
     explicit Prior(ParameterDefinition const & parameterDefinition) :
         _parameterDefinition(&parameterDefinition) {}
 private:
@@ -90,18 +98,35 @@ private:
  *  @brief A flat prior with upper bounds on radius and ellipticity (and implicit lower bounds),
  *         and a nonnegative requirement on component amplitudes.
  */
-class FlatPrior : public Prior {
+class FlatPrior :
+    public afw::table::io::PersistableFacade<FlatPrior>,
+    public Prior
+{
 public:
+
+    /**
+     *  @brief Construct a FlatPrior
+     *
+     *  @param[in] maxRadius   Maximum radius in pixel coordinates
+     *  @param[in] maxEllipticity   Maximum ellipticity (in ReducedShear parametrization)
+     */
+    explicit FlatPrior(double maxRadius, double maxEllipticity=1.0);
 
     virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
 
-    /**
-     *  @brief Construct a FlatPrior.
-     *
-     *  @param[in] maxRadius   Maximum radius in pixel coordinates.
-     *  @param[in] maxEllipticity   Maximum ellipticity (in ReducedShear parametrization).
-     */
-    explicit FlatPrior(double maxRadius, double maxEllipticity=1.0);
+    /// Return the maximum radius in pixel coordinates
+    double getMaxRadius() const { return _maxRadius; }
+
+    /// Return the maximum ellipticity (in ReducedShear parametrization)
+    double getMaxEllipticity() const { return _maxEllipticity; }
+
+    virtual bool isPersistable() const { return true; }
+
+protected:
+
+    virtual std::string getPersistenceName() const;
+
+    virtual void write(OutputArchiveHandle & handle) const;
 
 private:
     double _maxRadius;
