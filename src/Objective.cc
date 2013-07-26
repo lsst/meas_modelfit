@@ -31,27 +31,31 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
-    SingleEpochObjectiveControl const & ctrl,
-    shapelet::MultiShapeletBasis const & basis,
-    shapelet::MultiShapeletFunction const & psf,
-    afw::detection::Footprint const & footprint
-) {
-    PixelArray1 x = ndarray::allocate(footprint.getArea());
-    PixelArray1 y = ndarray::allocate(footprint.getArea());
-    int n = 0;
-    for (
-        afw::detection::Footprint::SpanList::const_iterator i = footprint.getSpans().begin();
-        i != footprint.getSpans().end();
-        ++i
+namespace detail {
+
+    shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
+        SingleEpochObjectiveControl const & ctrl,
+        shapelet::MultiShapeletBasis const & basis,
+        shapelet::MultiShapeletFunction const & psf,
+        afw::detection::Footprint const & footprint
     ) {
-        for (afw::geom::Span::Iterator j = (**i).begin(); j != (**i).end(); ++j, ++n) {
-            x[n] = j->getX();
-            y[n] = j->getY();
+        PixelArray1 x = ndarray::allocate(footprint.getArea());
+        PixelArray1 y = ndarray::allocate(footprint.getArea());
+        int n = 0;
+        for (
+            afw::detection::Footprint::SpanList::const_iterator i = footprint.getSpans().begin();
+            i != footprint.getSpans().end();
+            ++i
+        ) {
+            for (afw::geom::Span::Iterator j = (**i).begin(); j != (**i).end(); ++j, ++n) {
+                x[n] = j->getX();
+                y[n] = j->getY();
+            }
         }
+        return shapelet::MultiShapeletMatrixBuilder<Pixel>(basis, psf, x, y, ctrl.useApproximateExp);
     }
-    return shapelet::MultiShapeletMatrixBuilder<Pixel>(basis, psf, x, y, ctrl.useApproximateExp);
-}
+
+} // namespace ::detail
 
 SingleEpochObjective::SingleEpochObjective(
     SingleEpochObjectiveControl const & ctrl,
@@ -64,7 +68,7 @@ SingleEpochObjective::SingleEpochObjective(
     _weights(afw::detection::flattenArray(footprint, image.getVariance()->getArray(), image.getXY0())),
     _weightedData(afw::detection::flattenArray(footprint, image.getImage()->getArray(), image.getXY0())),
     _modelMatrix(ndarray::allocate(footprint.getArea(), basis.getSize())),
-    _matrixBuilder(makeShapeletMatrixBuilder(ctrl, basis, psf, footprint))
+    _matrixBuilder(detail::makeShapeletMatrixBuilder(ctrl, basis, psf, footprint))
 {
     // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
     // weighting, because we implicitly square it later.

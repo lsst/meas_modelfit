@@ -41,20 +41,30 @@
 namespace lsst { namespace meas { namespace multifit {
 
 /**
+ *  @brief Control object used to initialize a MultiEpochObject.
+ *
+ *  Translated to Python as MultiEpochObjectiveConfig; the Swig-wrapped C++ Control object can
+ *  be created from the config object via the makeControl() method (see lsst.pex.config.wrap).
+ */
+class MultiEpochObjectiveControl : public SingleEpochObjectiveControl {
+    MultiEpochObjectiveControl() : SingleEpochObjectiveControl() {}
+};
+
+/**
  * An image at one epoch of a galaxy, plus associated info
  *
  * Includes one image of a galaxy and and associated footprint and multi-shapelet PSF model
  */
-class EpochImage {
+class EpochFootprint {
 public:
     /**
-     * @brief Construct a EpochImage
+     * @brief Construct a EpochFootprint
      *
      * @param[in] footprint     Footprint of source (galaxy) on calexp
      * @param[in] exposure      Subregion of calexp that includes footprint
      * @param[in] psfModel      Multi-shapelet representation of exposure PSF evaluated at location of galaxy
      */
-    explicit EpochImage(
+    explicit EpochFootprint(
         lsst::afw::detection::Footprint const &footprint,
         lsst::afw::image::Exposure<Pixel> const &exposure,
         shapelet::MultiShapeletFunction const &psfModel
@@ -66,36 +76,8 @@ public:
     int numPixels;                              ///< number of pixels in footprint
 };
 
-
 #ifndef SWIG
-/**
-* Contains a MatrixBuilder for one EpochImage, plus additional information
-*
-* Intended to be constructed and used internally by MultiEpochObjective.
-*/
-class EpochMatrixBuilder {
-public:
-    /**
-    * Construct a EpochMatrixBuilder
-    *
-    * @param[in] begIndex       Bginning index of this component in _weights, etc.
-    * @param[in] numPixels      Number of pixels in footprint of this component
-    * @param[in] coaddToCalexp  Affine transform of coadd pixels->calexp pixels
-    * @param[in] matrixBuilder  Multi-shapelet matrix builder for this component
-    * 
-    */
-    explicit EpochMatrixBuilder(
-        int begIndex,
-        int numPixels,
-        lsst::afw::geom::AffineTransform coaddToCalexp,
-        shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder
-    );
-
-    int begIndex;           ///< beginning index of this component in _weights, etc.
-    int numPixels;          ///< number of pixels in the footprint for this component
-    lsst::afw::geom::AffineTransform coaddToCalexp; /// affine transform of coadd pixels->calexp pixels
-    shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder;  ///< multishapelet matrix builder
-};
+class EpochMatrixBuilder;   // defined and declared in MultiEpochObjective.cc
 #endif
 
 /// Objective class for use with multi-epoch modeling
@@ -118,24 +100,23 @@ public:
      * @param[in] basis             Basis object that defines the galaxy model to fit.
      * @param[in] coaddWcs          WCS of coadd
      * @param[in] sourceSkyPos      Sky position of source (galaxy)
-     * @param[in] epochImageList    List of shared pointers to EpochImage
+     * @param[in] epochImageList    List of shared pointers to EpochFootprint
      */
     explicit MultiEpochObjective(
-        SingleEpochObjectiveControl const & ctrl,
+        MultiEpochObjectiveControl const & ctrl,
         shapelet::MultiShapeletBasis const & basis,
         afw::image::Wcs const & coaddWcs,
         afw::coord::Coord const & sourceSkyPos,
-        std::vector<CONST_PTR(EpochImage)> const & epochImageList
+        std::vector<CONST_PTR(EpochFootprint)> const & epochImageList
     );
 
 private:
-    lsst::afw::coord::Coord _sourceSkyPos;  ///< sky position of source (likely not needed)
     int _totPixels;             ///< total number of pixels in all calexp
     double _dataSquaredNorm;    ///< sum of squares of _weightedData
     PixelArray1 _weights;       ///< vector of weights for all calexp concatenated
                                 ///< = 1/sqrt(variance) pixels if ctrl.usePixelWeights
                                 ///< = exp^mean(log(1/sqrt(variance))) if !ctrl.usePixelWeights,
-                                ///<   where the mean is computed separately for each component
+                                ///<   where the mean is computed separately for each epoch
     PixelArray1 _weightedData;  ///< vector of weighted image pixels for all calexp concatenated
     PixelArray2CM _modelMatrix; ///< model matrix; set by evaluate
     std::vector<CONST_PTR(EpochMatrixBuilder)>  _epochMatrixBuilderList;

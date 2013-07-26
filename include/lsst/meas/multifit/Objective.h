@@ -135,22 +135,24 @@ private:
     shapelet::MultiShapeletMatrixBuilder<Pixel> _matrixBuilder;
 };
 
-#ifndef SWIG
-/**
- *  @brief A MultiShapeletMatrixBuilder factory with arguments suitable for SingleEpochObjective
- *
- *  @param[in] ctrl         SingleEpochObjective control object with various options.
- *  @param[in] basis        Basis object that defines the galaxy model to fit.
- *  @param[in] psf          Multi-shapelet representation of the PSF evaluated at the location of the galaxy.
- *  @param[in] footprint    Footprint that defines the pixel region to include in the fit.
- */
-shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
-    SingleEpochObjectiveControl const & ctrl,
-    shapelet::MultiShapeletBasis const & basis,
-    shapelet::MultiShapeletFunction const & psf,
-    afw::detection::Footprint const & footprint
-);
-#endif
+namespace detail {
+    #ifndef SWIG
+    /**
+     *  @brief A MultiShapeletMatrixBuilder factory with arguments suitable for SingleEpochObjective
+     *
+     *  @param[in] ctrl         SingleEpochObjective control object with various options.
+     *  @param[in] basis        Basis object that defines the galaxy model to fit.
+     *  @param[in] psf          Multi-shapelet representation of the PSF evaluated at the location of the galaxy.
+     *  @param[in] footprint    Footprint that defines the pixel region to include in the fit.
+     */
+    shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
+        SingleEpochObjectiveControl const & ctrl,
+        shapelet::MultiShapeletBasis const & basis,
+        shapelet::MultiShapeletFunction const & psf,
+        afw::detection::Footprint const & footprint
+    );
+    #endif
+} // namespace ::detail
 
 }}} // namespace lsst::meas::multifit
 

@@ -72,7 +72,7 @@ namespace lsst { namespace shapelet {
 class MultiShapeletBasis;
 }}
 
-%template(VectorEpochImage) std::vector<CONST_PTR(lsst::meas::multifit::EpochImage)>;
+%template(VectorEpochImage) std::vector<CONST_PTR(lsst::meas::multifit::EpochFootprint)>;
 
 %declareNumPyConverters(lsst::meas::multifit::samples::Vector);
 %declareNumPyConverters(lsst::meas::multifit::samples::Matrix);
@@ -106,8 +106,12 @@ class MultiShapeletBasis;
 %pythoncode %{
 import lsst.pex.config
 import numpy
+
 SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
 SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
+
+MultiEpochObjectiveConfig = lsst.pex.config.makeConfigClass(MultiEpochObjectiveControl)
+MultiEpochObjective.ConfigClass = MultiEpochObjectiveConfig
 %}
 
 %shared_ptr(lsst::meas::multifit::ModelFitTable);

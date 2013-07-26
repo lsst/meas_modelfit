@@ -37,14 +37,10 @@ from .priors import *
 
 __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
-class MeasureImageConfig(lsst.pex.config.Config):
+class BaseMeasureConfig(lsst.pex.config.Config):
     sampler = lsst.pex.config.ConfigurableField(
         target=NaiveGridSamplerTask,
         doc="Subtask that generates samples from the probability of a galaxy model given image data"
-    )
-    objective = lsst.pex.config.ConfigField(
-        dtype=SingleEpochObjective.ConfigClass,
-        doc="Config for objective object that computes model probability at given parameters"
     )
     model = modelRegistry.makeField(
         default="bulge+disk",
@@ -62,11 +58,6 @@ class MeasureImageConfig(lsst.pex.config.Config):
         dtype=setupFitRegion.ConfigClass,
         doc="Parameters that control which pixels to include in the model fit"
     )
-    useRefCat = lsst.pex.config.Field(
-        dtype=bool,
-        default=True,
-        doc="Whether to use the reference catalog to identify objects to fit"
-    )
     progressChunk = lsst.pex.config.Field(
         dtype=int,
         default=100,
@@ -77,6 +68,18 @@ class MeasureImageConfig(lsst.pex.config.Config):
         default=False,
         doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
     )
+
+class MeasureImageConfig(BaseMeasureConfig):
+    objective = lsst.pex.config.ConfigField(
+        dtype=SingleEpochObjective.ConfigClass,
+        doc="Config for objective object that computes model probability at given parameters"
+    )
+    useRefCat = lsst.pex.config.Field(
+        dtype=bool,
+        default=True,
+        doc="Whether to use the reference catalog to identify objects to fit"
+    )
+
 
 class MeasureImageTask(lsst.pipe.base.CmdLineTask):
     """Driver class for S13-specific galaxy modeling work
@@ -152,7 +155,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
           - objective: the Objective object used to evaluate likelihoods
           - sampler: the Sampler object used to draw samples
           - psf: a shapelet.MultiShapeletFunction representation of the PSF
-          - record: the output record (same as what's passed in and modified in-place)
+          - record: the output record (identical to the record argument, which is modified in-place)
         """
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()

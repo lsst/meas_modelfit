@@ -46,17 +46,16 @@ namespace {
      * numPixels = std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum);
      *
      * @param[in] partialNumPixels: accumulated number of pixels, so far
-     * @param[in] epochImagePtr: shared pointer to EpochImage whose numPixels is to be added to the total
+     * @param[in] epochImagePtr: shared pointer to EpochFootprint whose numPixels is to be added to the total
      * @return partialNumPixels + component.numPixels
      */
-    int componentPixelSum(int partialNumPixels, CONST_PTR(EpochImage) const &epochImagePtr) {
+    int componentPixelSum(int partialNumPixels, CONST_PTR(EpochFootprint) const &epochImagePtr) {
         return partialNumPixels + epochImagePtr->numPixels;
     }
     
 } // anonymous
 
-
-EpochImage::EpochImage(
+EpochFootprint::EpochFootprint(
     lsst::afw::detection::Footprint const &footprint,
     lsst::afw::image::Exposure<Pixel> const &exposure,
     shapelet::MultiShapeletFunction const & psfModel
@@ -66,6 +65,35 @@ EpochImage::EpochImage(
     psfModel(psfModel),
     numPixels(footprint.getNpix())
 { }
+
+/**
+* Contains a MatrixBuilder for one EpochFootprint, plus additional information
+*
+* Intended to be constructed and used internally by MultiEpochObjective.
+*/
+class EpochMatrixBuilder {
+public:
+    /**
+    * Construct a EpochMatrixBuilder
+    *
+    * @param[in] begIndex       Beginning index of this epoch's data in _weights, etc.
+    * @param[in] numPixels      Number of pixels in this epoch's footprint
+    * @param[in] coaddToCalexp  Affine transform of coadd pixels->calexp pixels
+    * @param[in] matrixBuilder  Multi-shapelet matrix builder for this epoch
+    * 
+    */
+    explicit EpochMatrixBuilder(
+        int begIndex,
+        int numPixels,
+        lsst::afw::geom::AffineTransform coaddToCalexp,
+        shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder
+    );
+
+    int begIndex;           ///< beginning index of this epoch's data in _weights, etc.
+    int numPixels;          ///< number of pixels in this epoch's footprint
+    lsst::afw::geom::AffineTransform coaddToCalexp; /// affine transform of coadd pixels->calexp pixels
+    shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder;  ///< multishapelet matrix builder
+};
 
 EpochMatrixBuilder::EpochMatrixBuilder(
     int begIndex,
@@ -80,13 +108,12 @@ EpochMatrixBuilder::EpochMatrixBuilder(
 { }
 
 MultiEpochObjective::MultiEpochObjective(
-    SingleEpochObjectiveControl const & ctrl,
+    MultiEpochObjectiveControl const & ctrl,
     shapelet::MultiShapeletBasis const & basis,
     afw::image::Wcs const & coaddWcs,
     afw::coord::Coord const & sourceSkyPos,
-    std::vector<CONST_PTR(EpochImage)> const & epochImageList
+    std::vector<CONST_PTR(EpochFootprint)> const & epochImageList
 ) :
-    _sourceSkyPos(sourceSkyPos),
     _totPixels(std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum)),
     _dataSquaredNorm(0),
     _weights(ndarray::allocate(_totPixels)),
@@ -96,7 +123,7 @@ MultiEpochObjective::MultiEpochObjective(
 {
     afw::geom::AffineTransform coaddToSky = coaddWcs.linearizePixelToSky(sourceSkyPos, afw::geom::radians);
     int begIndex = 0;
-    for (std::vector<CONST_PTR(EpochImage)>::const_iterator imPtrIter = epochImageList.begin();
+    for (std::vector<CONST_PTR(EpochFootprint)>::const_iterator imPtrIter = epochImageList.begin();
         imPtrIter != epochImageList.end(); ++imPtrIter) {
 
         begIndex = begIndex;
@@ -109,7 +136,8 @@ MultiEpochObjective::MultiEpochObjective(
                 begIndex,
                 numPixels,
                 skyToCalexp * coaddToSky,
-                makeShapeletMatrixBuilder(ctrl, basis, (*imPtrIter)->psfModel, (*imPtrIter)->footprint)
+                detail::makeShapeletMatrixBuilder(ctrl, basis,
+                    (*imPtrIter)->psfModel, (*imPtrIter)->footprint)
         ));
         
         afw::image::MaskedImage<Pixel> maskedImage = (*imPtrIter)->exposure.getMaskedImage();
@@ -138,8 +166,8 @@ MultiEpochObjective::MultiEpochObjective(
 
 LogGaussian MultiEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
     int const numCols = _modelMatrix.getSize<1>();
-    for (std::vector<CONST_PTR(EpochMatrixBuilder)>::const_iterator mbPtrIter = _epochMatrixBuilderList.begin();
-        mbPtrIter != _epochMatrixBuilderList.end(); ++mbPtrIter) {
+    for (std::vector<CONST_PTR(EpochMatrixBuilder)>::const_iterator mbPtrIter =
+        _epochMatrixBuilderList.begin(); mbPtrIter != _epochMatrixBuilderList.end(); ++mbPtrIter) {
         afw::geom::ellipses::Ellipse localEllipse = ellipse.transform((*mbPtrIter)->coaddToCalexp);
 
         int const endIndex = (*mbPtrIter)->begIndex + (*mbPtrIter)->numPixels;

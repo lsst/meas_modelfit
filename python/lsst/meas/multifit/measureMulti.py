@@ -25,44 +25,15 @@ from lsst.pipe.base import CmdLineTask, Struct, TaskError
 import lsst.pex.config as pexConfig
 
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
-from lsst.meas.multifit import EpochImage
+from .multifitLib import EpochFootprint
+from .measureImage import BaseMeasureConfig 
 
 __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
 
-class MeasureMultiConfig(lsst.pex.config.Config):
-    sampler = lsst.pex.config.ConfigurableField(
-        target=NaiveGridSamplerTask,
-        doc="Subtask that generates samples from the probability of a galaxy model given image data"
-    )
+class MeasureImageConfig(BaseMeasureConfig):
     objective = lsst.pex.config.ConfigField(
         dtype=SingleEpochObjective.ConfigClass,
         doc="Config for objective object that computes model probability at given parameters"
-    )
-    model = modelRegistry.makeField(
-        default="bulge+disk",
-        doc="Definition of the galaxy model to fit"
-    )
-    prior = priorRegistry.makeField(
-        default="flat",
-        doc="Bayesian prior on galaxy parameters"
-    )
-    psf = lsst.pex.config.ConfigField(
-        dtype=lsst.meas.extensions.multiShapelet.FitPsfConfig,
-        doc="Config options for approximating the PSF using shapelets"
-    )
-    fitRegion = lsst.pex.config.ConfigField(
-        dtype=setupFitRegion.ConfigClass,
-        doc="Parameters that control which pixels to include in the model fit"
-    )
-    progressChunk = lsst.pex.config.Field(
-        dtype=int,
-        default=100,
-        doc="Show progress log message every [progressChunk] objects"
-    )
-    prepOnly = lsst.pex.config.Field(
-        dtype=bool,
-        default=False,
-        doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
     )
 
 
@@ -116,107 +87,8 @@ class MeasureMultiTask(CmdLineTask):
         self.schema = None # set later when we have a coadd catalog to copy
         self.basis = self.config.model.apply()
         self.prior = self.config.prior.apply()
+        self.psfControl = self.config.psf.makeControl()
         self.keys = {}
-
-    def setSchema(self, coaddCat):
-        """Construct self.schema; call once as soon as you have your first coadd catalog
-        
-        @param[in] coaddCat  ModelFitCatalog from coadd
-        @raise RuntimeError if self.schema is not None
-        """
-        if self.schema is not None:
-            raise RuntimeError("self.schema already set")
-
-        self.log.info("Setting the schema")
-        self.schemaMapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
-        self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
-        self.schema = self.schemaMapper.getOutputSchema()
-    
-        def mapKey(name, coaddCat):
-            """Map one key from coaddCat to self.schema
-            
-            @param[in] name         name of key to map
-            @param[in] coaddCat     SourceCatalog containing MeasureCoaddTask measurements
-            """
-            inputKey = coaddCat.getSchema()[keyName]
-            self.keys[keyName] = self.schemaMapper.addMapping(inputKey)
-        
-        for name in ("source.ellipse", "source.center", "snr"):
-            mapKey(name, coaddCat)
-        if "ref" in coaddCat.getSchema():
-            for name in ("ref.ellipse", "ref.center", "ref.sindex"):
-                mapKey(name, coaddCat)
-
-        def addKeys(prefix, doc):
-            """Add <prefix>.ellipse and <prefix>.center keys to self.schema
-
-            @param[in] prefix       key name prefix
-            @param[in] doc          documentation prefix
-            """
-            self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
-                                                                    doc=("%s ellipse" % doc))
-            self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
-                                                                   doc=("%s center position" % doc))
-        addKeys("mean", "Posterior mean")
-        addKeys("median", "Posterior median")
-
-    def prepCatalog(self, coaddCat):
-        """Create an output ModelFitCatalog that copies appropriate fields from the coadd ModelFitCatalog
-
-        @param[in] exposure     Exposure object that will be fit.
-        @param[in] coaddCat     SourceCatalog containing MeasureCoaddTask measurements
-        @return a ModelFit catalog with one entry per coaddCat
-        """
-        if self.schema is None:
-            self.setSchema(coaddCat)
-
-        self.log.info("Copying data from coadd catalog to new catalog")
-        outCat = ModelFitCatalog(self.schema)
-        for coaddRecord in coaddCat:
-            outRecord = outCat.addNew()
-            newRecord.assign(coaddRecord, self.schemaMapper)
-
-        return outCat
-
-    @lsst.pipe.base.timeMethod
-    def processObject(self, outRecord, coadd, objective):
-        """Process a single object.
-
-        @param[in,out] outRecord    multi-fit ModelFitRecord
-        @param[in] coadd            Coadd exposure
-        @param[in] objective        multi-epoch objective (a MultiEpochObjective);
-                                    optimizer objective functions that compute likelihood at a point
-
-        @return a Struct containing various intermediate objects:
-          - sampler: the Sampler object used to draw samples
-          - psf: a shapelet.MultiShapeletFunction representation of the PSF
-        """
-        sourceCoaddCenter = outRecord.getPointD(self.keys["source.center"])
-        psfModel = lsst.meas.extensions.multiShapelet.FitPsfAlgorithm.apply(
-            self.config.psf.makeControl(), coadd.getPsf(), sourceCoaddCenter)
-        psf = psfModel.asMultiShapelet()
-        
-        sampler = self.sampler.setup(
-            exposure=coadd,
-            center=sourceCoaddCenter,
-            ellipse=outRecord.getMomentsD(self.keys["source.ellipse"]),
-        )
-
-        samples = sampler.run(objective)
-        samples.applyPrior(self.prior)
-        outRecord.setSamples(samples)
-        mean = samples.interpret(samples.computeMean(), outRecord.getPointD(self.keys["source.center"]))
-        outRecord.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
-        outRecord.set(self.keys["mean.center"], mean.getCenter())
-        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
-                                   outRecord.getPointD(self.keys["source.center"]))
-        outRecord.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
-        outRecord.set(self.keys["median.center"], median.getCenter())
-
-        return lsst.pipe.base.Struct(
-            sampler=sampler,
-            psf=psf,
-        )
 
     def run(self, dataRef):
         """Process the catalog associated with the given coadd
@@ -226,65 +98,15 @@ class MeasureMultiTask(CmdLineTask):
         
         @param[in] dataRef: coadd data reference
         """
-        butler = dataRef.getButler()
-        
         inputs = self.readInputs(dataRef)
-        coaddExposureInfo = inputs.coadd.getExposureInfo()
-        if not coaddExposureInfo.hasCoaddInputs():
-            raise TaskError("coadd does not have coaddInputs data")
-        calexpInfoList = [CalexpInfo(coaddInput=coaddInput, butler=butler) \
-                            for coaddInput in coaddExposureInfo.getCoaddInputs()]
-        coaddWcs = coaddExposureInfo.getWcs()
-        
-        psfControl = self.config.psf.makeControl()
-
         outCat = self.prepCatalog(inputs.exposure, coaddCat=inputs.coaddCat)
-            
-        for outRecord in outCat:
-            coaddFootprint = outRecord.getFootprint()
-            sourceCoaddPos = outRecord.getPointD(self.keys["source.center"])
-            
-            sourceSkyPos = coaddWcs.pixelToSky(sourceCoaddPos)
-            
-            # process each calexp that partially overlaps this footprint
-            epochImageList = []
-            for calexpInfo in calexpInfoList:
-                calexpFootprint = coaddFootprint.transform(coaddWcs, calexpInfo.wcs, calexpInfo.bbox)
-                if calexpFootprint.getNpix() < 1:
-                    # no overlapping pixels, so skip this calexp
-                    continue
-                calexpFootprintBBox = calexpFootprint.getBBox()
-                
-                calexp = butler.get(
-                    "calexp_sub",
-                    bbox=calexpFootprintBBox,
-                    origin="PARENT",
-                    immediate=True,
-                    **calexpInfo.dataId)
-                
-                sourceCalexpPos = calexp.getWcs().skyToPixel(sourceSkyPos)
-                if not calexpFootprintBBox.includes(sourceCalexpPos):
-                    self.log.warn("calexp %s footprint bbox %s does not contain source at calexpPos=%s, coaddPos=%s; skipping" \
-                        (calexpInfo.dataId, calexpFootprintBBox, sourceCalexpPos, sourceCoaddPos))
-                    continue
 
-                psfModel = FitPsfAlgorithm(psfControl, calexp.getPsf(), sourceCalexpPos)
-                psf = psfModel.asMultiShapelet()
-
-                epochImage = EpochImage(calexpFootprint, calexp, psf)
-                epochImageList.append(epochImage)
-            
-            objective = MultiEpochObjective(
-                self.config.objective.makeControl(),
-                self.basis,
-                coadd.getWcs(),
-                sourceSkyPos,
-                epochImageList,
-            )
+        if not self.config.prepOnly:
+            butler = dataRef.getButler()
+            calexpInfoList = self.getCalexpInfoList(butler=butler, coadd=inputs.coadd)
+            for record in outCat:
+                self.processObject(record=record, coadd=inputs.coadd, calexpInfoList=calexpInfoList)
                 
-            self.processObject(outRecord=outRecord, coadd=inputs.coadd, objective=objective)
-                
-        
         self.writeOutputs(dataRef, inputs.coaddCat)
         return outCat
 
@@ -301,6 +123,165 @@ class MeasureMultiTask(CmdLineTask):
             coadd = dataRef.get(self.dataPrefix[0:-1], immediate=True),
             coaddCat = dataRef.get(self.dataPrefix + "modelfits", immediate=True),
         )
+
+    def prepCatalog(self, coaddCat):
+        """Create an output ModelFitCatalog that copies appropriate fields from the coadd ModelFitCatalog
+
+        @param[in] exposure     Exposure object that will be fit.
+        @param[in] coaddCat     SourceCatalog containing MeasureCoaddTask measurements
+        @return a ModelFit catalog with one entry per coaddCat
+        """
+        if self.schema is None:
+            self.setSchema(coaddCat)
+
+        self.log.info("Copying data from coadd catalog to new catalog")
+        outCat = ModelFitCatalog(self.schema)
+        for coaddRecord in coaddCat:
+            record = outCat.addNew()
+            record.assign(coaddRecord, self.schemaMapper)
+
+        return outCat
+
+    def getCalexpInfoList(self, butler, coadd):
+        """Get a list of CalexpInfo objects, one per calexp in the coadd
+        
+        @param[in] butler: data butler
+        @param[in] coadd: coadd exposure
+        """
+        coaddExposureInfo = coadd.getExposureInfo()
+        if not coaddExposureInfo.hasCoaddInputs():
+            raise TaskError("coadd exposure info does not contain coadd inputs data")
+        coaddInputs = coaddExposureInfo.getCoaddInputs()
+        calexpInfoList = [CalexpInfo(coaddInput=coaddInput, butler=butler) for coaddInput in coaddInputs]
+
+    @lsst.pipe.base.timeMethod
+    def processObject(self, record, coadd, calexpInfoList):
+        """Process a single object.
+
+        @param[in,out] record   multi-fit ModelFitRecord
+        @param[in] coadd        Coadd exposure
+        @param[in] objective    multi-epoch objective (a MultiEpochObjective);
+                                optimizer objective functions that compute likelihood at a point
+
+        @return a Struct containing various intermediate objects:
+          - objective   the Objective object used to evaluate likelihoods
+          - sampler     the Sampler object used to draw samples
+          - record      the output record (identical to the record argument, which is modified in-place)
+        """
+        objective = self.makeObjective(record, coadd, calexpInfoList)
+
+        sourceCoaddCenter = record.getPointD(self.keys["source.center"])
+        
+        sampler = self.sampler.setup(
+            exposure=coadd,
+            center=sourceCoaddCenter,
+            ellipse=record.getMomentsD(self.keys["source.ellipse"]),
+        )
+
+        samples = sampler.run(objective)
+        samples.applyPrior(self.prior)
+        record.setSamples(samples)
+        mean = samples.interpret(samples.computeMean(), record.getPointD(self.keys["source.center"]))
+        record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
+        record.set(self.keys["mean.center"], mean.getCenter())
+        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
+                                   record.getPointD(self.keys["source.center"]))
+        record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
+        record.set(self.keys["median.center"], median.getCenter())
+
+        return lsst.pipe.base.Struct(objective=objective, sampler=sampler, record=record)
+
+    @lsst.pipe.base.timeMethod
+    def makeObjective(self, record, coadd, calexpInfoList):
+        """Construct a MultiEpochObjective from the calexp footprints
+        """
+        coaddFootprint = record.getFootprint()
+        sourceCoaddPos = record.getPointD(self.keys["source.center"])
+        
+        coaddWcs = coadd.getWcs()
+        sourceSkyPos = coaddWcs.pixelToSky(sourceCoaddPos)
+
+        # process each calexp that partially overlaps this footprint
+        epochImageList = []
+        for calexpInfo in calexpInfoList:
+            calexpFootprint = coaddFootprint.transform(coaddWcs, calexpInfo.wcs, calexpInfo.bbox)
+            if calexpFootprint.getNpix() < 1:
+                # no overlapping pixels, so skip this calexp
+                continue
+            calexpFootprintBBox = calexpFootprint.getBBox()
+            
+            calexp = butler.get(
+                "calexp_sub",
+                bbox=calexpFootprintBBox,
+                origin="PARENT",
+                immediate=True,
+                **calexpInfo.dataId)
+            
+            sourceCalexpPos = calexp.getWcs().skyToPixel(sourceSkyPos)
+            if not calexpFootprintBBox.includes(sourceCalexpPos):
+                self.log.warn("calexp %s footprint bbox %s does not contain source at calexpPos=%s, coaddPos=%s; skipping" \
+                    (calexpInfo.dataId, calexpFootprintBBox, sourceCalexpPos, sourceCoaddPos))
+                continue
+
+            psfModel = FitPsfAlgorithm(self.psfControl, calexp.getPsf(), sourceCalexpPos)
+            psf = psfModel.asMultiShapelet()
+
+            epochImage = EpochFootprint(calexpFootprint, calexp, psf)
+            epochImageList.append(epochImage)
+        
+        objective = MultiEpochObjective(
+            self.config.objective.makeControl(),
+            self.basis,
+            coaddWcs,
+            sourceSkyPos,
+            epochImageList,
+        )
+
+    def setSchema(self, coaddCat):
+        """Construct self.schema; call once as soon as you have your first coadd catalog
+        
+        @param[in] coaddCat  ModelFitCatalog from coadd
+        @raise RuntimeError if self.schema is not None
+        """
+        if self.schema is not None:
+            raise RuntimeError("self.schema already set")
+
+        self.log.info("Setting the schema")
+        self.schemaMapper = lsst.afw.table.SchemaMapper(coaddCat.getSchema())
+    
+        def mapKey(name):
+            """Map one key from coaddCat to self.schemaMapper
+            @param[in] name         name of key to map
+            """
+            inputKey = coaddCat.getSchema().find(keyName)
+            self.keys[keyName] = self.schemaMapper.addMapping(inputKey)
+        
+        for name in ("source.ellipse", "source.center", "snr"):
+            mapKey(name)
+        if "ref" in coaddCat.getSchema():
+            for name in ("ref.ellipse", "ref.center", "ref.sindex"):
+                mapKey(name)
+
+        def addKeys(prefix, doc):
+            """Add <prefix>.ellipse and <prefix>.center keys to self.schemaMapper
+            @param[in] prefix       key name prefix
+            @param[in] doc          documentation prefix
+            """
+            self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
+                                                                    doc=("%s ellipse" % doc))
+            self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
+                                                                   doc=("%s center position" % doc))
+        addKeys("mean", "Posterior mean")
+        addKeys("median", "Posterior median")
+
+        self.schema = self.schemaMapper.getOutputSchema()
+
+    def writeOutputs(self, dataRef, outCat):
+        """Write task outputs using the butler.
+        """
+        self.log.info("Writing output catalog")
+        outCat.sort()  # want to sort by ID before saving, so when we load it's contiguous
+        dataRef.put(outCat, self.dataPrefix + "modelfits")
 
     @classmethod
     def _makeArgumentParser(cls):
