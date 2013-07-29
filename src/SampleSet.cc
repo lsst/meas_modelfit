@@ -179,6 +179,11 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
             priorParameters = (*i)[_keys.parameters];
         }
         i->set(_keys.marginal, prior->apply(_keys.getJoint(*i), priorParameters.asEigen()) + logJacobian);
+        if (!utils::isfinite(logJacobian)) {
+            // Sometimes we get NaNs in Jacobian due to 1/r where r==0; these are actually infinities,
+            // and should translate into zero-probability points.
+            i->set(_keys.marginal, std::numeric_limits<samples::Scalar>::infinity());
+        }
         // for numerical reasons, in the first pass, we set w_i = ln(m_i/q_i);
         // note that i->proposal == -ln(q_i) and i->marginal == -ln(m_i)
         i->set(_keys.weight, i->get(_keys.proposal) - i->get(_keys.marginal));
@@ -213,7 +218,7 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
         wSum += (*i)[_keys.weight] = std::exp(i->get(_keys.weight) - z);
         assert(utils::isfinite(i->get(_keys.weight)));
     }
-    assert(wSum > 0.0);
+    assert(!(wSum <= 0.0));
     // finally, we normalize w_i...
     for (i = _records.begin(); i != _records.end(); ++i) {
         (*i)[_keys.weight] /= wSum;
