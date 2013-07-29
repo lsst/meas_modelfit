@@ -29,7 +29,7 @@ import lsst.afw.table
 import lsst.afw.geom.ellipses
 import lsst.meas.extensions.multiShapelet
 
-from .samplers import BaseSamplerTask, NaiveGridSamplerTask
+from .samplers import BaseSamplerTask, AdaptiveImportanceSamplerTask, NaiveGridSamplerTask
 from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
 from .fitRegion import setupFitRegion
 from .models import *
@@ -39,7 +39,7 @@ __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
 class MeasureImageConfig(lsst.pex.config.Config):
     sampler = lsst.pex.config.ConfigurableField(
-        target=NaiveGridSamplerTask,
+        target=AdaptiveImportanceSamplerTask,
         doc="Subtask that generates samples from the probability of a galaxy model given image data"
     )
     objective = lsst.pex.config.ConfigField(
@@ -72,6 +72,10 @@ class MeasureImageConfig(lsst.pex.config.Config):
         default=False,
         doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
     )
+
+    def setDefaults(self):
+        self.psf.innerOrder = 4
+        self.psf.outerOrder = 0
 
 class MeasureImageTask(lsst.pipe.base.CmdLineTask):
     """Driver class for S13-specific galaxy modeling work
@@ -152,7 +156,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
         sampler = self.sampler.setup(exposure=exposure, center=record.getPointD(self.keys["ref.center"]),
-                                     ellipse=record.getMomentsD(self.keys["ref.ellipse"]))
+                                     ellipse=record.getMomentsD(self.keys["ref.ellipse"]), prior=self.prior)
         objective = SingleEpochObjective(
             self.config.objective.makeControl(), self.basis, psf,
             exposure.getMaskedImage(), record.getFootprint()
