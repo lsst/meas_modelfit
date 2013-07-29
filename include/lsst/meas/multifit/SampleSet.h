@@ -181,6 +181,26 @@ public:
         KernelDensityEstimatorControl const & ctrlY
     ) const;
 
+    /**
+     *  @brief Compute the normalized perplexity of the samples
+     *
+     *  This is the exponential of the Shannon entropy of the weights, divided by the number of samples:
+     *  @f[
+     *     \frac{1}{N}\exp\left(-\sum_i^N w_i \ln w_i\right)
+     *  @f]
+     */
+    double computeNormalizedPerplexity() const;
+
+    /**
+     *  @brief Compute the fraction of the effective sample size over the actual sample size
+     *
+     *  The effective sample size is the inverse of the sum of squares of weights:
+     *  @f[
+     *     \frac{1}{N}\left(\sum_i^N w_i^2 \right)^{-1}
+     *  @f]
+     */
+    double computeEffectiveSampleSizeFraction() const;
+
     /// Return the number of samples.
     std::size_t size() const { return _records.size(); }
 
@@ -207,10 +227,13 @@ public:
      *  If the given value is less than std::numeric_limits<double>::min(), it will be reset
      *  to that value to avoid numerical issues.
      */
-    double applyPrior(PTR(Prior) const & prior, double clip=0);
+    double applyPrior(PTR(Prior const) prior, double clip=0);
 
     /// Remove the prior from the SampleSet, allowing new SamplePoints to be added.
     void dropPrior();
+
+    /// Remove all records and drop the prior.
+    void clear();
 
     /**
      *  @brief Compute quantiles of a single nonlinear parameters

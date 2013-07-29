@@ -96,9 +96,9 @@ SampleSet::SampleSet(tbl::BaseCatalog const & records, ParameterDefinition const
 void SampleSet::setParameterDefinition(ParameterDefinition const & parameterDefinition) {
     if (*_parameterDefinition == parameterDefinition) return;
     PTR(ParameterConverter const) converter = _parameterDefinition->makeConverterTo(parameterDefinition);
-    ndarray::Array<samples::Scalar,2,1> parameters = _records.getColumnView()[_keys.parameters];
-    for (ndarray::Array<samples::Scalar,2,1>::Iterator i = parameters.begin(); i != parameters.end(); ++i) {
-        converter->apply(*i, *i);
+    for (tbl::BaseCatalog::iterator s = _records.begin(); s != _records.end(); ++s) {
+        ndarray::Array<samples::Scalar,1,1> a = (*s)[_keys.parameters];
+        converter->apply(a, a);
     }
     _parameterDefinition = &parameterDefinition;
 }
@@ -133,6 +133,22 @@ ndarray::Array<double,2,2> SampleSet::computeDensity(
     return result;
 }
 
+double SampleSet::computeNormalizedPerplexity() const {
+    double h = 0.0;
+    for (tbl::BaseCatalog::const_iterator s = _records.begin(); s != _records.end(); ++s) {
+        h -= s->get(_keys.weight) * std::log(s->get(_keys.weight));
+    }
+    return std::exp(h) / _records.size();
+}
+
+double SampleSet::computeEffectiveSampleSizeFraction() const {
+    double t = 0.0;
+    for (tbl::BaseCatalog::const_iterator s = _records.begin(); s != _records.end(); ++s) {
+        t += s->get(_keys.weight) * s->get(_keys.weight);
+    }
+    return 1.0 / (t * _records.size());
+}
+
 void SampleSet::add(LogGaussian const & joint, double proposal, samples::Vector const & parameters) {
     if (parameters.size() != getNonlinearDim()) {
         throw LSST_EXCEPT(
@@ -160,7 +176,7 @@ void SampleSet::add(LogGaussian const & joint, double proposal, samples::Vector 
     _keys.setParameters(*newRecord, parameters);
 }
 
-double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
+double SampleSet::applyPrior(PTR(Prior const) prior, double clip) {
     _prior = prior;
     std::size_t origSize = _records.size();
     tbl::BaseCatalog::iterator i = _records.begin();
@@ -187,6 +203,13 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
         // for numerical reasons, in the first pass, we set w_i = ln(m_i/q_i);
         // note that i->proposal == -ln(q_i) and i->marginal == -ln(m_i)
         i->set(_keys.weight, i->get(_keys.proposal) - i->get(_keys.marginal));
+        if (utils::isnan(i->get(_keys.weight))) {
+            throw LSST_EXCEPT(
+                pex::exceptions::RuntimeErrorException,
+                (boost::format("NaN encountered in weights: marginal=%f, proposal=%f")
+                 % i->get(_keys.marginal) % i->get(_keys.proposal)).str()
+            );
+        }
     }
     // sort by ascending probability, so when we accumulate, we add small numbers together
     // before adding them to large numbers
@@ -202,7 +225,10 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
     }
     _records.erase(_records.begin(), i);
     if (_records.empty()) {
-        return std::numeric_limits<double>::infinity();
+        throw LSST_EXCEPT(
+            pex::exceptions::RuntimeErrorException,
+            "No unclipped samples after applyPrior"
+        );
     }
     // we now compute z, the arithmetic mean of ln(m_i/q_i)
     double z = 0.0;
@@ -233,6 +259,11 @@ void SampleSet::dropPrior() {
     for (tbl::BaseCatalog::iterator i = _records.begin(); i != _records.end(); ++i) {
         (*i)[_keys.weight] = (*i)[_keys.marginal] = std::numeric_limits<double>::quiet_NaN();
     }
+    _prior.reset();
+}
+
+void SampleSet::clear() {
+    _records.clear();
     _prior.reset();
 }
 
