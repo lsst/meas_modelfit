@@ -22,17 +22,22 @@
 #
 
 from lsst.pipe.base import CmdLineTask, Struct, TaskError
-import lsst.pex.config as pexConfig
+import lsst.pex.config
 
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
-from .multifitLib import EpochFootprint
+from .multifitLib import EpochFootprint, MultiEpochObjective
 from .measureImage import BaseMeasureConfig 
 
 __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
 
-class MeasureImageConfig(BaseMeasureConfig):
+class MeasureMultiConfig(BaseMeasureConfig):
+    coaddName = lsst.pex.config.Field(
+        doc = "coadd name: typically one of deep or goodSeeing",
+        dtype = str,
+        default = "deep",
+    )
     objective = lsst.pex.config.ConfigField(
-        dtype=SingleEpochObjective.ConfigClass,
+        dtype=MultiEpochObjective.ConfigClass,
         doc="Config for objective object that computes model probability at given parameters"
     )
 
@@ -121,7 +126,7 @@ class MeasureMultiTask(CmdLineTask):
         """
         return lsst.pipe.base.Struct(
             coadd = dataRef.get(self.dataPrefix[0:-1], immediate=True),
-            coaddCat = dataRef.get(self.dataPrefix + "modelfits", immediate=True),
+            coaddCat = dataRef.get(self.dataPrefix + "multiModelfits", immediate=True),
         )
 
     def prepCatalog(self, coaddCat):
@@ -291,3 +296,13 @@ class MeasureMultiTask(CmdLineTask):
         parser.add_id_argument("--id", "deepCoadd",
             help="coadd data ID, e.g. --id tract=1 patch=2,2 filter=g")
         return parser
+
+    def _getConfigName(self):
+        """Return the name of the config dataset
+        """
+        return "%s_measureCoadd_config" % (self.config.coaddName,)
+
+    def _getMetadataName(self):
+        """Return the name of the metadata dataset
+        """
+        return "%s_measureCoadd_metadata" % (self.config.coaddName,)

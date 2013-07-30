@@ -35,7 +35,7 @@ from .fitRegion import setupFitRegion
 from .models import *
 from .priors import *
 
-__all__ = ("MeasureImageConfig", "MeasureImageTask")
+__all__ = ("BaseMeasureConfig", "MeasureImageConfig", "MeasureImageTask")
 
 class BaseMeasureConfig(lsst.pex.config.Config):
     sampler = lsst.pex.config.ConfigurableField(
@@ -131,6 +131,8 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             refCat = dataRef.get("refcat", immediate=True)
         except:
             refCat = None
+        if refCat is None and self.config.useRefCat:
+            raise TaskError("useRefCat true but no reference catalog found")
         return lsst.pipe.base.Struct(
             exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True),
             srcCat = dataRef.get(self.dataPrefix + "src", immediate=True),

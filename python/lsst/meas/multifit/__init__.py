@@ -24,6 +24,7 @@ from .multifitLib import *
 from .measureCcd import *
 from .measureCoadd import *
 from .measureImage import *
+from .measureMulti import *
 from .fitRegion import *
 from .samplers import *
 from .models import *
