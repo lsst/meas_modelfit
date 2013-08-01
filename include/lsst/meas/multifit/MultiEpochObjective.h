@@ -47,6 +47,7 @@ namespace lsst { namespace meas { namespace multifit {
  *  be created from the config object via the makeControl() method (see lsst.pex.config.wrap).
  */
 class MultiEpochObjectiveControl : public SingleEpochObjectiveControl {
+public:
     MultiEpochObjectiveControl() : SingleEpochObjectiveControl() {}
 };
 
@@ -70,10 +71,10 @@ public:
         shapelet::MultiShapeletFunction const &psfModel
     );
     
-    lsst::afw::detection::Footprint footprint;  ///< footprint of source (galaxy)
-    lsst::afw::image::Exposure<Pixel> exposure; ///< subregion of exposure that includes footprint
-    shapelet::MultiShapeletFunction psfModel;   ///< multi-shapelet model of exposure PSF
-    int numPixels;                              ///< number of pixels in footprint
+    lsst::afw::detection::Footprint const footprint;  ///< footprint of source (galaxy)
+    lsst::afw::image::Exposure<Pixel> const exposure; ///< subregion of exposure that includes footprint
+    shapelet::MultiShapeletFunction const psfModel;   ///< multi-shapelet model of exposure PSF
+    int const numPixels;                              ///< number of pixels in footprint
 };
 
 #ifndef SWIG
@@ -107,7 +108,7 @@ public:
         shapelet::MultiShapeletBasis const & basis,
         afw::image::Wcs const & coaddWcs,
         afw::coord::Coord const & sourceSkyPos,
-        std::vector<CONST_PTR(EpochFootprint)> const & epochImageList
+        std::vector<PTR(EpochFootprint)> const & epochImageList
     );
 
 private:
@@ -119,7 +120,7 @@ private:
                                 ///<   where the mean is computed separately for each epoch
     PixelArray1 _weightedData;  ///< vector of weighted image pixels for all calexp concatenated
     PixelArray2CM _modelMatrix; ///< model matrix; set by evaluate
-    std::vector<CONST_PTR(EpochMatrixBuilder)>  _epochMatrixBuilderList;
+    std::vector<PTR(EpochMatrixBuilder)>  _epochMatrixBuilderList;
                                 ///< list of shared_ptr to EpochMatrixBuilder;
                                 ///< one entry for each element of epochImageList
 };

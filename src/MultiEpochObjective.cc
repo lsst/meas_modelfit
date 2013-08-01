@@ -89,10 +89,10 @@ public:
         shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder
     );
 
-    int begIndex;           ///< beginning index of this epoch's data in _weights, etc.
-    int numPixels;          ///< number of pixels in this epoch's footprint
-    lsst::afw::geom::AffineTransform coaddToCalexp; /// affine transform of coadd pixels->calexp pixels
-    shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder;  ///< multishapelet matrix builder
+    int const begIndex;         ///< beginning index of this epoch's data in _weights, etc.
+    int const numPixels;        ///< number of pixels in this epoch's footprint
+    lsst::afw::geom::AffineTransform const coaddToCalexp;  /// affine transform of coadd pixels->calexp pixels
+    shapelet::MultiShapeletMatrixBuilder<Pixel> const matrixBuilder;    ///< multishapelet matrix builder
 };
 
 EpochMatrixBuilder::EpochMatrixBuilder(
@@ -112,7 +112,7 @@ MultiEpochObjective::MultiEpochObjective(
     shapelet::MultiShapeletBasis const & basis,
     afw::image::Wcs const & coaddWcs,
     afw::coord::Coord const & sourceSkyPos,
-    std::vector<CONST_PTR(EpochFootprint)> const & epochImageList
+    std::vector<PTR(EpochFootprint)> const & epochImageList
 ) :
     _totPixels(std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum)),
     _dataSquaredNorm(0),
@@ -123,7 +123,7 @@ MultiEpochObjective::MultiEpochObjective(
 {
     afw::geom::AffineTransform coaddToSky = coaddWcs.linearizePixelToSky(sourceSkyPos, afw::geom::radians);
     int begIndex = 0;
-    for (std::vector<CONST_PTR(EpochFootprint)>::const_iterator imPtrIter = epochImageList.begin();
+    for (std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochImageList.begin();
         imPtrIter != epochImageList.end(); ++imPtrIter) {
 
         begIndex = begIndex;
@@ -146,7 +146,7 @@ MultiEpochObjective::MultiEpochObjective(
                 (*imPtrIter)->footprint,
                 maskedImage.getVariance()->getArray(),
                 maskedImage.getXY0()).asEigen();
-            
+        
         if (!ctrl.usePixelWeights) {
             // the weight for this component is the same for all pixels: e^mean(log(weight))
             _weights.asEigen().segment(begIndex, numPixels).setConstant(
@@ -157,16 +157,15 @@ MultiEpochObjective::MultiEpochObjective(
             afw::detection::flattenArray(
                 (*imPtrIter)->footprint,
                 maskedImage.getImage()->getArray(),
-                maskedImage.getXY0()).asEigen() * _weights.asEigen().segment(begIndex, numPixels);
-
+                maskedImage.getXY0()).asEigen().array()
+                                      * _weights.asEigen().segment(begIndex, numPixels).array();
         begIndex += numPixels;
     }
     _dataSquaredNorm = _weightedData.asEigen().cast<double>().squaredNorm();
 }
 
 LogGaussian MultiEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
-    int const numCols = _modelMatrix.getSize<1>();
-    for (std::vector<CONST_PTR(EpochMatrixBuilder)>::const_iterator mbPtrIter =
+    for (std::vector<PTR(EpochMatrixBuilder)>::const_iterator mbPtrIter =
         _epochMatrixBuilderList.begin(); mbPtrIter != _epochMatrixBuilderList.end(); ++mbPtrIter) {
         afw::geom::ellipses::Ellipse localEllipse = ellipse.transform((*mbPtrIter)->coaddToCalexp);
 

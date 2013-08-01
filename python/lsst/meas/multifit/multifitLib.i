@@ -72,7 +72,7 @@ namespace lsst { namespace shapelet {
 class MultiShapeletBasis;
 }}
 
-%template(VectorEpochImage) std::vector<CONST_PTR(lsst::meas::multifit::EpochFootprint)>;
+%template(VectorEpochFootprint) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
 %declareNumPyConverters(lsst::meas::multifit::samples::Vector);
 %declareNumPyConverters(lsst::meas::multifit::samples::Matrix);
@@ -88,6 +88,7 @@ class MultiShapeletBasis;
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);
+%shared_ptr(lsst::meas::multifit::EpochFootprint);
 %shared_ptr(lsst::meas::multifit::MultiEpochObjective);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
 %shared_ptr(lsst::meas::multifit::NaiveGridSampler);

@@ -20,12 +20,15 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+import numpy
 
 from lsst.pipe.base import CmdLineTask, Struct, TaskError
 import lsst.pex.config
-
+import lsst.afw.table # temporary hack; see PSF HACK below
+import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
-from .multifitLib import EpochFootprint, MultiEpochObjective
+from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochObjective, ModelFitCatalog, \
+    ModelFitTable
 from .measureImage import BaseMeasureConfig 
 
 __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
@@ -40,7 +43,11 @@ class MeasureMultiConfig(BaseMeasureConfig):
         dtype=MultiEpochObjective.ConfigClass,
         doc="Config for objective object that computes model probability at given parameters"
     )
-
+    minPixels = lsst.pex.config.Field(
+        doc = "minimum number of pixels in a calexp footprint to use that calexp for a given galaxy",
+        dtype = int,
+        default = 5,
+    )
 
 class CalexpInfo(object):
     """Basic information about a calexp that was used to generate a coadd
@@ -49,11 +56,21 @@ class CalexpInfo(object):
     (one per calexp/epoch). Thus it holds no image pixels. Once per object we iterate over these
     and use the information to determine which subregion of each calexp to unpersist.
     """
+    @classmethod
+    def setKeys(cls, schema):
+        """Obtain the required keys from the specified schema.
+        
+        Must be called before instantiating any instances of this class.
+        """
+        cls.keys = dict()
+        for keyName in ("bbox.min", "bbox.max", "visit", "ccd", "goodpix"):
+            cls.keys[keyName] = schema.find(keyName).getKey()
+        
     def __init__(self, coaddInput, butler):
         """Construct a CalexpInfo from a CoaddInput
         
         @param[in] coaddInput: CoaddInput for a calexp
-        @param[in] mapper: butler mapper containing the function getDataId(visit, ccdId)
+        @param[in] butler: data butler whose mapper contains the function getDataId(visit, ccdId)
         
         Attributes include:
         - bbox: parent bounding box (??of the whole exposure, or just the portion that overlaps the coadd??)
@@ -68,14 +85,21 @@ class CalexpInfo(object):
            (Field['L'](name="visit", doc="Foreign key for the visits (coaddTempExp) catalog"), Key<L>(offset=32, nElements=1)),
            (Field['I'](name="goodpix", doc="Number of good pixels in this CCD"), Key<I>(offset=40, nElements=1)),
         """
-        self.bbox = afwGeom.Box2I(coaddInput["bbox.min"], coaddInput["bbox.max"])
-        self.dataId = butler.mapper.getDataId(visit=coaddInput["visit"], ccdId=coaddInput["id"])
-        self.goodPix = coaddInput["goodpix"]
+        self.bbox = afwGeom.Box2I(coaddInput.get(self.keys["bbox.min"]), coaddInput.get(self.keys["bbox.max"]))
+        self.dataId = butler.mapper.getDataId(
+            visit=coaddInput.get(self.keys["visit"]),
+            ccdId=coaddInput.get(self.keys["ccd"]),
+        )
+        self.goodPix = coaddInput[self.keys["goodpix"]]
         tinyBBox = afwGeom.Box2I(afwGeom.Point2I(0,0), afwGeom.Extent2I(1,1))
-        tinyCalexp = butler.get("calexp_sub", bbox=tinyBBox, imageOrigin="LOCAL",
-                                immediate=True, **self.dataId)
+        tinyCalexp = butler.get(
+            "calexp_sub",
+            bbox=tinyBBox,
+            imageOrigin="LOCAL",
+            immediate=True,
+            **self.dataId
+        )
         self.wcs = tinyCalexp.getWcs()
-
 
 class MeasureMultiTask(CmdLineTask):
     """Variant of MeasureImageTask for running multifit on the calexp that make up a coadd.
@@ -104,13 +128,13 @@ class MeasureMultiTask(CmdLineTask):
         @param[in] dataRef: coadd data reference
         """
         inputs = self.readInputs(dataRef)
-        outCat = self.prepCatalog(inputs.exposure, coaddCat=inputs.coaddCat)
+        outCat = self.prepCatalog(coaddCat=inputs.coaddCat)
 
         if not self.config.prepOnly:
             butler = dataRef.getButler()
             calexpInfoList = self.getCalexpInfoList(butler=butler, coadd=inputs.coadd)
             for record in outCat:
-                self.processObject(record=record, coadd=inputs.coadd, calexpInfoList=calexpInfoList)
+                self.processObject(record=record, butler=butler, coadd=inputs.coadd, calexpInfoList=calexpInfoList)
                 
         self.writeOutputs(dataRef, inputs.coaddCat)
         return outCat
@@ -126,7 +150,7 @@ class MeasureMultiTask(CmdLineTask):
         """
         return lsst.pipe.base.Struct(
             coadd = dataRef.get(self.dataPrefix[0:-1], immediate=True),
-            coaddCat = dataRef.get(self.dataPrefix + "multiModelfits", immediate=True),
+            coaddCat = dataRef.get(self.dataPrefix + "modelfits", immediate=True),
         )
 
     def prepCatalog(self, coaddCat):
@@ -153,17 +177,19 @@ class MeasureMultiTask(CmdLineTask):
         @param[in] butler: data butler
         @param[in] coadd: coadd exposure
         """
-        coaddExposureInfo = coadd.getExposureInfo()
+        coaddExposureInfo = coadd.getInfo()
         if not coaddExposureInfo.hasCoaddInputs():
             raise TaskError("coadd exposure info does not contain coadd inputs data")
         coaddInputs = coaddExposureInfo.getCoaddInputs()
-        calexpInfoList = [CalexpInfo(coaddInput=coaddInput, butler=butler) for coaddInput in coaddInputs]
+        CalexpInfo.setKeys(coaddInputs.ccds.schema)
+        return [CalexpInfo(coaddInput=coaddInput, butler=butler) for coaddInput in coaddInputs.ccds]
 
     @lsst.pipe.base.timeMethod
-    def processObject(self, record, coadd, calexpInfoList):
+    def processObject(self, record, butler, coadd, calexpInfoList):
         """Process a single object.
 
         @param[in,out] record   multi-fit ModelFitRecord
+        @param[in] butler       data butler
         @param[in] coadd        Coadd exposure
         @param[in] objective    multi-epoch objective (a MultiEpochObjective);
                                 optimizer objective functions that compute likelihood at a point
@@ -173,7 +199,12 @@ class MeasureMultiTask(CmdLineTask):
           - sampler     the Sampler object used to draw samples
           - record      the output record (identical to the record argument, which is modified in-place)
         """
-        objective = self.makeObjective(record, coadd, calexpInfoList)
+        objective = self.makeObjective(
+            record=record,
+            butler=butler,
+            coadd=coadd,
+            calexpInfoList=calexpInfoList,
+        )
 
         sourceCoaddCenter = record.getPointD(self.keys["source.center"])
         
@@ -197,8 +228,13 @@ class MeasureMultiTask(CmdLineTask):
         return lsst.pipe.base.Struct(objective=objective, sampler=sampler, record=record)
 
     @lsst.pipe.base.timeMethod
-    def makeObjective(self, record, coadd, calexpInfoList):
+    def makeObjective(self, record, butler, coadd, calexpInfoList):
         """Construct a MultiEpochObjective from the calexp footprints
+
+        @param[in] record   multi-fit ModelFitRecord
+        @param[in] butler       data butler
+        @param[in] coadd        Coadd exposure
+        @param[in] calexpInfoList    list of CalexpInfo, one per calexp in the coadd
         """
         coaddFootprint = record.getFootprint()
         sourceCoaddPos = record.getPointD(self.keys["source.center"])
@@ -207,39 +243,54 @@ class MeasureMultiTask(CmdLineTask):
         sourceSkyPos = coaddWcs.pixelToSky(sourceCoaddPos)
 
         # process each calexp that partially overlaps this footprint
-        epochImageList = []
+        epochFootprintList = VectorEpochFootprint()
         for calexpInfo in calexpInfoList:
             calexpFootprint = coaddFootprint.transform(coaddWcs, calexpInfo.wcs, calexpInfo.bbox)
-            if calexpFootprint.getNpix() < 1:
+            calexpFootprint.clipTo(calexpInfo.bbox) # Footprint.transform does not clip
+            
+            # due to ticket #2979 this test is invalid -- getNpix includes clipped pixels!
+            # so also test that the footprint's bbox is not empty
+            if calexpFootprint.getNpix() < self.config.minPixels:
                 # no overlapping pixels, so skip this calexp
                 continue
             calexpFootprintBBox = calexpFootprint.getBBox()
+            if calexpFootprintBBox.isEmpty(): # temporary hack due to ticket #2979
+                continue
             
             calexp = butler.get(
                 "calexp_sub",
                 bbox=calexpFootprintBBox,
                 origin="PARENT",
                 immediate=True,
-                **calexpInfo.dataId)
+                **calexpInfo.dataId
+            )
             
             sourceCalexpPos = calexp.getWcs().skyToPixel(sourceSkyPos)
-            if not calexpFootprintBBox.includes(sourceCalexpPos):
-                self.log.warn("calexp %s footprint bbox %s does not contain source at calexpPos=%s, coaddPos=%s; skipping" \
-                    (calexpInfo.dataId, calexpFootprintBBox, sourceCalexpPos, sourceCoaddPos))
-                continue
+# the following test is apparently not necessary; we just want a few valid pixels            
+#             if not calexpFootprintBBox.contains(afwGeom.Point2I(sourceCalexpPos)):
+#                 self.log.warn("calexp %s footprint bbox %s does not contain source at calexpPos=%s, coaddPos=%s; skipping" % \
+#                     (calexpInfo.dataId, calexpFootprintBBox, sourceCalexpPos, sourceCoaddPos))
+#                 continue
 
-            psfModel = FitPsfAlgorithm(self.psfControl, calexp.getPsf(), sourceCalexpPos)
+            # PSF HACK the next line should work; since it doesn't, use the mess below it instead
+            #psfModel = FitPsfAlgorithm.apply(self.psfControl, calexp.getPsf(), sourceCalexpPos)
+            schema = lsst.afw.table.Schema()
+            psfFitter = FitPsfAlgorithm(self.psfControl, schema)
+            tempTable = lsst.afw.table.BaseTable.make(schema)
+            tempRecord = tempTable.makeRecord()
+            psfModel = psfFitter.apply(tempRecord, calexp.getPsf(), sourceCalexpPos)
+
             psf = psfModel.asMultiShapelet()
 
-            epochImage = EpochFootprint(calexpFootprint, calexp, psf)
-            epochImageList.append(epochImage)
-        
-        objective = MultiEpochObjective(
+            epochFootprint = EpochFootprint(calexpFootprint, calexp, psf)
+            epochFootprintList.append(epochFootprint)
+
+        return MultiEpochObjective(
             self.config.objective.makeControl(),
             self.basis,
             coaddWcs,
             sourceSkyPos,
-            epochImageList,
+            epochFootprintList,
         )
 
     def setSchema(self, coaddCat):
@@ -253,12 +304,13 @@ class MeasureMultiTask(CmdLineTask):
 
         self.log.info("Setting the schema")
         self.schemaMapper = lsst.afw.table.SchemaMapper(coaddCat.getSchema())
+        self.schemaMapper.addMinimalSchema(ModelFitTable.makeMinimalSchema())
     
-        def mapKey(name):
+        def mapKey(keyName):
             """Map one key from coaddCat to self.schemaMapper
-            @param[in] name         name of key to map
+            @param[in] keyName      name of key to map
             """
-            inputKey = coaddCat.getSchema().find(keyName)
+            inputKey = coaddCat.getSchema().find(keyName).getKey()
             self.keys[keyName] = self.schemaMapper.addMapping(inputKey)
         
         for name in ("source.ellipse", "source.center", "snr"):
@@ -266,6 +318,8 @@ class MeasureMultiTask(CmdLineTask):
         if "ref" in coaddCat.getSchema():
             for name in ("ref.ellipse", "ref.center", "ref.sindex"):
                 mapKey(name)
+
+        self.schema = self.schemaMapper.getOutputSchema()
 
         def addKeys(prefix, doc):
             """Add <prefix>.ellipse and <prefix>.center keys to self.schemaMapper
@@ -279,14 +333,12 @@ class MeasureMultiTask(CmdLineTask):
         addKeys("mean", "Posterior mean")
         addKeys("median", "Posterior median")
 
-        self.schema = self.schemaMapper.getOutputSchema()
-
     def writeOutputs(self, dataRef, outCat):
         """Write task outputs using the butler.
         """
         self.log.info("Writing output catalog")
         outCat.sort()  # want to sort by ID before saving, so when we load it's contiguous
-        dataRef.put(outCat, self.dataPrefix + "modelfits")
+        dataRef.put(outCat, self.dataPrefix + "multiModelfits")
 
     @classmethod
     def _makeArgumentParser(cls):
@@ -300,9 +352,9 @@ class MeasureMultiTask(CmdLineTask):
     def _getConfigName(self):
         """Return the name of the config dataset
         """
-        return "%s_measureCoadd_config" % (self.config.coaddName,)
+        return "%s_measureMulti_config" % (self.config.coaddName,)
 
     def _getMetadataName(self):
         """Return the name of the metadata dataset
         """
-        return "%s_measureCoadd_metadata" % (self.config.coaddName,)
+        return "%s_measureMulti_metadata" % (self.config.coaddName,)
