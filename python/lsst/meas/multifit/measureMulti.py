@@ -20,6 +20,9 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+import sys
+import traceback
+
 import numpy
 
 from lsst.pipe.base import CmdLineTask, Struct, TaskError
@@ -133,8 +136,14 @@ class MeasureMultiTask(CmdLineTask):
         if not self.config.prepOnly:
             butler = dataRef.getButler()
             calexpInfoList = self.getCalexpInfoList(butler=butler, coadd=inputs.coadd)
-            for record in outCat:
-                self.processObject(record=record, butler=butler, coadd=inputs.coadd, calexpInfoList=calexpInfoList)
+            numObjects = len(outCat)
+            for i, record in enumerate(outCat):
+                self.log.info("Processing object %s of %s" % (i + 1, numObjects))
+                try:
+                    self.processObject(record=record, butler=butler, coadd=inputs.coadd, calexpInfoList=calexpInfoList)
+                except Exception, e:
+                    self.log.warn("processObject failed: %s\n" % (e,))
+                    traceback.print_exc(file=sys.stderr)
                 
         self.writeOutputs(dataRef, inputs.coaddCat)
         return outCat
@@ -272,13 +281,13 @@ class MeasureMultiTask(CmdLineTask):
 #                     (calexpInfo.dataId, calexpFootprintBBox, sourceCalexpPos, sourceCoaddPos))
 #                 continue
 
-            # PSF HACK the next line should work; since it doesn't, use the mess below it instead
-            #psfModel = FitPsfAlgorithm.apply(self.psfControl, calexp.getPsf(), sourceCalexpPos)
-            schema = lsst.afw.table.Schema()
-            psfFitter = FitPsfAlgorithm(self.psfControl, schema)
-            tempTable = lsst.afw.table.BaseTable.make(schema)
-            tempRecord = tempTable.makeRecord()
-            psfModel = psfFitter.apply(tempRecord, calexp.getPsf(), sourceCalexpPos)
+            psfModel = FitPsfAlgorithm.apply(self.psfControl, calexp.getPsf(), sourceCalexpPos)
+            # PSF HACK may no longer be needed as of meas_extensions_multiShapelet tickets/2961, but if it is, use the mess below it instead
+#             schema = lsst.afw.table.Schema()
+#             psfFitter = FitPsfAlgorithm(self.psfControl, schema)
+#             tempTable = lsst.afw.table.BaseTable.make(schema)
+#             tempRecord = tempTable.makeRecord()
+#             psfModel = psfFitter.apply(tempRecord, calexp.getPsf(), sourceCalexpPos)
 
             psf = psfModel.asMultiShapelet()
 
