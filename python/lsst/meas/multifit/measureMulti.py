@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -27,7 +26,6 @@ import numpy
 
 from lsst.pipe.base import CmdLineTask, Struct, TaskError
 import lsst.pex.config
-import lsst.afw.table # temporary hack; see PSF HACK below
 import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochObjective, ModelFitCatalog, \
@@ -145,7 +143,7 @@ class MeasureMultiTask(CmdLineTask):
                     self.log.warn("processObject failed: %s\n" % (e,))
                     traceback.print_exc(file=sys.stderr)
                 
-        self.writeOutputs(dataRef, inputs.coaddCat)
+        self.writeOutputs(dataRef, outCat)
         return outCat
 
     def readInputs(self, dataRef):
@@ -275,20 +273,8 @@ class MeasureMultiTask(CmdLineTask):
             )
             
             sourceCalexpPos = calexp.getWcs().skyToPixel(sourceSkyPos)
-# the following test is apparently not necessary; we just want a few valid pixels            
-#             if not calexpFootprintBBox.contains(afwGeom.Point2I(sourceCalexpPos)):
-#                 self.log.warn("calexp %s footprint bbox %s does not contain source at calexpPos=%s, coaddPos=%s; skipping" % \
-#                     (calexpInfo.dataId, calexpFootprintBBox, sourceCalexpPos, sourceCoaddPos))
-#                 continue
 
             psfModel = FitPsfAlgorithm.apply(self.psfControl, calexp.getPsf(), sourceCalexpPos)
-            # PSF HACK may no longer be needed as of meas_extensions_multiShapelet tickets/2961, but if it is, use the mess below it instead
-#             schema = lsst.afw.table.Schema()
-#             psfFitter = FitPsfAlgorithm(self.psfControl, schema)
-#             tempTable = lsst.afw.table.BaseTable.make(schema)
-#             tempRecord = tempTable.makeRecord()
-#             psfModel = psfFitter.apply(tempRecord, calexp.getPsf(), sourceCalexpPos)
-
             psf = psfModel.asMultiShapelet()
 
             epochFootprint = EpochFootprint(calexpFootprint, calexp, psf)

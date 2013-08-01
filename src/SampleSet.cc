@@ -223,14 +223,16 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
         if (!utils::isfinite(i->get(_keys.weight))) {
             throw LSST_EXCEPT(
                 pex::exceptions::LogicErrorException,
-                "i->get(_keys.weight) not finite in SampleSet::applyPrior before normalization"
+                (boost::format(
+                    "i->get(_keys.weight) = %d not finite in SampleSet::applyPrior before normalization")
+                    % i->get(_keys.weight)).str()
             );
         }
     }
     if (wSum <= 0.0) {
         throw LSST_EXCEPT(
             pex::exceptions::LogicErrorException,
-            "wSum not positive in SampleSet::applyPrior"
+            (boost::format("wSum = %d not positive in SampleSet::applyPrior") % wSum).str()
         );
     }
     // finally, we normalize w_i...
@@ -239,7 +241,9 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
         if (!utils::isfinite(i->get(_keys.weight))) {
             throw LSST_EXCEPT(
                 pex::exceptions::LogicErrorException,
-                "i->get(_keys.weight) not finite in SampleSet::applyPrior after normalization"
+                (boost::format(
+                    "i->get(_keys.weight) = %d not finite in SampleSet::applyPrior after normalization")
+                    % i->get(_keys.weight)).str()
             );
         }
     }
