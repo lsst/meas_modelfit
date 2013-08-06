@@ -36,8 +36,9 @@ __all__ = ("priorRegistry", "registerPrior")
 priorRegistry = lsst.pex.config.makeRegistry(
     """Registry for Bayesian priors on galaxy parameters
 
-    The Configurables (callables that take a Config as their first and, in this case, only argument)
-    in the registry should return a subclass of the Prior class.
+    The Configurables (callables that take a Config as their first argument)
+    in the registry should return a subclass of the Prior class, and take one
+    additional 'pixelScale' keyword argument (Angle/pixel).
     """
 )
 
@@ -58,7 +59,7 @@ class FlatPriorConfig(lsst.pex.config.Config):
                                            doc="Maximum ellipticity, in ReducedShear parametrization")
 
     @staticmethod
-    def makePrior(config):
+    def makePrior(config, pixelScale):
         return multifitLib.FlatPrior(config.maxRadius, config.maxEllipticity)
 
 @registerPrior("mixture")
@@ -69,12 +70,14 @@ class MixturePriorConfig(lsst.pex.config.Config):
         )
 
     @staticmethod
-    def makePrior(config):
+    def makePrior(config, pixelScale):
         if os.path.isabs(config.filename):
             path = config.filename
         else:
             path = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "data", config.filename)
         mixture = multifitLib.Mixture3.readFits(path)
+        # convert from log(r) in arcseconds to log(r) in pixels
+        mixture.shift(2, -numpy.log(pixelScale.asArcseconds()))
         return multifitLib.MixturePrior(mixture)
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):

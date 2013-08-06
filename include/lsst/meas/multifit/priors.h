@@ -143,7 +143,7 @@ class MixturePrior :
 {
 public:
 
-    explicit MixturePrior(PTR(Mixture<3> const) mixture);
+    MixturePrior(PTR(Mixture<3> const) mixture);
 
     virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
 
@@ -161,6 +161,7 @@ protected:
 
 private:
     PTR(Mixture<3> const) _mixture;
+    double _pixelScale;
 };
 
 }}} // namespace lsst::meas::multifit

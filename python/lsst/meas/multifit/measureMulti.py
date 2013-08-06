@@ -64,7 +64,7 @@ class MeasureMultiTask(BaseMeasureTask):
         self.makeSubtask("sampler")
         self.schema = None # set later when we have a coadd catalog to copy
         self.basis = self.config.model.apply()
-        self.prior = self.config.prior.apply()
+        self.prior = None # set later when we can look up coadd pixel scale
         self.psfControl = self.config.psf.makeControl()
         self.keys = {}
         self.readInputExposure = None  # placeholder for closure to be installed by readInputs
@@ -154,6 +154,8 @@ class MeasureMultiTask(BaseMeasureTask):
           - sampler     the Sampler object used to draw samples
           - record      the output record (identical to the record argument, which is modified in-place)
         """
+        if self.prior is None:
+            self.prior = self.config.prior.apply(pixelScale=coadd.getWcs().pixelScale())
         objective = self.makeObjective(
             record=record,
             coadd=coadd,

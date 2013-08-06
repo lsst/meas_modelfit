@@ -107,6 +107,13 @@ void Mixture<N>::normalize() {
 }
 
 template <int N>
+void Mixture<N>::shift(int dim, Scalar offset) {
+    for (iterator i = begin(); i != end(); ++i) {
+        i->_mu[dim] += offset;
+    }
+}
+
+template <int N>
 std::size_t Mixture<N>::clip(Scalar threshold) {
     std::size_t count = 0;
     iterator i = begin();
