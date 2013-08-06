@@ -51,7 +51,7 @@ class MeasureImageConfig(lsst.pex.config.Config):
         doc="Definition of the galaxy model to fit"
     )
     prior = priorRegistry.makeField(
-        default="flat",
+        default="mixture",
         doc="Bayesian prior on galaxy parameters"
     )
     psf = lsst.pex.config.ConfigField(
@@ -98,7 +98,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         self.schema = self.schemaMapper.getOutputSchema()
         self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
         self.basis = self.config.model.apply()
-        self.prior = self.config.prior.apply()
+        self.prior = None
         self.keys = {}
         def addKeys(prefix, doc):
             self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
@@ -154,6 +154,8 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
           - psf: a shapelet.MultiShapeletFunction representation of the PSF
           - record: the output record (same as what's passed in and modified in-place)
         """
+        if self.prior is None:
+            self.prior = self.config.prior.apply(pixelScale=exposure.getWcs().pixelScale())
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
         sampler = self.sampler.setup(exposure=exposure, center=record.getPointD(self.keys["source.center"]),

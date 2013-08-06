@@ -241,6 +241,9 @@ public:
     /// Iterate over all components, rescaling their weights so they sum to one.
     void normalize();
 
+    /// Shift the mixture in the given dimension, adding the given offset to all mu vectors.
+    void shift(int dim, Scalar offset);
+
     /**
      *  @brief Iterate over all components, removing those with weight less than or equal to threshold
      *
