@@ -7,7 +7,7 @@ import lsst.afw.geom
 import lsst.daf.persistence
 import lsst.meas.multifit
 
-dataId = dict(visit=1, raft="2,2", sensor="1,1")
+dataId = dict(visit=100, raft="2,2", sensor="1,1")
 
 def main(root, indices=(0,)):
     butler = lsst.daf.persistence.Butler(root)
