@@ -135,19 +135,17 @@ class MeasureImageTask(BaseMeasureTask):
         self.addDerivedFields()
         self.keys["snr"] = self.schema.addField("snr", type=float,
                                                 doc="signal to noise ratio from source apFlux/apFluxErr")
-        if self.config.useRefCat:
-            self.addFields("ref", "Reference catalog")
-            self.keys["ref.sindex"] = self.schema.addField("ref.sindex", type=float,
-                                                           doc="Reference catalog Sersic index")
-            self.keys["ref.flux"] = self.schema.addField("ref.flux", type=float,
-                                                         doc="Reference catalog flux")
+        self.addFields("ref", "Reference catalog")
+        self.keys["ref.sindex"] = self.schema.addField("ref.sindex", type=float,
+                                                       doc="Reference catalog Sersic index")
+        self.keys["ref.flux"] = self.schema.addField("ref.flux", type=float,
+                                                     doc="Reference catalog flux")
 
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing:
           - exposure ----- lsst.afw.image.ExposureF to fit
           - srcCat ------- lsst.afw.table.SourceCatalog with initial measurements
-          - refCat ------- lsst.afw.table.SimpleCatalog with truth values (may be
-                           None if !config.useRefCat)
+          - refCat ------- lsst.afw.table.SimpleCatalog with truth values
         """
         try:
             refCat = dataRef.get("refcat", immediate=True)
@@ -185,8 +183,8 @@ class MeasureImageTask(BaseMeasureTask):
             self.prior = self.config.prior.apply(pixelScale=exposure.getWcs().pixelScale())
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
-        sampler = self.sampler.setup(exposure=exposure, center=record.getPointD(self.keys["source.center"]),
-                                     ellipse=record.getMomentsD(self.keys["source.ellipse"]))
+        sampler = self.sampler.setup(exposure=exposure, center=record.getPointD(self.keys["ref.center"]),
+                                     ellipse=record.getMomentsD(self.keys["ref.ellipse"]))
         objective = SingleEpochObjective(
             self.config.objective.makeControl(), self.basis, psf,
             exposure.getMaskedImage(), record.getFootprint()
@@ -206,7 +204,6 @@ class MeasureImageTask(BaseMeasureTask):
         @param[in]   refCat           Simulation reference catalog used to add truth
                                       values for comparison to each record, and to
                                       set which objects should be fit (i.e. reject stars).
-                                      Ignored if !config.useRefCat.
         @param[in]   where            Callable with signature f(src, ref=None) that takes
                                       a SourceRecord and optional SimpleRecord and returns
                                       True if a ModelFitRecord should be created for that
@@ -225,42 +222,32 @@ class MeasureImageTask(BaseMeasureTask):
             outRecord.setMomentsD(self.keys["source.ellipse"], srcRecord.getShape())
             outRecord.assign(srcRecord, self.schemaMapper)
 
-        if self.config.useRefCat:
-            matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
-            keyA = refCat.getSchema().find("ellipse.a").key
-            keyB = refCat.getSchema().find("ellipse.b").key
-            keyTheta = refCat.getSchema().find("ellipse.theta").key
-            keyMag = refCat.getSchema().find("mag.%s" % exposure.getFilter().getName()).key
-            keySIndex = refCat.getSchema().find("sindex").key
-            wcs = exposure.getWcs()
-            calib = exposure.getCalib()
-            for match in matches:
-                if where is not None and not where(src=match.second, ref=match.first):
-                    continue
-                if match.second.getShapeFlag():
-                    continue
-                ellipse1 = lsst.afw.geom.ellipses.Axes(
-                    (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
-                    (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
-                    (match.first.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
-                    )
-                transform = wcs.linearizeSkyToPixel(match.first.getCoord())
-                ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
-                outRecord = outCat.addNew()
-                outRecord.setMomentsD(self.keys["ref.ellipse"], ellipse2)
-                outRecord.setD(self.keys["ref.flux"], calib.getFlux(match.first.getD(keyMag)))
-                outRecord.setD(self.keys["ref.sindex"], match.first.getD(keySIndex))
-                outRecord.setPointD(self.keys["ref.center"], wcs.skyToPixel(match.first.getCoord()))
-                prepRecord(outRecord, match.second)
-        else:
-            starKey = srcCat.getSchema().find("calib.psf.candidate").key
-            for srcRecord in srcCat:
-                if srcRecord.getFlag(starKey):
-                    continue
-                if where is not None and not where(src=srcRecord):
-                    continue
-                outRecord = outCat.addNew()
-                prepRecord(outRecord, srcRecord)
+        matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
+        keyA = refCat.getSchema().find("ellipse.a").key
+        keyB = refCat.getSchema().find("ellipse.b").key
+        keyTheta = refCat.getSchema().find("ellipse.theta").key
+        keyMag = refCat.getSchema().find("mag.%s" % exposure.getFilter().getName()).key
+        keySIndex = refCat.getSchema().find("sindex").key
+        wcs = exposure.getWcs()
+        calib = exposure.getCalib()
+        for match in matches:
+            if where is not None and not where(src=match.second, ref=match.first):
+                continue
+            if match.second.getShapeFlag():
+                continue
+            ellipse1 = lsst.afw.geom.ellipses.Axes(
+                (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
+                (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
+                (match.first.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
+                )
+            transform = wcs.linearizeSkyToPixel(match.first.getCoord())
+            ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
+            outRecord = outCat.addNew()
+            outRecord.setMomentsD(self.keys["ref.ellipse"], ellipse2)
+            outRecord.setD(self.keys["ref.flux"], calib.getFlux(match.first.getD(keyMag)))
+            outRecord.setD(self.keys["ref.sindex"], match.first.getD(keySIndex))
+            outRecord.setPointD(self.keys["ref.center"], wcs.skyToPixel(match.first.getCoord()))
+            prepRecord(outRecord, match.second)
         return outCat
 
     def fillCatalog(self, exposure, outCat):

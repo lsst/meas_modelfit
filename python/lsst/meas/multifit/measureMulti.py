@@ -242,11 +242,8 @@ class MeasureMultiTask(BaseMeasureTask):
             inputKey = coaddCat.getSchema().find(keyName).getKey()
             self.keys[keyName] = self.schemaMapper.addMapping(inputKey)
 
-        for name in ("source.ellipse", "source.center", "snr"):
+        for name in ("source.ellipse", "source.center", "snr", "ref.ellipse", "ref.center", "ref.sindex"):
             mapKey(name)
-        if "ref" in coaddCat.getSchema():
-            for name in ("ref.ellipse", "ref.center", "ref.sindex"):
-                mapKey(name)
 
         self.schema = self.schemaMapper.getOutputSchema()
         self.addDerivedFields()
