@@ -22,10 +22,14 @@
 #
 
 import os
+import collections
 import numpy
+import copy
 from matplotlib import pyplot
+import matplotlib.colors
 import mpl_toolkits.mplot3d
 
+import lsst.pipe.base
 import lsst.pex.config
 import lsst.daf.persistence
 import lsst.meas.extensions.multiShapelet
@@ -39,37 +43,299 @@ from .multifitLib import *
 
 __all__ = ("makeHistogramGrid", "InteractiveFitter")
 
-def makeHistogramGrid(figure, names):
-    """Function to create a grid of subplots for use in plotting
-    the an N-dimensional density.
+class DensityPlotSet(object):
 
-    The returned grid is a object-type numpy array containing
-    matplotlib.axes.Axes objects.  The off-diagonal subplots are
-    intended for contour plots, and the diagonal plots are
-    intended for 1-d histogram plots.
-    """
-    n = len(names)
-    grid = numpy.empty((n,n), dtype=object)
-    for j in range(n):
-        grid[0,j] = figure.add_subplot(n, n, 1 + j)
-        grid[0,j].set_title(names[j])
-    for i in range(1, n):
-        grid[i,0] = figure.add_subplot(n, n, 1 + i*n, sharex=grid[0,0])
-        grid[i,0].set_ylabel(names[i])
-    for i in range(1, n):
-        for j in range(1, n):
-            grid[i,j] = figure.add_subplot(n, n, 1 + i*n + j, sharex=grid[0,j], sharey=grid[i,0])
-    for i in range(n-1):
-        for j in range(n):
-            for tl in grid[i,j].get_xticklabels(): tl.set_visible(False)
-    for i in range(n):
-        for j in range(1,n):
-            for tl in grid[i,j].get_yticklabels(): tl.set_visible(False)
-    for i in range(n):
-        grid[i,i] = grid[i,i].twinx()
-        for tl in grid[i,i].get_yticklabels():
-            tl.set_color('r')
-    return grid
+    plabels = dict(
+        Quadrupole=("Ixx", "Iyy", "Ixy"),
+        Axes=("a", "b", "theta"),
+        )
+    elabels = dict(
+        ConformalShear="eta",
+        ReducedShear="g",
+        Distortion="e",
+        )
+    rlabels = dict(
+        DeterminantRadius="r_d",
+        TraceRadius="r_t",
+        LogDeterminantRadius="ln(r_d)",
+        LogTraceRadius="ln(r_t)",
+        )
+    for ek, ev in elabels.items():
+        for rk, rv in rlabels.items():
+            plabels["Separable%s%s" % (ek, rk)] = (ev + "1", ev + "2", rv)
+
+    defaults = dict(
+        hist1d=dict(facecolor='b'),
+        hist2d=dict(cmap=pyplot.cm.Blues, vmin=0.0, interpolation='nearest'),
+        scatter3d=dict(linewidth=0, alpha=0.5, cmap=pyplot.cm.Greys, s=4.0,
+                       norm=matplotlib.colors.LogNorm(clip=True)),
+        scatter2d=dict(linewidth=0, alpha=0.5, cmap=pyplot.cm.Greys, s=4.0,
+                       norm=matplotlib.colors.LogNorm(clip=True)),
+        mixture1d=dict(linewidth=2, color='r'),
+        mixture2d=dict(linewidths=2, cmap=pyplot.cm.Reds, vmin=0.0, levels=6),
+        mixture3d=dict(linewidths=2, cmap=pyplot.cm.Reds, vmin=0.0, levels=6),
+        )
+
+    def __init__(self, record, samples=None, mixture=None, bins1d=32, bins2d=32, fraction=0.9999, label=None,
+                 **kwds):
+        """Plot the samples from a ModelFitRecord in histogram and scatter form, possibly with the
+        proposal distribution for comparison.  The samples must have three nonlinear dimensions.
+
+        @param[in]  record       ModelFitRecord from which to obtain data (samples, truth values)
+        @param[in]  samples      If not None, a SampleSet to use instead of record.getSamples()
+        @param[in]  mixture      If not None, a Mixture3 to use instead of record.getProposal()
+        @param[in]  bins1d       Number of bins for 1-d histograms.  May be a three-element sequence
+                                 to specify different numbers of bins for different dimensions.
+        @param[in]  bins2d       Number of bins for 2-d histograms.  May be a three-element sequence
+                                 to specify different numbers of bins for different dimensions.
+        @param[in]  fraction     Set the bounds such that this (weighted) fraction of the SampleSet
+                                 is kept in each dimension, clipping upper and lower evenly.  If bounds
+                                 is 0.98, for instance, we'll compute the 1% and 99% percentiles in
+                                 the marginal distribution of each dimension separately.
+        @param[in]  **kwds       Additional keyword arguments to pass to matplotlib plotting routines,
+                                 in the form of nested dictionaries.  For example, passing
+                                 "scatter3d=dict(cmap=pyplot.cm.jet)" will set additional keywords
+                                 to be passed when making the 3-d scatter plot.  Valid top-level keywords
+                                 are scatter2d, scatter3d, hist1d, hist2d, mixture1d, mixture2d, and
+                                 mixture3d.  Setting any of these top-level keywords to None will disable
+                                 that plot entirely.
+        """
+        # setup arguments, set defaults
+        if samples is None:
+            samples = record.getSamples()
+        self.samples = samples
+        if mixture is None:
+            mixture = samples.getProposal()
+        if not isinstance(bins2d, collections.Iterable):
+            bins2d = [bins2d] * 3
+        if not isinstance(bins1d, collections.Iterable):
+            bins1d = [bins1d] * 3
+        self.kwds = lsst.pipe.base.Struct(**copy.deepcopy(self.defaults))
+        for k, v in kwds.iteritems():
+            if not hasattr(self.kwds, k):
+                raise TypeError("Unrecognized keyword argument: %s" % k)
+            if v is None:
+                setattr(self.kwds, k, None)
+            else:
+                d = getattr(self.kwds, k)
+                d.update(**v)
+        # extract data
+        paramDef = samples.getParameterDefinition()
+        self.labels = self.plabels[paramDef.name]
+        catalog = samples.getCatalog().copy(deep=True)
+        self.parameters = catalog["parameters"]
+        self.weights = catalog["weight"]
+        # extract special values
+        self.special = {}
+        self.special["mean"] = (samples.computeMean(), "g<")
+        refEllipse = paramDef.makeEllipse(self.special["mean"][0]).getCore()
+        refEllipse.assign(record.get("ref.ellipse"))
+        self.special["truth"] = (refEllipse.getParameterVector(), "yo")
+        # setup parameter bounds
+        self.ranges = samples.computeQuantiles(numpy.array([0.5-0.5*fraction, 0.5+0.5*fraction])).transpose()
+        self.limits = self.ranges.copy()
+        self.masks = numpy.ones((3, self.weights.size), dtype=bool)
+        for k in range(3):
+            self.masks[k] = numpy.logical_and(self.parameters[:,k] >= self.ranges[k,0],
+                                              self.parameters[:,k] <= self.ranges[k,1])
+        # Compute histograms
+        self.histograms = {}
+        self.k = [(2,1), (0,2), (0,1)]
+        for i, j in self.k:
+            h, xe, ye = numpy.histogram2d(self.parameters[:,i], self.parameters[:,j], weights=self.weights,
+                                          normed=True, bins=(bins2d[i], bins2d[j]),
+                                          range=(self.ranges[i], self.ranges[j]))
+            xg, yg = numpy.meshgrid(0.5*(xe[1:]+xe[:-1]), 0.5*(ye[1:]+ye[:-1]))
+            self.histograms[i,j] = (h.transpose(), xg, yg)
+        for i in range(3):
+            h, xe = numpy.histogram(self.parameters[:,i], weights=self.weights,
+                                    normed=True, bins=bins1d[i], range=self.ranges[i])
+            xg = 0.5*(xe[1:]+xe[:-1])
+            w = xe[1:] - xe[:-1]
+            self.histograms[i] = (h, xg, w)
+        # Evaluate mixture distribution
+        self.mixtures = None
+        if mixture is not None:
+            mixture = Mixture3.cast(mixture)
+            self.mixtures = {}
+            for i in range(3):
+                mix1d = mixture.project(i)
+                x = numpy.linspace(self.ranges[i,0], self.ranges[i,1], 100)
+                p = numpy.zeros(x.shape, dtype=float)
+                c = numpy.zeros((x.shape[0], len(mix1d)), dtype=float)
+                mix1d.evaluate(x.reshape(-1,1), p)
+                mix1d.evaluateComponents(x.reshape(-1,1), c)
+                self.mixtures[i] = (p, c, x)
+            for i, j in self.k:
+                mix2d = mixture.project(i, j)
+                x, y = numpy.meshgrid(self.mixtures[i][2], self.mixtures[j][2])
+                xy = numpy.c_[x.flatten(), y.flatten()].copy()
+                p = numpy.zeros(xy.shape[0], dtype=float)
+                mix2d.evaluate(xy, p)
+                self.mixtures[i,j] = (p.reshape(x.shape), x, y)
+        # prepare plot axes
+        if label is None:
+            label = "%s" % record.getId()
+        self.figure = pyplot.figure(label, figsize=(12, 8))
+        self.figure.clear()
+        self.axes = {}
+        self.axes[0,1,2] = self.figure.add_subplot(221, projection='3d')
+        self.axes[0,1,2].set_xlabel(self.labels[0])
+        self.axes[0,1,2].set_ylabel(self.labels[1])
+        self.axes[0,1,2].set_zlabel(self.labels[2])
+        self.axes[0,1,2].patch.set_visible(False)
+        self.axes[0,1] = self.figure.add_subplot(224)
+        self.axes[0,1].yaxis.set_label_position("right")
+        self.axes[0,1].yaxis.tick_right()
+        self.axes[0,1].xaxis.set_label_position("bottom")
+        self.axes[0,1].xaxis.tick_bottom()
+        self.axes[0,1].callbacks.connect("xlim_changed", lambda ax: self.setRange(0, *ax.get_xlim()))
+        self.axes[0,1].callbacks.connect("ylim_changed", lambda ax: self.setRange(1, *ax.get_ylim()))
+        self.axes[0,1].set_xlabel(self.labels[0])
+        self.axes[0,1].set_ylabel(self.labels[1])
+        self.axes[0,2] = self.figure.add_subplot(222)
+        self.axes[0,2].xaxis.set_label_position("top")
+        self.axes[0,2].xaxis.tick_top()
+        self.axes[0,2].set_xlabel(self.labels[0])
+        self.axes[0,2].yaxis.set_label_position("right")
+        self.axes[0,2].yaxis.tick_right()
+        self.axes[0,2].set_ylabel(self.labels[2])
+        self.axes[0,2].callbacks.connect("xlim_changed", lambda ax: self.setRange(0, *ax.get_xlim()))
+        self.axes[0,2].callbacks.connect("ylim_changed", lambda ax: self.setRange(2, *ax.get_ylim()))
+        self.axes[2,1] = self.figure.add_subplot(223)
+        self.axes[2,1].yaxis.set_label_position("left")
+        self.axes[2,1].yaxis.tick_left()
+        self.axes[2,1].set_ylabel(self.labels[1])
+        self.axes[2,1].xaxis.set_label_position("bottom")
+        self.axes[2,1].xaxis.tick_bottom()
+        self.axes[2,1].set_xlabel(self.labels[2])
+        self.axes[2,1].callbacks.connect("xlim_changed", lambda ax: self.setRange(2, *ax.get_xlim()))
+        self.axes[2,1].callbacks.connect("ylim_changed", lambda ax: self.setRange(1, *ax.get_ylim()))
+        bbox1 = (0.08, 0.08, 0.6, 0.92)
+        space1 = 0.05
+        self.figure.subplots_adjust(left=bbox1[0], bottom=bbox1[1], right=bbox1[2], top=bbox1[3],
+                                    wspace=space1, hspace=space1)
+        space2 = space1*1.5
+        height2 = ((bbox1[3] - bbox1[1]) - space2*2) / 3
+        step2 = height2 + space2
+        onUpdate = [lambda ax: self.setRange(0, *ax.get_xlim()),
+                    lambda ax: self.setRange(1, *ax.get_xlim()),
+                    lambda ax: self.setRange(2, *ax.get_xlim())]
+        for i in range(3):
+            rect = bbox1[2] + 0.08, bbox1[1]+(2-i)*step2, 0.25, height2
+            self.axes[i] = self.figure.add_axes(rect)
+            self.axes[i].callbacks.connect("xlim_changed", onUpdate[i])
+            self.axes[i].yaxis.tick_right()
+            self.axes[i].set_xlabel(self.labels[i])
+        # Make plots
+        self.update()
+
+    def update(self):
+        for i, j in self.k:
+            self.plot2d(i, j)
+        for i in range(3):
+            self.plot1d(i)
+        self.plot3d()
+        self.figure.canvas.draw()
+
+    def setRange(self, k, vmin=None, vmax=None, fraction=None, update=True):
+        if fraction is not None:
+            qr = numpy.array([[0.5-0.5*fraction, 0.5+0.5*fraction]])
+            vmin, vmax = self.samples.computeQuantiles(qr, k)
+        else:
+            if vmin is None: vmin = self.limits[k][0]
+            if vmax is None: vmax = self.limits[k][1]
+        self.masks[k] = numpy.logical_and(self.parameters[:,k] >= vmin, self.parameters[:,k] <= vmax)
+        if k == 0:
+            self.axes[0,1].set_xlim(vmin, vmax, emit=False)
+            self.axes[0,2].set_xlim(vmin, vmax, emit=False)
+        elif k == 1:
+            self.axes[0,1].set_ylim(vmin, vmax, emit=False)
+            self.axes[2,1].set_ylim(vmin, vmax, emit=False)
+        elif k == 2:
+            self.axes[0,2].set_ylim(vmin, vmax, emit=False)
+            self.axes[2,1].set_xlim(vmin, vmax, emit=False)
+        self.axes[k].set_xlim(vmin, vmax, emit=False)
+        self.limits[k] = (vmin, vmax)
+        if update:
+            self.plot3d()
+            self.figure.canvas.draw()
+
+    def setContourLevels(self, i, j, kwds):
+        if not isinstance(kwds['levels'], collections.Iterable):
+            kwds = kwds.copy()
+            kwds['levels'] = numpy.linspace(0.0, self.mixtures[i,j][0].max(), kwds['levels']+2)[1:-1]
+        return kwds
+
+    def plot1d(self, i):
+        del self.axes[i].lines[:]
+        del self.axes[i].patches[:]
+        if self.kwds.hist1d is not None:
+            h, xg, w = self.histograms[i]
+            self.axes[i].bar(xg, h, width=w, align='center', **self.kwds.hist1d)
+        if self.kwds.mixture1d is not None and self.mixtures is not None:
+            h, c, xg = self.mixtures[i]
+            self.axes[i].plot(xg, h, **self.kwds.mixture1d)
+            for j in range(c.shape[1]):
+                self.axes[i].plot(xg, c[:,j], ':', **self.kwds.mixture1d)
+        for name, (data, symbol) in self.special.items():
+            self.axes[i].axvline(data[i], color=symbol[0], linewidth=2)
+
+    def plot2d(self, i, j):
+        del self.axes[i,j].lines[:]
+        del self.axes[i,j].collections[:]
+        del self.axes[i,j].images[:]
+        if self.kwds.hist2d is not None:
+            h, xg, yg = self.histograms[i,j]
+            self.axes[i,j].imshow(h, aspect='auto', extent=(tuple(self.ranges[i])+tuple(self.ranges[j])),
+                                  origin='lower', **self.kwds.hist2d)
+        if self.kwds.mixture2d is not None and self.mixtures is not None:
+            h, xg, yg = self.mixtures[i,j]
+            kwds = self.setContourLevels(i, j, self.kwds.mixture2d)
+            self.axes[i,j].contour(xg, yg, h, **kwds)
+        if self.kwds.scatter2d is not None:
+            self.axes[i,j].scatter(self.parameters[:,i], self.parameters[:,j],
+                                   c=self.weights, **self.kwds.scatter2d)
+        for name, (data, symbol) in self.special.items():
+            self.axes[i,j].plot(data[i:i+1], data[j:j+1], symbol, label=name,
+                                markersize=9, alpha=0.8)
+            self.axes[i,j].axvline(data[i], color=symbol[0])
+            self.axes[i,j].axhline(data[j], color=symbol[0])
+
+    def plot3d(self):
+        del self.axes[0,1,2].lines[:]
+        del self.axes[0,1,2].collections[:]
+        if self.kwds.scatter3d is not None:
+            mask = numpy.logical_and.reduce(self.masks, axis=0)
+            self.axes[0,1,2].scatter(self.parameters[mask,0], self.parameters[mask,1],
+                                     self.parameters[mask,2], c=self.weights[mask],
+                                     **self.kwds.scatter3d)
+        if self.kwds.mixture3d is not None and self.mixtures is not None:
+            slices = []
+            for k in range(3):
+                x = self.mixtures[k][2]
+                imin = numpy.searchsorted(x, self.limits[k][0], side='left')
+                imax = numpy.searchsorted(x, self.limits[k][1], side='right')
+                slices.append(slice(imin,imax+1))
+            for k, (i,j) in enumerate(self.k):
+                h, xg, yg = self.mixtures[i,j]
+                zdir = ['x', 'y', 'z']
+                args = [None, None, None]
+                args[i] = xg[slices[j], slices[i]]
+                args[j] = yg[slices[j], slices[i]]
+                args[k] = h[slices[j], slices[i]]
+                kwds = self.setContourLevels(i, j, self.kwds.mixture3d)
+                self.axes[0,1,2].contour(args[0], args[1], args[2], zdir=zdir[k],
+                                         offset=self.limits[k][0], **kwds)
+        for name, (data, symbol) in self.special.items():
+            self.axes[0,1,2].plot(data[0:1], data[1:2], data[2:3], symbol, label=name,
+                                  markersize=9, alpha=0.8)
+            self.axes[0,1,2].plot([data[0]]*2, [data[1]]*2, self.limits[2], symbol[0])
+            self.axes[0,1,2].plot([data[0]]*2, self.limits[1], [data[2]]*2, symbol[0])
+            self.axes[0,1,2].plot(self.limits[0], [data[1]]*2, [data[2]]*2, symbol[0])
+        self.axes[0,1,2].set_xlim(*self.limits[0])
+        self.axes[0,1,2].set_ylim(*self.limits[1])
+        self.axes[0,1,2].set_zlim(*self.limits[2])
 
 class Interactive(object):
     """Interactive analysis helper class
@@ -123,49 +389,19 @@ class Interactive(object):
             record = self.modelfits[index]
         return self.task.processObject(self.exposure, record)
 
-    def plotSamples(self, record, threshold=1E-15, **kwds):
-        """Plot the samples corresponding to the given ModelFitRecord
-        as a 3-d scatter plot.
-
-        The 'threshold' parameter is used to restrict which sample points
-        are plotted; points with weight < max(weight)*threshold are skipped.
-
-        Additional keyword arguments are passed to the matplotlib scatter
-        command.
+    def plotSamples(self, r, iteration=None, suffix="", **kwds):
+        """Plot the sammples and proposal distribution from an interactive fit.
         """
-        samples = record.getSamples()
-        mean = samples.computeMean()
-        median = samples.computeQuantiles(numpy.array([0.5]))
-        paramDef = samples.getParameterDefinition()
-        refKey = self.task.keys["ref.ellipse"]
-        refEllipse = paramDef.makeEllipse(mean).getCore()
-        refEllipse.assign(record.get(refKey))
-        truth = refEllipse.getParameterVector()
-        cat = samples.getCatalog().copy(deep=True)
-        maxR = cat["parameters"][:,2].max()
-        mask = cat["weight"] / cat["weight"].max() > threshold
-        cat = cat[mask].copy()
-        fig = pyplot.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        kwds.setdefault('edgecolor', 'none')
-        kwds.setdefault('cmap', pyplot.cm.Blues)
-        kwds.setdefault('s', 16)
-        patches = ax.scatter(cat["parameters"][:,0], cat["parameters"][:,1], cat["parameters"][:,2],
-                             c=numpy.log10(cat["weight"]), **kwds)
-        cax = pyplot.colorbar(patches)
-        cax.set_label("log10(probability) + [arbitrary constant]")
-        ax.plot(mean[0:1], mean[1:2], mean[2:3], "gx", label="mean", markersize=9, markeredgewidth=2)
-        ax.plot(median[0:1], median[1:2], median[2:3], "r+", label="median", markersize=9, markeredgewidth=2)
-        ax.plot(truth[0:1], truth[1:2], truth[2:3], "m^", label="truth", markersize=9, markeredgewidth=0)
-        ax.legend()
-        ax.set_xlabel("e1")
-        ax.set_xlim(-1, 1)
-        ax.set_ylabel("e2")
-        ax.set_ylim(-1, 1)
-        ax.set_zlabel("radius")
-        ax.set_zlim(0, maxR)
-        pyplot.show()
-        return ax
+        if iteration is not None:
+            samples = r.sampler.iterations[iteration]
+            label = "%s+%s%s" % (r.record.getId(), iteration, suffix)
+        else:
+            label = "%s%s" % (r.record.getId(), suffix)
+            samples = r.record.getSamples()
+        print "iterations=%s, perplexity=%f, essf=%f" % (len(r.sampler.iterations),
+                                                         samples.computeNormalizedPerplexity(),
+                                                         samples.computeEffectiveSampleSizeFraction())
+        return DensityPlotSet(r.record, samples=samples, label=label, **kwds)
 
     def displayResiduals(self, r, parameters=None):
         """Display the data postage stamp along with the model image and residuals in ds9.
@@ -174,19 +410,19 @@ class Interactive(object):
         @param[in] parameters   Parameter vector for the model; defaults to the posterior mean.
         """
         center = r.record.getPointD(self.task.keys["source.center"])
-        samples = r.record.getSamples()
         if parameters == "truth":
             key = self.task.keys["ref.ellipse"]
-            truth = lsst.afw.geom.ellipses.BaseCore.make(samples.getEllipseType(), r.record.get(key))
-            ellipse = lsst.afw.geom.ellipses.Ellipse(truth, center)
+            ellipse = lsst.afw.geom.ellipses.Ellipse(r.record.get(key), center)
         else:
+            samples = r.record.getSamples()
             if parameters == "mean" or parameters is None:
                 parameters = samples.computeMean()
             elif parameters == "median":
                 parameters = samples.computeQuantiles(numpy.array([0.5]))
             else:
                 parameters = numpy.array(parameters)
-            ellipse = r.record.getSamples().interpret(parameters, center)
+            paramDef = samples.getParameterDefinition()
+            ellipse = paramDef.makeEllipse(parameters, center)
         joint = r.objective.evaluate(ellipse)
         bbox = r.record.getFootprint().getBBox()
         bbox.grow(2)
@@ -196,9 +432,10 @@ class Interactive(object):
         matrixBuilder = lsst.shapelet.MultiShapeletMatrixBuilderF(
             self.task.basis, r.psf, xg.ravel(), yg.ravel(), self.task.config.objective.useApproximateExp
             )
-        matrix = numpy.zeros((joint.mu.size, xg.size), dtype=numpy.float32).transpose()
+        matrix = numpy.zeros((joint.grad.size, xg.size), dtype=numpy.float32).transpose()
         matrixBuilder.build(matrix, ellipse)
-        array = numpy.dot(matrix, joint.mu).reshape(*xg.shape)
+        mu,_,_,_ = numpy.linalg.lstsq(joint.fisher, -joint.grad)
+        array = numpy.dot(matrix, mu).reshape(*xg.shape)
 
         data = lsst.afw.image.MaskedImageF(self.exposure.getMaskedImage(), bbox,
                                            lsst.afw.image.PARENT, True)
