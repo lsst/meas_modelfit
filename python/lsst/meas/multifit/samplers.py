@@ -46,7 +46,7 @@ class BaseSamplerTask(lsst.pipe.base.Task):
         lsst.pipe.base.Task.__init__(self, **kwds)
 
     def setup(self, exposure, ellipse, center):
-        """Bootstrap the sampler for an object with no prior samples, using the given (PSF-uncorrected)
+        """Bootstrap the sampler for an object with no prior samples, using the given reference catalog
         ellipse (an afw.geom.ellipses.BaseCore object) and center position.
 
         @return an instance of a subclass of BaseSampler
@@ -72,8 +72,8 @@ class NaiveGridSamplerConfig(BaseSamplerConfig):
     )
     maxRadiusFactor = lsst.pex.config.Field(
         dtype=float,
-        default=1.5,
-        doc="Maximum radius in grid, as scaling factor multiplied by adaptive moments major axis ratio"
+        default=2.0,
+        doc="Maximum radius in grid, as scaling factor multiplied by truth value radius"
     )
     maxEllipticity = lsst.pex.config.Field(
         dtype=float,
