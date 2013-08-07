@@ -137,11 +137,10 @@ class Interactive(object):
         mean = samples.computeMean()
         median = samples.computeQuantiles(numpy.array([0.5]))
         paramDef = samples.getParameterDefinition()
-        if self.task.config.useRefCat:
-            key = self.task.keys["ref.ellipse"]
-            ellipse = paramDef.makeEllipse(mean).getCore()
-            ellipse.assign(record.get(key))
-            truth = ellipse.getParameterVector()
+        refKey = self.task.keys["ref.ellipse"]
+        refEllipse = paramDef.makeEllipse(mean).getCore()
+        refEllipse.assign(record.get(refKey))
+        truth = refEllipse.getParameterVector()
         cat = samples.getCatalog().copy(deep=True)
         maxR = cat["parameters"][:,2].max()
         mask = cat["weight"] / cat["weight"].max() > threshold
@@ -157,8 +156,7 @@ class Interactive(object):
         cax.set_label("log10(probability) + [arbitrary constant]")
         ax.plot(mean[0:1], mean[1:2], mean[2:3], "gx", label="mean", markersize=9, markeredgewidth=2)
         ax.plot(median[0:1], median[1:2], median[2:3], "r+", label="median", markersize=9, markeredgewidth=2)
-        if self.task.config.useRefCat:
-            ax.plot(truth[0:1], truth[1:2], truth[2:3], "m^", label="truth", markersize=9, markeredgewidth=0)
+        ax.plot(truth[0:1], truth[1:2], truth[2:3], "m^", label="truth", markersize=9, markeredgewidth=0)
         ax.legend()
         ax.set_xlabel("e1")
         ax.set_xlim(-1, 1)
