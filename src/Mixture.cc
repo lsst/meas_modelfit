@@ -164,6 +164,36 @@ void Mixture<N>::evaluate(
 }
 
 template <int N>
+void Mixture<N>::evaluateComponents(
+    ndarray::Array<Scalar const,2,1> const & x,
+    ndarray::Array<Scalar,2,1> const & p
+) const {
+    LSST_ASSERT_EQUAL(
+        x.getSize<0>(), p.getSize<0>(),
+        "First dimension of x array (%d) does not match first dimension of p array (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        x.getSize<1>(), N,
+        "Second dimension of x array (%d) does not dimension of mixture (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        p.getSize<1>(), static_cast<int>(_components.size()),
+        "Second dimension of p array (%d) does not match number of components (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    ndarray::Array<Scalar const,2,1>::Iterator ix = x.begin(), xEnd = x.end();
+    ndarray::Array<Scalar,2,1>::Iterator ip = p.begin();
+    for (; ix != xEnd; ++ix, ++ip) {
+        ndarray::Array<Scalar,2,1>::Reference::Iterator jp = ip->begin();
+        for (const_iterator j = begin(); j != end(); ++j, ++jp) {
+            *jp = evaluate(*j, ix->asEigen<N,1>());
+        }
+    }
+}
+
+template <int N>
 void Mixture<N>::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const {
     ndarray::Array<Scalar,2,1>::Iterator ix = x.begin(), xEnd = x.end();
     std::vector<Scalar> cumulative;
@@ -196,7 +226,8 @@ template <int N>
 void Mixture<N>::updateEM(
     ndarray::Array<Scalar const,2,1> const & x,
     ndarray::Array<Scalar const,1,1> const & w,
-    UpdateRestriction const & restriction
+    UpdateRestriction const & restriction,
+    Scalar tau1, Scalar tau2
 ) {
     typedef Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> MatrixXs;
     LSST_ASSERT_EQUAL(
@@ -238,7 +269,18 @@ void Mixture<N>::updateEM(
             }
             sigma /= weight;
             restriction.restrictSigma(sigma);
-            _components[k].setSigma(sigma);
+            Eigen::LLT<Matrix> sigmaLLT(sigma);
+            Scalar sqrtDet = sigmaLLT.matrixLLT().diagonal().prod();
+            Scalar r = sqrtDet / _components[k]._sqrtDet;
+            if (!(r >= tau1)) {
+                Scalar beta1 = 2*(tau2 - 1.0)/tau1;
+                Scalar beta2 = -0.5/tau1;
+                Scalar alpha = beta1*r*(1.0 + beta2*r);
+                _components[k].setSigma(alpha*sigma + (1.0 - alpha)*_components[k].getSigma());
+            } else {
+                _components[k]._sigmaLLT = sigmaLLT;
+                _components[k]._sqrtDet = sqrtDet;
+            }
         }
     } else {
         for (int k = 0; k < nComponents; ++k) {
@@ -264,19 +306,21 @@ void Mixture<N>::updateEM(
 template <int N>
 void Mixture<N>::updateEM(
     ndarray::Array<Scalar const,2,1> const & x,
-    ndarray::Array<Scalar const,1,1> const & w
+    ndarray::Array<Scalar const,1,1> const & w,
+    Scalar tau1, Scalar tau2
 ) {
-    updateEM(x, w, UpdateRestriction());
+    updateEM(x, w, UpdateRestriction(), tau1, tau2);
 }
 
 template <int N>
 void Mixture<N>::updateEM(
     ndarray::Array<Scalar const,2,1> const & x,
-    UpdateRestriction const & restriction
+    UpdateRestriction const & restriction,
+    Scalar tau1, Scalar tau2
 ) {
     ndarray::Array<Scalar,1,1> w = ndarray::allocate(x.getSize<0>());
     w.deep() = 1.0 / w.getSize<0>();
-    updateEM(x, w, restriction);
+    updateEM(x, w, restriction, tau1, tau2);
 }
 
 template <int N>

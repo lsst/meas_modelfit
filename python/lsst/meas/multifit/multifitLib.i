@@ -112,7 +112,7 @@ template <int N> class MixtureComponent;
 %}
 
 %addStreamRepr(lsst::meas::multifit::MixtureComponent);
-%addStreamRepr(lsst::meas::multifit::Mixture);
+%addStreamRepr(lsst::meas::multifit::MixtureBase);
 
 %define %instantiateMixture(N)
 %declareTablePersistable(Mixture ## N, lsst::meas::multifit::Mixture<N>);
@@ -148,6 +148,9 @@ template <int N> class MixtureComponent;
         lsst::meas::multifit::MixtureComponent<N>::Vector const & x
     ) const {
         return $self->evaluate(x);
+    }
+    static PTR(lsst::meas::multifit::Mixture<N>) cast(PTR(lsst::meas::multifit::MixtureBase) const & p) {
+        return boost::dynamic_pointer_cast< lsst::meas::multifit::Mixture<N> >(p);
     }
     %pythoncode %{
         UpdateRestriction = MixtureUpdateRestriction##N
