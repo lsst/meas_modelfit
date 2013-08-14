@@ -378,6 +378,8 @@ namespace {
 class SampleSetPersistenceKeys : private boost::noncopyable {
 public:
     tbl::Schema schema;
+    tbl::Key<int> prior;
+    tbl::Key<int> proposal;
     tbl::Key<double> dataSquaredNorm;
     tbl::Key<std::string> parameterDefinition;
 
@@ -390,6 +392,8 @@ private:
 
     SampleSetPersistenceKeys() :
         schema(),
+        prior(schema.addField<int>("prior", "archive ID for Bayesian prior object")),
+        proposal(schema.addField<int>("proposal", "archive ID for distribution used to draw samples")),
         dataSquaredNorm(schema.addField<double>("joint.r", "squared norm of weighted data vector")),
         parameterDefinition(schema.addField<std::string>("parameterdefinition",
                                                          "name of ParameterDefinition", 48))
@@ -398,6 +402,8 @@ private:
     }
 
 };
+
+} // anonymous
 
 // factory class used to unpersist a SampleSet
 class SampleSetFactory : public tbl::io::PersistableFactory {
@@ -416,18 +422,18 @@ public:
             )
         );
         result->setDataSquaredNorm(record2.get(keys2.dataSquaredNorm));
+        result->setProposal(archive.get<MixtureBase>(record2.get(keys2.proposal)));
+        result->_prior = archive.get<Prior>(record2.get(keys2.prior));
         return result;
     }
 
     explicit SampleSetFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}
 };
 
-std::string getSampleSetPersistenceName() { return "SampleSet"; }
+static std::string getSampleSetPersistenceName() { return "SampleSet"; }
 
 // constructor for this instance registers the factor in a singleton in afw::table::io
-SampleSetFactory registration(getSampleSetPersistenceName());
-
-} // anonymous
+static SampleSetFactory registration(getSampleSetPersistenceName());
 
 std::string SampleSet::getPersistenceName() const {
     return getSampleSetPersistenceName();
@@ -446,6 +452,8 @@ void SampleSet::write(OutputArchiveHandle & handle) const {
     PTR(tbl::BaseRecord) record2 = catalog2.addNew();
     record2->set(keys2.parameterDefinition, _parameterDefinition->name);
     record2->set(keys2.dataSquaredNorm, _dataSquaredNorm);
+    record2->set(keys2.proposal, handle.put(_proposal));
+    record2->set(keys2.prior, handle.put(_prior));
     handle.saveCatalog(catalog2);
 }
 

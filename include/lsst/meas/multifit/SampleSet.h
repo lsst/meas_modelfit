@@ -32,6 +32,7 @@
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/priors.h"
 #include "lsst/meas/multifit/parameters.h"
+#include "lsst/meas/multifit/Mixture.h"
 #include "lsst/meas/multifit/KernelDensityEstimator.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -147,6 +148,18 @@ public:
      *  @sa getDataSquaredNorm()
      */
     void setDataSquaredNorm(double r) { _dataSquaredNorm = r; }
+
+    /**
+     *  @brief Return the distribution from which the nonlinear parameters were originally drawn.
+     */
+    PTR(MixtureBase const) getProposal() const { return _proposal; }
+
+    /**
+     *  @brief Set the distribution from which the nonlinear parameters were originally drawn.
+     *
+     *  This does not recompute the 'proposal' values for each sample.
+     */
+    void setProposal(PTR(MixtureBase const) proposal) { _proposal = proposal; }
 
     /// @brief Return an afw::table::BaseCatalog representation of the SampleSet.
     afw::table::BaseCatalog getCatalog() const { return _records; }
@@ -284,7 +297,8 @@ private:
     afw::table::BaseCatalog _records;
     double _dataSquaredNorm;
     ParameterDefinition const * _parameterDefinition;
-    PTR(Prior) _prior;
+    PTR(Prior const) _prior;
+    PTR(MixtureBase const) _proposal;
 };
 
 }}} // namespace lsst::meas::multifit
