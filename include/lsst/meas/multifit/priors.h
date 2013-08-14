@@ -78,19 +78,25 @@ public:
 };
 
 /**
- *  @brief A nonnormalized flat prior.
- *
- *  @note FlatPrior is a singleton, accessed only via the get() static member function.
+ *  @brief A flat prior with upper bounds on radius and ellipticity (and implicit lower bounds),
+ *         and a nonnegative requirement on component amplitudes.
  */
-class FlatPrior : public Prior, private boost::noncopyable {
+class FlatPrior : public Prior {
 public:
-
-    static PTR(FlatPrior) get();
 
     virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
 
+    /**
+     *  @brief Construct a FlatPrior.
+     *
+     *  @param[in] maxRadius   Maximum radius in pixel coordinates.
+     *  @param[in] maxEllipticity   Maximum ellipticity (in ReducedShear parametrization).
+     */
+    explicit FlatPrior(double maxRadius, double maxEllipticity=1.0);
+
 private:
-    FlatPrior() {}
+    double _maxRadius;
+    double _maxEllipticity;
 };
 
 }}} // namespace lsst::meas::multifit

@@ -29,13 +29,14 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-PTR(FlatPrior) FlatPrior::get() {
-    static PTR(FlatPrior) instance(new FlatPrior());
-    return instance;
+samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
+    return integrateGaussian(likelihood.grad, likelihood.fisher)
+        + std::log(_maxRadius * _maxEllipticity * _maxEllipticity * 2 * M_PI);
 }
 
-samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
-    return integrateGaussian(likelihood.grad, likelihood.fisher);
-}
+FlatPrior::FlatPrior(double maxRadius, double maxEllipticity) :
+    _maxRadius(maxRadius),
+    _maxEllipticity(maxEllipticity)
+{}
 
 }}} // namespace lsst::meas::multifit
