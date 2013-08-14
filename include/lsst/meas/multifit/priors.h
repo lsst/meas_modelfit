@@ -29,6 +29,7 @@
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/parameters.h"
 #include "lsst/meas/multifit/LogGaussian.h"
+#include "lsst/meas/multifit/Mixture.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -131,6 +132,35 @@ protected:
 private:
     double _maxRadius;
     double _maxEllipticity;
+};
+
+/**
+ *  @brief A prior that's flat in amplitude parameters, and uses a Mixture<3> for (e1,e2,r).
+ */
+class MixturePrior :
+    public afw::table::io::PersistableFacade<MixturePrior>,
+    public Prior
+{
+public:
+
+    explicit MixturePrior(PTR(Mixture<3> const) mixture);
+
+    virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
+
+    static MixtureUpdateRestriction<3> const & getUpdateRestriction();
+
+    PTR(Mixture<3> const) getMixture() const { return _mixture; }
+
+    virtual bool isPersistable() const { return true; }
+
+protected:
+
+    virtual std::string getPersistenceName() const;
+
+    virtual void write(OutputArchiveHandle & handle) const;
+
+private:
+    PTR(Mixture<3> const) _mixture;
 };
 
 }}} // namespace lsst::meas::multifit

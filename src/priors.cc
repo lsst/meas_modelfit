@@ -34,6 +34,8 @@ namespace tbl = lsst::afw::table;
 
 namespace lsst { namespace meas { namespace multifit {
 
+//------------- FlatPrior -----------------------------------------------------------------------------------
+
 samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
     return integrateGaussian(likelihood.grad, likelihood.fisher)
         + std::log(_maxRadius * _maxEllipticity * _maxEllipticity * 2 * M_PI);
@@ -86,7 +88,7 @@ public:
 
 std::string getFlatPriorPersistenceName() { return "FlatPrior"; }
 
-FlatPriorFactory registration(getFlatPriorPersistenceName());
+FlatPriorFactory flatPriorRegistration(getFlatPriorPersistenceName());
 
 } // anonymous
 
@@ -98,6 +100,98 @@ void FlatPrior::write(OutputArchiveHandle & handle) const {
     PTR(tbl::BaseRecord) record = catalog.addNew();
     record->set(keys.maxRadius, _maxRadius);
     record->set(keys.maxEllipticity, _maxEllipticity);
+    handle.saveCatalog(catalog);
+}
+
+//------------- MixturePrior --------------------------------------------------------------------------------
+
+MixturePrior::MixturePrior(PTR(Mixture<3> const) mixture) :
+    Prior(ParameterDefinition::lookup("SeparableConformalShearLogTraceRadius")),
+    _mixture(mixture)
+{}
+
+samples::Scalar MixturePrior::apply(
+    LogGaussian const & likelihood, samples::Vector const & parameters
+) const {
+    return integrateGaussian(likelihood.grad, likelihood.fisher)
+        - std::log(_mixture->evaluate(parameters.head<3>()));
+}
+
+namespace {
+
+class EllipseUpdateRestriction : public Mixture<3>::UpdateRestriction {
+public:
+
+    virtual void restrictMu(Vector & mu) const {
+        mu[0] = 0.0;
+        mu[1] = 0.0;
+    }
+
+    virtual void restrictSigma(Matrix & sigma) const {
+        sigma(0,0) = sigma(1,1) = 0.5*(sigma(0,0) + sigma(1,1));
+        sigma(0,1) = sigma(0,1) = 0.0;
+        sigma(0,2) = sigma(2,0) = sigma(1,2) = sigma(2,1) = 0.5*(sigma(0,2) + sigma(1,2));
+    }
+
+};
+
+} // anonymous
+
+Mixture<3>::UpdateRestriction const & MixturePrior::getUpdateRestriction() {
+    static EllipseUpdateRestriction const instance;
+    return instance;
+}
+
+namespace {
+
+class MixturePriorPersistenceKeys : private boost::noncopyable {
+public:
+    tbl::Schema schema;
+    tbl::Key<int> mixture;
+
+    static MixturePriorPersistenceKeys const & get() {
+        static MixturePriorPersistenceKeys const instance;
+        return instance;
+    }
+private:
+    MixturePriorPersistenceKeys() :
+        schema(),
+        mixture(schema.addField<int>("mixture", "archive ID of mixture"))
+    {
+        schema.getCitizen().markPersistent();
+    }
+};
+
+class MixturePriorFactory : public tbl::io::PersistableFactory {
+public:
+
+    virtual PTR(tbl::io::Persistable)
+    read(InputArchive const & archive, CatalogVector const & catalogs) const {
+        MixturePriorPersistenceKeys const & keys = MixturePriorPersistenceKeys::get();
+        LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
+        LSST_ARCHIVE_ASSERT(catalogs.front().size() == 1u);
+        LSST_ARCHIVE_ASSERT(catalogs.front().getSchema() == keys.schema);
+        tbl::BaseRecord const & record = catalogs.front().front();
+        return boost::make_shared<MixturePrior>(archive.get< Mixture<3> >(record.get(keys.mixture)));
+    }
+
+    explicit MixturePriorFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}
+
+};
+
+std::string getMixturePriorPersistenceName() { return "MixturePrior"; }
+
+MixturePriorFactory mixturePriorRegistration(getMixturePriorPersistenceName());
+
+} // anonymous
+
+std::string MixturePrior::getPersistenceName() const { return getMixturePriorPersistenceName(); }
+
+void MixturePrior::write(OutputArchiveHandle & handle) const {
+    MixturePriorPersistenceKeys const & keys = MixturePriorPersistenceKeys::get();
+    tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
+    PTR(tbl::BaseRecord) record = catalog.addNew();
+    record->set(keys.mixture, handle.put(_mixture));
     handle.saveCatalog(catalog);
 }
 
