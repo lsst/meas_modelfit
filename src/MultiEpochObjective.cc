@@ -56,8 +56,8 @@ namespace {
 } // anonymous
 
 EpochFootprint::EpochFootprint(
-    lsst::afw::detection::Footprint const &footprint,
-    lsst::afw::image::Exposure<Pixel> const &exposure,
+    afw::detection::Footprint const &footprint,
+    afw::image::Exposure<Pixel> const &exposure,
     shapelet::MultiShapeletFunction const & psfModel
 ) :
     footprint(footprint),
@@ -85,20 +85,20 @@ public:
     explicit EpochMatrixBuilder(
         int begIndex,
         int numPixels,
-        lsst::afw::geom::AffineTransform coaddToCalexp,
+        afw::geom::AffineTransform coaddToCalexp,
         shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder
     );
 
     int const begIndex;         ///< beginning index of this epoch's data in _weights, etc.
     int const numPixels;        ///< number of pixels in this epoch's footprint
-    lsst::afw::geom::AffineTransform const coaddToCalexp;  /// affine transform of coadd pixels->calexp pixels
+    afw::geom::AffineTransform const coaddToCalexp;  /// affine transform of coadd pixels->calexp pixels
     shapelet::MultiShapeletMatrixBuilder<Pixel> const matrixBuilder;    ///< multishapelet matrix builder
 };
 
 EpochMatrixBuilder::EpochMatrixBuilder(
     int begIndex,
     int numPixels,
-    lsst::afw::geom::AffineTransform coaddToCalexp,
+    afw::geom::AffineTransform coaddToCalexp,
     shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder
 ) :
     begIndex(begIndex),
