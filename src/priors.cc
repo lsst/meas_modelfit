@@ -38,31 +38,4 @@ samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector
     return integrateGaussian(likelihood.grad, likelihood.fisher);
 }
 
-samples::Scalar FlatPrior::computeFluxExpectation(
-    LogGaussian const & likelihood, samples::Vector const & parameters
-) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "NOT IMPLEMENTED"
-    );
-}
-
-samples::Scalar FlatPrior::computeSquaredFluxExpectation(
-    LogGaussian const & likelihood, samples::Vector const & parameters
-) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "NOT IMPLEMENTED"
-    );
-}
-
-samples::Vector FlatPrior::computeFractionExpectation(
-    LogGaussian const & likelihood, samples::Vector const & parameters
-) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "NOT IMPLEMENTED"
-    );
-}
-
 }}} // namespace lsst::meas::multifit

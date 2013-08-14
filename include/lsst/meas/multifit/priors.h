@@ -73,61 +73,12 @@ public:
     virtual samples::Scalar apply(LogGaussian const & likelihood,
                                   samples::Vector const & parameters) const = 0;
 
-    /**
-     *  @brief Compute the nonnormalized negative log expectation value of the flux at a
-     *         nonlinear parameter point.
-     *
-     *  This is the integral
-     *  @f[
-     *     \int\!\text{flux}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
-     *  @f]
-     *  For models in which each amplitude is the flux in a component, then
-     *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
-     */
-    virtual samples::Scalar computeFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
-    ) const = 0;
-
-    /**
-     *  @brief Compute the nonnormalized negative log expectation value of the squared flux at a
-     *         nonlinear parameter point.
-     *
-     *  This is the integral
-     *  @f[
-     *     -\ln\int\!\left[\text{flux}(\alpha,\theta)\right]^2\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
-     *  @f]
-     *  For models in which each amplitude is the flux in a component, then
-     *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
-     */
-    virtual samples::Scalar computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
-    ) const = 0;
-
-    /**
-     *  @brief Compute the nonnormalized negative log expectation value of the fraction of flux
-     *         in each component at a nonlinear parameter point.
-     *
-     *  This is the integral
-     *  @f[
-     *     -\ln\int\!\text{fraction}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
-     *  @f]
-     *  For models in which each amplitude is the flux in a component, then
-     *  @f$\text{fraction}(\alpha,\theta)=\frac{\alpha}{|\alpha|_1}@f$
-     */
-    virtual samples::Vector computeFractionExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
-    ) const = 0;
-
     virtual ~Prior() {}
 
 };
 
 /**
  *  @brief A nonnormalized flat prior.
- *
- *  FlatPrior should only be used for single-component fits or test cases with no
- *  degeneracies; a more informative prior is necessary to regularize fitting even
- *  high S/N data with more than one component at radius=0.
  *
  *  @note FlatPrior is a singleton, accessed only via the get() static member function.
  */
@@ -137,18 +88,6 @@ public:
     static PTR(FlatPrior) get();
 
     virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
-
-    virtual samples::Scalar computeFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
-    ) const;
-
-    virtual samples::Scalar computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
-    ) const;
-
-    virtual samples::Vector computeFractionExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
-    ) const;
 
 private:
     FlatPrior() {}
