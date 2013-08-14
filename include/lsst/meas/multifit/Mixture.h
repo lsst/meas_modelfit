@@ -48,6 +48,59 @@ template <int N>
 std::ostream & operator<<(std::ostream & os, Mixture<N> const & self);
 
 /**
+ *  @brief Base class for Mixture probability distributions
+ *
+ *  This base class provides the common API used by AdaptiveImportanceSampler and SampleSet.
+ *  Subclasses are specialized for the number of dimensions, and should be used directly when possible.
+ */
+class MixtureBase :
+    public afw::table::io::PersistableFacade<MixtureBase>,
+    public afw::table::io::Persistable {
+public:
+
+    typedef samples::Scalar Scalar;
+
+    /// Return the number of dimensions
+    virtual int getDimension() const = 0;
+
+    /**
+     *  @brief Evaluate the distribution probability density function (PDF) at the given points
+     *
+     *  @param[in] x       array of points, shape=(numSamples, N)
+     *  @param[out] p      array of probability values, shape=(numSamples,)
+     */
+    virtual void evaluate(
+        ndarray::Array<Scalar const,2,1> const & x,
+        ndarray::Array<Scalar,1,0> const & p
+    ) const = 0;
+
+    /**
+     *  @brief Draw random variates from the distribution.
+     *
+     *  @param[in,out] rng random number generator
+     *  @param[out] x      array of points, shape=(numSamples, N)
+     */
+    virtual void draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const = 0;
+
+    /**
+     *  @brief Perform an Expectation-Maximization step, updating the component parameters to match
+     *         the given weighted samples.
+     *
+     *  @param[in] x       array of variables, shape=(numSamples, N)
+     *  @param[in] w       array of weights, shape=(numSamples,)
+     */
+    virtual void updateEM(
+        ndarray::Array<Scalar const,2,1> const & x,
+        ndarray::Array<Scalar const,1,1> const & w
+    ) = 0;
+
+    /// Polymorphic deep copy
+    virtual PTR(MixtureBase) clone() const = 0;
+
+    virtual ~MixtureBase() {}
+};
+
+/**
  *  @brief A weighted Student's T or Gaussian distribution used as a component in a Mixture.
  */
 template <int N>
@@ -142,12 +195,12 @@ public:
 template <int N>
 class Mixture :
     public afw::table::io::PersistableFacade< Mixture<N> >,
-    public afw::table::io::Persistable
+    public MixtureBase
 {
 public:
-    typedef samples::Scalar Scalar;
-    typedef Eigen::Matrix<samples::Scalar,N,1> Vector;
-    typedef Eigen::Matrix<samples::Scalar,N,N> Matrix;
+
+    typedef Eigen::Matrix<Scalar,N,1> Vector;
+    typedef Eigen::Matrix<Scalar,N,N> Matrix;
     typedef MixtureComponent<N> Component;
     typedef MixtureUpdateRestriction<N> UpdateRestriction;
     typedef std::vector< Component, Eigen::aligned_allocator<Component> > ComponentList;
@@ -183,7 +236,7 @@ public:
     Mixture<2> project(int dim1, int dim2) const;
 
     /// Return the number of dimensions
-    int getDimension() const { return N; }
+    virtual int getDimension() const { return N; }
 
     /// Iterate over all components, rescaling their weights so they sum to one.
     void normalize();
@@ -234,7 +287,10 @@ public:
      *  @param[in] x       array of points, shape=(numSamples, N)
      *  @param[out] p      array of probability values, shape=(numSamples,)
      */
-    void evaluate(ndarray::Array<Scalar const,2,1> const & x, ndarray::Array<Scalar,1,0> const & p) const;
+    virtual void evaluate(
+        ndarray::Array<Scalar const,2,1> const & x,
+        ndarray::Array<Scalar,1,0> const & p
+    ) const;
 
     /**
      *  @brief Draw random variates from the mixture distribution.
@@ -242,7 +298,19 @@ public:
      *  @param[in,out] rng random number generator
      *  @param[out] x      array of points, shape=(numSamples, N)
      */
-    void draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const;
+    virtual void draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const;
+
+    /**
+     *  @brief Perform an Expectation-Maximization step, updating the component parameters to match
+     *         the given weighted samples.
+     *
+     *  @param[in] x       array of variables, shape=(numSamples, N)
+     *  @param[in] w       array of weights, shape=(numSamples,)
+     */
+    virtual void updateEM(
+        ndarray::Array<Scalar const,2,1> const & x,
+        ndarray::Array<Scalar const,1,1> const & w
+    );
 
     /**
      *  @brief Perform an Expectation-Maximization step, updating the component parameters to match
@@ -255,7 +323,7 @@ public:
     void updateEM(
         ndarray::Array<Scalar const,2,1> const & x,
         ndarray::Array<Scalar const,1,1> const & w,
-        UpdateRestriction const & restriction=UpdateRestriction()
+        UpdateRestriction const & restriction
     );
 
     /**
@@ -267,8 +335,13 @@ public:
      */
     void updateEM(
         ndarray::Array<Scalar const,2,1> const & x,
-        UpdateRestriction const & restriction=UpdateRestriction()
+        UpdateRestriction const & restriction
     );
+
+    /// Polymorphic deep copy
+    virtual PTR(MixtureBase) clone() const {
+        return PTR(MixtureBase)(new Mixture<N>(*this));
+    }
 
     /**
      *  @brief Construct a mixture model.

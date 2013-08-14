@@ -102,6 +102,8 @@ template <int N> class MixtureComponent;
 
 }}} // namespace lsst::meas::multifit
 
+%declareTablePersistable(MixtureBase, lsst::meas::multifit::MixtureBase);
+
 %include "lsst/meas/multifit/Mixture.h"
 
 %pythoncode %{

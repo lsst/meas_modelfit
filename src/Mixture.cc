@@ -257,6 +257,14 @@ void Mixture<N>::updateEM(
 template <int N>
 void Mixture<N>::updateEM(
     ndarray::Array<Scalar const,2,1> const & x,
+    ndarray::Array<Scalar const,1,1> const & w
+) {
+    updateEM(x, w, UpdateRestriction());
+}
+
+template <int N>
+void Mixture<N>::updateEM(
+    ndarray::Array<Scalar const,2,1> const & x,
     UpdateRestriction const & restriction
 ) {
     ndarray::Array<Scalar,1,1> w = ndarray::allocate(x.getSize<0>());
