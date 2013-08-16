@@ -200,7 +200,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             raise lsst.pipe.base.TaskError("Exposure has no PSF")
 
         def prepRecord(outRecord, srcRecord):
-            psfModel = self.fitPsf.apply(outRecord, exposure.getPsf(), srcRecord.getCentroid())
+            psfModel = self.fitPsf.fit(outRecord, exposure.getPsf(), srcRecord.getCentroid())
             outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
             outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
             outRecord.setPointD(self.keys["source.center"], srcRecord.getCentroid())
