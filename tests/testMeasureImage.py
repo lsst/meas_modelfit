@@ -66,7 +66,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         cat1 = samples1.getCatalog().copy(deep=True)
         cat2 = samples2.getCatalog().copy(deep=True)
         self.assertEqual(len(cat1), len(cat2))
-        self.assertEqual(samples1.getEllipseType(), samples2.getEllipseType())
+        self.assertEqual(samples1.getParameterDefinition(), samples2.getParameterDefinition())
         self.assertEqual(samples1.getDataSquaredNorm(), samples2.getDataSquaredNorm())
         # n.b. just using assertClose because it lets us test arrays
         self.assertClose(cat1.get("joint.grad"), cat2.get("joint.grad"), rtol=0.0, atol=0.0)

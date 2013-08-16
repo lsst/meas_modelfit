@@ -136,9 +136,11 @@ class Interactive(object):
         samples = record.getSamples()
         mean = samples.computeMean()
         median = samples.computeQuantiles(numpy.array([0.5]))
+        paramDef = samples.getParameterDefinition()
         if self.task.config.useRefCat:
             key = self.task.keys["ref.ellipse"]
-            ellipse = lsst.afw.geom.ellipses.BaseCore.make(samples.getEllipseType(), record.get(key))
+            ellipse = paramDef.makeEllipse(mean).getCore()
+            ellipse.assign(record.get(key))
             truth = ellipse.getParameterVector()
         cat = samples.getCatalog().copy(deep=True)
         maxR = cat["parameters"][:,2].max()
