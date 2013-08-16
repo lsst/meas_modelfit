@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -19,13 +20,7 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-from .version import *
-from .multifitLib import *
-from .measureCcd import *
-from .measureCoadd import *
-from .measureImage import *
-from .measureMulti import *
-from .fitRegion import *
-from .samplers import *
-from .models import *
-from .priors import *
+
+from lsst.meas.multifit import MeasureMultiTask
+
+MeasureMultiTask.parseAndRun()

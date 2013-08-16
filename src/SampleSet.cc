@@ -74,7 +74,12 @@ LogGaussian SampleSetKeys::getJoint(tbl::BaseRecord const & record) const {
 void SampleSetKeys::setJoint(tbl::BaseRecord & record, LogGaussian const & joint) {
     samples::VectorMap(record.getElement(jointGrad), getLinearDim()) = joint.grad;
     samples::MatrixMap(record.getElement(jointFisher), getLinearDim(), getLinearDim()) = joint.fisher;
-    assert(*record.getElement(jointFisher) == joint.fisher(0,0));
+    if (*record.getElement(jointFisher) != joint.fisher(0,0)) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "*record.getElement(jointFisher) != joint.fisher(0,0) in SampleSetKeys::setJoint"
+        );
+    }
 }
 
 SampleSet::SampleSet(int nonlinearDim, int linearDim, std::string const & ellipseType) :
@@ -215,13 +220,32 @@ double SampleSet::applyPrior(PTR(Prior) const & prior, double clip) {
     double wSum = 0.0;
     for (i = _records.begin(); i != _records.end(); ++i) {
         wSum += (*i)[_keys.weight] = std::exp(i->get(_keys.weight) - z);
-        assert(utils::isfinite(i->get(_keys.weight)));
+        if (!utils::isfinite(i->get(_keys.weight))) {
+            throw LSST_EXCEPT(
+                pex::exceptions::LogicErrorException,
+                (boost::format(
+                    "i->get(_keys.weight) = %d not finite in SampleSet::applyPrior before normalization")
+                    % i->get(_keys.weight)).str()
+            );
+        }
     }
-    assert(wSum > 0.0);
+    if (wSum <= 0.0) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            (boost::format("wSum = %d not positive in SampleSet::applyPrior") % wSum).str()
+        );
+    }
     // finally, we normalize w_i...
     for (i = _records.begin(); i != _records.end(); ++i) {
         (*i)[_keys.weight] /= wSum;
-        assert(utils::isfinite(i->get(_keys.weight)));
+        if (!utils::isfinite(i->get(_keys.weight))) {
+            throw LSST_EXCEPT(
+                pex::exceptions::LogicErrorException,
+                (boost::format(
+                    "i->get(_keys.weight) = %d not finite in SampleSet::applyPrior after normalization")
+                    % i->get(_keys.weight)).str()
+            );
+        }
     }
     // ..and return the log of wSum, corrected for the z term we took out earlier,
     // and including the r/2 term we've ignored all along.

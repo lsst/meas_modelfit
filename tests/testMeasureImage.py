@@ -62,20 +62,6 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
                          lsst.afw.table.Schema.IDENTICAL)
         self.assertEqual(len(self.modelfits), len(loaded))
         samples1 = self.modelfits[0].getSamples()
-        # next two tests are just regression tests, using previous values from a known-to-be working
-        # version of the code
-        self.assertClose(
-            samples1.computeMean(),
-            numpy.array([-0.0235993373416034, -0.4564786775102473, 1.2030597171770168]),
-            rtol=1E-6
-            )
-        self.assertClose(
-            samples1.computeCovariance(),
-            numpy.array([[  2.9876206526607716e-03, 3.1212978724030828e-04, 1.4230658478528293e-05],
-                         [  3.1212978724030828e-04, 1.5716823457710598e-03, 8.9292911976228762e-06],
-                         [  1.4230658478528293e-05, 8.9292911976228762e-06, 4.5867169592759649e-04]]),
-            rtol=5E-6
-            )
         samples2 = loaded[0].getSamples()
         cat1 = samples1.getCatalog().copy(deep=True)
         cat2 = samples2.getCatalog().copy(deep=True)

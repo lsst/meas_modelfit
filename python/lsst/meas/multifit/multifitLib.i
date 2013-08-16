@@ -59,6 +59,7 @@ Basic routines to talk to lsst::meas::multifit classes
 
 %lsst_exceptions();
 
+%include "std_vector.i"
 %include "ndarray.i"
 %import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/geom/ellipses/ellipsesLib.i"
@@ -70,6 +71,8 @@ Basic routines to talk to lsst::meas::multifit classes
 namespace lsst { namespace shapelet {
 class MultiShapeletBasis;
 }}
+
+%template(VectorEpochFootprint) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
 %declareNumPyConverters(lsst::meas::multifit::samples::Vector);
 %declareNumPyConverters(lsst::meas::multifit::samples::Matrix);
@@ -85,6 +88,8 @@ class MultiShapeletBasis;
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Objective);
 %shared_ptr(lsst::meas::multifit::SingleEpochObjective);
+%shared_ptr(lsst::meas::multifit::EpochFootprint);
+%shared_ptr(lsst::meas::multifit::MultiEpochObjective);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
 %shared_ptr(lsst::meas::multifit::NaiveGridSampler);
 
@@ -92,6 +97,7 @@ class MultiShapeletBasis;
 %include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Objective.h"
+%include "lsst/meas/multifit/MultiEpochObjective.h"
 %include "lsst/meas/multifit/KernelDensityEstimator.h"
 %include "lsst/meas/multifit/SampleSet.h"
 %include "lsst/meas/multifit/ExpectationFunctor.h"
@@ -101,8 +107,12 @@ class MultiShapeletBasis;
 %pythoncode %{
 import lsst.pex.config
 import numpy
+
 SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
 SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
+
+MultiEpochObjectiveConfig = lsst.pex.config.makeConfigClass(MultiEpochObjectiveControl)
+MultiEpochObjective.ConfigClass = MultiEpochObjectiveConfig
 %}
 
 %shared_ptr(lsst::meas::multifit::ModelFitTable);

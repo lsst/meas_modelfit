@@ -31,6 +31,7 @@
 #include "lsst/meas/multifit/KernelDensityEstimator.h"
 #include "lsst/meas/multifit/SampleSet.h"
 #include "lsst/meas/multifit/Objective.h"
+#include "lsst/meas/multifit/MultiEpochObjective.h"
 #include "lsst/meas/multifit/priors.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/integrals.h"
