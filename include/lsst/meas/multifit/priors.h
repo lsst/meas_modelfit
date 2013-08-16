@@ -26,6 +26,7 @@
 
 #include "lsst/base.h"
 #include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/parameters.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -48,8 +49,11 @@ namespace lsst { namespace meas { namespace multifit {
  *  Thus, we marginalize the likelihood in @f$\alpha@f$ at fixed @f$\theta@f$, and then multiply
  *  by the prior on @f$\theta@f$.
  */
-class Prior {
+class Prior : private boost::noncopyable {
 public:
+
+    /// Return the definition of the parameter vector the prior assumes
+    ParameterDefinition const & getParameterDefinition() const { return *_parameterDefinition; }
 
     /**
      *  @brief Marginalize over the amplitude likelihood at the given point in nonlinear parameter space,
@@ -75,6 +79,11 @@ public:
 
     virtual ~Prior() {}
 
+protected:
+    explicit Prior(ParameterDefinition const & parameterDefinition) :
+        _parameterDefinition(&parameterDefinition) {}
+private:
+    ParameterDefinition const * _parameterDefinition;
 };
 
 /**

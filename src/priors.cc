@@ -35,6 +35,7 @@ samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector
 }
 
 FlatPrior::FlatPrior(double maxRadius, double maxEllipticity) :
+    Prior(ParameterDefinition::lookup("SeparableReducedShearTraceRadius")),
     _maxRadius(maxRadius),
     _maxEllipticity(maxEllipticity)
 {}

@@ -88,11 +88,13 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         self.addFields("median", "Posterior median")
 
     def fillDerivedFields(self, record):
-        mean = samples.interpret(samples.computeMean(), record.getPointD(self.keys["source.center"]))
+        samples = record.getSamples()
+        parameterDef = samples.getParameterDefinition()
+        mean = parameterDef.makeEllipse(samples.computeMean(), record.getPointD(self.keys["source.center"]))
         record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
         record.set(self.keys["mean.center"], mean.getCenter())
-        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
-                                   record.getPointD(self.keys["source.center"]))
+        median = parameterDef.makeEllipse(samples.computeQuantiles(numpy.array([0.5])),
+                                          record.getPointD(self.keys["source.center"]))
         record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
         record.set(self.keys["median.center"], median.getCenter())
 
