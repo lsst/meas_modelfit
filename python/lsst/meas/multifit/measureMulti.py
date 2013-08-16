@@ -24,13 +24,13 @@ import traceback
 
 import numpy
 
-from lsst.pipe.base import CmdLineTask, Struct, TaskError
+from lsst.pipe.base import Struct, TaskError
 import lsst.pex.config
 import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochObjective, ModelFitCatalog, \
     ModelFitTable
-from .measureImage import BaseMeasureConfig 
+from .measureImage import BaseMeasureConfig, BaseMeasureTask
 
 __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
 
@@ -50,7 +50,7 @@ class MeasureMultiConfig(BaseMeasureConfig):
         default = 5,
     )
 
-class MeasureMultiTask(CmdLineTask):
+class MeasureMultiTask(BaseMeasureTask):
     """Variant of MeasureImageTask for running multifit on the calexp that make up a coadd.
 
     The tasks are so different in implementation that no code is shared (yet).
@@ -59,7 +59,7 @@ class MeasureMultiTask(CmdLineTask):
     _DefaultName = "measureMulti"
 
     def __init__(self, **kwds):
-        CmdLineTask.__init__(self, **kwds)
+        BaseMeasureTask.__init__(self, **kwds)
         self.dataPrefix = self.config.coaddName + "Coadd_"
         self.makeSubtask("sampler")
         self.schema = None # set later when we have a coadd catalog to copy
@@ -168,14 +168,7 @@ class MeasureMultiTask(CmdLineTask):
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
-        mean = samples.interpret(samples.computeMean(), record.getPointD(self.keys["source.center"]))
-        record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
-        record.set(self.keys["mean.center"], mean.getCenter())
-        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
-                                   record.getPointD(self.keys["source.center"]))
-        record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
-        record.set(self.keys["median.center"], median.getCenter())
-
+        self.fillDerivedFields(record)
         return lsst.pipe.base.Struct(objective=objective, sampler=sampler, record=record)
 
     @lsst.pipe.base.timeMethod
@@ -254,18 +247,7 @@ class MeasureMultiTask(CmdLineTask):
                 mapKey(name)
 
         self.schema = self.schemaMapper.getOutputSchema()
-
-        def addKeys(prefix, doc):
-            """Add <prefix>.ellipse and <prefix>.center keys to self.schemaMapper
-            @param[in] prefix       key name prefix
-            @param[in] doc          documentation prefix
-            """
-            self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
-                                                                    doc=("%s ellipse" % doc))
-            self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
-                                                                   doc=("%s center position" % doc))
-        addKeys("mean", "Posterior mean")
-        addKeys("median", "Posterior median")
+        self.addDerivedFields()
 
     def writeOutputs(self, dataRef, outCat):
         """Write task outputs using the butler.

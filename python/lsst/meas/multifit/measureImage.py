@@ -69,6 +69,33 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
     )
 
+class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
+    """Base class for MeasureImageTask and MeasureMultiTask to aggregate shared code"""
+
+    def addFields(self, prefix, doc):
+        """Add <prefix>.ellipse and <prefix>.center keys to self.schema, saving keys in self.keys
+        @param[in] prefix       key name prefix
+        @param[in] doc          documentation prefix
+        """
+        self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
+                                                                doc=("%s ellipse" % doc))
+        self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
+                                                               doc=("%s center position" % doc))
+    def addDerivedFields(self):
+        """Add fields to self.schema for quantities derived from the SampleSet
+        """
+        self.addFields("mean", "Posterior mean")
+        self.addFields("median", "Posterior median")
+
+    def fillDerivedFields(self, record):
+        mean = samples.interpret(samples.computeMean(), record.getPointD(self.keys["source.center"]))
+        record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
+        record.set(self.keys["mean.center"], mean.getCenter())
+        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
+                                   record.getPointD(self.keys["source.center"]))
+        record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
+        record.set(self.keys["median.center"], median.getCenter())
+
 class MeasureImageConfig(BaseMeasureConfig):
     objective = lsst.pex.config.ConfigField(
         dtype=SingleEpochObjective.ConfigClass,
@@ -80,8 +107,7 @@ class MeasureImageConfig(BaseMeasureConfig):
         doc="Whether to use the reference catalog to identify objects to fit"
     )
 
-
-class MeasureImageTask(lsst.pipe.base.CmdLineTask):
+class MeasureImageTask(BaseMeasureTask):
     """Driver class for S13-specific galaxy modeling work
 
     Like ProcessImageTask, MeasureImageTask is intended to be used as a base
@@ -94,7 +120,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
     dataPrefix = ""
 
     def __init__(self, **kwds):
-        lsst.pipe.base.CmdLineTask.__init__(self, **kwds)
+        BaseMeasureTask.__init__(self, **kwds)
         self.makeSubtask("sampler")
         self.schemaMapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
         self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
@@ -103,18 +129,12 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         self.basis = self.config.model.apply()
         self.prior = self.config.prior.apply()
         self.keys = {}
-        def addKeys(prefix, doc):
-            self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
-                                                                    doc=("%s ellipse" % doc))
-            self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
-                                                                   doc=("%s center position" % doc))
-        addKeys("source", "Uncorrected source")
-        addKeys("mean", "Posterior mean")
-        addKeys("median", "Posterior median")
+        self.addFields("source", "Uncorrected source")
+        self.addDerivedFields()
         self.keys["snr"] = self.schema.addField("snr", type=float,
                                                 doc="signal to noise ratio from source apFlux/apFluxErr")
         if self.config.useRefCat:
-            addKeys("ref", "Reference catalog")
+            self.addFields("ref", "Reference catalog")
             self.keys["ref.sindex"] = self.schema.addField("ref.sindex", type=float,
                                                            doc="Reference catalog Sersic index")
             self.keys["ref.flux"] = self.schema.addField("ref.flux", type=float,
@@ -170,13 +190,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
-        mean = samples.interpret(samples.computeMean(), record.getPointD(self.keys["source.center"]))
-        record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
-        record.set(self.keys["mean.center"], mean.getCenter())
-        median = samples.interpret(samples.computeQuantiles(numpy.array([0.5])),
-                                   record.getPointD(self.keys["source.center"]))
-        record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
-        record.set(self.keys["median.center"], median.getCenter())
+        self.fillDerivedFields(record)
         return lsst.pipe.base.Struct(objective=objective, sampler=sampler, psf=psf, record=record)
 
     def prepCatalog(self, exposure, srcCat, refCat=None, where=None):
