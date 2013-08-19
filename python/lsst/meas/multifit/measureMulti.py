@@ -30,7 +30,7 @@ import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochObjective, ModelFitCatalog, \
     ModelFitTable
-from .measureImage import BaseMeasureConfig, BaseMeasureTask
+from .baseMeasure import *
 
 __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
 

@@ -29,78 +29,10 @@ import lsst.afw.table
 import lsst.afw.geom.ellipses
 import lsst.meas.extensions.multiShapelet
 
-from .samplers import BaseSamplerTask, AdaptiveImportanceSamplerTask, NaiveGridSamplerTask
+from .baseMeasure import *
 from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
-from .fitRegion import setupFitRegion
-from .models import *
-from .priors import *
 
-__all__ = ("BaseMeasureConfig", "MeasureImageConfig", "MeasureImageTask")
-
-class BaseMeasureConfig(lsst.pex.config.Config):
-    sampler = lsst.pex.config.ConfigurableField(
-        target=AdaptiveImportanceSamplerTask,
-        doc="Subtask that generates samples from the probability of a galaxy model given image data"
-    )
-    model = modelRegistry.makeField(
-        default="bulge+disk",
-        doc="Definition of the galaxy model to fit"
-    )
-    prior = priorRegistry.makeField(
-        default="mixture",
-        doc="Bayesian prior on galaxy parameters"
-    )
-    psf = lsst.pex.config.ConfigField(
-        dtype=lsst.meas.extensions.multiShapelet.FitPsfConfig,
-        doc="Config options for approximating the PSF using shapelets"
-    )
-    fitRegion = lsst.pex.config.ConfigField(
-        dtype=setupFitRegion.ConfigClass,
-        doc="Parameters that control which pixels to include in the model fit"
-    )
-    progressChunk = lsst.pex.config.Field(
-        dtype=int,
-        default=100,
-        doc="Show progress log message every [progressChunk] objects"
-    )
-    prepOnly = lsst.pex.config.Field(
-        dtype=bool,
-        default=False,
-        doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
-    )
-
-    def setDefaults(self):
-        self.psf.innerOrder = 4
-        self.psf.outerOrder = 0
-
-class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
-    """Base class for MeasureImageTask and MeasureMultiTask to aggregate shared code"""
-
-    def addFields(self, prefix, doc):
-        """Add <prefix>.ellipse and <prefix>.center keys to self.schema, saving keys in self.keys
-        @param[in] prefix       key name prefix
-        @param[in] doc          documentation prefix
-        """
-        self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
-                                                                doc=("%s ellipse" % doc))
-        self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
-                                                               doc=("%s center position" % doc))
-    def addDerivedFields(self):
-        """Add fields to self.schema for quantities derived from the SampleSet
-        """
-        self.addFields("mean", "Posterior mean")
-        self.addFields("median", "Posterior median")
-
-    def fillDerivedFields(self, record):
-        samples = record.getSamples()
-        parameterDef = samples.getParameterDefinition()
-        mean = parameterDef.makeEllipse(samples.computeMean(), record.getPointD(self.keys["source.center"]))
-        record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
-        record.set(self.keys["mean.center"], mean.getCenter())
-        median = parameterDef.makeEllipse(samples.computeQuantiles(numpy.array([0.5])),
-                                          record.getPointD(self.keys["source.center"]))
-        record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
-        record.set(self.keys["median.center"], median.getCenter())
+__all__ = ("MeasureImageConfig", "MeasureImageTask")
 
 class MeasureImageConfig(BaseMeasureConfig):
     objective = lsst.pex.config.ConfigField(
