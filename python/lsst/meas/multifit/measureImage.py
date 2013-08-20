@@ -34,7 +34,7 @@ from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
 
 __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
-class MeasureImageConfig(BaseMeasureConfig):
+class MeasureImageConfig(InitialMeasureConfig):
     objective = lsst.pex.config.ConfigField(
         dtype=SingleEpochObjective.ConfigClass,
         doc="Config for objective object that computes model probability at given parameters"
@@ -45,7 +45,7 @@ class MeasureImageConfig(BaseMeasureConfig):
         doc="Whether to use the reference catalog to identify objects to fit"
     )
 
-class MeasureImageTask(BaseMeasureTask):
+class MeasureImageTask(InitialMeasureTask):
     """Driver class for S13-specific galaxy modeling work
 
     Like ProcessImageTask, MeasureImageTask is intended to be used as a base
@@ -58,24 +58,11 @@ class MeasureImageTask(BaseMeasureTask):
     dataPrefix = ""
 
     def __init__(self, **kwds):
-        BaseMeasureTask.__init__(self, **kwds)
+        InitialMeasureTask.__init__(self, **kwds)
         self.makeSubtask("sampler")
-        self.schemaMapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
-        self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
-        self.schema = self.schemaMapper.getOutputSchema()
-        self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
         self.basis = self.config.model.apply()
+        self.fitPsf = None
         self.prior = None
-        self.keys = {}
-        self.addFields("source", "Uncorrected source")
-        self.addDerivedFields()
-        self.keys["snr"] = self.schema.addField("snr", type=float,
-                                                doc="signal to noise ratio from source apFlux/apFluxErr")
-        self.addFields("ref", "Reference catalog")
-        self.keys["ref.sindex"] = self.schema.addField("ref.sindex", type=float,
-                                                       doc="Reference catalog Sersic index")
-        self.keys["ref.flux"] = self.schema.addField("ref.flux", type=float,
-                                                     doc="Reference catalog flux")
 
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing:
@@ -117,6 +104,16 @@ class MeasureImageTask(BaseMeasureTask):
         """
         if self.prior is None:
             self.prior = self.config.prior.apply(pixelScale=exposure.getWcs().pixelScale())
+        if not self.schema: # we may not have run prepCatalog, in which case we need some keys
+            self.schema = record.getSchema()
+            self.keys["ref.center"] = self.schema.find("ref.center").key
+            self.keys["ref.ellipse"] = self.schema.find("ref.ellipse").key
+            self.keys["source.center"] = self.schema.find("source.center").key
+            self.keys["source.ellipse"] = self.schema.find("source.ellipse").key
+            self.keys["mean.center"] = self.schema.find("mean.center").key
+            self.keys["mean.ellipse"] = self.schema.find("mean.ellipse").key
+            self.keys["median.center"] = self.schema.find("median.center").key
+            self.keys["median.ellipse"] = self.schema.find("median.ellipse").key
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
         sampler = self.sampler.setup(exposure=exposure, center=record.getPointD(self.keys["ref.center"]),
@@ -128,12 +125,25 @@ class MeasureImageTask(BaseMeasureTask):
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
-        self.fillDerivedFields(record)
+        self.fillMeasuredFields(record)
         return lsst.pipe.base.Struct(objective=objective, sampler=sampler, psf=psf, record=record)
 
-    def prepCatalog(self, exposure, srcCat, refCat=None, where=None):
+    def setupInitialSchema(self, exposure, srcCat, refCat):
+        """Attach Schema and SchemaMapper attributes to self (.schema and self.srcMapper, respectively)
+        for use with prepInitialCatalog().
+
+        MeasureImageTask simply uses the implementation in its base class and adds fields for the
+        shapelet PSF fit (while initializing the self.fitPsf attribute).
+        """
+        InitialMeasureTask.setupInitialSchema(self, exposure=exposure, srcCat=srcCat, refCat=refCat)
+        self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
+
+    def prepInitialCatalog(self, exposure, srcCat, refCat, where=None):
         """Create a ModelFitCatalog with initial parameters and fitting regions
         to be used later by fillCatalog.
+
+        MeasureImageTask simply uses the implementation in its base class and adds the
+        shapelet PSF fit.
 
         @param[in]   exposure         Exposure object that will be fit.
         @param[in]   srcCat           SourceCatalog containing processCcd measurements
@@ -145,45 +155,13 @@ class MeasureImageTask(BaseMeasureTask):
                                       True if a ModelFitRecord should be created for that
                                       object.  Ignored if None.
         """
-        self.log.info("Setting up fitting and transferring source/reference fields")
-        outCat = ModelFitCatalog(self.schema)
+        outCat = InitialMeasureTask.prepCatalog(self, exposure=exposure, srcCat=srcCat, refCat=refCat,
+                                                where=where)
+        self.log.info("Fitting shapelet PSF approximations")
         if not exposure.hasPsf():
             raise lsst.pipe.base.TaskError("Exposure has no PSF")
-
-        def prepRecord(outRecord, srcRecord):
-            psfModel = self.fitPsf.fit(outRecord, exposure.getPsf(), srcRecord.getCentroid())
-            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
-            outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
-            outRecord.setPointD(self.keys["source.center"], srcRecord.getCentroid())
-            outRecord.setMomentsD(self.keys["source.ellipse"], srcRecord.getShape())
-            outRecord.assign(srcRecord, self.schemaMapper)
-
-        matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
-        keyA = refCat.getSchema().find("ellipse.a").key
-        keyB = refCat.getSchema().find("ellipse.b").key
-        keyTheta = refCat.getSchema().find("ellipse.theta").key
-        keyMag = refCat.getSchema().find("mag.%s" % exposure.getFilter().getName()).key
-        keySIndex = refCat.getSchema().find("sindex").key
-        wcs = exposure.getWcs()
-        calib = exposure.getCalib()
-        for match in matches:
-            if where is not None and not where(src=match.second, ref=match.first):
-                continue
-            if match.second.getShapeFlag():
-                continue
-            ellipse1 = lsst.afw.geom.ellipses.Axes(
-                (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
-                (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
-                (match.first.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
-                )
-            transform = wcs.linearizeSkyToPixel(match.first.getCoord())
-            ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
-            outRecord = outCat.addNew()
-            outRecord.setMomentsD(self.keys["ref.ellipse"], ellipse2)
-            outRecord.setD(self.keys["ref.flux"], calib.getFlux(match.first.getD(keyMag)))
-            outRecord.setD(self.keys["ref.sindex"], match.first.getD(keySIndex))
-            outRecord.setPointD(self.keys["ref.center"], wcs.skyToPixel(match.first.getCoord()))
-            prepRecord(outRecord, match.second)
+        for outRecord in outCat:
+            self.fitPsf.fit(outRecord, exposure.getPsf(), srcRecord.getCentroid())
         return outCat
 
     def fillCatalog(self, exposure, outCat):
