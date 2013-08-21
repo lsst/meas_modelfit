@@ -32,6 +32,11 @@ from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochObjecti
     ModelFitTable
 from .measureImage import BaseMeasureConfig, BaseMeasureTask
 
+try:
+    from lsst.meas.mosaic import applyMosaicResults
+except ImportError:
+    applyMosaicResults = None
+
 __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
 
 class MeasureMultiConfig(BaseMeasureConfig):
@@ -48,6 +53,11 @@ class MeasureMultiConfig(BaseMeasureConfig):
         doc = "minimum number of pixels in a calexp footprint to use that calexp for a given galaxy",
         dtype = int,
         default = 5,
+    )
+    doApplyUberCal = lsst.pex.config.Field(
+        dtype = bool,
+        doc = "Apply meas_mosaic ubercal results to input calexps?",
+        default = True
     )
 
 class MeasureMultiTask(BaseMeasureTask):
@@ -111,13 +121,23 @@ class MeasureMultiTask(BaseMeasureTask):
         def readInputExposure(record, bbox):
             """Given an ExposureRecord and bounding box, load the appropriate subimage."""
             dataId = butler.mapper.getDataId(visit=record.get(visitKey), ccdId=record.get(ccdKey))
-            return butler.get(
+            dataRef = butler.dataRef("calexp", **dataId)
+            exposure = dataRef.get(
                 "calexp_sub",
                 bbox=bbox,
                 origin="PARENT",
-                immediate=True,
-                **dataId
+                immediate=True
             )
+            if self.config.doApplyUberCal:
+                if not applyMosaicResults:
+                    raise RuntimeError(
+                        "Cannot use improved calibrations for %s because meas_mosaic could not be imported."
+                        % dataRef.dataId
+                        )
+                applyMosaicResults(dataRef, calexp=exposure, bbox=bbox)
+            return inputs
+
+            return exposure
         self.readInputExposure = readInputExposure
         return lsst.pipe.base.Struct(
             coadd=coadd,
