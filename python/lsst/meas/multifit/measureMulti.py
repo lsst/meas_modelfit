@@ -139,6 +139,7 @@ class MeasureMultiTask(BaseMeasureTask):
         for coaddRecord in coaddCat:
             record = outCat.addNew()
             record.assign(coaddRecord, self.schemaMapper)
+        outCat.sort()
         return outCat
 
     @lsst.pipe.base.timeMethod
@@ -260,7 +261,6 @@ class MeasureMultiTask(BaseMeasureTask):
         """Write task outputs using the butler.
         """
         self.log.info("Writing output catalog")
-        outCat.sort()  # want to sort by ID before saving, so when we load it's contiguous
         dataRef.put(outCat, self.dataPrefix + "multiModelfits")
 
     @classmethod

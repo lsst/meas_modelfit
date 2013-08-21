@@ -112,6 +112,14 @@ class MeasureImageConfig(BaseMeasureConfig):
         default=True,
         doc="Whether to use the reference catalog to identify objects to fit"
     )
+    doWarmStart = lsst.pex.config.Field(
+        dtype=bool,
+        default=False,
+        doc=("If True, load a previous modelfits catalog and use its attached proposal distributions "
+             "as the initial proposal distributions, instead of starting from a match of the source "
+             "and reference catalogs.  NOTE: Also causes fit region footprints to be based on the previous "
+             "modelfits footprints, instead of the original detection footprints")
+    )
 
 class MeasureImageTask(BaseMeasureTask):
     """Driver class for S13-specific galaxy modeling work
@@ -167,7 +175,6 @@ class MeasureImageTask(BaseMeasureTask):
         """Write task outputs using the butler.
         """
         self.log.info("Writing output catalog")
-        outCat.sort()  # want to sort by ID before saving, so when we load it's contiguous
         dataRef.put(outCat, self.dataPrefix + "modelfits")
 
     @lsst.pipe.base.timeMethod
@@ -185,6 +192,9 @@ class MeasureImageTask(BaseMeasureTask):
           - psf: a shapelet.MultiShapeletFunction representation of the PSF
           - record: the output record (identical to the record argument, which is modified in-place)
         """
+        if record.getSchema() != self.schema:
+            raise TaskError("Record schema does not match expected schema; probably a result of using "
+                            "doWarmStart with a catalog from an older version of the code.")
         if self.prior is None:
             self.prior = self.config.prior.apply(pixelScale=exposure.getWcs().pixelScale())
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
@@ -226,15 +236,6 @@ class MeasureImageTask(BaseMeasureTask):
         outCat = ModelFitCatalog(self.schema)
         if not exposure.hasPsf():
             raise lsst.pipe.base.TaskError("Exposure has no PSF")
-
-        def prepRecord(outRecord, srcRecord):
-            psfModel = self.fitPsf.fit(outRecord, exposure.getPsf(), srcRecord.getCentroid())
-            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
-            outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
-            outRecord.setPointD(self.keys["source.center"], srcRecord.getCentroid())
-            outRecord.setMomentsD(self.keys["source.ellipse"], srcRecord.getShape())
-            outRecord.assign(srcRecord, self.schemaMapper)
-
         matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
         keyA = refCat.getSchema().find("ellipse.a").key
         keyB = refCat.getSchema().find("ellipse.b").key
@@ -244,23 +245,31 @@ class MeasureImageTask(BaseMeasureTask):
         wcs = exposure.getWcs()
         calib = exposure.getCalib()
         for match in matches:
-            if where is not None and not where(src=match.second, ref=match.first):
+            srcRecord = match.second
+            refRecord = match.first
+            if where is not None and not where(src=srcRecord, ref=refRecord):
                 continue
-            if match.second.getShapeFlag():
+            if srcRecord.getShapeFlag():
                 continue
             ellipse1 = lsst.afw.geom.ellipses.Axes(
-                (match.first.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
-                (match.first.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
-                (match.first.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
+                (refRecord.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
+                (refRecord.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
+                (refRecord.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
                 )
-            transform = wcs.linearizeSkyToPixel(match.first.getCoord())
+            transform = wcs.linearizeSkyToPixel(refRecord.getCoord())
             ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
             outRecord = outCat.addNew()
+            outRecord.assign(srcRecord, self.schemaMapper)
             outRecord.setMomentsD(self.keys["ref.ellipse"], ellipse2)
-            outRecord.setD(self.keys["ref.flux"], calib.getFlux(match.first.getD(keyMag)))
-            outRecord.setD(self.keys["ref.sindex"], match.first.getD(keySIndex))
-            outRecord.setPointD(self.keys["ref.center"], wcs.skyToPixel(match.first.getCoord()))
-            prepRecord(outRecord, match.second)
+            outRecord.setD(self.keys["ref.flux"], calib.getFlux(refRecord.getD(keyMag)))
+            outRecord.setD(self.keys["ref.sindex"], refRecord.getD(keySIndex))
+            outRecord.setPointD(self.keys["ref.center"], wcs.skyToPixel(refRecord.getCoord()))
+            outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
+            outRecord.setPointD(self.keys["source.center"], srcRecord.getCentroid())
+            outRecord.setMomentsD(self.keys["source.ellipse"], srcRecord.getShape())
+            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
+            self.fitPsf.fit(outRecord, exposure.getPsf(), outRecord.get(self.keys["ref.center"]))
+        outCat.sort()
         return outCat
 
     def fillCatalog(self, exposure, outCat):
@@ -276,7 +285,15 @@ class MeasureImageTask(BaseMeasureTask):
         output catalog using the butler.
         """
         inputs = self.readInputs(dataRef)
-        outCat = self.prepCatalog(inputs.exposure, srcCat=inputs.srcCat, refCat=inputs.refCat)
+        if self.config.doWarmStart:
+            self.log.info("Using warm start; loading previous catalog and updating footprints and PSFs")
+            outCat = self.dataRef.get(self.dataPrefix + "src", immediate=True)
+            for outRecord in outCat:
+                outRecord.setFootprint(setupFitRegion(self.config.fitRegion, inputs.exposure, outRecord))
+                psfModel = self.fitPsf.fit(outRecord, inputs.exposure.getPsf(),
+                                           outRecord.get(self.keys["ref.center"]))
+        else:
+            outCat = self.prepCatalog(inputs.exposure, srcCat=inputs.srcCat, refCat=inputs.refCat)
         if not self.config.prepOnly:
             self.fillCatalog(inputs.exposure, outCat)
         self.writeOutputs(dataRef, outCat)
