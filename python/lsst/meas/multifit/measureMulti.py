@@ -142,12 +142,14 @@ class MeasureMultiTask(BaseMeasureTask):
         return outCat
 
     @lsst.pipe.base.timeMethod
-    def processObject(self, record, coadd, coaddInputCat):
+    def processObject(self, record, coadd, coaddInputCat, doWarmStart=True):
         """Process a single object.
 
         @param[in,out] record     multi-fit ModelFitRecord
         @param[in] coadd          Coadd exposure
         @param[in] coaddInputCat    ExposureCatalog describing exposures that may be included in the fit
+        @param[in] doWarmStart      If True (default), use the proposal distribution attached to the
+                                    coadd-fit SampleSet as the initial proposal.
 
         @return a Struct containing various intermediate objects:
           - objective   the Objective object used to evaluate likelihoods
@@ -161,12 +163,18 @@ class MeasureMultiTask(BaseMeasureTask):
             coadd=coadd,
             coaddInputCat=coaddInputCat,
         )
-        sourceCoaddCenter = record.getPointD(self.keys["source.center"])
-        sampler = self.sampler.setup(
-            exposure=coadd,
-            center=sourceCoaddCenter,
-            ellipse=record.getMomentsD(self.keys["source.ellipse"]),
-        )
+        refCenter = record.getPointD(self.keys["ref.center"])
+        if self.doWarmStart:
+            samples = record.getSamples()
+            if samples is None:
+                raise TaskError("No prior samples found; cannot proceed with warm start")
+            sampler = self.sampler.reset(samples=samples, center=refCenter, prior=self.prior)
+        else:
+            sampler = self.sampler.setup(
+                exposure=coadd,
+                center=refCenter,
+                ellipse=record.getMomentsD(self.keys["ref.ellipse"]),
+                )
         samples = sampler.run(objective)
         samples.applyPrior(self.prior)
         record.setSamples(samples)

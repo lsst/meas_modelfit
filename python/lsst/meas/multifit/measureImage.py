@@ -171,11 +171,13 @@ class MeasureImageTask(BaseMeasureTask):
         dataRef.put(outCat, self.dataPrefix + "modelfits")
 
     @lsst.pipe.base.timeMethod
-    def processObject(self, exposure, record):
+    def processObject(self, exposure, record, doWarmStart=False):
         """Process a single object.
 
-        @param[in] exposure    lsst.afw.image.ExposureF to fit
-        @param[in,out] record  ModelFitRecord to fill, as prepared by prepCatalog
+        @param[in] exposure     lsst.afw.image.ExposureF to fit
+        @param[in,out] record   ModelFitRecord to fill, as prepared by prepCatalog
+        @param[in] doWarmStart  If True, attempt to load the initial proposal distribution
+                                from a SampleSet already attached to the given record.
 
         @return a Struct containing various intermediate objects and results:
           - objective: the Objective object used to evaluate likelihoods
@@ -187,8 +189,15 @@ class MeasureImageTask(BaseMeasureTask):
             self.prior = self.config.prior.apply(pixelScale=exposure.getWcs().pixelScale())
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
-        sampler = self.sampler.setup(exposure=exposure, center=record.getPointD(self.keys["ref.center"]),
-                                     ellipse=record.getMomentsD(self.keys["ref.ellipse"]), prior=self.prior)
+        center = record.getPointD(self.keys["ref.center"])
+        if not doWarmStart:
+            sampler = self.sampler.setup(exposure=exposure, center=center, prior=self.prior,
+                                         ellipse=record.getMomentsD(self.keys["ref.ellipse"]))
+        else:
+            samples = record.getSamples()
+            if samples is None:
+                raise TaskError("No prior samples found; cannot proceed with warm start")
+            sampler = self.sampler.reset(samples=samples, center=center, prior=self.prior)
         objective = SingleEpochObjective(
             self.config.objective.makeControl(), self.basis, psf,
             exposure.getMaskedImage(), record.getFootprint()

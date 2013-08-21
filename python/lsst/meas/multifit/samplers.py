@@ -55,14 +55,12 @@ class BaseSamplerTask(lsst.pipe.base.Task):
         """
         raise NotImplementedError("setup() not implemented for this sampler")
 
-    def reset(self, samples, prior):
+    def reset(self, samples, center, prior):
         """Reinitialize the sampler state given a SampleSet from a previous sampler on the same object.
 
         The given SampleSet must have the same model definition as self.model.
 
-        @return a lsst.pipe.base.Struct with:
-          sampler: an instance of a subclass of BaseSampler
-          footprint: an afw.detection.Footprint that defines the pixel region to fit
+        @return an instance of a subclass of BaseSampler
         """
         raise NotImplementedError("reset() not implemented for this sampler")
 
@@ -193,6 +191,12 @@ class AdaptiveImportanceSamplerTask(BaseSamplerTask):
             components.append(multifitLib.Mixture3.Component(1.0, mu, sigma))
         df = self.config.degreesOfFreedom or float("inf")
         proposal = multifitLib.Mixture3(components, df)
+        return multifitLib.AdaptiveImportanceSampler(self.rng, proposal, prior, center,
+                                                     self.config.getIterationMap(),
+                                                     self.config.doSaveIterations)
+
+    def reset(self, samples, center, prior):
+        proposal = samples.getProposal()
         return multifitLib.AdaptiveImportanceSampler(self.rng, proposal, prior, center,
                                                      self.config.getIterationMap(),
                                                      self.config.doSaveIterations)
