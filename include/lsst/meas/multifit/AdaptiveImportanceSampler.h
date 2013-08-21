@@ -53,7 +53,7 @@ public:
     );
 
     ImportanceSamplerControl() :
-        nSamples(5000), nUpdateSteps(2), tau1(1E-4), tau2(0.5), targetPerplexity(1.0), maxRepeat(0)
+        nSamples(2000), nUpdateSteps(2), tau1(1E-4), tau2(0.5), targetPerplexity(1.0), maxRepeat(0)
     {}
 };
 
