@@ -29,7 +29,7 @@ import lsst.afw.geom.ellipses
 
 from . import multifitLib
 
-__all__ = ("BaseSamplerConfig", "BaseSamplerTask", "NaiveGridSamplerConfig", "NaiveGridSamplerTask")
+__all__ = ("BaseSamplerConfig", "BaseSamplerTask", "NaiveGridSamplerConfig", "NaiveGridSamplerTask", "ImportanceSamplerConfig", "AdaptiveImportanceSamplerConfig", "AdaptiveImportanceSamplerTask")
 
 BaseSamplerConfig = lsst.pex.config.Config
 

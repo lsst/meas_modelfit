@@ -31,6 +31,7 @@ from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochObjective, ModelFitCatalog, \
     ModelFitTable
 from .measureImage import BaseMeasureConfig, BaseMeasureTask
+from .samplers import *
 
 try:
     from lsst.meas.mosaic import applyMosaicResults
@@ -140,8 +141,6 @@ class MeasureMultiTask(BaseMeasureTask):
                         % dataRef.dataId
                         )
                 applyMosaicResults(dataRef, calexp=exposure, bbox=bbox)
-            return inputs
-
             return exposure
         self.readInputExposure = readInputExposure
         return lsst.pipe.base.Struct(
@@ -190,7 +189,7 @@ class MeasureMultiTask(BaseMeasureTask):
             coaddInputCat=coaddInputCat,
         )
         refCenter = record.getPointD(self.keys["ref.center"])
-        if self.doWarmStart:
+        if doWarmStart:
             samples = record.getSamples()
             if samples is None:
                 raise TaskError("No prior samples found; cannot proceed with warm start")
