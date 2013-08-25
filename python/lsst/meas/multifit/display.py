@@ -39,6 +39,7 @@ import lsst.afw.display.ds9
 
 from .measureCcd import *
 from .measureCoadd import *
+from .measureMulti import *
 from .multifitLib import *
 
 __all__ = ("makeHistogramGrid", "InteractiveFitter")
@@ -341,10 +342,10 @@ class Interactive(object):
     """Interactive analysis helper class
 
     This class manages a butler, calexp, modelfits catalog, and an instance
-    of the MeasureCcdTask, allowing individual objects to be re-fit and plotted.
+    of a Measure*Task, allowing individual objects to be re-fit and plotted.
     """
 
-    def __init__(self, rerun, config=None, dataId=None, coadd=False):
+    def __init__(self, rerun, config=None, dataId=None, mode="ccd"):
         """Construct an interactive analysis object.
 
         @param[in]  rerun    Output directory, relative to $S13_DATA_DIR/output.
@@ -354,54 +355,80 @@ class Interactive(object):
         @param[in]  config   MeasureCcdTask.ConfigClass instance; if None, it
                              will be loaded from disk.
         @param[in]  dataId   Butler data ID of the image to analyze.
-        @param[in]  coadd    Whether to process on the coadd instead of single-frame.
+        @param[in]  mode     One of "ccd", "coadd", or "multi", indicating whether
+                             to use MeasureCcdTask, MeasureCoaddTask, or MeasureMultiTask.
         """
-        if dataId is None:
-            if not coadd:
-                dataId = dict(visit=100, raft="2,2", sensor="1,1")
-            else:
-                dataId = dict(tract=0, patch="2,2", filter="i")
         root = os.environ["S13_DATA_DIR"]
         self.butler = lsst.daf.persistence.Butler(os.path.join(root, "output", rerun))
-        if not coadd:
+        self.mode = mode.lower()
+        if self.mode == "ccd":
+            if dataId is None:
+                dataId = dict(visit=100, raft="2,2", sensor="1,1")
             self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
             if config is None:
                 config = self.butler.get("measureCcd_config", immediate=True)
             self.exposure = self.dataRef.get("calexp", immediate=True)
             self.modelfits = self.dataRef.get("modelfits", immediate=True)
             self.task = MeasureCcdTask(config=config)
-        else:
+        elif self.mode == "coadd":
+            if dataId is None:
+                dataId = dict(tract=0, patch="2,2", filter="i")
             self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
             if config is None:
                 config = self.butler.get("deep_measureCoadd_config", immediate=True)
             self.exposure = self.dataRef.get("deepCoadd_calexp", immediate=True)
             self.modelfits = self.dataRef.get("deepCoadd_modelfits", immediate=True)
             self.task = MeasureCoaddTask(config=config)
+        elif self.mode.startswith("multi"):
+            if dataId is None:
+                dataId = dict(tract=0, patch="2,2", filter="i")
+            self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
+            if config is None:
+                config = self.butler.get("deep_measureMulti_config", immediate=True)
+            self.task = MeasureMultiTask(config=config)
+            inputs = self.task.readInputs(self.dataRef)
+            self.exposure = inputs.coadd
+            self.coaddInputCat = inputs.coaddInputCat
+            self.modelfits = self.dataRef.get("deepCoadd_multiModelfits", immediate=True)
 
-    def fit(self, index=0, id=None):
+    def fit(self, index=0, id=None, doWarmStart=None):
         """Re-fit the object indicated by the given record sequential index
         or source ID, returning the Struct object returned by
         MeasureImageTask.processObject.
         """
+        if doWarmStart is None:
+            doWarmStart = True if self.mode.startswith('multi') else False
         if id is not None:
             record = self.modelfits.find(id)
         else:
             record = self.modelfits[index]
-        return self.task.processObject(self.exposure, record)
+        if self.mode.startswith("multi"):
+            return self.task.processObject(record=record, coadd=self.exposure,
+                                           coaddInputCat=self.coaddInputCat)
+        else:
+            return self.task.processObject(self.exposure, record, doWarmStart=doWarmStart)
 
     def plotSamples(self, r, iteration=None, suffix="", **kwds):
         """Plot the sammples and proposal distribution from an interactive fit.
         """
-        if iteration is not None:
-            samples = r.sampler.iterations[iteration]
-            label = "%s+%s%s" % (r.record.getId(), iteration, suffix)
+        if isinstance(r, ModelFitRecord):
+            record = r
+            label = "%s%s" % (record.getId(), suffix)
+            samples = record.getSamples()
+            iterations = []
         else:
-            label = "%s%s" % (r.record.getId(), suffix)
-            samples = r.record.getSamples()
-        print "iterations=%s, perplexity=%f, essf=%f" % (len(r.sampler.iterations),
+            record = r.record
+            if iteration is not None:
+                samples = r.sampler.iterations[iteration]
+                label = "%s+%s%s" % (record.getId(), iteration, suffix)
+            else:
+                label = "%s%s" % (record.getId(), suffix)
+                samples = record.getSamples()
+            iterations = r.sampler.iterations
+        print "iterations=%s, perplexity=%f, essf=%f" % (len(iterations),
                                                          samples.computeNormalizedPerplexity(),
                                                          samples.computeEffectiveSampleSizeFraction())
-        return DensityPlotSet(r.record, samples=samples, label=label, **kwds)
+        return DensityPlotSet(record, samples=samples, label=label, **kwds)
 
     def displayResiduals(self, r, parameters=None):
         """Display the data postage stamp along with the model image and residuals in ds9.
