@@ -61,11 +61,6 @@ class MeasureMultiConfig(BaseMeasureConfig):
         default = True
     )
 
-    def setDefaults(self):
-        self.sampler.iterations.clear()
-        self.sampler.iterations[0] = ImportanceSamplerConfig(nUpdateSteps=0, nSamples=200,
-                                                             maxRepeat=0, targetPerplexity=1.0)
-
 class MeasureMultiTask(BaseMeasureTask):
     """Variant of MeasureImageTask for running multifit on the calexp that make up a coadd.
 
