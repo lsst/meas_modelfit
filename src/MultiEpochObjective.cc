@@ -141,11 +141,11 @@ MultiEpochObjective::MultiEpochObjective(
         ));
         
         afw::image::MaskedImage<Pixel> maskedImage = (*imPtrIter)->exposure.getMaskedImage();
-        _weights.asEigen().segment(begIndex, numPixels) =
+        _weights.asEigen<Eigen::ArrayXpr>().segment(begIndex, numPixels) =
             afw::detection::flattenArray(
                 (*imPtrIter)->footprint,
                 maskedImage.getVariance()->getArray(),
-                maskedImage.getXY0()).asEigen();
+                maskedImage.getXY0()).asEigen<Eigen::ArrayXpr>().sqrt().inverse();
         
         if (!ctrl.usePixelWeights) {
             // the weight for this component is the same for all pixels: e^mean(log(weight))
