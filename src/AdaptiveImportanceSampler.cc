@@ -77,8 +77,10 @@ SampleSet AdaptiveImportanceSampler::run(Objective const & objective) const {
                     parameters[k].asEigen()
                 );
             }
-            samples.applyPrior(_prior);
-            perplexity = samples.computeNormalizedPerplexity();
+            if (_doSaveIterations || ctrl.nUpdateSteps > 0 || nRepeat <= ctrl.maxRepeat) {
+                samples.applyPrior(_prior);
+                perplexity = samples.computeNormalizedPerplexity();
+            }
             if (_doSaveIterations) {
                 PTR(SampleSet) snapshot(new SampleSet(samples));
                 iterationVector->push_back(snapshot);
