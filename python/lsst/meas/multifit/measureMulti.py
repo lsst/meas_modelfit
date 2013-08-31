@@ -98,7 +98,9 @@ class MeasureMultiTask(BaseMeasureTask):
         if not self.config.prepOnly:
             numObjects = len(outCat)
             for i, record in enumerate(outCat):
-                self.log.info("Processing object %s of %s" % (i + 1, numObjects))
+                if self.config.progressChunk > 0 and i % self.config.progressChunk == 0:
+                    self.log.info("Processing object %d/%d (%3.2f%%)"
+                                  % (i, len(outCat), (100.0*i)/len(outCat)))
                 try:
                     self.processObject(record=record, coadd=inputs.coadd, coaddInputCat=inputs.coaddInputCat)
                 except Exception, e:
