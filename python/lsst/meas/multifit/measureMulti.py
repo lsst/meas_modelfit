@@ -216,8 +216,15 @@ class MeasureMultiTask(BaseMeasureTask):
         @param[in] coadd        Coadd exposure
         @param[in] coaddInputCat  ExposureCatalog describing exposures that may be included in the fit
         """
-        if self.keys is None:
-            self.keys = {"source.center": record.getSchema().find("source.center").key}
+        if not self.keys:
+            self.keys = {
+                "source.center": record.getSchema().find("source.center").key,
+                "ref.center": record.getSchema().find("ref.center").key,
+                "mean.ellipse": record.getSchema().find("mean.ellipse").key,
+                "mean.center": record.getSchema().find("mean.center").key,
+                "median.ellipse": record.getSchema().find("median.ellipse").key,
+                "median.center": record.getSchema().find("median.center").key,
+                }
         coaddFootprint = record.getFootprint()
         sourceCoaddPos = record.getPointD(self.keys["source.center"])
 
