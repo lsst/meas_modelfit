@@ -57,11 +57,11 @@ Eigen::VectorXd solveTrustRegion(
 class PosteriorOptimizerObjective {
 public:
 
-    int const parameterSize;
     int const dataSize;
+    int const parameterSize;
 
-    PosteriorOptimizerObjective(int parameterSize_, int dataSize_) :
-        parameterSize(parameterSize_), dataSize(dataSize_)
+    PosteriorOptimizerObjective(int dataSize_, int parameterSize_) :
+        dataSize(dataSize_), parameterSize(parameterSize_)
     {}
 
     virtual void computeResiduals(Eigen::VectorXd const & parameters, Eigen::VectorXd & residuals) const = 0;
@@ -79,12 +79,33 @@ public:
     virtual ~PosteriorOptimizerObjective() {}
 };
 
-/// Configuration object for PosteriorOptimizer
+/**
+ *  @brief Configuration object for PosteriorOptimizer
+ *
+ *  Many of these configuration options pertain to how the trust region is
+ *  updated.  It's easiest to understand these together rather than separately.
+ *  At each iteration, a quadratic model of the objective function is formed.  We can use this
+ *  model to predict how we expect the objective function to behave over a step, and compare it
+ *  to how the actual objective function behaves.  To do this, we'll use the ratio of the
+ *  actual reduction in the objective function to the predicted reduction in the objective function,
+ *  and call this @f$\rho@f$.  Then,
+ *   - the step is accepted, and the parameters updated, when @f$\rho >@f$ @c stepAcceptThreshold.
+ *   - if @f$\rho > @f$ @c trustRegionGrowReductionRatio and the length of the step is greater than
+ *     @c trustRegionGrowStepFraction times the current trust region radius, the trust region radius
+ *     will be multiplied by @c trustRegionGrowFactor.
+ *   - if @c trustRegionShrinkMinReductionRatio @f$< \rho < @f$ @c trustRegionShrinkMaxReductionRatio,
+ *     the trust region radius will be multiplied by @c trustRegionShrinkFactor.
+ */
 class PosteriorOptimizerControl {
 public:
     LSST_CONTROL_FIELD(
         noSR1Term, bool,
         "If true, ignore the SR1 update term in the Hessian, resulting in a Levenberg-Marquardt-like method"
+    );
+
+    LSST_CONTROL_FIELD(
+        skipSR1UpdateThreshold, bool,
+        "Skip the SR1 update if |v||s| / (|v||s|) is less than this threshold"
     );
 
     LSST_CONTROL_FIELD(
@@ -97,7 +118,99 @@ public:
         "absolute step size used for numerical derivatives (added to relative step)"
     );
 
-    PosteriorOptimizerControl() : noSR1Term(false), numDiffRelStep(1E-8), numDiffAbsStep(1E-8) {}
+    LSST_CONTROL_FIELD(
+        stepAcceptThreshold, double,
+        "steps with reduction ratio greater than this are accepted"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionInitialSizeFactor, double,
+        "the initial trust region will be set to this fraction of the initial Newton step length"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionGrowReductionRatio, double,
+        "steps with reduction radio greater than this may increase the trust radius"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionGrowStepFraction, double,
+        "steps with length this fraction of the trust radius may increase the trust radius"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionGrowFactor, double,
+        "when increase the trust region size, multiply the radius by this factor"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionShrinkMaxReductionRatio, double,
+        "steps with reduction radio less than this may decrease the trust radius"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionShrinkMinReductionRatio, double,
+        "steps with reduction radio less than this will not decrease the trust radius"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionShrinkFactor, double,
+        "when reducing the trust region size, multiply the radius by this factor"
+    );
+
+    LSST_CONTROL_FIELD(
+        trustRegionSolverTolerance, double,
+        "value passed as the tolerance to solveTrustRegion"
+    );
+
+    LSST_CONTROL_FIELD(
+        maxInnerIterations, int,
+        "maximum number of iterations (i.e. function evaluations and trust region subproblems) per step"
+    );
+
+    LSST_CONTROL_FIELD(
+        doSaveIterations, bool,
+        "whether to save all iterations for debugging purposes"
+    );
+
+    PosteriorOptimizerControl() :
+        noSR1Term(false), skipSR1UpdateThreshold(1E-8),
+        numDiffRelStep(1E-8), numDiffAbsStep(1E-8),
+        stepAcceptThreshold(0.0),
+        trustRegionGrowReductionRatio(0.75),
+        trustRegionGrowStepFraction(0.8),
+        trustRegionGrowFactor(2.0),
+        trustRegionShrinkMaxReductionRatio(0.75),
+        trustRegionShrinkMinReductionRatio(0.1),
+        trustRegionShrinkFactor(1.0/3.0),
+        trustRegionSolverTolerance(1E-8),
+        doSaveIterations(false)
+    {}
+};
+
+/**
+ *  @brief Internal struct used for per-iteration optimizer data, made public for debugging purposes.
+ *
+ *  @note This is logically an inner class, but Swig doesn't support those.
+ */
+struct PosteriorOptimizerIterationData {
+    double objectiveValue;
+    double priorValue;
+    Eigen::VectorXd parameters;
+    Eigen::VectorXd residuals;
+
+    PosteriorOptimizerIterationData(int dataSize, int parameterSize) :
+        objectiveValue(0.0), priorValue(0.0),
+        parameters(parameterSize),
+        residuals(dataSize)
+        {}
+
+    void swap(PosteriorOptimizerIterationData & other) {
+        std::swap(objectiveValue, other.objectiveValue);
+        std::swap(priorValue, other.priorValue);
+        parameters.swap(other.parameters);
+        residuals.swap(other.residuals);
+    }
 };
 
 /**
@@ -110,8 +223,9 @@ public:
  *  derivatives, but use numerical derivatives to compute the Jacobian of the residuals at every
  *  step.  A trust region approach is used to ensure global convergence.
  *
- *  We consider the function @f$f(x)@f$we wish to optimize to have two terms, which correspond to
- *  negative log likelihood (@f$\chi^2/2@f$) and negative log prior @f$q(x)=-\ln P(x)@f$:
+ *  We consider the function @f$f(x)@f$ we wish to optimize to have two terms, which correspond to
+ *  negative log likelihood (@f$\chi^2/2=\|r(x)|^2@f$, where @f$r(x)@f$ is the vector of residuals
+ *  at @f$x@f$) and negative log prior @f$q(x)=-\ln P(x)@f$:
  *  @f[
  *   f(x) = \frac{1}{2}\|r(x)\|^2 + q(x)
  *  @f]
@@ -147,6 +261,8 @@ public:
 
     typedef PosteriorOptimizerObjective Objective;
     typedef PosteriorOptimizerControl Control;
+    typedef PosteriorOptimizerIterationData IterationData;
+    typedef std::vector<IterationData> IterationDataVector;
 
     PosteriorOptimizer(
         PTR(Objective const) objective,
@@ -168,18 +284,25 @@ public:
 
     Eigen::MatrixXd const & getHessian() const;
 
+    IterationDataVector const & getIterations() const { return _iterations; }
+
 private:
+
+    void _computeDerivatives();
+
     PTR(Objective const) _objective;
     Control _ctrl;
-    Eigen::VectorXd _parameters;
-    Eigen::VectorXd _testParameters;
-    Eigen::VectorXd _residuals;
-    Eigen::VectorXd _testResiduals;
+    double _trustRadius;
+    IterationData _current;
+    IterationData _next;
+    Eigen::VectorXd _step;
     Eigen::MatrixXd _jacobian;
-    Eigen::MatrixXd _testJacobian;
     Eigen::VectorXd _gradient;
     Eigen::MatrixXd _hessian;
     Eigen::MatrixXd _sr1b;
+    Eigen::VectorXd _sr1v;
+    Eigen::VectorXd _sr1jtr;
+    IterationDataVector _iterations;
 };
 
 }}} // namespace lsst::meas::multifit

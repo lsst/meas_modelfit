@@ -106,33 +106,113 @@ PosteriorOptimizer::PosteriorOptimizer(
 ) :
     _objective(objective),
     _ctrl(ctrl),
-    _parameters(parameters),
-    _testParameters(objective->parameterSize),
-    _residuals(objective->dataSize),
-    _testResiduals(objective->dataSize),
+    _trustRadius(std::numeric_limits<double>::infinity()),
+    _current(objective->dataSize, objective->parameterSize),
+    _next(objective->dataSize, objective->parameterSize),
+    _step(objective->parameterSize),
     _jacobian(objective->dataSize, objective->parameterSize),
-    _testJacobian(objective->dataSize, objective->parameterSize),
     _gradient(objective->parameterSize),
     _hessian(objective->parameterSize, objective->parameterSize),
     _sr1b(objective->parameterSize, objective->parameterSize)
 {
-    if (_parameters.size() != objective->parameterSize) {
+    if (parameters.size() != _objective->parameterSize) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthErrorException,
             (boost::format("Parameter vector size (%d) does not match objective (%d)")
-             % _parameters.size() % objective->parameterSize).str()
+             % parameters.size() % _objective->parameterSize).str()
         );
     }
-    _residuals.setZero();
-    _objective->computeResiduals(_parameters, _residuals);
-    for (int n = 0; n < objective->parameterSize; ++n) {
-        double numDiffStep = _ctrl.numDiffRelStep * _testParameters[n] + _ctrl.numDiffAbsStep;
-        _testParameters = _parameters;
-        _testParameters[n] += numDiffStep;
-        _objective->computeResiduals(_testParameters, _testResiduals);
-        _jacobian.col(n) = (_testResiduals - _residuals) / numDiffStep;
+    _current.parameters = parameters;
+    _next.parameters = parameters;
+    _objective->computeResiduals(_current.parameters, _current.residuals);
+    _current.objectiveValue = 0.5*_current.residuals.squaredNorm();
+    if (_objective->hasPrior()) {
+        _current.priorValue = _objective->computePrior(_current.parameters);
+        _current.objectiveValue -= std::log(_current.priorValue);
     }
+    _sr1b.setZero();
+    _computeDerivatives();
+    _hessian = _hessian.selfadjointView<Eigen::Lower>();
 }
 
+void PosteriorOptimizer::_computeDerivatives() {
+    _jacobian.setZero();
+    for (int n = 0; n < _objective->parameterSize; ++n) {
+        double numDiffStep = _ctrl.numDiffRelStep * _next.parameters[n] + _ctrl.numDiffAbsStep;
+        _next.parameters = _current.parameters;
+        _next.parameters[n] += numDiffStep;
+        _objective->computeResiduals(_next.parameters, _next.residuals);
+        _jacobian.col(n) = (_next.residuals - _current.residuals) / numDiffStep;
+    }
+    _gradient.setZero();
+    _hessian.setZero();
+    if (_objective->hasPrior()) {
+        _objective->differentiatePrior(_current.parameters, _gradient, _hessian);
+        // objective evaluates P(x); we want -ln P(x) and associated derivatives
+        _gradient /= -_current.priorValue;
+        _hessian /= -_current.priorValue;
+        _hessian.selfadjointView<Eigen::Lower>().rankUpdate(_gradient, 1.0);
+    }
+    if (!_ctrl.noSR1Term) {
+        _sr1jtr = _jacobian.adjoint() * _current.residuals;
+        _gradient += _sr1jtr;
+    } else {
+        _gradient += _jacobian.adjoint() * _current.residuals;
+    }
+    _hessian.selfadjointView<Eigen::Lower>().rankUpdate(_jacobian.adjoint(), 1.0);
+}
+
+bool PosteriorOptimizer::step() {
+    for (int iterCount = 0; iterCount < _ctrl.maxInnerIterations; ++iterCount) {
+        _next.parameters = solveTrustRegion(
+            _hessian, _gradient, _trustRadius, _ctrl.trustRegionSolverTolerance
+        );
+        _step = _next.parameters - _current.parameters;
+        double stepLength = _step.norm();
+        if (_trustRadius == std::numeric_limits<double>::infinity()) {
+            _trustRadius = stepLength;
+        }
+        if (_objective->hasPrior()) {
+            _next.priorValue = _objective->computePrior(_next.parameters);
+            if (_next.priorValue <= 0.0) {
+                _trustRadius *= 0.5;
+                continue;
+            }
+            _next.objectiveValue = -std::log(_next.priorValue);
+        }
+        _objective->computeResiduals(_next.parameters, _next.residuals);
+        _next.objectiveValue += 0.5*_next.residuals.squaredNorm();
+        double actualReduction = _current.objectiveValue - _next.objectiveValue;
+        double predictedReduction = -(_gradient + 0.5*_hessian*_step).dot(_step);
+        double rho = actualReduction / predictedReduction;
+        if (rho > _ctrl.stepAcceptThreshold) {
+            _current.swap(_next);
+            if (!_ctrl.noSR1Term) {
+                _sr1v = -_sr1jtr;
+            }
+            _computeDerivatives();
+            if (!_ctrl.noSR1Term) {
+                _sr1v += _sr1jtr;
+                double vs = _sr1v.dot(_step);
+                if (vs >= _ctrl.skipSR1UpdateThreshold * _sr1v.norm() * stepLength) {
+                    _sr1b.selfadjointView<Eigen::Lower>().rankUpdate(_sr1v, 1.0 / vs);
+                }
+                _hessian += _sr1b;
+            }
+            _hessian = _hessian.selfadjointView<Eigen::Lower>();
+            // check convergence
+            return true;
+        }
+        if (rho > _ctrl.trustRegionGrowReductionRatio && rho > _ctrl.trustRegionGrowStepFraction) {
+            _trustRadius *= _ctrl.trustRegionGrowFactor;
+        }
+        if (
+            rho > _ctrl.trustRegionShrinkMinReductionRatio && rho < _ctrl.trustRegionShrinkMaxReductionRatio
+        ) {
+            _trustRadius *= _ctrl.trustRegionShrinkFactor;
+        }
+    }
+    return true;
+}
 
 }}} // namespace lsst::meas::multifit
