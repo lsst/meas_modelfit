@@ -51,19 +51,19 @@ class DensityPlotSet(object):
         Axes=("a", "b", "theta"),
         )
     elabels = dict(
-        ConformalShear="eta",
-        ReducedShear="g",
-        Distortion="e",
+        ConformalShear="$\\eta",
+        ReducedShear="$g",
+        Distortion="$e",
         )
     rlabels = dict(
-        DeterminantRadius="r_d",
-        TraceRadius="r_t",
-        LogDeterminantRadius="ln(r_d)",
-        LogTraceRadius="ln(r_t)",
+        DeterminantRadius="$r_d$",
+        TraceRadius="$r_t$",
+        LogDeterminantRadius="$\\ln{r_d}$",
+        LogTraceRadius="$\\ln{r_t}$",
         )
     for ek, ev in elabels.items():
         for rk, rv in rlabels.items():
-            plabels["Separable%s%s" % (ek, rk)] = (ev + "1", ev + "2", rv)
+            plabels["Separable%s%s" % (ek, rk)] = (ev + "_1$", ev + "_2$", rv)
 
     defaults = dict(
         hist1d=dict(facecolor='b'),
@@ -177,14 +177,17 @@ class DensityPlotSet(object):
         # prepare plot axes
         if label is None:
             label = "%s" % record.getId()
-        self.figure = pyplot.figure(label, figsize=(12, 8))
+        self.figure = pyplot.figure(label, figsize=(9.33, 5.67))
         self.figure.clear()
         self.axes = {}
         self.axes[0,1,2] = self.figure.add_subplot(221, projection='3d')
-        self.axes[0,1,2].set_xlabel(self.labels[0])
-        self.axes[0,1,2].set_ylabel(self.labels[1])
-        self.axes[0,1,2].set_zlabel(self.labels[2])
+        self.axes[0,1,2].set_xlabel("\n"+self.labels[0])
+        self.axes[0,1,2].set_ylabel("\n"+self.labels[1])
+        self.axes[0,1,2].set_zlabel("\n"+self.labels[2])
         self.axes[0,1,2].patch.set_visible(False)
+        self.axes[0,1,2].xaxis.set_pane_color((1,1,1))
+        self.axes[0,1,2].yaxis.set_pane_color((1,1,1))
+        self.axes[0,1,2].zaxis.set_pane_color((1,1,1))
         self.axes[0,1] = self.figure.add_subplot(224)
         self.axes[0,1].yaxis.set_label_position("right")
         self.axes[0,1].yaxis.tick_right()
@@ -222,14 +225,32 @@ class DensityPlotSet(object):
         onUpdate = [lambda ax: self.setRange(0, *ax.get_xlim()),
                     lambda ax: self.setRange(1, *ax.get_xlim()),
                     lambda ax: self.setRange(2, *ax.get_xlim())]
+        def replaceTicks(getter, setter):
+            ticks = getter()
+            labels = [""] * len(ticks)
+            labels[0] = ticks[0]
+            labels[-1] = ticks[-1]
+            setter(labels)
         for i in range(3):
             rect = bbox1[2] + 0.08, bbox1[1]+(2-i)*step2, 0.25, height2
             self.axes[i] = self.figure.add_axes(rect)
             self.axes[i].callbacks.connect("xlim_changed", onUpdate[i])
             self.axes[i].yaxis.tick_right()
             self.axes[i].set_xlabel(self.labels[i])
+            replaceTicks(self.axes[0,1,2].get_xticks, self.axes[0,1,2].set_xticklabels)
+            replaceTicks(self.axes[0,1,2].get_yticks, self.axes[0,1,2].set_yticklabels)
+            replaceTicks(self.axes[0,1,2].get_zticks, self.axes[0,1,2].set_zticklabels)
+        for axes in self.axes.itervalues():
+            axes.tick_params(labelsize=9)
         # Make plots
         self.update()
+
+    def save(self, filename, **kwds):
+        kwds = kwds.copy()
+        kwds.setdefault("facecolor", self.figure.get_facecolor())
+        self.figure.patch.set_alpha(0.0)
+        self.figure.patch.set_facecolor('k') # weirdly needed to save as transparent
+        self.figure.savefig(filename, **kwds)
 
     def update(self):
         for i, j in self.k:
@@ -278,7 +299,7 @@ class DensityPlotSet(object):
             h, c, xg = self.mixtures[i]
             self.axes[i].plot(xg, h, **self.kwds.mixture1d)
             for j in range(c.shape[1]):
-                self.axes[i].plot(xg, c[:,j], ':', **self.kwds.mixture1d)
+                self.axes[i].plot(xg, c[:,j], alpha=0.5, **self.kwds.mixture1d)
         for name, (data, symbol) in self.special.items():
             self.axes[i].axvline(data[i], color=symbol[0], linewidth=2)
 
@@ -326,8 +347,9 @@ class DensityPlotSet(object):
                 args[j] = yg[slices[j], slices[i]]
                 args[k] = h[slices[j], slices[i]]
                 kwds = self.setContourLevels(i, j, self.kwds.mixture3d)
+                offset = self.limits[k][1] if k == 1 else self.limits[k][0]
                 self.axes[0,1,2].contour(args[0], args[1], args[2], zdir=zdir[k],
-                                         offset=self.limits[k][0], **kwds)
+                                         offset=offset, **kwds)
         for name, (data, symbol) in self.special.items():
             self.axes[0,1,2].plot(data[0:1], data[1:2], data[2:3], symbol, label=name,
                                   markersize=9, alpha=0.8)
