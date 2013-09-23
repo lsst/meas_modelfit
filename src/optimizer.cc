@@ -104,6 +104,7 @@ PosteriorOptimizer::PosteriorOptimizer(
     Eigen::VectorXd const & parameters,
     Control const & ctrl
 ) :
+    _state(0x0),
     _objective(objective),
     _ctrl(ctrl),
     _trustRadius(std::numeric_limits<double>::infinity()),
@@ -164,6 +165,8 @@ void PosteriorOptimizer::_computeDerivatives() {
 
 bool PosteriorOptimizer::step() {
     for (int iterCount = 0; iterCount < _ctrl.maxInnerIterations; ++iterCount) {
+        _state &= ~int(STATUS);
+        _state |= FAILED_EXCEPTION; // set in advance in case we throw
         _next.parameters = solveTrustRegion(
             _hessian, _gradient, _trustRadius, _ctrl.trustRegionSolverTolerance
         );
@@ -175,7 +178,12 @@ bool PosteriorOptimizer::step() {
         if (_objective->hasPrior()) {
             _next.priorValue = _objective->computePrior(_next.parameters);
             if (_next.priorValue <= 0.0) {
-                _trustRadius *= 0.5;
+                _trustRadius *= _ctrl.trustRegionShrinkFactor;
+                _state |= STATUS_STEP_REJECTED | STATUS_TR_DECREASED;
+                if (_trustRadius <= _ctrl.minTrustRadiusThreshold) {
+                    _state |= CONVERGED_TR_SMALL;
+                    return true;
+                }
                 continue;
             }
             _next.objectiveValue = -std::log(_next.priorValue);
@@ -186,6 +194,7 @@ bool PosteriorOptimizer::step() {
         double predictedReduction = -(_gradient + 0.5*_hessian*_step).dot(_step);
         double rho = actualReduction / predictedReduction;
         if (rho > _ctrl.stepAcceptThreshold) {
+            _state |= STATUS_STEP_ACCEPTED;
             _current.swap(_next);
             if (!_ctrl.noSR1Term) {
                 _sr1v = -_sr1jtr;
@@ -200,18 +209,31 @@ bool PosteriorOptimizer::step() {
                 _hessian += _sr1b;
             }
             _hessian = _hessian.selfadjointView<Eigen::Lower>();
-            // check convergence
-            return true;
+            if (_gradient.lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
+                _state |= CONVERGED_GRADZERO;
+                return true;
+            }
+            return false;
         }
         if (rho > _ctrl.trustRegionGrowReductionRatio && rho > _ctrl.trustRegionGrowStepFraction) {
+            _state |= STATUS_TR_INCREASED;
             _trustRadius *= _ctrl.trustRegionGrowFactor;
-        }
-        if (
-            rho > _ctrl.trustRegionShrinkMinReductionRatio && rho < _ctrl.trustRegionShrinkMaxReductionRatio
+        } else if (
+            rho > _ctrl.trustRegionShrinkMinReductionRatio
+            && rho < _ctrl.trustRegionShrinkMaxReductionRatio
         ) {
+            _state |= STATUS_TR_DECREASED;
             _trustRadius *= _ctrl.trustRegionShrinkFactor;
+            if (_trustRadius <= _ctrl.minTrustRadiusThreshold) {
+                _state |= CONVERGED_TR_SMALL;
+                return true;
+            }
+        } else {
+            _state |= STATUS_TR_UNCHANGED;
         }
+        _state &= ~int(FAILED_EXCEPTION); // clear the exception flag if we got here
     }
+    _state |= FAILED_MAX_INNER_ITERATIONS;
     return true;
 }
 

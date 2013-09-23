@@ -109,6 +109,16 @@ public:
     );
 
     LSST_CONTROL_FIELD(
+        minTrustRadiusThreshold, double,
+        "If the trust radius falls below this threshold, consider the algorithm converged"
+    );
+
+    LSST_CONTROL_FIELD(
+        gradientThreshold, double,
+        "If the maximum of the gradient falls below this threshold, consider the algorithm converged"
+    );
+
+    LSST_CONTROL_FIELD(
         numDiffRelStep, double,
         "relative step size used for numerical derivatives (added to absolute step)"
     );
@@ -175,6 +185,8 @@ public:
 
     PosteriorOptimizerControl() :
         noSR1Term(false), skipSR1UpdateThreshold(1E-8),
+        minTrustRadiusThreshold(1E-8),
+        gradientThreshold(1E-8),
         numDiffRelStep(1E-8), numDiffAbsStep(1E-8),
         stepAcceptThreshold(0.0),
         trustRegionGrowReductionRatio(0.75),
@@ -264,6 +276,24 @@ public:
     typedef PosteriorOptimizerIterationData IterationData;
     typedef std::vector<IterationData> IterationDataVector;
 
+    enum StateFlags {
+        CONVERGED_GRADZERO = 0x0001,
+        CONVERGED_TR_SMALL = 0x0002,
+        CONVERGED = CONVERGED_GRADZERO | CONVERGED_TR_SMALL,
+        FAILED_MAX_INNER_ITERATIONS = 0x0010,
+        FAILED_MAX_OUTER_ITERATIONS = 0x0020,
+        FAILED_EXCEPTION = 0x0040,
+        FAILED = FAILED_MAX_INNER_ITERATIONS | FAILED_MAX_OUTER_ITERATIONS | FAILED_EXCEPTION,
+        STATUS_STEP_REJECTED = 0x0100,
+        STATUS_STEP_ACCEPTED = 0x0200,
+        STATUS_STEP = STATUS_STEP_REJECTED | STATUS_STEP_ACCEPTED,
+        STATUS_TR_UNCHANGED = 0x1000,
+        STATUS_TR_DECREASED = 0x2000,
+        STATUS_TR_INCREASED = 0x4000,
+        STATUS_TR = STATUS_TR_UNCHANGED | STATUS_TR_DECREASED | STATUS_TR_INCREASED,
+        STATUS = STATUS_STEP | STATUS_TR,
+    };
+
     PosteriorOptimizer(
         PTR(Objective const) objective,
         Eigen::VectorXd const & parameters,
@@ -276,7 +306,7 @@ public:
 
     bool step();
 
-    int getState() const;
+    int getState() const { return _state; }
 
     Eigen::VectorXd const & getResiduals() const;
 
@@ -290,6 +320,7 @@ private:
 
     void _computeDerivatives();
 
+    int _state;
     PTR(Objective const) _objective;
     Control _ctrl;
     double _trustRadius;
