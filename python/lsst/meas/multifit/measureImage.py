@@ -29,7 +29,7 @@ import lsst.afw.table
 import lsst.afw.geom.ellipses
 import lsst.meas.extensions.multiShapelet
 
-from .samplers import BaseSamplerTask, AdaptiveImportanceSamplerTask, NaiveGridSamplerTask
+from .samplers import BaseSamplerTask, AdaptiveImportanceSamplerTask
 from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
 from .fitRegion import setupFitRegion
 from .models import *

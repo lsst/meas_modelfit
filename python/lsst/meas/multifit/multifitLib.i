@@ -96,7 +96,6 @@ class MultiShapeletBasis;
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
 %shared_ptr(lsst::meas::multifit::MultiEpochObjective);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
-%shared_ptr(lsst::meas::multifit::NaiveGridSampler);
 %shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
 
 //----------- Mixtures --------------------------------------------------------------------------------------
@@ -190,7 +189,6 @@ Mixture[N] = Mixture ## N
 %include "lsst/meas/multifit/SampleSet.h"
 %include "lsst/meas/multifit/ExpectationFunctor.h"
 %include "lsst/meas/multifit/BaseSampler.h"
-%include "lsst/meas/multifit/NaiveGridSampler.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 
 %include "std_map.i"

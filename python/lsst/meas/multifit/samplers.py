@@ -29,7 +29,7 @@ import lsst.afw.geom.ellipses
 
 from . import multifitLib
 
-__all__ = ("BaseSamplerConfig", "BaseSamplerTask", "NaiveGridSamplerConfig", "NaiveGridSamplerTask", "ImportanceSamplerConfig", "AdaptiveImportanceSamplerConfig", "AdaptiveImportanceSamplerTask")
+__all__ = ("BaseSamplerConfig", "BaseSamplerTask", "ImportanceSamplerConfig", "AdaptiveImportanceSamplerConfig", "AdaptiveImportanceSamplerTask")
 
 BaseSamplerConfig = lsst.pex.config.Config
 
@@ -63,42 +63,6 @@ class BaseSamplerTask(lsst.pipe.base.Task):
         @return an instance of a subclass of BaseSampler
         """
         raise NotImplementedError("reset() not implemented for this sampler")
-
-class NaiveGridSamplerConfig(BaseSamplerConfig):
-    nRadiusSteps = lsst.pex.config.Field(
-        dtype=int,
-        default=12,
-        doc="Number of radius steps in grid"
-    )
-    maxRadiusFactor = lsst.pex.config.Field(
-        dtype=float,
-        default=2.0,
-        doc="Maximum radius in grid, as scaling factor multiplied by truth value radius"
-    )
-    maxEllipticity = lsst.pex.config.Field(
-        dtype=float,
-        default=0.9,
-        doc="Maximum ellipticity magnitude in grid"
-    )
-    ellipticityStepSize = lsst.pex.config.Field(
-        dtype=float,
-        default=0.15,
-        doc="ellipticity grid step size"
-    )
-
-class NaiveGridSamplerTask(BaseSamplerTask):
-    ConfigClass = NaiveGridSamplerConfig
-
-    def setup(self, exposure, ellipse, center, prior):
-        axes = lsst.afw.geom.ellipses.Axes(ellipse)
-        maxRadius = axes.getA() * self.config.maxRadiusFactor
-        return multifitLib.NaiveGridSampler(
-            center,
-            self.config.nRadiusSteps,
-            self.config.ellipticityStepSize,
-            maxRadius,
-            self.config.maxEllipticity
-        )
 
 @lsst.pex.config.wrap(multifitLib.ImportanceSamplerControl)
 class ImportanceSamplerConfig(lsst.pex.config.Config):
