@@ -249,8 +249,4 @@ using meas::multifit::ModelFitTable;
 %template(SampleSetVector) std::vector<PTR(lsst::meas::multifit::SampleSet)>;
 %template(SampleSetMap) std::map< int, std::vector<PTR(lsst::meas::multifit::SampleSet)> >;
 
-%ignore lsst::meas::multifit::PosteriorOptimizerObjective;
-%ignore lsst::meas::multifit::PosteriorOptimizerControl;
-%ignore lsst::meas::multifit::PosteriorOptimizer;
-
-%include "lsst/meas/multifit/optimizer.h"
+%include "lsst/meas/multifit/optimizer.i"

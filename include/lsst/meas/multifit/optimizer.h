@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MULTIFIT_optimizer_h_INCLUDED
 #define LSST_MEAS_MULTIFIT_optimizer_h_INCLUDED
 
-#include "Eigen/Core"
+#include "ndarray.h"
 
 #include "lsst/base.h"
 #include "lsst/pex/config.h"
@@ -46,8 +46,10 @@ namespace lsst { namespace meas { namespace multifit {
  *  This implementation is based on the algorithm described in Section 4.3 of
  *  "Nonlinear Optimization" by Nocedal and Wright.
  */
-Eigen::VectorXd solveTrustRegion(
-    Eigen::MatrixXd const & F, Eigen::VectorXd const & g, double r, double tolerance
+void solveTrustRegion(
+    ndarray::Array<double,1,1> const & x,
+    ndarray::Array<double const,2,1> const & F, ndarray::Array<double const,1,1> const & g,
+    double r, double tolerance
 );
 
 /**
@@ -64,16 +66,19 @@ public:
         dataSize(dataSize_), parameterSize(parameterSize_)
     {}
 
-    virtual void computeResiduals(Eigen::VectorXd const & parameters, Eigen::VectorXd & residuals) const = 0;
+    virtual void computeResiduals(
+        ndarray::Array<double const,1,1> const & parameters,
+        ndarray::Array<double,1,1> const & residuals
+    ) const = 0;
 
     virtual bool hasPrior() const { return false; }
 
-    virtual double computePrior(Eigen::VectorXd const & parameters) const;
+    virtual double computePrior(ndarray::Array<double const,1,1> const & parameters) const;
 
     virtual void differentiatePrior(
-        Eigen::VectorXd const & parameters,
-        Eigen::VectorXd & gradient,
-        Eigen::MatrixXd & hessian
+        ndarray::Array<double const,1,1> const & parameters,
+        ndarray::Array<double,1,1> const & gradient,
+        ndarray::Array<double,2,1> const & hessian
     ) const;
 
     virtual ~PosteriorOptimizerObjective() {}
@@ -208,21 +213,12 @@ public:
 struct PosteriorOptimizerIterationData {
     double objectiveValue;
     double priorValue;
-    Eigen::VectorXd parameters;
-    Eigen::VectorXd residuals;
+    ndarray::Array<double,1,1> parameters;
+    ndarray::Array<double,1,1> residuals;
 
-    PosteriorOptimizerIterationData(int dataSize, int parameterSize) :
-        objectiveValue(0.0), priorValue(0.0),
-        parameters(parameterSize),
-        residuals(dataSize)
-        {}
+    PosteriorOptimizerIterationData(int dataSize, int parameterSize);
 
-    void swap(PosteriorOptimizerIterationData & other) {
-        std::swap(objectiveValue, other.objectiveValue);
-        std::swap(priorValue, other.priorValue);
-        parameters.swap(other.parameters);
-        residuals.swap(other.residuals);
-    }
+    void swap(PosteriorOptimizerIterationData & other);
 };
 
 /**
@@ -296,7 +292,7 @@ public:
 
     PosteriorOptimizer(
         PTR(Objective const) objective,
-        Eigen::VectorXd const & parameters,
+        ndarray::Array<double const,1,1> const & parameters,
         Control const & ctrl
     );
 
@@ -308,11 +304,15 @@ public:
 
     int getState() const { return _state; }
 
-    Eigen::VectorXd const & getResiduals() const;
+    double getObjectiveValue() const { return _current.objectiveValue; }
 
-    Eigen::VectorXd const & getGradient() const;
+    ndarray::Array<double const,1,1> getParameters() const { return _current.parameters; }
 
-    Eigen::MatrixXd const & getHessian() const;
+    ndarray::Array<double const,1,1> getResiduals() const { return _current.residuals; }
+
+    ndarray::Array<double const,1,1> getGradient() const { return _gradient; }
+
+    ndarray::Array<double const,2,2> getHessian() const { return _hessian; }
 
     IterationDataVector const & getIterations() const { return _iterations; }
 
@@ -326,10 +326,10 @@ private:
     double _trustRadius;
     IterationData _current;
     IterationData _next;
-    Eigen::VectorXd _step;
+    ndarray::Array<double,1,1> _step;
+    ndarray::Array<double,1,1> _gradient;
+    ndarray::Array<double,2,2> _hessian;
     Eigen::MatrixXd _jacobian;
-    Eigen::VectorXd _gradient;
-    Eigen::MatrixXd _hessian;
     Eigen::MatrixXd _sr1b;
     Eigen::VectorXd _sr1v;
     Eigen::VectorXd _sr1jtr;
