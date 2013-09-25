@@ -450,14 +450,14 @@ class Interactive(object):
                 parameters = numpy.array(parameters)
             paramDef = samples.getParameterDefinition()
             ellipse = paramDef.makeEllipse(parameters, center)
-        joint = r.objective.evaluate(ellipse)
+        joint = r.likelihood.evaluate(ellipse)
         bbox = r.record.getFootprint().getBBox()
         bbox.grow(2)
         xe = numpy.arange(bbox.getBeginX(), bbox.getEndX(), dtype=numpy.float32)
         ye = numpy.arange(bbox.getBeginY(), bbox.getEndY(), dtype=numpy.float32)
         xg, yg = numpy.meshgrid(xe, ye)
         matrixBuilder = lsst.shapelet.MultiShapeletMatrixBuilderF(
-            self.task.basis, r.psf, xg.ravel(), yg.ravel(), self.task.config.objective.useApproximateExp
+            self.task.basis, r.psf, xg.ravel(), yg.ravel(), self.task.config.likelihood.useApproximateExp
             )
         matrix = numpy.zeros((joint.grad.size, xg.size), dtype=numpy.float32).transpose()
         matrixBuilder.build(matrix, ellipse)

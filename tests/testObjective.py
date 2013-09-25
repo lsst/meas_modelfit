@@ -34,7 +34,7 @@ import lsst.meas.multifit
 
 numpy.random.seed(500)
 
-class ObjectiveTestCase(lsst.shapelet.tests.ShapeletTestCase):
+class LikelihoodTestCase(lsst.shapelet.tests.ShapeletTestCase):
 
     def testZeroRadius(self):
         psf = self.makeRandomMultiShapeletFunction()
@@ -46,12 +46,12 @@ class ObjectiveTestCase(lsst.shapelet.tests.ShapeletTestCase):
         footprint = lsst.afw.detection.Footprint(bbox)
         ModelConfig = lsst.meas.multifit.models.BulgeDiskModelConfig
         basis = ModelConfig.makeBasis(ModelConfig())
-        objective = lsst.meas.multifit.SingleEpochObjective(
-            lsst.meas.multifit.SingleEpochObjectiveControl(),
+        likelihood = lsst.meas.multifit.SingleEpochLikelihood(
+            lsst.meas.multifit.SingleEpochLikelihoodControl(),
             basis, psf, image, footprint
             )
         ellipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Quadrupole(0.0, 0.0, 0.0))
-        lg = objective.evaluate(ellipse)
+        lg = likelihood.evaluate(ellipse)
         self.assertFalse(numpy.isnan(lg.grad).any())
         self.assertFalse(numpy.isnan(lg.fisher).any())
 
@@ -61,7 +61,7 @@ def suite():
     lsst.utils.tests.init()
 
     suites = []
-    suites += unittest.makeSuite(ObjectiveTestCase)
+    suites += unittest.makeSuite(LikelihoodTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
 

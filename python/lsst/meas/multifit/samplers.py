@@ -38,7 +38,7 @@ class BaseSamplerTask(lsst.pipe.base.Task):
     that do the actual work via their run() method.
 
     The same sampler can be used for both multi-epoch and single-epoch processing; the difference is
-    abstracted away by the objective function object passed to run(), and to a lesser extent by the
+    abstracted away by the likelihood function object passed to run(), and to a lesser extent by the
     different initialization options provided by setup() and reset().
     """
 

@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_MultiEpochObjective_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_MultiEpochObjective_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_MultiEpochLikelihood_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_MultiEpochLikelihood_h_INCLUDED
 
 #include <vector>
 
@@ -36,19 +36,19 @@
 
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/LogGaussian.h"
-#include "lsst/meas/multifit/Objective.h"
+#include "lsst/meas/multifit/Likelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 /**
  *  @brief Control object used to initialize a MultiEpochObject.
  *
- *  Translated to Python as MultiEpochObjectiveConfig; the Swig-wrapped C++ Control object can
+ *  Translated to Python as MultiEpochLikelihoodConfig; the Swig-wrapped C++ Control object can
  *  be created from the config object via the makeControl() method (see lsst.pex.config.wrap).
  */
-class MultiEpochObjectiveControl : public SingleEpochObjectiveControl {
+class MultiEpochLikelihoodControl : public SingleEpochLikelihoodControl {
 public:
-    MultiEpochObjectiveControl() : SingleEpochObjectiveControl() {}
+    MultiEpochLikelihoodControl() : SingleEpochLikelihoodControl() {}
 };
 
 /**
@@ -78,24 +78,24 @@ public:
 };
 
 #ifndef SWIG
-class EpochMatrixBuilder;   // defined and declared in MultiEpochObjective.cc
+class EpochMatrixBuilder;   // defined and declared in MultiEpochLikelihood.cc
 #endif
 
-/// Objective class for use with multi-epoch modeling
-class MultiEpochObjective : public Objective {
+/// Likelihood class for use with multi-epoch modeling
+class MultiEpochLikelihood : public Likelihood {
 public:
-    /// @copydoc Objective::getLinearDim
+    /// @copydoc Likelihood::getLinearDim
     virtual int getLinearDim() const { return _modelMatrix.getSize<1>(); }
 
     /// Return the sum of squares of the variance-weighted data vector
     virtual double getDataSquaredNorm() const { return _dataSquaredNorm; }
 
-    /// @copydoc Objective::evaluate
+    /// @copydoc Likelihood::evaluate
     /// @note ellipse is in cooadd coordinates
     virtual LogGaussian evaluate(afw::geom::ellipses::Ellipse const & ellipse) const;
 
     /**
-     * @brief Initialize the MultiEpochObjective
+     * @brief Initialize the MultiEpochLikelihood
      *
      * @param[in] ctrl              Control object with various options
      * @param[in] basis             Basis object that defines the galaxy model to fit.
@@ -103,8 +103,8 @@ public:
      * @param[in] sourceSkyPos      Sky position of source (galaxy)
      * @param[in] epochImageList    List of shared pointers to EpochFootprint
      */
-    explicit MultiEpochObjective(
-        MultiEpochObjectiveControl const & ctrl,
+    explicit MultiEpochLikelihood(
+        MultiEpochLikelihoodControl const & ctrl,
         shapelet::MultiShapeletBasis const & basis,
         afw::image::Wcs const & coaddWcs,
         afw::coord::Coord const & sourceSkyPos,
@@ -127,4 +127,4 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_MultiEpochObjective_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_MultiEpochLikelihood_h_INCLUDED

@@ -25,7 +25,7 @@
 #define LSST_MEAS_MULTIFIT_BaseSampler_h_INCLUDED
 
 #include "lsst/meas/multifit/SampleSet.h"
-#include "lsst/meas/multifit/Objective.h"
+#include "lsst/meas/multifit/Likelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -46,7 +46,7 @@ class BaseSampler {
 public:
 
     /// Draw and evaluate samples using the given object.
-    virtual SampleSet run(Objective const & objective) const = 0;
+    virtual SampleSet run(Likelihood const & likelihood) const = 0;
 
     virtual ~BaseSampler() {}
 

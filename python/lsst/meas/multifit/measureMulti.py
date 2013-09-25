@@ -28,7 +28,7 @@ from lsst.pipe.base import Struct, TaskError
 import lsst.pex.config
 import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
-from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochObjective, ModelFitCatalog, \
+from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochLikelihood, ModelFitCatalog, \
     ModelFitTable
 from .measureImage import BaseMeasureConfig, BaseMeasureTask
 from .samplers import *
@@ -46,9 +46,9 @@ class MeasureMultiConfig(BaseMeasureConfig):
         dtype = str,
         default = "deep",
     )
-    objective = lsst.pex.config.ConfigField(
-        dtype=MultiEpochObjective.ConfigClass,
-        doc="Config for objective object that computes model probability at given parameters"
+    likelihood = lsst.pex.config.ConfigField(
+        dtype=MultiEpochLikelihood.ConfigClass,
+        doc="Config for likelihood object that computes model probability at given parameters"
     )
     minPixels = lsst.pex.config.Field(
         doc = "minimum number of pixels in a calexp footprint to use that calexp for a given galaxy",
@@ -174,13 +174,13 @@ class MeasureMultiTask(BaseMeasureTask):
                                     coadd-fit SampleSet as the initial proposal.
 
         @return a Struct containing various intermediate objects:
-          - objective   the Objective object used to evaluate likelihoods
+          - likelihood   the Likelihood object used to evaluate model probabilities
           - sampler     the Sampler object used to draw samples
           - record      the output record (identical to the record argument, which is modified in-place)
         """
         if self.prior is None:
             self.prior = self.config.prior.apply(pixelScale=coadd.getWcs().pixelScale())
-        objective = self.makeObjective(
+        likelihood = self.makeLikelihood(
             record=record,
             coadd=coadd,
             coaddInputCat=coaddInputCat,
@@ -197,15 +197,15 @@ class MeasureMultiTask(BaseMeasureTask):
                 center=refCenter,
                 ellipse=record.getMomentsD(self.keys["ref.ellipse"]),
                 )
-        samples = sampler.run(objective)
+        samples = sampler.run(likelihood)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
         self.fillDerivedFields(record)
-        return lsst.pipe.base.Struct(objective=objective, sampler=sampler, record=record)
+        return lsst.pipe.base.Struct(likelihood=likelihood, sampler=sampler, record=record)
 
     @lsst.pipe.base.timeMethod
-    def makeObjective(self, record, coadd, coaddInputCat):
-        """Construct a MultiEpochObjective from the calexp footprints
+    def makeLikelihood(self, record, coadd, coaddInputCat):
+        """Construct a MultiEpochLikelihood from the calexp footprints
 
         @param[in] record       multi-fit ModelFitRecord
         @param[in] coadd        Coadd exposure
@@ -253,8 +253,8 @@ class MeasureMultiTask(BaseMeasureTask):
             epochFootprint = EpochFootprint(calexpFootprint, calexp, psf)
             epochFootprintList.append(epochFootprint)
 
-        return MultiEpochObjective(
-            self.config.objective.makeControl(),
+        return MultiEpochLikelihood(
+            self.config.likelihood.makeControl(),
             self.basis,
             coaddWcs,
             sourceSkyPos,

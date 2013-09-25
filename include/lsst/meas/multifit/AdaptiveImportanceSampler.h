@@ -93,7 +93,7 @@ public:
     /**
      *  @brief Generate and evaluate samples using adaptive importance sampling
      */
-    virtual SampleSet run(Objective const & objective) const;
+    virtual SampleSet run(Likelihood const & likelihood) const;
 
     typedef std::map< int, std::vector<PTR(SampleSet)> > IterationMap;
 

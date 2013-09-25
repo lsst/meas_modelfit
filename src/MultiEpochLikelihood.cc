@@ -32,7 +32,7 @@
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
 #include "lsst/shapelet/MultiShapeletBasis.h"
-#include "lsst/meas/multifit/MultiEpochObjective.h"
+#include "lsst/meas/multifit/MultiEpochLikelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -69,7 +69,7 @@ EpochFootprint::EpochFootprint(
 /**
 * Contains a MatrixBuilder for one EpochFootprint, plus additional information
 *
-* Intended to be constructed and used internally by MultiEpochObjective.
+* Intended to be constructed and used internally by MultiEpochLikelihood.
 */
 class EpochMatrixBuilder {
 public:
@@ -107,8 +107,8 @@ EpochMatrixBuilder::EpochMatrixBuilder(
     matrixBuilder(matrixBuilder)
 { }
 
-MultiEpochObjective::MultiEpochObjective(
-    MultiEpochObjectiveControl const & ctrl,
+MultiEpochLikelihood::MultiEpochLikelihood(
+    MultiEpochLikelihoodControl const & ctrl,
     shapelet::MultiShapeletBasis const & basis,
     afw::image::Wcs const & coaddWcs,
     afw::coord::Coord const & sourceSkyPos,
@@ -164,7 +164,7 @@ MultiEpochObjective::MultiEpochObjective(
     _dataSquaredNorm = _weightedData.asEigen().cast<double>().squaredNorm();
 }
 
-LogGaussian MultiEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
+LogGaussian MultiEpochLikelihood::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
     for (std::vector<PTR(EpochMatrixBuilder)>::const_iterator mbPtrIter =
         _epochMatrixBuilderList.begin(); mbPtrIter != _epochMatrixBuilderList.end(); ++mbPtrIter) {
         afw::geom::ellipses::Ellipse localEllipse = ellipse.transform((*mbPtrIter)->coaddToCalexp);
@@ -175,7 +175,7 @@ LogGaussian MultiEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & e
             localEllipse);
     }
 
-    // copied directly from SingleEpochObjective::evaluate
+    // copied directly from SingleEpochLikelihood::evaluate
     _modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
     LogGaussian result(_modelMatrix.getSize<1>());
     // grad and fisher are the first and second derivatives of the log-likelihood for a zero

@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_Objective_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_Objective_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_Likelihood_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_Likelihood_h_INCLUDED
 
 #include "ndarray.h"
 
@@ -38,13 +38,13 @@
 namespace lsst { namespace meas { namespace multifit {
 
 /**
- *  @brief Base class for optimizer/sampler objective functions that compute likelihood at a point.
+ *  @brief Base class for optimizer/sampler likelihood functions that compute likelihood at a point.
  *
- *  Objective abstracts the problem of computing the likelihood over different kinds of data; we
+ *  Likelihood abstracts the problem of computing the likelihood over different kinds of data; we
  *  expect to have two major subclasses: one for single-epoch modeling, and one for multi-epoch
  *  modeling.
  */
-class Objective
+class Likelihood
 #ifndef SWIG
  : private boost::noncopyable
 #endif
@@ -68,17 +68,17 @@ public:
      */
     virtual LogGaussian evaluate(afw::geom::ellipses::Ellipse const & ellipse) const = 0;
 
-    virtual ~Objective() {}
+    virtual ~Likelihood() {}
 
 };
 
 /**
  *  @brief Control object used to initialize a SingleEpochObject.
  *
- *  Translated to Python as SingleEpochObjectiveConfig; the Swig-wrapped C++ Control object can
+ *  Translated to Python as SingleEpochLikelihoodConfig; the Swig-wrapped C++ Control object can
  *  be created from the config object via the makeControl() method (see lsst.pex.config.wrap).
  */
-class SingleEpochObjectiveControl {
+class SingleEpochLikelihoodControl {
 public:
 
     LSST_CONTROL_FIELD(usePixelWeights, bool,
@@ -93,24 +93,24 @@ public:
     LSST_CONTROL_FIELD(useApproximateExp, bool,
                        "whether to use fast approximate exponentials when evaluating the model");
 
-    SingleEpochObjectiveControl() : usePixelWeights(true), useSVD(false), useApproximateExp(false) {}
+    SingleEpochLikelihoodControl() : usePixelWeights(true), useSVD(false), useApproximateExp(false) {}
 };
 
-/// Objective class for use with single-epoch modeling
-class SingleEpochObjective : public Objective {
+/// Likelihood class for use with single-epoch modeling
+class SingleEpochLikelihood : public Likelihood {
 public:
 
-    /// @copydoc Objective::getLinearDim
+    /// @copydoc Likelihood::getLinearDim
     virtual int getLinearDim() const { return _modelMatrix.getSize<1>(); }
 
     /// Return the sum of squares of the variance-weighted data vector
     virtual double getDataSquaredNorm() const { return _dataSquaredNorm; }
 
-    /// @copydoc Objective::evaluate
+    /// @copydoc Likelihood::evaluate
     virtual LogGaussian evaluate(afw::geom::ellipses::Ellipse const & ellipse) const;
 
     /**
-     *  @brief Initialize the SingleEpochObjective
+     *  @brief Initialize the SingleEpochLikelihood
      *
      *  @param[in] ctrl      Control object with various options.
      *  @param[in] basis     Basis object that defines the galaxy model to fit.
@@ -119,8 +119,8 @@ public:
      *  @param[in] image     MaskedImage to fit to.
      *  @param[in] footprint Footprint that defines the pixel region to include in the fit.
      */
-    explicit SingleEpochObjective(
-        SingleEpochObjectiveControl const & ctrl,
+    explicit SingleEpochLikelihood(
+        SingleEpochLikelihoodControl const & ctrl,
         shapelet::MultiShapeletBasis const & basis,
         shapelet::MultiShapeletFunction const & psf,
         afw::image::MaskedImage<Pixel> const & image,
@@ -138,15 +138,15 @@ private:
 namespace detail {
     #ifndef SWIG
     /**
-     *  @brief A MultiShapeletMatrixBuilder factory with arguments suitable for SingleEpochObjective
+     *  @brief A MultiShapeletMatrixBuilder factory with arguments suitable for SingleEpochLikelihood
      *
-     *  @param[in] ctrl         SingleEpochObjective control object with various options.
+     *  @param[in] ctrl         SingleEpochLikelihood control object with various options.
      *  @param[in] basis        Basis object that defines the galaxy model to fit.
      *  @param[in] psf          Multi-shapelet representation of the PSF evaluated at the location of the galaxy.
      *  @param[in] footprint    Footprint that defines the pixel region to include in the fit.
      */
     shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
-        SingleEpochObjectiveControl const & ctrl,
+        SingleEpochLikelihoodControl const & ctrl,
         shapelet::MultiShapeletBasis const & basis,
         shapelet::MultiShapeletFunction const & psf,
         afw::detection::Footprint const & footprint
@@ -156,4 +156,4 @@ namespace detail {
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_Objective_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_Likelihood_h_INCLUDED

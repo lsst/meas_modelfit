@@ -91,10 +91,10 @@ class MultiShapeletBasis;
 
 %shared_ptr(lsst::meas::multifit::ParameterConverter);
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
-%shared_ptr(lsst::meas::multifit::Objective);
-%shared_ptr(lsst::meas::multifit::SingleEpochObjective);
+%shared_ptr(lsst::meas::multifit::Likelihood);
+%shared_ptr(lsst::meas::multifit::SingleEpochLikelihood);
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
-%shared_ptr(lsst::meas::multifit::MultiEpochObjective);
+%shared_ptr(lsst::meas::multifit::MultiEpochLikelihood);
 %shared_ptr(lsst::meas::multifit::BaseSampler);
 %shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
 
@@ -183,8 +183,8 @@ Mixture[N] = Mixture ## N
 %include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/parameters.h"
 %include "lsst/meas/multifit/priors.h"
-%include "lsst/meas/multifit/Objective.h"
-%include "lsst/meas/multifit/MultiEpochObjective.h"
+%include "lsst/meas/multifit/Likelihood.h"
+%include "lsst/meas/multifit/MultiEpochLikelihood.h"
 %include "lsst/meas/multifit/KernelDensityEstimator.h"
 %include "lsst/meas/multifit/SampleSet.h"
 %include "lsst/meas/multifit/ExpectationFunctor.h"
@@ -210,11 +210,11 @@ def iterations(self):
 import lsst.pex.config
 import numpy
 
-SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
-SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
+SingleEpochLikelihoodConfig = lsst.pex.config.makeConfigClass(SingleEpochLikelihoodControl)
+SingleEpochLikelihood.ConfigClass = SingleEpochLikelihoodConfig
 
-MultiEpochObjectiveConfig = lsst.pex.config.makeConfigClass(MultiEpochObjectiveControl)
-MultiEpochObjective.ConfigClass = MultiEpochObjectiveConfig
+MultiEpochLikelihoodConfig = lsst.pex.config.makeConfigClass(MultiEpochLikelihoodControl)
+MultiEpochLikelihood.ConfigClass = MultiEpochLikelihoodConfig
 %}
 
 //----------- ModelFitRecord/Table/Catalog ------------------------------------------------------------------

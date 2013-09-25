@@ -30,7 +30,7 @@ import lsst.afw.geom.ellipses
 import lsst.meas.extensions.multiShapelet
 
 from .samplers import BaseSamplerTask, AdaptiveImportanceSamplerTask
-from .multifitLib import SingleEpochObjective, ModelFitCatalog, ModelFitTable
+from .multifitLib import SingleEpochLikelihood, ModelFitCatalog, ModelFitTable
 from .fitRegion import setupFitRegion
 from .models import *
 from .priors import *
@@ -103,9 +103,9 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         record.set(self.keys["median.center"], median.getCenter())
 
 class MeasureImageConfig(BaseMeasureConfig):
-    objective = lsst.pex.config.ConfigField(
-        dtype=SingleEpochObjective.ConfigClass,
-        doc="Config for objective object that computes model probability at given parameters"
+    likelihood = lsst.pex.config.ConfigField(
+        dtype=SingleEpochLikelihood.ConfigClass,
+        doc="Config for likelihood object that computes model probability at given parameters"
     )
     useRefCat = lsst.pex.config.Field(
         dtype=bool,
@@ -187,7 +187,7 @@ class MeasureImageTask(BaseMeasureTask):
                                 from a SampleSet already attached to the given record.
 
         @return a Struct containing various intermediate objects and results:
-          - objective: the Objective object used to evaluate likelihoods
+          - likelihood: the Likelihood object used to evaluate model probabilities
           - sampler: the Sampler object used to draw samples
           - psf: a shapelet.MultiShapeletFunction representation of the PSF
           - record: the output record (identical to the record argument, which is modified in-place)
@@ -208,15 +208,15 @@ class MeasureImageTask(BaseMeasureTask):
             if samples is None:
                 raise TaskError("No prior samples found; cannot proceed with warm start")
             sampler = self.sampler.reset(samples=samples, center=center, prior=self.prior)
-        objective = SingleEpochObjective(
-            self.config.objective.makeControl(), self.basis, psf,
+        likelihood = SingleEpochLikelihood(
+            self.config.likelihood.makeControl(), self.basis, psf,
             exposure.getMaskedImage(), record.getFootprint()
         )
-        samples = sampler.run(objective)
+        samples = sampler.run(likelihood)
         samples.applyPrior(self.prior)
         record.setSamples(samples)
         self.fillDerivedFields(record)
-        return lsst.pipe.base.Struct(objective=objective, sampler=sampler, psf=psf, record=record)
+        return lsst.pipe.base.Struct(likelihood=likelihood, sampler=sampler, psf=psf, record=record)
 
     def prepCatalog(self, exposure, srcCat, refCat=None, where=None):
         """Create a ModelFitCatalog with initial parameters and fitting regions

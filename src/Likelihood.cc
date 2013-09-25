@@ -27,14 +27,14 @@
 
 #include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
 #include "lsst/shapelet/MultiShapeletBasis.h"
-#include "lsst/meas/multifit/Objective.h"
+#include "lsst/meas/multifit/Likelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 namespace detail {
 
     shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
-        SingleEpochObjectiveControl const & ctrl,
+        SingleEpochLikelihoodControl const & ctrl,
         shapelet::MultiShapeletBasis const & basis,
         shapelet::MultiShapeletFunction const & psf,
         afw::detection::Footprint const & footprint
@@ -57,8 +57,8 @@ namespace detail {
 
 } // namespace ::detail
 
-SingleEpochObjective::SingleEpochObjective(
-    SingleEpochObjectiveControl const & ctrl,
+SingleEpochLikelihood::SingleEpochLikelihood(
+    SingleEpochLikelihoodControl const & ctrl,
     shapelet::MultiShapeletBasis const & basis,
     shapelet::MultiShapeletFunction const & psf,
     afw::image::MaskedImage<Pixel> const & image,
@@ -84,7 +84,7 @@ SingleEpochObjective::SingleEpochObjective(
     _dataSquaredNorm = _weightedData.asEigen().cast<double>().squaredNorm();
 }
 
-LogGaussian SingleEpochObjective::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
+LogGaussian SingleEpochLikelihood::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
     // construct a matrix that maps component amplitudes (columns) to flattened pixel values (rows)
     _matrixBuilder.build(_modelMatrix, ellipse);
     _modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
