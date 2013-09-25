@@ -82,30 +82,31 @@ void SampleSetKeys::setJoint(tbl::BaseRecord & record, LogGaussian const & joint
     }
 }
 
-SampleSet::SampleSet(int nonlinearDim, int linearDim, ParameterDefinition const & parameterDefinition) :
-    _keys(nonlinearDim, linearDim),
+SampleSet::SampleSet(PTR(ParameterDefinition const) parameterDefinition, int linearDim) :
+    _keys(parameterDefinition->getDim(), linearDim),
     _records(_keys.schema),
     _dataSquaredNorm(0.0),
-    _parameterDefinition(&parameterDefinition),
+    _parameterDefinition(parameterDefinition),
     _prior()
 {}
 
-SampleSet::SampleSet(tbl::BaseCatalog const & records, ParameterDefinition const & parameterDefinition) :
+SampleSet::SampleSet(PTR(ParameterDefinition const) parameterDefinition, tbl::BaseCatalog const & records) :
     _keys(records.getSchema()),
     _records(records),
     _dataSquaredNorm(0.0),
-    _parameterDefinition(&parameterDefinition),
+    _parameterDefinition(parameterDefinition),
     _prior()
 {}
 
-void SampleSet::setParameterDefinition(ParameterDefinition const & parameterDefinition) {
-    if (*_parameterDefinition == parameterDefinition) return;
-    PTR(ParameterConverter const) converter = _parameterDefinition->makeConverterTo(parameterDefinition);
-    for (tbl::BaseCatalog::iterator s = _records.begin(); s != _records.end(); ++s) {
-        ndarray::Array<samples::Scalar,1,1> a = (*s)[_keys.parameters];
-        converter->apply(a, a);
+void SampleSet::setParameterDefinition(PTR(ParameterDefinition const) parameterDefinition) {
+    if (*_parameterDefinition != *parameterDefinition) {
+        PTR(ParameterConverter const) converter = _parameterDefinition->makeConverterTo(*parameterDefinition);
+        for (tbl::BaseCatalog::iterator s = _records.begin(); s != _records.end(); ++s) {
+            ndarray::Array<samples::Scalar,1,1> a = (*s)[_keys.parameters];
+            converter->apply(a, a);
+        }
     }
-    _parameterDefinition = &parameterDefinition;
+    _parameterDefinition = parameterDefinition;
 }
 
 ndarray::Array<double,1,1> SampleSet::computeDensity(KernelDensityEstimatorControl const & ctrl) const {
@@ -188,7 +189,7 @@ double SampleSet::applyPrior(PTR(Prior const) prior, double clip) {
     ndarray::Array<double,1,1> priorParameters;
     PTR(ParameterConverter const) converter;
     if (prior->getParameterDefinition() != getParameterDefinition()) {
-        converter = getParameterDefinition().makeConverterTo(prior->getParameterDefinition());
+        converter = getParameterDefinition()->makeConverterTo(*prior->getParameterDefinition());
         priorParameters = ndarray::allocate(getNonlinearDim());
     }
     double logJacobian = 0.0;
@@ -436,7 +437,7 @@ public:
     tbl::Key<int> prior;
     tbl::Key<int> proposal;
     tbl::Key<double> dataSquaredNorm;
-    tbl::Key<std::string> parameterDefinition;
+    tbl::Key<int> parameterDefinition;
 
     static SampleSetPersistenceKeys const & get() {
         static SampleSetPersistenceKeys const instance;
@@ -450,8 +451,7 @@ private:
         prior(schema.addField<int>("prior", "archive ID for Bayesian prior object")),
         proposal(schema.addField<int>("proposal", "archive ID for distribution used to draw samples")),
         dataSquaredNorm(schema.addField<double>("joint.r", "squared norm of weighted data vector")),
-        parameterDefinition(schema.addField<std::string>("parameterdefinition",
-                                                         "name of ParameterDefinition", 48))
+        parameterDefinition(schema.addField<int>("parameterdefinition", "archive ID for ParameterDefinition"))
     {
         schema.getCitizen().markPersistent();
     }
@@ -473,7 +473,8 @@ public:
         tbl::BaseRecord const & record2 = catalogs.back().front();
         PTR(SampleSet) result(
             new SampleSet(
-                catalogs.front(), ParameterDefinition::lookup(record2.get(keys2.parameterDefinition))
+                archive.get<ParameterDefinition>(record2.get(keys2.parameterDefinition)),
+                catalogs.front()
             )
         );
         result->setDataSquaredNorm(record2.get(keys2.dataSquaredNorm));
@@ -505,7 +506,7 @@ void SampleSet::write(OutputArchiveHandle & handle) const {
     handle.saveCatalog(catalog1);
     tbl::BaseCatalog catalog2 = handle.makeCatalog(keys2.schema);
     PTR(tbl::BaseRecord) record2 = catalog2.addNew();
-    record2->set(keys2.parameterDefinition, _parameterDefinition->name);
+    record2->set(keys2.parameterDefinition, handle.put(_parameterDefinition));
     record2->set(keys2.dataSquaredNorm, _dataSquaredNorm);
     record2->set(keys2.proposal, handle.put(_proposal));
     record2->set(keys2.prior, handle.put(_prior));

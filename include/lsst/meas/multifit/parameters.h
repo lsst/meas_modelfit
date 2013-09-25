@@ -27,6 +27,7 @@
 #include "lsst/base.h"
 #include "lsst/afw/geom/ellipses/BaseCore.h"
 #include "lsst/afw/geom/ellipses/Ellipse.h"
+#include "lsst/afw/table/io/Persistable.h"
 #include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -71,18 +72,20 @@ public:
  *  All afw::geom::ellipse::BaseCore subclass names are valid size-3 ParameterDefinitions,
  *  and will be registered on first use.
  */
-class ParameterDefinition : private boost::noncopyable {
+class ParameterDefinition :
+    public afw::table::io::PersistableFacade<ParameterDefinition>,
+    public afw::table::io::Persistable
+{
 public:
 
-    std::string const name;   ///< Globally unique name of this parameter definition
-    int const size;           ///< Number of parameters
+    /// Return the dimensionality (number of parameters)
+    int getDim() const { return _dim; }
 
     //@{
     /**
-     *  Comparisons with other parameter definitions; equivalent to pointer comparison because all
-     *  instances are singletons.
+     *  Comparisons with other parameter definitions.
      */
-    bool operator==(ParameterDefinition const & other) const { return this == &other; }
+    bool operator==(ParameterDefinition const & other) const;
     bool operator!=(ParameterDefinition const & other) const { return !(*this == other); }
     //@}
 
@@ -94,24 +97,38 @@ public:
     virtual PTR(ParameterConverter const) makeConverterTo(ParameterDefinition const & other) const = 0;
 
     /**
-     *  @brief Interpret the given parameter vector as an ellipse, uses the given center if none is included
-     *         in the parameter vector itself.
+     *  @brief Interpret the given parameter vector as an ellipse.
      */
     virtual afw::geom::ellipses::Ellipse makeEllipse(
-        ndarray::Array<double const,1,1> const & input,
-        afw::geom::Point2D const & center=afw::geom::Point2D()
+        ndarray::Array<double const,1,1> const & input
     ) const = 0;
 
-    /// Find the registered definition with the given name.
-    static ParameterDefinition const & lookup(std::string const & name_);
+    /**
+     *  @brief Create a 3-parameter ParameterDefinition that represents an EllipseCore with a fixed center.
+     *
+     *  @param[in]  name    Name of the EllipseCore class; passed directly to ellipses::BaseCore::make()
+     *  @param[in]  center  Center position to use when makeEllipse is called.  The default, (NaN,NaN),
+     *                      causes the positon to be ignored in comparisons between ParameterDefinitions.
+     */
+    static PTR(ParameterDefinition const) makeEllipseCoreDefinition(
+        std::string const & name,
+        afw::geom::Point2D const & center = afw::geom::Point2D(std::numeric_limits<double>::quiet_NaN())
+    );
 
     virtual ~ParameterDefinition() {}
 
 protected:
 
-    /// Construct and register a ParameterDefinition singleton instance
-    explicit ParameterDefinition(std::string const & name_, int const size_);
+    explicit ParameterDefinition(int dim) : _dim(dim) {}
 
+    /**
+     *  Implementation for operator==; derived-class implementations can assume that 'other' may be cast
+     *  safely to the derived class, as comparison automatically fails if both operands do not have the
+     *  same type (checked via RTTI before this is called).
+     */
+    virtual bool _isEqualTo(ParameterDefinition const & other) const = 0;
+
+    int const _dim;
 };
 
 }}} // namespace lsst::meas::multifit

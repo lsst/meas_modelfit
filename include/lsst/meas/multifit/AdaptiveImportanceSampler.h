@@ -102,7 +102,7 @@ public:
      *
      *  Only valid if saveIterations=true was passed on initialization.
      *
-     *  The proposal distribution attached to the SampleSet will be a snapshot from before to any
+     *  The proposal distribution attached to the SampleSet will be a snapshot from before any
      *  E-M updates in that iteration, so the proposal distribution reflects the state of the
      *  proposal the samples were actually drawn from.  This is different from the final SampleSet
      *  returned by the run() method, whose attached proposal distribution does reflect any final

@@ -28,18 +28,21 @@
 
 #include "ndarray/eigen.h"
 
+#include "lsst/utils/ieee.h"
 #include "lsst/pex/exceptions.h"
+#include "lsst/afw/table/io/OutputArchive.h"
+#include "lsst/afw/table/io/InputArchive.h"
+#include "lsst/afw/table/io/CatalogVector.h"
 #include "lsst/meas/multifit/parameters.h"
+
+namespace tbl = lsst::afw::table;
 
 namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
-typedef std::map<std::string,ParameterDefinition const *> RegistryMap;
-
-RegistryMap & getRegistry() {
-    static RegistryMap instance;
-    return instance;
+inline bool isPointNaN(afw::geom::Point2D const & p) {
+    return utils::isnan(p.getX()) && utils::isnan(p.getY());
 }
 
 class EllipseCoreParameterConverter : public ParameterConverter {
@@ -73,8 +76,6 @@ private:
 class EllipseCoreParameterDefinition : public ParameterDefinition {
 public:
 
-    static ParameterDefinition const & make(PTR(afw::geom::ellipses::BaseCore) ellipse);
-
     virtual PTR(ParameterConverter const) makeConverterTo(ParameterDefinition const & other) const {
         EllipseCoreParameterDefinition const * other2
             = dynamic_cast<EllipseCoreParameterDefinition const *>(&other);
@@ -85,56 +86,119 @@ public:
     }
 
     virtual afw::geom::ellipses::Ellipse makeEllipse(
-        ndarray::Array<double const,1,1> const & input,
-        afw::geom::Point2D const & center=afw::geom::Point2D()
+        ndarray::Array<double const,1,1> const & input
     ) const {
         _ellipse->setParameterVector(input.asEigen().segment<3>(0));
-        return afw::geom::ellipses::Ellipse(*_ellipse, center);
+        return afw::geom::ellipses::Ellipse(*_ellipse, _center);
     }
 
-    explicit EllipseCoreParameterDefinition(PTR(afw::geom::ellipses::BaseCore) ellipse) :
-        ParameterDefinition(ellipse->getName(), 3), _ellipse(ellipse) {}
+    EllipseCoreParameterDefinition(
+        std::string const & name, afw::geom::Point2D const & center
+    ) :
+        ParameterDefinition(3), _ellipse(afw::geom::ellipses::BaseCore::make(name)), _center(center)
+    {}
+
+    virtual bool isPersistable() const { return true; }
+
+protected:
+
+    virtual std::string getPythonModule() const { return "lsst.meas.multifit"; }
+
+    virtual std::string getPersistenceName() const;
+
+    virtual void write(OutputArchiveHandle & handle) const;
+
+    virtual bool _isEqualTo(ParameterDefinition const & other) const {
+        if (&other == this) return true;
+        EllipseCoreParameterDefinition const & other2
+            = static_cast<EllipseCoreParameterDefinition const &>(other);
+        return other2._ellipse->getName() == this->_ellipse->getName() &&
+            ((isPointNaN(other2._center) || isPointNaN(this->_center)) || other2._center == this->_center);
+    }
 
 private:
     PTR(afw::geom::ellipses::BaseCore) _ellipse;
+    afw::geom::Point2D _center;
 };
 
-ParameterDefinition const & EllipseCoreParameterDefinition::make(
-    PTR(afw::geom::ellipses::BaseCore) ellipse
-) {
-    // Need to keep a static list in order to keep instances alive, since they're constructed on
-    // first use, but the main ParameterDefinition registry only stores pointers.
-    static std::list<PTR(EllipseCoreParameterDefinition)> instances;
-    // TODO: with C++11, use emplace_back() instead of list<PTR(...)>
-    instances.push_back(boost::make_shared<EllipseCoreParameterDefinition>(ellipse));
-    return *instances.back();
+class EllipseCoreParameterDefinitionPersistenceKeys : private boost::noncopyable {
+public:
+    tbl::Schema schema;
+    tbl::Key<std::string> name;
+    tbl::Key<tbl::Point<double> > center;
+
+    static EllipseCoreParameterDefinitionPersistenceKeys const & get() {
+        static EllipseCoreParameterDefinitionPersistenceKeys const instance;
+        return instance;
+    }
+
+private:
+    EllipseCoreParameterDefinitionPersistenceKeys() :
+        schema(),
+        name(schema.addField<std::string>("name", "name of the ellipses::BaseCore class", 48)),
+        center(schema.addField<tbl::Point<double> >("center",
+                                                    "fixed center used when constructing a full ellipse"))
+    {
+        schema.getCitizen().markPersistent();
+    }
+};
+
+class EllipseCoreParameterDefinitionFactory : public tbl::io::PersistableFactory {
+public:
+
+    virtual PTR(tbl::io::Persistable)
+    read(InputArchive const & archive, CatalogVector const & catalogs) const {
+        LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
+        LSST_ARCHIVE_ASSERT(catalogs.front().size() == 1u);
+        EllipseCoreParameterDefinitionPersistenceKeys const & keys
+            = EllipseCoreParameterDefinitionPersistenceKeys::get();
+        LSST_ARCHIVE_ASSERT(catalogs.front().getSchema() == keys.schema);
+        tbl::BaseRecord const & record = catalogs.front().front();
+        return boost::const_pointer_cast<ParameterDefinition>(
+            ParameterDefinition::makeEllipseCoreDefinition(record.get(keys.name), record.get(keys.center))
+        );
+    }
+
+    explicit EllipseCoreParameterDefinitionFactory(std::string const & name) :
+        tbl::io::PersistableFactory(name)
+    {}
+
+};
+
+
+static std::string getEllipseCoreParameterDefinitionPersistenceName() {
+    return "EllipseCoreParameterDefinition";
+}
+
+// constructor for this instance registers the factor in a singleton in afw::table::io
+static EllipseCoreParameterDefinitionFactory registration(getEllipseCoreParameterDefinitionPersistenceName());
+
+std::string EllipseCoreParameterDefinition::getPersistenceName() const {
+    return getEllipseCoreParameterDefinitionPersistenceName();
+}
+
+void EllipseCoreParameterDefinition::write(OutputArchiveHandle & handle) const {
+    EllipseCoreParameterDefinitionPersistenceKeys const & keys
+        = EllipseCoreParameterDefinitionPersistenceKeys::get();
+    tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
+    PTR(tbl::BaseRecord) record = catalog.addNew();
+    record->set(keys.name, _ellipse->getName());
+    record->set(keys.center, _center);
+    handle.saveCatalog(catalog);
 }
 
 } // anonymous
 
-ParameterDefinition const & ParameterDefinition::lookup(std::string const & name_) {
-    RegistryMap & registry = getRegistry();
-    RegistryMap::const_iterator i = registry.find(name_);
-    if (i == registry.end()) {
-        try {
-            // it should probably throw NotFoundException, but it throws InvalidParameterException instead
-            PTR(afw::geom::ellipses::BaseCore) ellipse = afw::geom::ellipses::BaseCore::make(name_);
-            return EllipseCoreParameterDefinition::make(ellipse);
-        } catch (pex::exceptions::InvalidParameterException &) {}
-        throw LSST_EXCEPT(
-            pex::exceptions::NotFoundException,
-            (boost::format("ParameterDefinition with name '%s' not found in registry")
-             % name_).str()
-        );
-    }
-    return *i->second;
+PTR(ParameterDefinition const) ParameterDefinition::makeEllipseCoreDefinition(
+    std::string const & name, afw::geom::Point2D const & center
+) {
+    return boost::make_shared<EllipseCoreParameterDefinition>(name, center);
 }
 
-ParameterDefinition::ParameterDefinition(std::string const & name_, int const size_) :
-    name(name_), size(size_)
-{
-    RegistryMap & registry = getRegistry();
-    registry.insert(registry.end(), std::make_pair(name, this));
+bool ParameterDefinition::operator==(ParameterDefinition const & other) const {
+    if (this->getDim() != other.getDim()) return false;
+    if (typeid(*this) != typeid(other)) return false;
+    return this->_isEqualTo(other);
 }
 
 }}} // namespace lsst::meas::multifit

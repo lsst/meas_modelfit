@@ -59,7 +59,7 @@ class Prior :
 public:
 
     /// Return the definition of the parameter vector the prior assumes
-    ParameterDefinition const & getParameterDefinition() const { return *_parameterDefinition; }
+    PTR(ParameterDefinition const) getParameterDefinition() const { return _parameterDefinition; }
 
     /**
      *  @brief Marginalize over the amplitude likelihood at the given point in nonlinear parameter space,
@@ -89,10 +89,10 @@ protected:
 
     virtual std::string getPythonModule() const { return "lsst.meas.multifit"; }
 
-    explicit Prior(ParameterDefinition const & parameterDefinition) :
-        _parameterDefinition(&parameterDefinition) {}
+    explicit Prior(PTR(ParameterDefinition const) parameterDefinition) :
+        _parameterDefinition(parameterDefinition) {}
 private:
-    ParameterDefinition const * _parameterDefinition;
+    PTR(ParameterDefinition const) _parameterDefinition;
 };
 
 /**

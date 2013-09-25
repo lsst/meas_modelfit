@@ -90,6 +90,7 @@ class MultiShapeletBasis;
 %declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
 
 %shared_ptr(lsst::meas::multifit::ParameterConverter);
+%shared_ptr(lsst::meas::multifit::ParameterDefinition);
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Likelihood);
 %shared_ptr(lsst::meas::multifit::SingleEpochLikelihood);

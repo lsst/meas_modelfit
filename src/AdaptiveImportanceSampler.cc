@@ -43,12 +43,13 @@ AdaptiveImportanceSampler::AdaptiveImportanceSampler(
 {}
 
 SampleSet AdaptiveImportanceSampler::run(Likelihood const & likelihood) const {
+    // TODO: check that nonlinearDim agrees with ParameterDefinition
     int const nonlinearDim = _proposal->getDimension();
     int const linearDim = likelihood.getLinearDim();
-    ParameterDefinition const & parameterDef
-        = ParameterDefinition::lookup("SeparableConformalShearLogTraceRadius");
+    PTR(ParameterDefinition const) parameterDef
+        = ParameterDefinition::makeEllipseCoreDefinition("SeparableConformalShearLogTraceRadius", _center);
     SampleSetKeys keys(nonlinearDim, linearDim);
-    SampleSet samples(nonlinearDim, linearDim, parameterDef);
+    SampleSet samples(parameterDef, linearDim);
     samples.setDataSquaredNorm(likelihood.getDataSquaredNorm());
     double perplexity = 0.0;
     std::vector<PTR(SampleSet)> * iterationVector = 0;
@@ -70,7 +71,7 @@ SampleSet AdaptiveImportanceSampler::run(Likelihood const & likelihood) const {
             ndarray::Array<samples::Scalar,1,1> probability = ndarray::allocate(ctrl.nSamples);
             _proposal->evaluate(parameters, probability);
             for (int k = 0; k < ctrl.nSamples; ++k) {
-                LogGaussian joint = likelihood.evaluate(parameterDef.makeEllipse(parameters[k], _center));
+                LogGaussian joint = likelihood.evaluate(parameterDef->makeEllipse(parameters[k]));
                 samples.add(
                     joint,
                     -std::log(probability[k]),

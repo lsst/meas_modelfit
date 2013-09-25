@@ -107,19 +107,18 @@ public:
      *
      *  Any SamplePoints added to the SampleSet must have the same dimensions.
      *
-     *  @param[in] nonlinearDim   Number of nonlinear parameters (size of SamplePoint::parameters).
-     *  @param[in] linearDim      Number of linear amplitude parameters (dimension of SamplePoint::joint).
      *  @param[in] parameterDefinition    Object that defines the interpretation of the nonlinear parameters.
+     *  @param[in] linearDim      Number of linear amplitude parameters (dimension of SamplePoint::joint).
      */
-    SampleSet(int nonlinearDim, int linearDim, ParameterDefinition const & parameterDefinition);
+    SampleSet(PTR(ParameterDefinition const) parameterDefinition, int linearDim);
 
     /**
      *  @brief Construct a SampleSet from an existing catalog of sample records.
      *
-     *  @param[in] records        Catalog of records with schema compatible with SampleSetKeys
      *  @param[in] parameterDefinition    Object that defines the interpretation of the nonlinear parameters.
+     *  @param[in] records        Catalog of records with schema compatible with SampleSetKeys
      */
-    SampleSet(afw::table::BaseCatalog const & records, ParameterDefinition const & parameterDefinition);
+    SampleSet(PTR(ParameterDefinition const) parameterDefinition, afw::table::BaseCatalog const & records);
 
     /// Return the number of nonlinear parameters
     int getNonlinearDim() const { return _keys.getNonlinearDim(); }
@@ -128,10 +127,10 @@ public:
     int getLinearDim() const { return _keys.getLinearDim(); }
 
     /// Return the object that defines how to interpret the nonlinear parameters
-    ParameterDefinition const & getParameterDefinition() const { return *_parameterDefinition; }
+    PTR(ParameterDefinition const) getParameterDefinition() const { return _parameterDefinition; }
 
     /// Convert the nonlinear parameters according to a new ParameterDefinition
-    void setParameterDefinition(ParameterDefinition const & parameterDefinition);
+    void setParameterDefinition(PTR(ParameterDefinition const) parameterDefinition);
 
     /**
      *  @brief Return the squared norm of weighted data values
@@ -319,7 +318,7 @@ private:
     SampleSetKeys _keys;
     afw::table::BaseCatalog _records;
     double _dataSquaredNorm;
-    ParameterDefinition const * _parameterDefinition;
+    PTR(ParameterDefinition const) _parameterDefinition;
     PTR(Prior const) _prior;
     PTR(MixtureBase const) _proposal;
 };

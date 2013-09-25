@@ -94,11 +94,10 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
     def fillDerivedFields(self, record):
         samples = record.getSamples()
         parameterDef = samples.getParameterDefinition()
-        mean = parameterDef.makeEllipse(samples.computeMean(), record.getPointD(self.keys["source.center"]))
+        mean = parameterDef.makeEllipse(samples.computeMean())
         record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
         record.set(self.keys["mean.center"], mean.getCenter())
-        median = parameterDef.makeEllipse(samples.computeQuantiles(numpy.array([0.5])),
-                                          record.getPointD(self.keys["source.center"]))
+        median = parameterDef.makeEllipse(samples.computeQuantiles(numpy.array([0.5])))
         record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
         record.set(self.keys["median.center"], median.getCenter())
 

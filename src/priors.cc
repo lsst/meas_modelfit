@@ -42,7 +42,7 @@ samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector
 }
 
 FlatPrior::FlatPrior(double maxRadius, double maxEllipticity) :
-    Prior(ParameterDefinition::lookup("SeparableReducedShearTraceRadius")),
+    Prior(ParameterDefinition::makeEllipseCoreDefinition("SeparableReducedShearTraceRadius")),
     _maxRadius(maxRadius),
     _maxEllipticity(maxEllipticity)
 {}
@@ -106,7 +106,7 @@ void FlatPrior::write(OutputArchiveHandle & handle) const {
 //------------- MixturePrior --------------------------------------------------------------------------------
 
 MixturePrior::MixturePrior(PTR(Mixture<3> const) mixture) :
-    Prior(ParameterDefinition::lookup("SeparableConformalShearLogTraceRadius")),
+    Prior(ParameterDefinition::makeEllipseCoreDefinition("SeparableConformalShearLogTraceRadius")),
     _mixture(mixture)
 {}
 
