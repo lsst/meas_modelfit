@@ -91,12 +91,14 @@ class MultiShapeletBasis;
 
 %shared_ptr(lsst::meas::multifit::ParameterConverter);
 %shared_ptr(lsst::meas::multifit::ParameterDefinition);
+%shared_ptr(lsst::meas::multifit::Model);
+%shared_ptr(lsst::meas::multifit::MultiModel);
 %shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Likelihood);
 %shared_ptr(lsst::meas::multifit::SingleEpochLikelihood);
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
 %shared_ptr(lsst::meas::multifit::MultiEpochLikelihood);
-%shared_ptr(lsst::meas::multifit::BaseSampler);
+%shared_ptr(lsst::meas::multifit::Sampler);
 %shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
 
 //----------- Mixtures --------------------------------------------------------------------------------------
@@ -183,6 +185,7 @@ Mixture[N] = Mixture ## N
 
 %include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/parameters.h"
+%include "lsst/meas/multifit/models.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/MultiEpochLikelihood.h"

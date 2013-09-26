@@ -36,6 +36,7 @@
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/integrals.h"
 #include "lsst/meas/multifit/parameters.h"
+#include "lsst/meas/multifit/models.h"
 #include "lsst/meas/multifit/Mixture.h"
 #include "lsst/meas/multifit/optimizer.h"
 
