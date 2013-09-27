@@ -187,7 +187,6 @@ Mixture[N] = Mixture ## N
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/MultiEpochLikelihood.h"
-%include "lsst/meas/multifit/KernelDensityEstimator.h"
 %include "lsst/meas/multifit/SampleSet.h"
 %include "lsst/meas/multifit/ExpectationFunctor.h"
 %include "lsst/meas/multifit/BaseSampler.h"

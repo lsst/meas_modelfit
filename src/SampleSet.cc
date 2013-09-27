@@ -120,36 +120,6 @@ void SampleSet::setParameterDefinition(PTR(ParameterDefinition const) parameterD
     _parameterDefinition = parameterDefinition;
 }
 
-ndarray::Array<double,1,1> SampleSet::computeDensity(KernelDensityEstimatorControl const & ctrl) const {
-    tbl::Key<samples::Scalar> paramKey = _keys.parameters[ctrl.getIndex()];
-    ndarray::Array<double,1,1> result = ndarray::allocate(ctrl.getCount());
-    result.deep() = 0.0;
-    for (tbl::BaseCatalog::const_iterator s = _records.begin(); s != _records.end(); ++s) {
-        ctrl.apply(result, s->get(paramKey), s->get(_keys.weight));
-    }
-    return result;
-}
-
-ndarray::Array<double,2,2> SampleSet::computeDensity(
-    KernelDensityEstimatorControl const & ctrlX,
-    KernelDensityEstimatorControl const & ctrlY
-) const {
-    tbl::Key<samples::Scalar> paramKeyX = _keys.parameters[ctrlX.getIndex()];
-    tbl::Key<samples::Scalar> paramKeyY = _keys.parameters[ctrlY.getIndex()];
-    ndarray::Array<double,2,2> result = ndarray::allocate(ctrlY.getCount(), ctrlX.getCount());
-    ndarray::Array<double,1,1> tmpY = ndarray::allocate(ctrlY.getCount());
-    ndarray::Array<double,1,1> tmpX = ndarray::allocate(ctrlX.getCount());
-    result.deep() = 0.0;
-    for (tbl::BaseCatalog::const_iterator s = _records.begin(); s != _records.end(); ++s) {
-        tmpY.deep() = 0.0;
-        tmpX.deep() = 0.0;
-        ctrlY.apply(tmpY, s->get(paramKeyY), 1.0);
-        ctrlX.apply(tmpX, s->get(paramKeyX), 1.0);
-        result.asEigen() += s->get(_keys.weight) * tmpY.asEigen() * tmpX.asEigen().adjoint();
-    }
-    return result;
-}
-
 double SampleSet::computeNormalizedPerplexity() const {
     double h = 0.0;
     for (tbl::BaseCatalog::const_iterator s = _records.begin(); s != _records.end(); ++s) {
