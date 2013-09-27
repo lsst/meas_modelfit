@@ -36,12 +36,12 @@
 
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/LogGaussian.h"
-#include "lsst/meas/multifit/Likelihood.h"
+#include "lsst/meas/multifit/SingleEpochLikelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 /**
- *  @brief Control object used to initialize a MultiEpochObject.
+ *  @brief Control object used to initialize a MultiEpochLikelihood.
  *
  *  Translated to Python as MultiEpochLikelihoodConfig; the Swig-wrapped C++ Control object can
  *  be created from the config object via the makeControl() method (see lsst.pex.config.wrap).
@@ -70,7 +70,7 @@ public:
         lsst::afw::image::Exposure<Pixel> const &exposure,
         shapelet::MultiShapeletFunction const &psfModel
     );
-    
+
     lsst::afw::detection::Footprint const footprint;  ///< footprint of source (galaxy)
     lsst::afw::image::Exposure<Pixel> const exposure; ///< subregion of exposure that includes footprint
     shapelet::MultiShapeletFunction const psfModel;   ///< multi-shapelet model of exposure PSF
@@ -84,45 +84,36 @@ class EpochMatrixBuilder;   // defined and declared in MultiEpochLikelihood.cc
 /// Likelihood class for use with multi-epoch modeling
 class MultiEpochLikelihood : public Likelihood {
 public:
-    /// @copydoc Likelihood::getLinearDim
-    virtual int getLinearDim() const { return _modelMatrix.getSize<1>(); }
 
-    /// Return the sum of squares of the variance-weighted data vector
-    virtual double getDataSquaredNorm() const { return _dataSquaredNorm; }
-
-    /// @copydoc Likelihood::evaluate
-    /// @note ellipse is in cooadd coordinates
-    virtual LogGaussian evaluate(afw::geom::ellipses::Ellipse const & ellipse) const;
+    /// @copydoc Likelihood::computeModelMatrix
+    virtual void computeModelMatrix(
+        ndarray::Array<Pixel,2,-1> const & modelMatrix,
+        ndarray::Array<Scalar const,1,1> const & parameters
+    ) const;
 
     /**
      * @brief Initialize the MultiEpochLikelihood
      *
-     * @param[in] ctrl              Control object with various options
-     * @param[in] basis             Basis object that defines the galaxy model to fit.
-     * @param[in] coaddWcs          WCS of coadd
+     * @param[in] model             Object that defines the model to fit and its parameters.
+     * @param[in] coaddWcs          WCS of coadd (used for parameter coordinate system)
+     * @param[in] coaddCalib        Photometric calibration of coadd (used for parameter flux scaling)
      * @param[in] sourceSkyPos      Sky position of source (galaxy)
      * @param[in] epochImageList    List of shared pointers to EpochFootprint
+     * @param[in] ctrl              Control object with various options
      */
     explicit MultiEpochLikelihood(
-        MultiEpochLikelihoodControl const & ctrl,
-        shapelet::MultiShapeletBasis const & basis,
+        PTR(Model) model,
         afw::image::Wcs const & coaddWcs,
+        afw::image::Calib const & coaddCalib,
         afw::coord::Coord const & sourceSkyPos,
-        std::vector<PTR(EpochFootprint)> const & epochImageList
+        std::vector<PTR(EpochFootprint)> const & epochImageList,
+        MultiEpochLikelihoodControl const & ctrl
     );
 
 private:
-    int _totPixels;             ///< total number of pixels in all calexp
-    double _dataSquaredNorm;    ///< sum of squares of _weightedData
-    PixelArray1 _weights;       ///< vector of weights for all calexp concatenated
-                                ///< = 1/sqrt(variance) pixels if ctrl.usePixelWeights
-                                ///< = exp^mean(log(1/sqrt(variance))) if !ctrl.usePixelWeights,
-                                ///<   where the mean is computed separately for each epoch
-    PixelArray1 _weightedData;  ///< vector of weighted image pixels for all calexp concatenated
-    PixelArray2CM _modelMatrix; ///< model matrix; set by evaluate
-    std::vector<PTR(EpochMatrixBuilder)>  _epochMatrixBuilderList;
-                                ///< list of shared_ptr to EpochMatrixBuilder;
-                                ///< one entry for each element of epochImageList
+    typedef std::vector<PTR(SingleEpochLikelihood)> EpochLikelihoodVector;
+
+    EpochLikelihoodVector _epochLikelihoods;
 };
 
 }}} // namespace lsst::meas::multifit

@@ -42,7 +42,6 @@ typedef ndarray::Array<Pixel,2,1> PixelArray2RM;
 
 namespace samples {
 
-
 //@{
 /**
  *  Typedefs to be used for probability values
@@ -60,6 +59,8 @@ typedef afw::table::Key<ArrayTag> ArrayKey;
 //@}
 
 } // namespace samples
+
+typedef double Scalar;
 
 }}} // namespace lsst::meas::multifit
 

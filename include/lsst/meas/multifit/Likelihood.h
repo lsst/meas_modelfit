@@ -24,16 +24,10 @@
 #ifndef LSST_MEAS_MULTIFIT_Likelihood_h_INCLUDED
 #define LSST_MEAS_MULTIFIT_Likelihood_h_INCLUDED
 
-#include "ndarray.h"
-
-#include "lsst/pex/config.h"
-#include "lsst/afw/geom/ellipses/Ellipse.h"
-#include "lsst/afw/image/MaskedImage.h"
-#include "lsst/afw/detection/Footprint.h"
-#include "lsst/shapelet/MultiShapeletBasis.h"
+#include "ndarray_fwd.h"
 
 #include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/LogGaussian.h"
+#include "lsst/meas/multifit/models.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -51,108 +45,47 @@ class Likelihood
 {
 public:
 
-    /// Return the number of linear dimensions
-    virtual int getLinearDim() const = 0;
+    /// Return the number of data points
+    int getDataDim() const { return _data.getSize<0>(); }
 
-    /// Return the sum of squares of the variance-weighted data vector
-    virtual double getDataSquaredNorm() const = 0;
+    /// Return the number of linear parameters (columns of the model matrix)
+    int getCoefficientDim() const { return _model->getCoefficientDim(); }
+
+    /// Return the number of nonlinear parameters (which parameterize the model matrix)
+    int getParameterDim() const { return _model->getParameterDim(); }
+
+    /// Return the vector of data points (possibly weighted)
+    ndarray::Array<Pixel const,1,1> getData() const { return _data; }
+
+    /// Return an object that defines the model and its parameters
+    PTR(Model) getModel() const { return _model; }
 
     /**
-     *  @brief Evaluate the likelihood at the given point given an ellipse.
+     *  @brief Evaluate the model for the given vector of nonlinear parameters.
      *
-     *  Because we want to take advantage of the fact that the likelihood of the linear amplitude parameters
-     *  is Gaussian, at each point in the nonlinear ellipse parameter space, we compute that Gaussian
-     *  distribution in the amplitudes, in terms of the maximum likelihood vector, the Fisher matrix,
-     *  and the sum of squared residuals at the maximum likelihood point.  See LogGaussian for more
-     *  information.
+     *  @param[out] modelMatrix  The dataDim x coefficientDim matrix that expresses the model
+     *                           projected in such a way that it can be compared to the data
+     *                           when multiplied by a coefficient vector.
+     *                           It should be weighted if the data vector is.  The caller
+     *                           is responsible for guaranteeing that the shape of the matrix
+     *                           correct, but implementations should not assume anything about
+     *                           the initial values of the matrix elements.
+     *  @param[in] parameters    Vector of nonlinear parameters at which to evaluate the model.
      */
-    virtual LogGaussian evaluate(afw::geom::ellipses::Ellipse const & ellipse) const = 0;
+    virtual void computeModelMatrix(
+        ndarray::Array<Pixel,2,-1> const & modelMatrix,
+        ndarray::Array<Scalar const,1,1> const & parameters
+    ) const = 0;
 
     virtual ~Likelihood() {}
 
+protected:
+
+    explicit Likelihood(PTR(Model) model) : _model(model) {}
+
+    PTR(Model) _model;
+    ndarray::Array<Pixel,1,1> _data;
 };
-
-/**
- *  @brief Control object used to initialize a SingleEpochObject.
- *
- *  Translated to Python as SingleEpochLikelihoodConfig; the Swig-wrapped C++ Control object can
- *  be created from the config object via the makeControl() method (see lsst.pex.config.wrap).
- */
-class SingleEpochLikelihoodControl {
-public:
-
-    LSST_CONTROL_FIELD(usePixelWeights, bool,
-                       "whether to individually weigh pixels using the variance image.");
-    LSST_CONTROL_FIELD(useSVD, bool,
-                       "Use SVD instead of Eigensystem decomposition to solve linear least-squares. "
-                       "While both approaches are robust against rank-deficient matrices, and both "
-                       "factorizations are performed in double precision, with the Eigensystem "
-                       "method the normal equations will first be formed in single precision, which "
-                       "makes them more subject to round-off error."
-    );
-    LSST_CONTROL_FIELD(useApproximateExp, bool,
-                       "whether to use fast approximate exponentials when evaluating the model");
-
-    SingleEpochLikelihoodControl() : usePixelWeights(true), useSVD(false), useApproximateExp(false) {}
-};
-
-/// Likelihood class for use with single-epoch modeling
-class SingleEpochLikelihood : public Likelihood {
-public:
-
-    /// @copydoc Likelihood::getLinearDim
-    virtual int getLinearDim() const { return _modelMatrix.getSize<1>(); }
-
-    /// Return the sum of squares of the variance-weighted data vector
-    virtual double getDataSquaredNorm() const { return _dataSquaredNorm; }
-
-    /// @copydoc Likelihood::evaluate
-    virtual LogGaussian evaluate(afw::geom::ellipses::Ellipse const & ellipse) const;
-
-    /**
-     *  @brief Initialize the SingleEpochLikelihood
-     *
-     *  @param[in] ctrl      Control object with various options.
-     *  @param[in] basis     Basis object that defines the galaxy model to fit.
-     *  @param[in] psf       Multi-shapelet representation of the PSF evaluated at the
-     *                       location of the galaxy.
-     *  @param[in] image     MaskedImage to fit to.
-     *  @param[in] footprint Footprint that defines the pixel region to include in the fit.
-     */
-    explicit SingleEpochLikelihood(
-        SingleEpochLikelihoodControl const & ctrl,
-        shapelet::MultiShapeletBasis const & basis,
-        shapelet::MultiShapeletFunction const & psf,
-        afw::image::MaskedImage<Pixel> const & image,
-        afw::detection::Footprint const & footprint
-    );
-
-private:
-    double _dataSquaredNorm;
-    PixelArray1 _weights;
-    PixelArray1 _weightedData;
-    PixelArray2CM _modelMatrix;
-    shapelet::MultiShapeletMatrixBuilder<Pixel> _matrixBuilder;
-};
-
-namespace detail {
-    #ifndef SWIG
-    /**
-     *  @brief A MultiShapeletMatrixBuilder factory with arguments suitable for SingleEpochLikelihood
-     *
-     *  @param[in] ctrl         SingleEpochLikelihood control object with various options.
-     *  @param[in] basis        Basis object that defines the galaxy model to fit.
-     *  @param[in] psf          Multi-shapelet representation of the PSF evaluated at the location of the galaxy.
-     *  @param[in] footprint    Footprint that defines the pixel region to include in the fit.
-     */
-    shapelet::MultiShapeletMatrixBuilder<Pixel> makeShapeletMatrixBuilder(
-        SingleEpochLikelihoodControl const & ctrl,
-        shapelet::MultiShapeletBasis const & basis,
-        shapelet::MultiShapeletFunction const & psf,
-        afw::detection::Footprint const & footprint
-    );
-    #endif
-} // namespace ::detail
 
 }}} // namespace lsst::meas::multifit
 

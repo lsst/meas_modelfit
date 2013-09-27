@@ -29,6 +29,7 @@
 #include "ndarray/eigen.h"
 
 #include "lsst/afw/image/Exposure.h"
+#include "lsst/afw/image/Calib.h"
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
 #include "lsst/shapelet/MultiShapeletBasis.h"
@@ -38,21 +39,21 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
-    /**
-     *  @brief Function intended for use with std algorithms to compute the cumulative sum
-     *  of the number of pixels in a sequence of components
-     *
-     * Example:
-     * numPixels = std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum);
-     *
-     * @param[in] partialNumPixels: accumulated number of pixels, so far
-     * @param[in] epochImagePtr: shared pointer to EpochFootprint whose numPixels is to be added to the total
-     * @return partialNumPixels + component.numPixels
-     */
-    int componentPixelSum(int partialNumPixels, CONST_PTR(EpochFootprint) const &epochImagePtr) {
-        return partialNumPixels + epochImagePtr->numPixels;
-    }
-    
+/**
+ *  @brief Function intended for use with std algorithms to compute the cumulative sum
+ *  of the number of pixels in a sequence of components
+ *
+ * Example:
+ * numPixels = std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum);
+ *
+ * @param[in] partialNumPixels: accumulated number of pixels, so far
+ * @param[in] epochImagePtr: shared pointer to EpochFootprint whose numPixels is to be added to the total
+ * @return partialNumPixels + component.numPixels
+ */
+int componentPixelSum(int partialNumPixels, CONST_PTR(EpochFootprint) const &epochImagePtr) {
+    return partialNumPixels + epochImagePtr->numPixels;
+}
+
 } // anonymous
 
 EpochFootprint::EpochFootprint(
@@ -64,130 +65,61 @@ EpochFootprint::EpochFootprint(
     exposure(afw::image::Exposure<Pixel>(exposure, false)),
     psfModel(psfModel),
     numPixels(footprint.getNpix())
-{ }
-
-/**
-* Contains a MatrixBuilder for one EpochFootprint, plus additional information
-*
-* Intended to be constructed and used internally by MultiEpochLikelihood.
-*/
-class EpochMatrixBuilder {
-public:
-    /**
-    * Construct a EpochMatrixBuilder
-    *
-    * @param[in] begIndex       Beginning index of this epoch's data in _weights, etc.
-    * @param[in] numPixels      Number of pixels in this epoch's footprint
-    * @param[in] coaddToCalexp  Affine transform of coadd pixels->calexp pixels
-    * @param[in] matrixBuilder  Multi-shapelet matrix builder for this epoch
-    * 
-    */
-    explicit EpochMatrixBuilder(
-        int begIndex,
-        int numPixels,
-        afw::geom::AffineTransform coaddToCalexp,
-        shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder
-    );
-
-    int const begIndex;         ///< beginning index of this epoch's data in _weights, etc.
-    int const numPixels;        ///< number of pixels in this epoch's footprint
-    afw::geom::AffineTransform const coaddToCalexp;  /// affine transform of coadd pixels->calexp pixels
-    shapelet::MultiShapeletMatrixBuilder<Pixel> const matrixBuilder;    ///< multishapelet matrix builder
-};
-
-EpochMatrixBuilder::EpochMatrixBuilder(
-    int begIndex,
-    int numPixels,
-    afw::geom::AffineTransform coaddToCalexp,
-    shapelet::MultiShapeletMatrixBuilder<Pixel> matrixBuilder
-) :
-    begIndex(begIndex),
-    numPixels(numPixels),
-    coaddToCalexp(coaddToCalexp),
-    matrixBuilder(matrixBuilder)
-{ }
+{}
 
 MultiEpochLikelihood::MultiEpochLikelihood(
-    MultiEpochLikelihoodControl const & ctrl,
-    shapelet::MultiShapeletBasis const & basis,
+    PTR(Model) model,
     afw::image::Wcs const & coaddWcs,
+    afw::image::Calib const & coaddCalib,
     afw::coord::Coord const & sourceSkyPos,
-    std::vector<PTR(EpochFootprint)> const & epochImageList
-) :
-    _totPixels(std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum)),
-    _dataSquaredNorm(0),
-    _weights(ndarray::allocate(_totPixels)),
-    _weightedData(ndarray::allocate(_totPixels)),
-    _modelMatrix(ndarray::allocate(_totPixels, basis.getSize())),
-    _epochMatrixBuilderList()
-{
+    std::vector<PTR(EpochFootprint)> const & epochImageList,
+    MultiEpochLikelihoodControl const & ctrl
+) : Likelihood(model) {
+    int totPixels = std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum);
+    _data = ndarray::allocate(totPixels);
     afw::geom::AffineTransform coaddToSky = coaddWcs.linearizePixelToSky(sourceSkyPos, afw::geom::radians);
-    int begIndex = 0;
-    for (std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochImageList.begin();
-        imPtrIter != epochImageList.end(); ++imPtrIter) {
-
-        begIndex = begIndex;
+    int dataOffset = 0;
+    for (
+        std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochImageList.begin();
+        imPtrIter != epochImageList.end(); ++imPtrIter
+    ) {
         int const numPixels = (*imPtrIter)->numPixels; // used to shorten some expressions below
-        
+
         afw::geom::AffineTransform skyToCalexp =
             (*imPtrIter)->exposure.getWcs()->linearizeSkyToPixel(sourceSkyPos, afw::geom::radians);
-        _epochMatrixBuilderList.push_back(
-            boost::make_shared<EpochMatrixBuilder>(
-                begIndex,
-                numPixels,
-                skyToCalexp * coaddToSky,
-                detail::makeShapeletMatrixBuilder(ctrl, basis,
-                    (*imPtrIter)->psfModel, (*imPtrIter)->footprint)
-        ));
-        
-        afw::image::MaskedImage<Pixel> maskedImage = (*imPtrIter)->exposure.getMaskedImage();
-        _weights.asEigen<Eigen::ArrayXpr>().segment(begIndex, numPixels) =
-            afw::detection::flattenArray(
-                (*imPtrIter)->footprint,
-                maskedImage.getVariance()->getArray(),
-                maskedImage.getXY0()).asEigen<Eigen::ArrayXpr>().sqrt().inverse();
-        
-        if (!ctrl.usePixelWeights) {
-            // the weight for this component is the same for all pixels: e^mean(log(weight))
-            _weights.asEigen().segment(begIndex, numPixels).setConstant(
-                std::exp(_weights.asEigen<Eigen::ArrayXpr>().segment(begIndex, numPixels).log().mean()));
-        }
 
-        _weightedData.asEigen().segment(begIndex, numPixels) =
-            afw::detection::flattenArray(
-                (*imPtrIter)->footprint,
-                maskedImage.getImage()->getArray(),
-                maskedImage.getXY0()).asEigen().array()
-                                      * _weights.asEigen().segment(begIndex, numPixels).array();
-        begIndex += numPixels;
+        _epochLikelihoods.push_back(
+            boost::make_shared<SingleEpochLikelihood>(
+                model, (**imPtrIter).psfModel,
+                (**imPtrIter).exposure.getMaskedImage(),
+                (**imPtrIter).footprint,
+                skyToCalexp * coaddToSky,
+                coaddCalib.getFluxMag0().first / (**imPtrIter).exposure.getCalib()->getFluxMag0().first,
+                _data[ndarray::view(dataOffset, dataOffset + numPixels)],
+                ctrl
+            )
+        );
+
+        dataOffset += numPixels;
     }
-    _dataSquaredNorm = _weightedData.asEigen().cast<double>().squaredNorm();
 }
 
-LogGaussian MultiEpochLikelihood::evaluate(afw::geom::ellipses::Ellipse const & ellipse) const {
-    for (std::vector<PTR(EpochMatrixBuilder)>::const_iterator mbPtrIter =
-        _epochMatrixBuilderList.begin(); mbPtrIter != _epochMatrixBuilderList.end(); ++mbPtrIter) {
-        afw::geom::ellipses::Ellipse localEllipse = ellipse.transform((*mbPtrIter)->coaddToCalexp);
-
-        int const endIndex = (*mbPtrIter)->begIndex + (*mbPtrIter)->numPixels;
-        (*mbPtrIter)->matrixBuilder.build(
-            _modelMatrix[ndarray::view((*mbPtrIter)->begIndex, endIndex)()],
-            localEllipse);
+void MultiEpochLikelihood::computeModelMatrix(
+    ndarray::Array<Pixel,2,-1> const & modelMatrix,
+    ndarray::Array<Scalar const,1,1> const & parameters
+) const {
+    int dataOffset = 0;
+    for (
+        EpochLikelihoodVector::const_iterator i = _epochLikelihoods.begin();
+        i != _epochLikelihoods.end();
+        ++i
+    ) {
+        (**i).computeModelMatrix(
+            modelMatrix[ndarray::view(dataOffset, dataOffset + (**i).getDataDim())()],
+            parameters
+        );
+        dataOffset += (**i).getDataDim();
     }
-
-    // copied directly from SingleEpochLikelihood::evaluate
-    _modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
-    LogGaussian result(_modelMatrix.getSize<1>());
-    // grad and fisher are the first and second derivatives of the log-likelihood for a zero
-    // amplitude vector, and they're also the terms in the normal equations we'd solve for
-    // the maximum likelihood solution
-    result.grad = -_modelMatrix.asEigen().adjoint().cast<samples::Scalar>()
-        * _weightedData.asEigen().cast<samples::Scalar>();
-    result.fisher.selfadjointView<Eigen::Lower>().rankUpdate(
-        _modelMatrix.asEigen().adjoint().cast<samples::Scalar>(), 1.0
-    );
-    result.fisher = result.fisher.selfadjointView<Eigen::Lower>();
-    return result;
 }
 
 }}} // namespace lsst::meas::multifit
