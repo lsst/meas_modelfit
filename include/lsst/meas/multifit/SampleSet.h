@@ -42,7 +42,6 @@ class ExpectationFunctor;
 class SampleSetKeys {
 public:
     afw::table::Schema schema;
-    samples::ScalarKey jointR;
     samples::ArrayKey jointGrad;
     samples::ArrayKey jointFisher;
     samples::ScalarKey marginal;
