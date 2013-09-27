@@ -39,19 +39,19 @@ namespace tbl = lsst::afw::table;
 
 namespace lsst { namespace meas { namespace multifit {
 
-SampleSetKeys::SampleSetKeys(int nonlinearDim, int linearDim) :
+SampleSetKeys::SampleSetKeys(int parameterDim, int coefficientDim) :
     schema(),
     jointGrad(schema.addField<samples::ArrayTag>(
-                "joint.grad", "amplitude log-likelihood gradient at amplitude=0", linearDim)),
+                "joint.grad", "amplitude log-likelihood gradient at amplitude=0", coefficientDim)),
     jointFisher(schema.addField<samples::ArrayTag>("joint.fisher", "amplitude Fisher matrix",
-                                                   linearDim*linearDim)),
+                                                   coefficientDim*coefficientDim)),
     marginal(schema.addField<samples::Scalar>(
                  "marginal", "negative log marginal posterior value at sample point")),
     proposal(schema.addField<samples::Scalar>(
                  "proposal", "negative log density of the distribution used to draw samples")),
     weight(schema.addField<samples::Scalar>("weight", "normalized Monte Carlo weight")),
     parameters(schema.addField<samples::ArrayTag>(
-                   "parameters", "nonlinear parameters at this point", nonlinearDim))
+                   "parameters", "nonlinear parameters at this point", parameterDim))
 {}
 
 SampleSetKeys::SampleSetKeys(tbl::Schema const & schema_) :
@@ -65,15 +65,16 @@ SampleSetKeys::SampleSetKeys(tbl::Schema const & schema_) :
 {}
 
 LogGaussian SampleSetKeys::getJoint(tbl::BaseRecord const & record) const {
-    LogGaussian joint(getLinearDim());
-    joint.grad = samples::VectorCMap(record.getElement(jointGrad), getLinearDim());
-    joint.fisher = samples::MatrixCMap(record.getElement(jointFisher), getLinearDim(), getLinearDim());
+    LogGaussian joint(getCoefficientDim());
+    joint.grad = samples::VectorCMap(record.getElement(jointGrad), getCoefficientDim());
+    joint.fisher = samples::MatrixCMap(record.getElement(jointFisher), getCoefficientDim(), getCoefficientDim());
     return joint;
 }
 
 void SampleSetKeys::setJoint(tbl::BaseRecord & record, LogGaussian const & joint) {
-    samples::VectorMap(record.getElement(jointGrad), getLinearDim()) = joint.grad;
-    samples::MatrixMap(record.getElement(jointFisher), getLinearDim(), getLinearDim()) = joint.fisher;
+    samples::VectorMap(record.getElement(jointGrad), getCoefficientDim()) = joint.grad;
+    samples::MatrixMap(record.getElement(jointFisher), getCoefficientDim(), getCoefficientDim())
+        = joint.fisher;
     if (*record.getElement(jointFisher) != joint.fisher(0,0)) {
         throw LSST_EXCEPT(
             pex::exceptions::LogicErrorException,
@@ -82,8 +83,8 @@ void SampleSetKeys::setJoint(tbl::BaseRecord & record, LogGaussian const & joint
     }
 }
 
-SampleSet::SampleSet(PTR(ParameterDefinition const) parameterDefinition, int linearDim) :
-    _keys(parameterDefinition->getDim(), linearDim),
+SampleSet::SampleSet(PTR(ParameterDefinition const) parameterDefinition, int coefficientDim) :
+    _keys(parameterDefinition->getDim(), coefficientDim),
     _records(_keys.schema),
     _dataSquaredNorm(0.0),
     _parameterDefinition(parameterDefinition),
@@ -156,18 +157,18 @@ double SampleSet::computeEffectiveSampleSizeFraction() const {
 }
 
 void SampleSet::add(LogGaussian const & joint, double proposal, samples::Vector const & parameters) {
-    if (parameters.size() != getNonlinearDim()) {
+    if (parameters.size() != getParameterDim()) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterException,
-            (boost::format("Incorrect nonlinear dimension for SamplePoint: expected %d, got %d")
-             % getNonlinearDim() % parameters.size()).str()
+            (boost::format("Incorrect parameter dimension for SamplePoint: expected %d, got %d")
+             % getParameterDim() % parameters.size()).str()
         );
     }
-    if (joint.grad.size() != getLinearDim()) {
+    if (joint.grad.size() != getCoefficientDim()) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterException,
-            (boost::format("Incorrect linear dimension for SamplePoint: expected %d, got %d")
-             % getNonlinearDim() % joint.grad.size()).str()
+            (boost::format("Incorrect coefficient dimension for SamplePoint: expected %d, got %d")
+             % getParameterDim() % joint.grad.size()).str()
         );
     }
     if (_prior) {
@@ -190,7 +191,7 @@ double SampleSet::applyPrior(PTR(Prior const) prior, double clip) {
     PTR(ParameterConverter const) converter;
     if (prior->getParameterDefinition() != getParameterDefinition()) {
         converter = getParameterDefinition()->makeConverterTo(*prior->getParameterDefinition());
-        priorParameters = ndarray::allocate(getNonlinearDim());
+        priorParameters = ndarray::allocate(getParameterDim());
     }
     double logJacobian = 0.0;
     for (; i != _records.end(); ++i) {
@@ -334,8 +335,8 @@ samples::Vector SampleSet::computeQuantiles(samples::Vector const & fraction, in
 }
 
 samples::Matrix SampleSet::computeQuantiles(samples::Vector const & fractions) const {
-    samples::Matrix result(fractions.size(), getNonlinearDim());
-    for (int i = 0; i < getNonlinearDim(); ++i) {
+    samples::Matrix result(fractions.size(), getParameterDim());
+    for (int i = 0; i < getParameterDim(); ++i) {
         result.col(i) = computeQuantiles(fractions, i);
     }
     return result;
@@ -418,7 +419,7 @@ samples::Vector SampleSet::computeExpectation(
 }
 
 samples::Vector SampleSet::computeMean(samples::Matrix * mcCov) const {
-    MeanExpectationFunctor f(getNonlinearDim());
+    MeanExpectationFunctor f(getParameterDim());
     return computeExpectation(f, mcCov);
 }
 

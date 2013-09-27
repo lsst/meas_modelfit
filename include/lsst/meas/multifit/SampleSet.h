@@ -51,10 +51,10 @@ public:
     samples::ArrayKey parameters;
 
     /// Return the number of nonlinear parameters
-    int getNonlinearDim() const { return parameters.getSize(); }
+    int getParameterDim() const { return parameters.getSize(); }
 
-    /// Return the number of linear amplitude parameters
-    int getLinearDim() const { return jointGrad.getSize(); }
+    /// Return the number of linear coefficients
+    int getCoefficientDim() const { return jointGrad.getSize(); }
 
     /// Extract a LogGaussian object from the given record
     LogGaussian getJoint(afw::table::BaseRecord const & record) const;
@@ -66,26 +66,26 @@ public:
 
     /// Extract the nonlinear parameter vector as a const Eigen Map object
     samples::VectorCMap getParameters(afw::table::BaseRecord const & record) const {
-        return samples::VectorCMap(record.getElement(parameters), getNonlinearDim());
+        return samples::VectorCMap(record.getElement(parameters), getParameterDim());
     }
 
     /// Set nonlinear parameter fields in the given record
     void setParameters(afw::table::BaseRecord & record, samples::Vector const & parameters_) const {
-        samples::VectorMap(record.getElement(parameters), getNonlinearDim()) = parameters_;
+        samples::VectorMap(record.getElement(parameters), getParameterDim()) = parameters_;
     }
 
 #endif // !SWIG
 
-    SampleSetKeys(int nonlinearDim, int linearDim);
+    SampleSetKeys(int parameterDim, int coefficientDim);
 
     explicit SampleSetKeys(afw::table::Schema const & schema_);
 };
 
 /**
  *  @brief Representation of a probability distribution as a set of Monte Carlo samples that
- *         distinguishes linear amplitude parameters from other nonlinear parameters.
+ *         distinguishes linear coefficients from other nonlinear parameters.
  *
- *  For linear amplitudes @f$\alpha@f$ and nonlinear parameters @f$\theta@f$,
+ *  For linear coefficients @f$\alpha@f$ and nonlinear parameters @f$\theta@f$,
  *  each element @f$n@f$ in a SampleSet contains:
  *   - the nonlinear parameters @f$\theta_n@f$ at that point
  *   - the joint likelihood @f$P(D|\alpha,\theta_n) = e^{-L_n(\alpha)}@f$ (see LogGaussian)
@@ -108,9 +108,9 @@ public:
      *  Any SamplePoints added to the SampleSet must have the same dimensions.
      *
      *  @param[in] parameterDefinition    Object that defines the interpretation of the nonlinear parameters.
-     *  @param[in] linearDim      Number of linear amplitude parameters (dimension of SamplePoint::joint).
+     *  @param[in] coefficientDim      Number of coefficient coefficients (dimension of SamplePoint::joint).
      */
-    SampleSet(PTR(ParameterDefinition const) parameterDefinition, int linearDim);
+    SampleSet(PTR(ParameterDefinition const) parameterDefinition, int coefficientDim);
 
     /**
      *  @brief Construct a SampleSet from an existing catalog of sample records.
@@ -121,10 +121,10 @@ public:
     SampleSet(PTR(ParameterDefinition const) parameterDefinition, afw::table::BaseCatalog const & records);
 
     /// Return the number of nonlinear parameters
-    int getNonlinearDim() const { return _keys.getNonlinearDim(); }
+    int getParameterDim() const { return _keys.getParameterDim(); }
 
-    /// Return the number of linear amplitude parameters
-    int getLinearDim() const { return _keys.getLinearDim(); }
+    /// Return the number of linear coefficients
+    int getCoefficientDim() const { return _keys.getCoefficientDim(); }
 
     /// Return the object that defines how to interpret the nonlinear parameters
     PTR(ParameterDefinition const) getParameterDefinition() const { return _parameterDefinition; }
@@ -244,7 +244,7 @@ public:
      *  @param[in] fractions       A sorted array of fractions (floating point numbers in the range [0,1])
      *                             at which to compute a quantile value (e.g. 0.5 == median).
      *  @param[in] parameterIndex  Index of the parameter over which to compute the quantile; an
-     *                             integer between 0 and (getNonlinearDim()-1).  All other parameters
+     *                             integer between 0 and (getParameterDim()-1).  All other parameters
      *                             are ignored (meaning they areeffectively marginalized over).
      */
     samples::Vector computeQuantiles(samples::Vector const & fractions, int parameterIndex) const;
