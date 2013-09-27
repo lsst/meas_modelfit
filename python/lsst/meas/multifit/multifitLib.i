@@ -38,6 +38,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/afw/table.h"
 #include "lsst/afw/cameraGeom.h"
 #include "lsst/afw/image.h"
+#include "lsst/shapelet.h"
 #include "lsst/meas/multifit.h"
 #include "ndarray/eigen.h"
 #include "Eigen/Core"
@@ -67,11 +68,8 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/afw/table/tableLib.i"
 %import "lsst/afw/image/imageLib.i"
 %import "lsst/afw/math/random.i"
+%import "lsst/shapelet/shapeletLib.i"
 %import "lsst/pex/config.h"
-
-namespace lsst { namespace shapelet {
-class MultiShapeletBasis;
-}}
 
 %template(VectorEpochFootprint) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
