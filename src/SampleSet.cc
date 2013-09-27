@@ -39,35 +39,45 @@ namespace tbl = lsst::afw::table;
 
 namespace lsst { namespace meas { namespace multifit {
 
-SampleSetKeys::SampleSetKeys(int parameterDim, int coefficientDim) :
-    schema(),
-    jointGrad(schema.addField<samples::ArrayTag>(
-                "joint.grad", "amplitude log-likelihood gradient at amplitude=0", coefficientDim)),
-    jointFisher(schema.addField<samples::ArrayTag>("joint.fisher", "amplitude Fisher matrix",
-                                                   coefficientDim*coefficientDim)),
-    marginal(schema.addField<samples::Scalar>(
-                 "marginal", "negative log marginal posterior value at sample point")),
-    proposal(schema.addField<samples::Scalar>(
-                 "proposal", "negative log density of the distribution used to draw samples")),
-    weight(schema.addField<samples::Scalar>("weight", "normalized Monte Carlo weight")),
-    parameters(schema.addField<samples::ArrayTag>(
-                   "parameters", "nonlinear parameters at this point", parameterDim))
-{}
+SampleSetKeys::SampleSetKeys(int parameterDim, int coefficientDim) {
+    if (coefficientDim > 0) {
+        jointGrad = schema.addField<samples::ArrayTag>(
+            "joint.grad", "amplitude log-likelihood gradient at amplitude=0", coefficientDim
+        );
+        jointFisher = schema.addField<samples::ArrayTag>(
+            "joint.fisher", "amplitude Fisher matrix", coefficientDim*coefficientDim
+        );
+    }
+    marginal = schema.addField<samples::Scalar>(
+        "marginal", "negative log marginal posterior value at sample point"
+    );
+    proposal = schema.addField<samples::Scalar>(
+        "proposal", "negative log density of the distribution used to draw samples"
+    );
+    weight = schema.addField<samples::Scalar>("weight", "normalized Monte Carlo weight");
+    parameters = schema.addField<samples::ArrayTag>(
+        "parameters", "nonlinear parameters at this point", parameterDim
+    );
+}
 
 SampleSetKeys::SampleSetKeys(tbl::Schema const & schema_) :
     schema(schema_),
-    jointGrad(schema["joint.grad"]),
-    jointFisher(schema["joint.fisher"]),
     marginal(schema["marginal"]),
     proposal(schema["proposal"]),
     weight(schema["weight"]),
     parameters(schema["parameters"])
-{}
+{
+    try {
+        jointGrad = schema["joint.grad"];
+        jointFisher = schema["joint.fisher"];
+    } catch (pex::exceptions::InvalidParameterException &) {}
+}
 
 LogGaussian SampleSetKeys::getJoint(tbl::BaseRecord const & record) const {
     LogGaussian joint(getCoefficientDim());
     joint.grad = samples::VectorCMap(record.getElement(jointGrad), getCoefficientDim());
-    joint.fisher = samples::MatrixCMap(record.getElement(jointFisher), getCoefficientDim(), getCoefficientDim());
+    joint.fisher = samples::MatrixCMap(record.getElement(jointFisher),
+                                       getCoefficientDim(), getCoefficientDim());
     return joint;
 }
 
