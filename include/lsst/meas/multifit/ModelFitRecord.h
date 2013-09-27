@@ -28,6 +28,7 @@
 #include "lsst/afw/table/BaseColumnView.h"
 #include "lsst/afw/table/io/FitsWriter.h"
 #include "lsst/afw/detection/Footprint.h"
+#include "lsst/meas/multifit/MixtureBase.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -62,6 +63,9 @@ public:
     PTR(afw::detection::Footprint) getFootprint() const { return _footprint; }
     void setFootprint(PTR(afw::detection::Footprint) footprint) { _footprint = footprint; }
 
+    PTR(MixtureBase) getPdf() const { return _pdf; }
+    void setPdf(PTR(MixtureBase) pdf) { _pdf = pdf; }
+
 protected:
 
     ModelFitRecord(PTR(ModelFitTable) const & table);
@@ -72,6 +76,7 @@ private:
 
     afw::table::BaseCatalog _samples;
     PTR(afw::detection::Footprint) _footprint;
+    PTR(MixtureBase) _pdf;
 };
 
 /**

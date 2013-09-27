@@ -76,6 +76,7 @@ struct PersistenceSchema : private boost::noncopyable {
     afw::table::Key<int> samplesBegin;
     afw::table::Key<int> samplesEnd;
     afw::table::Key<int> footprint;
+    afw::table::Key<int> pdf;
 
     static PersistenceSchema const & get() {
         static PersistenceSchema const instance;
@@ -104,6 +105,7 @@ struct PersistenceSchema : private boost::noncopyable {
     ) const {
         output.assign(input, mapper);
         output.set(footprint, archive.put(input.getFootprint()));
+        output.set(pdf, archive.put(input.getPdf()));
         output.set(samplesBegin, samples.size());
         samples.insert(samples.begin(), input.getSamples().begin(), input.getSamples().end(), false);
         output.set(samplesEnd, samples.size());
@@ -118,6 +120,7 @@ struct PersistenceSchema : private boost::noncopyable {
         output.getSamples().insert(output.getSamples().begin(), samples.begin() + input.get(samplesBegin),
                                    samples.begin() + input.get(samplesEnd), false);
         output.setFootprint(archive.get<afw::detection::Footprint>(input.get(footprint)));
+        output.setPdf(archive.get<MixtureBase>(input.get(pdf)));
     }
 
 private:
@@ -125,7 +128,8 @@ private:
         schema(),
         samplesBegin(schema.addField<int>("samples.begin", "index of first associated sample")),
         samplesEnd(schema.addField<int>("samples.end", "index of one-past-end of associated samples")),
-        footprint(schema.addField<int>("footprint", "archive ID for Footprint object"))
+        footprint(schema.addField<int>("footprint", "archive ID for Footprint object")),
+        pdf(schema.addField<int>("pdf", "archive ID for analytic probability density function"))
     {
         schema.getCitizen().markPersistent();
     }
@@ -272,6 +276,7 @@ void ModelFitRecord::_assign(afw::table::BaseRecord const & other) {
         ModelFitRecord const & s = dynamic_cast<ModelFitRecord const &>(other);
         _samples.assign(s.getSamples().begin(), s.getSamples().end(), true);
         _footprint = s._footprint;
+        _pdf = s._pdf;
     } catch (std::bad_cast&) {}
 }
 
