@@ -191,7 +191,7 @@ Mixture[N] = Mixture ## N
 %include "lsst/meas/multifit/MultiEpochLikelihood.h"
 %include "lsst/meas/multifit/SampleSet.h"
 %include "lsst/meas/multifit/ExpectationFunctor.h"
-%include "lsst/meas/multifit/BaseSampler.h"
+%include "lsst/meas/multifit/Sampler.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 
 %include "std_map.i"

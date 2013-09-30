@@ -26,9 +26,9 @@
 
 #include <map>
 
-#include "lsst/meas/multifit/BaseSampler.h"
-#include "lsst/meas/multifit/Mixture.h"
-#include "lsst/meas/multifit/priors.h"
+#include "lsst/pex/config.h"
+#include "lsst/meas/multifit/Sampler.h"
+#include "lsst/meas/multifit/MixtureBase.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -61,63 +61,49 @@ public:
  *  @brief Sampler class that performs Monte Carlo sampling, while iteratively updating the
  *         analytic distribution from which points are drawn.
  *
- *  Between the iterations defined in the contorl object, the prior is applied to the samples,
- *  and the mixture distribution is updates using expectation-maximization to match the samples.
+ *  Between the iterations defined in the control object, the prior is applied to the samples,
+ *  and the mixture distribution is updated using expectation-maximization to match the samples.
  */
-class AdaptiveImportanceSampler : public BaseSampler {
+class AdaptiveImportanceSampler : public Sampler {
 public:
 
     /**
      *  @brief Construct a new sampler
      *
-     *  @param[in]  rng         Random number generator to use to generate samples.
-     *  @param[in]  proposal    Initial distribution to draw from.  It will be modified on each
-     *                          each iteration, so users should copy before passing if they
-     *                          need to protect the original from modifification.
-     *  @param[in]  prior       Bayesian prior used to determine the marginalized posterior
-     *                          when updating the proposal distribution to match it.
-     *  @param[in]  center      Center position of source.
-     *  @param[in]  ctrls       Vector of control objects that define the iterations.
-     *  @param[in]  doSaveIterations   Whether to save intermediate SampleSets and associated
-     *                                 proposal distributions.
+     *  @param[in,out] sampleSchema   Schema for the catalog of samples filled by the Sampler;
+     *                                will be modified to include sampler-specific fields.
+     *  @param[in]  rng               Random number generator to use to generate samples.
+     *  @param[in]  ctrls             Vector of control objects that define the iterations.
+     *  @param[in]  doSaveIterations  Whether to save intermediate SampleSets and associated
+     *                                proposal distributions.
      */
     AdaptiveImportanceSampler(
+        afw::table::Schema & sampleSchema,
         PTR(afw::math::Random) rng,
-        PTR(MixtureBase) proposal,
-        PTR(Prior const) prior,
-        afw::geom::Point2D const & center,
         std::map<int,ImportanceSamplerControl> const & ctrls,
         bool doSaveIterations=false
     );
 
-    /**
-     *  @brief Generate and evaluate samples using adaptive importance sampling
-     */
-    virtual SampleSet run(Likelihood const & likelihood) const;
+    virtual void run(
+        SamplerObjective const & objective,
+        PTR(MixtureBase) proposal,
+        afw::table::BaseCatalog & samples
+    ) const;
 
-    typedef std::map< int, std::vector<PTR(SampleSet)> > IterationMap;
+    double computeNormalizedPerplexity(afw::table::BaseCatalog const & samples) const;
 
-    /**
-     *  @brief Return the SampleSet corresponding to the given iteration and repeat numbers.
-     *
-     *  Only valid if saveIterations=true was passed on initialization.
-     *
-     *  The proposal distribution attached to the SampleSet will be a snapshot from before any
-     *  E-M updates in that iteration, so the proposal distribution reflects the state of the
-     *  proposal the samples were actually drawn from.  This is different from the final SampleSet
-     *  returned by the run() method, whose attached proposal distribution does reflect any final
-     *  update steps.
-     */
-    IterationMap const & getIterations() const { return _iterations; }
+    double computeEffectiveSampleSizeFraction(afw::table::BaseCatalog const & samples) const;
 
 private:
     bool _doSaveIterations;
     PTR(afw::math::Random)  _rng;
-    PTR(MixtureBase) _proposal;
-    PTR(Prior const) _prior;
-    afw::geom::Point2D _center;
     std::map<int,ImportanceSamplerControl> _ctrls;
-    mutable IterationMap _iterations;
+    afw::table::Key<Scalar> _weightKey;
+    afw::table::Key<Scalar> _objectiveKey;
+    afw::table::Key<Scalar> _proposalKey;
+    afw::table::Key<Scalar> _parametersKey;
+    afw::table::Key<int> _iterCtrlKey;
+    afw::table::Key<int> _iterRepeatKey;
 };
 
 }}} // namespace lsst::meas::multifit
