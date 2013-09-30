@@ -49,7 +49,7 @@ public:
     int getDataDim() const { return _data.getSize<0>(); }
 
     /// Return the number of linear parameters (columns of the model matrix)
-    int getCoefficientDim() const { return _model->getCoefficientDim(); }
+    int getAmplitudeDim() const { return _model->getAmplitudeDim(); }
 
     /// Return the number of nonlinear parameters (which parameterize the model matrix)
     int getParameterDim() const { return _model->getParameterDim(); }
@@ -63,9 +63,9 @@ public:
     /**
      *  @brief Evaluate the model for the given vector of nonlinear parameters.
      *
-     *  @param[out] modelMatrix  The dataDim x coefficientDim matrix that expresses the model
+     *  @param[out] modelMatrix  The dataDim x amplitudeDim matrix that expresses the model
      *                           projected in such a way that it can be compared to the data
-     *                           when multiplied by a coefficient vector.
+     *                           when multiplied by an amplitude vector.
      *                           It should be weighted if the data vector is.  The caller
      *                           is responsible for guaranteeing that the shape of the matrix
      *                           correct, but implementations should not assume anything about

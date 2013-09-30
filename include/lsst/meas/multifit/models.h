@@ -51,14 +51,14 @@ public:
     static PTR(Model) makeMultiCenter(BasisVector basisVector);
 
     int getParameterDim() const { return _parameterDim; }
-    int getCoefficientDim() const { return _coefficientDim; }
+    int getAmplitudeDim() const { return _amplitudeDim; }
     int getBasisCount() const { return _basisVector.size(); }
 
     BasisVector const & getBasisVector() const { return _basisVector; }
 
     shapelet::MultiShapeletFunction makeShapeletFunction(
         ndarray::Array<double const,1,1> const & parameters,
-        ndarray::Array<double const,1,1> const & coefficients
+        ndarray::Array<double const,1,1> const & amplitudes
     ) const;
 
     virtual EllipseVector makeEllipseVector() const = 0;
@@ -75,7 +75,7 @@ protected:
 
 private:
     int _parameterDim;
-    int _coefficientDim;
+    int _amplitudeDim;
     BasisVector _basisVector;
 };
 

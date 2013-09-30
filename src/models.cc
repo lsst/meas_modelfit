@@ -64,7 +64,7 @@ Model::EllipseVector makeEllipseVectorImpl(
 
 shapelet::MultiShapeletFunction Model::makeShapeletFunction(
     ndarray::Array<double const,1,1> const & parameters,
-    ndarray::Array<double const,1,1> const & coefficients
+    ndarray::Array<double const,1,1> const & amplitudes
 ) const {
     EllipseVector ellipses = makeEllipseVector();
     writeEllipses(parameters.begin(), ellipses.begin());
@@ -74,12 +74,12 @@ shapelet::MultiShapeletFunction Model::makeShapeletFunction(
         if (!_basisVector[i]) {
             r.getElements().push_back(shapelet::ShapeletFunction(0, shapelet::HERMITE, ellipses[i]));
             r.getElements().back().getCoefficients()[0]
-                = coefficients[c] / shapelet::ShapeletFunction::FLUX_FACTOR;
+                = amplitudes[c] / shapelet::ShapeletFunction::FLUX_FACTOR;
             ++c;
         } else {
             int k = _basisVector[i]->getSize();
             shapelet::MultiShapeletFunction p = _basisVector[i]->makeFunction(
-                ellipses[i], coefficients[ndarray::view(c,c+k)]
+                ellipses[i], amplitudes[ndarray::view(c,c+k)]
             );
             r.getElements().splice(r.getElements().end(), p.getElements());
             c += k;
@@ -90,14 +90,14 @@ shapelet::MultiShapeletFunction Model::makeShapeletFunction(
 
 Model::Model(BasisVector basisVector, int parameterDim) :
     _parameterDim(parameterDim),
-    _coefficientDim(0),
+    _amplitudeDim(0),
     _basisVector(basisVector)
 {
     for (BasisVector::const_iterator i = _basisVector.begin(); i != _basisVector.end(); ++i) {
         if (!(*i)) {
-            ++_coefficientDim; // null basis indicates a point source
+            ++_amplitudeDim; // null basis indicates a point source
         } else {
-            _coefficientDim += (**i).getSize();
+            _amplitudeDim += (**i).getSize();
         }
     }
 }
