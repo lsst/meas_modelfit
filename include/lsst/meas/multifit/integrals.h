@@ -52,7 +52,7 @@ double bvnu(double h, double k, double rho);
  *
  *  Currently only the 1-d and 2-d cases are supported.
  */
-double integrateGaussian(samples::Vector const & grad, samples::Matrix const & fisher);
+double integrateGaussian(Vector const & grad, Matrix const & fisher);
 
 }}} // namespace lsst::meas::multifit
 

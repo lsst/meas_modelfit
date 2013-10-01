@@ -123,7 +123,7 @@ private:
     );
 
     bool _needsTransform;
-    PixelArray1 _weights;
+    ndarray::Array<Pixel,1,1> _weights;
     MatrixBuilderVector _matrixBuilders;
     mutable Model::EllipseVector _ellipses;
     afw::geom::AffineTransform _transform;

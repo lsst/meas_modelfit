@@ -35,32 +35,11 @@ namespace lsst { namespace meas { namespace multifit {
  *  Typedefs to be used for pixel values
  */
 typedef float Pixel;
-typedef ndarray::Array<Pixel,1,1> PixelArray1;
-typedef ndarray::Array<Pixel,2,-1> PixelArray2CM;
-typedef ndarray::Array<Pixel,2,1> PixelArray2RM;
 //@}
 
-namespace samples {
-
-//@{
-/**
- *  Typedefs to be used for probability values
- */
 typedef double Scalar;
-typedef Eigen::Matrix<Scalar,Eigen::Dynamic,1> Vector;
 typedef Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> Matrix;
-typedef Eigen::Map<Vector> VectorMap;
-typedef Eigen::Map<Matrix> MatrixMap;
-typedef Eigen::Map<Vector const> VectorCMap;
-typedef Eigen::Map<Matrix const> MatrixCMap;
-typedef afw::table::Key<Scalar> ScalarKey;
-typedef afw::table::Array<Scalar> ArrayTag;
-typedef afw::table::Key<ArrayTag> ArrayKey;
-//@}
-
-} // namespace samples
-
-typedef double Scalar;
+typedef Eigen::Matrix<Scalar,Eigen::Dynamic,1> Vector;
 
 }}} // namespace lsst::meas::multifit
 

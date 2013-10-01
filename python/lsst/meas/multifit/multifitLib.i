@@ -122,12 +122,12 @@ template <int N> class MixtureComponent;
 
 %define %instantiateMixture(N)
 %declareTablePersistable(Mixture ## N, lsst::meas::multifit::Mixture<N>);
-%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar,1,0>);
-%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar,1,1>);
-%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar,2,1>);
-%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar const,1,0>);
-%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar const,1,1>);
-%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Mixture<N>::Scalar const,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,1>);
 %declareNumPyConverters(lsst::meas::multifit::MixtureComponent<N>::Vector);
 %declareNumPyConverters(lsst::meas::multifit::MixtureComponent<N>::Matrix);
 %template(MixtureComponent ## N) lsst::meas::multifit::MixtureComponent<N>;
@@ -144,13 +144,13 @@ template <int N> class MixtureComponent;
     lsst::meas::multifit::MixtureComponent<N> & __getitem__(std::size_t i) {
         return (*($self))[i];
     }
-    lsst::meas::multifit::Mixture<N>::Scalar evaluate(
+    lsst::meas::multifit::Scalar evaluate(
         lsst::meas::multifit::MixtureComponent<N> const & component,
         lsst::meas::multifit::MixtureComponent<N>::Vector const & x
     ) const {
         return $self->evaluate(component, x);
     }
-    lsst::meas::multifit::Mixture<N>::Scalar evaluate(
+    lsst::meas::multifit::Scalar evaluate(
         lsst::meas::multifit::MixtureComponent<N>::Vector const & x
     ) const {
         return $self->evaluate(x);

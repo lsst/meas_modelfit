@@ -124,9 +124,9 @@ void AdaptiveImportanceSampler::run(
                 samples.clear();
             }
             afw::table::BaseCatalog subSamples(samples.getTable());
-            ndarray::Array<samples::Scalar,2,2> parameters = ndarray::allocate(ctrl.nSamples, parameterDim);
+            ndarray::Array<Scalar,2,2> parameters = ndarray::allocate(ctrl.nSamples, parameterDim);
             proposal->draw(*_rng, parameters);
-            ndarray::Array<samples::Scalar,1,1> probability = ndarray::allocate(ctrl.nSamples);
+            ndarray::Array<Scalar,1,1> probability = ndarray::allocate(ctrl.nSamples);
             proposal->evaluate(parameters, probability);
             for (int k = 0; k < ctrl.nSamples; ++k) {
                 PTR(afw::table::BaseRecord) record = samples.addNew();

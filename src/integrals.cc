@@ -173,7 +173,7 @@ bool factor(Eigen::Matrix2d const & m, Eigen::Vector2d & x, double & det) {
 
 } // anonymous
 
-double integrateGaussian(samples::Vector const & grad, samples::Matrix const & fisher) {
+double integrateGaussian(Vector const & grad, Matrix const & fisher) {
     if (fisher.rows() != grad.size() || fisher.cols() != grad.size()) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthErrorException,

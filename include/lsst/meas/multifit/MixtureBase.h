@@ -44,8 +44,6 @@ class MixtureBase :
     public afw::table::io::Persistable {
 public:
 
-    typedef samples::Scalar Scalar;
-
     /// Return the number of dimensions
     virtual int getDimension() const = 0;
 

@@ -36,7 +36,7 @@ namespace lsst { namespace meas { namespace multifit {
 
 //------------- FlatPrior -----------------------------------------------------------------------------------
 
-samples::Scalar FlatPrior::apply(LogGaussian const & likelihood, samples::Vector const & parameters) const {
+Scalar FlatPrior::apply(LogGaussian const & likelihood, Vector const & parameters) const {
     return integrateGaussian(likelihood.grad, likelihood.fisher)
         + std::log(_maxRadius * _maxEllipticity * _maxEllipticity * 2 * M_PI);
 }
@@ -110,8 +110,8 @@ MixturePrior::MixturePrior(PTR(Mixture<3> const) mixture) :
     _mixture(mixture)
 {}
 
-samples::Scalar MixturePrior::apply(
-    LogGaussian const & likelihood, samples::Vector const & parameters
+Scalar MixturePrior::apply(
+    LogGaussian const & likelihood, Vector const & parameters
 ) const {
     return integrateGaussian(likelihood.grad, likelihood.fisher)
         - std::log(_mixture->evaluate(parameters.head<3>()));

@@ -80,8 +80,8 @@ public:
      *  Note that both the joint likelihood passed in and the marginal likelihood returned
      *  are the negative natural log of the probability densities.
      */
-    virtual samples::Scalar apply(LogGaussian const & likelihood,
-                                  samples::Vector const & parameters) const = 0;
+    virtual Scalar apply(LogGaussian const & likelihood,
+                                  Vector const & parameters) const = 0;
 
     virtual ~Prior() {}
 
@@ -113,7 +113,7 @@ public:
      */
     explicit FlatPrior(double maxRadius, double maxEllipticity=1.0);
 
-    virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
+    virtual Scalar apply(LogGaussian const & likelihood, Vector const & parameters) const;
 
     /// Return the maximum radius in pixel coordinates
     double getMaxRadius() const { return _maxRadius; }
@@ -145,7 +145,7 @@ public:
 
     MixturePrior(PTR(Mixture<3> const) mixture);
 
-    virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
+    virtual Scalar apply(LogGaussian const & likelihood, Vector const & parameters) const;
 
     static MixtureUpdateRestriction<3> const & getUpdateRestriction();
 

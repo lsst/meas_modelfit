@@ -338,7 +338,7 @@ Mixture<N>::Mixture(ComponentList & components, Scalar df) :
 }
 
 template <int N>
-samples::Scalar Mixture<N>::_evaluate(Scalar z) const {
+Scalar Mixture<N>::_evaluate(Scalar z) const {
     if (_isGaussian) {
         return std::exp(-0.5*z) / _norm;
     } else {
@@ -353,9 +353,9 @@ template <int N>
 class MixturePersistenceKeys : private boost::noncopyable {
 public:
     tbl::Schema schema;
-    samples::ScalarKey weight;
-    samples::ArrayKey mu;
-    samples::ArrayKey sigma;
+    tbl::Key<Scalar> weight;
+    tbl::Key< tbl::Array<Scalar> > mu;
+    tbl::Key< tbl::Array<Scalar> > sigma;
 
     static MixturePersistenceKeys const & get() {
         static MixturePersistenceKeys const instance;
@@ -365,9 +365,9 @@ public:
 private:
     MixturePersistenceKeys() :
         schema(),
-        weight(schema.addField<samples::Scalar>("weight", "weight of mixture component")),
-        mu(schema.addField<samples::ArrayTag>("mu", "location parameter", N)),
-        sigma(schema.addField<samples::ArrayTag>("sigma", "size/shape parameter", N*N))
+        weight(schema.addField<Scalar>("weight", "weight of mixture component")),
+        mu(schema.addField<tbl::Array<Scalar> >("mu", "location parameter", N)),
+        sigma(schema.addField<tbl::Array<Scalar> >("sigma", "size/shape parameter", N*N))
     {
         schema.getCitizen().markPersistent();
     }

@@ -48,9 +48,8 @@ template <int N>
 class MixtureComponent {
 public:
 
-    typedef samples::Scalar Scalar;
-    typedef Eigen::Matrix<samples::Scalar,N,1> Vector;
-    typedef Eigen::Matrix<samples::Scalar,N,N> Matrix;
+    typedef Eigen::Matrix<Scalar,N,1> Vector;
+    typedef Eigen::Matrix<Scalar,N,N> Matrix;
 
     /// Return the number of dimensions
     int getDimension() const { return N; }
@@ -128,7 +127,6 @@ inline std::ostream & operator<<(std::ostream & os, MixtureComponent<N> const & 
 template <int N>
 class MixtureUpdateRestriction {
 public:
-    typedef samples::Scalar Scalar;
     typedef typename MixtureComponent<N>::Vector Vector;
     typedef typename MixtureComponent<N>::Matrix Matrix;
 

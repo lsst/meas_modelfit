@@ -51,23 +51,23 @@ namespace lsst { namespace meas { namespace multifit {
 class LogGaussian {
 public:
 
-    samples::Vector grad;        ///< gradient of log likelihood at @f$\alpha=0@f$
-    samples::Matrix fisher;      ///< Fisher matrix (inverse of the covariance matrix)
+    Vector grad;        ///< gradient of log likelihood at @f$\alpha=0@f$
+    Matrix fisher;      ///< Fisher matrix (inverse of the covariance matrix)
 
     /// Evaluate the negative log-likelihood at the given point.
-    double operator()(double r, samples::Vector const & alpha) const {
-        samples::Vector delta = alpha - grad;
+    double operator()(double r, Vector const & alpha) const {
+        Vector delta = alpha - grad;
         return 0.5*r + 0.5*delta.dot(fisher*delta);
     }
 
     /// Initialize from parameters
-    LogGaussian(samples::Vector const & grad_, samples::Matrix const & fisher_) :
+    LogGaussian(Vector const & grad_, Matrix const & fisher_) :
         grad(grad_), fisher(fisher_)
     {}
 
     /// Initialize with zeros of the given dimension
     explicit LogGaussian(int dim) :
-        grad(samples::Vector::Zero(dim)), fisher(samples::Matrix::Zero(dim, dim))
+        grad(Vector::Zero(dim)), fisher(Matrix::Zero(dim, dim))
     {}
 
 };

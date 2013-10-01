@@ -71,8 +71,8 @@ void SingleEpochLikelihood::_init(
     SingleEpochLikelihoodControl const & ctrl
 ) {
     {
-        PixelArray1 x = ndarray::allocate(footprint.getArea());
-        PixelArray1 y = ndarray::allocate(footprint.getArea());
+        ndarray::Array<Pixel,1,1> x = ndarray::allocate(footprint.getArea());
+        ndarray::Array<Pixel,1,1> y = ndarray::allocate(footprint.getArea());
         int n = 0;
         for (
             afw::detection::Footprint::SpanList::const_iterator i = footprint.getSpans().begin();
