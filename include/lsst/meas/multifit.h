@@ -27,8 +27,6 @@
 #include "lsst/meas/multifit/ModelFitRecord.h"
 #include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 #include "lsst/meas/multifit/Sampler.h"
-#include "lsst/meas/multifit/ExpectationFunctor.h"
-#include "lsst/meas/multifit/SampleSet.h"
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/MultiEpochLikelihood.h"
 #include "lsst/meas/multifit/priors.h"

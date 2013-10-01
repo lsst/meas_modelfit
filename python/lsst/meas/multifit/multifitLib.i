@@ -82,7 +82,6 @@ Basic routines to talk to lsst::meas::multifit classes
 
 %include "lsst/meas/multifit/constants.h"
 
-%declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
 %declareTablePersistable(Prior, lsst::meas::multifit::Prior);
 %declareTablePersistable(FlatPrior, lsst::meas::multifit::FlatPrior);
 %declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
@@ -91,7 +90,6 @@ Basic routines to talk to lsst::meas::multifit classes
 %shared_ptr(lsst::meas::multifit::ParameterDefinition);
 %shared_ptr(lsst::meas::multifit::Model);
 %shared_ptr(lsst::meas::multifit::MultiModel);
-%shared_ptr(lsst::meas::multifit::ExpectationFunctor);
 %shared_ptr(lsst::meas::multifit::Likelihood);
 %shared_ptr(lsst::meas::multifit::SingleEpochLikelihood);
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
@@ -189,8 +187,6 @@ Mixture[N] = Mixture ## N
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/SingleEpochLikelihood.h"
 %include "lsst/meas/multifit/MultiEpochLikelihood.h"
-%include "lsst/meas/multifit/SampleSet.h"
-%include "lsst/meas/multifit/ExpectationFunctor.h"
 %include "lsst/meas/multifit/Sampler.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 
@@ -246,8 +242,5 @@ using meas::multifit::ModelFitTable;
 
 
 %include "lsst/meas/multifit/integrals.h"
-
-%template(SampleSetVector) std::vector<PTR(lsst::meas::multifit::SampleSet)>;
-%template(SampleSetMap) std::map< int, std::vector<PTR(lsst::meas::multifit::SampleSet)> >;
 
 %include "lsst/meas/multifit/optimizer.i"
