@@ -28,7 +28,7 @@
 #include "lsst/afw/table/BaseColumnView.h"
 #include "lsst/afw/table/io/FitsWriter.h"
 #include "lsst/afw/detection/Footprint.h"
-#include "lsst/meas/multifit/MixtureBase.h"
+#include "lsst/meas/multifit/Mixture.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -39,7 +39,7 @@ class ModelFitTable;
  *
  *  ModelFitRecord adds a Footprint (indicating the pixels used in the fit,
  *  which is not necessarily the detection Footprint) to each record, and a
- *  MixtureBase object that provides an analytic approximation to the likelihood
+ *  Mixture object that provides an analytic approximation to the likelihood
  *  or posterior.  It also joins to a catalog of samples, in a many (samples) to
  *  one (model fit) sense, which can be used to store Monte Carlo or grid
  *  samples from the likelihood or posterior, or the sequence of points taken by
@@ -63,8 +63,8 @@ public:
     PTR(afw::detection::Footprint) getFootprint() const { return _footprint; }
     void setFootprint(PTR(afw::detection::Footprint) footprint) { _footprint = footprint; }
 
-    PTR(MixtureBase) getPdf() const { return _pdf; }
-    void setPdf(PTR(MixtureBase) pdf) { _pdf = pdf; }
+    PTR(Mixture) getPdf() const { return _pdf; }
+    void setPdf(PTR(Mixture) pdf) { _pdf = pdf; }
 
 protected:
 
@@ -76,7 +76,7 @@ private:
 
     afw::table::BaseCatalog _samples;
     PTR(afw::detection::Footprint) _footprint;
-    PTR(MixtureBase) _pdf;
+    PTR(Mixture) _pdf;
 };
 
 /**

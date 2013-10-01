@@ -110,7 +110,7 @@ AdaptiveImportanceSampler::AdaptiveImportanceSampler(
 
 void AdaptiveImportanceSampler::run(
     SamplerObjective const & objective,
-    PTR(MixtureBase) proposal,
+    PTR(Mixture) proposal,
     afw::table::BaseCatalog & samples
 ) const {
     double perplexity = 0.0;

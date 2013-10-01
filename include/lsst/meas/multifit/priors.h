@@ -135,7 +135,7 @@ private:
 };
 
 /**
- *  @brief A prior that's flat in amplitude parameters, and uses a Mixture<3> for (e1,e2,r).
+ *  @brief A prior that's flat in amplitude parameters, and uses a Mixture for (e1,e2,r).
  */
 class MixturePrior :
     public afw::table::io::PersistableFacade<MixturePrior>,
@@ -143,13 +143,13 @@ class MixturePrior :
 {
 public:
 
-    MixturePrior(PTR(Mixture<3> const) mixture);
+    MixturePrior(PTR(Mixture const) mixture);
 
     virtual Scalar apply(LogGaussian const & likelihood, Vector const & parameters) const;
 
-    static MixtureUpdateRestriction<3> const & getUpdateRestriction();
+    static MixtureUpdateRestriction const & getUpdateRestriction();
 
-    PTR(Mixture<3> const) getMixture() const { return _mixture; }
+    PTR(Mixture const) getMixture() const { return _mixture; }
 
     virtual bool isPersistable() const { return true; }
 
@@ -160,7 +160,7 @@ protected:
     virtual void write(OutputArchiveHandle & handle) const;
 
 private:
-    PTR(Mixture<3> const) _mixture;
+    PTR(Mixture const) _mixture;
     double _pixelScale;
 };
 

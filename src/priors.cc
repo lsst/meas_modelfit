@@ -105,7 +105,7 @@ void FlatPrior::write(OutputArchiveHandle & handle) const {
 
 //------------- MixturePrior --------------------------------------------------------------------------------
 
-MixturePrior::MixturePrior(PTR(Mixture<3> const) mixture) :
+MixturePrior::MixturePrior(PTR(Mixture const) mixture) :
     Prior(ParameterDefinition::makeEllipseCoreDefinition("SeparableConformalShearLogTraceRadius")),
     _mixture(mixture)
 {}
@@ -119,7 +119,7 @@ Scalar MixturePrior::apply(
 
 namespace {
 
-class EllipseUpdateRestriction : public Mixture<3>::UpdateRestriction {
+class EllipseUpdateRestriction : public Mixture::UpdateRestriction {
 public:
 
     virtual void restrictMu(Vector & mu) const {
@@ -133,11 +133,13 @@ public:
         sigma(0,2) = sigma(2,0) = sigma(1,2) = sigma(2,1) = 0.5*(sigma(0,2) + sigma(1,2));
     }
 
+    EllipseUpdateRestriction() : Mixture::UpdateRestriction(3) {}
+
 };
 
 } // anonymous
 
-Mixture<3>::UpdateRestriction const & MixturePrior::getUpdateRestriction() {
+Mixture::UpdateRestriction const & MixturePrior::getUpdateRestriction() {
     static EllipseUpdateRestriction const instance;
     return instance;
 }
@@ -172,7 +174,7 @@ public:
         LSST_ARCHIVE_ASSERT(catalogs.front().size() == 1u);
         LSST_ARCHIVE_ASSERT(catalogs.front().getSchema() == keys.schema);
         tbl::BaseRecord const & record = catalogs.front().front();
-        return boost::make_shared<MixturePrior>(archive.get< Mixture<3> >(record.get(keys.mixture)));
+        return boost::make_shared<MixturePrior>(archive.get< Mixture >(record.get(keys.mixture)));
     }
 
     explicit MixturePriorFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}

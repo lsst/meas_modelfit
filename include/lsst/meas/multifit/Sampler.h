@@ -26,7 +26,7 @@
 
 #include "lsst/afw/table/fwd.h"
 #include "lsst/meas/multifit/models.h"
-#include "lsst/meas/multifit/MixtureBase.h"
+#include "lsst/meas/multifit/Mixture.h"
 #include "lsst/meas/multifit/Likelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -67,7 +67,7 @@ public:
 
     virtual void run(
         SamplerObjective const & objective,
-        PTR(MixtureBase) proposal,
+        PTR(Mixture) proposal,
         afw::table::BaseCatalog & samples
     ) const = 0;
 

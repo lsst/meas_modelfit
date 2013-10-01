@@ -120,7 +120,7 @@ struct PersistenceSchema : private boost::noncopyable {
         output.getSamples().insert(output.getSamples().begin(), samples.begin() + input.get(samplesBegin),
                                    samples.begin() + input.get(samplesEnd), false);
         output.setFootprint(archive.get<afw::detection::Footprint>(input.get(footprint)));
-        output.setPdf(archive.get<MixtureBase>(input.get(pdf)));
+        output.setPdf(archive.get<Mixture>(input.get(pdf)));
     }
 
 private:

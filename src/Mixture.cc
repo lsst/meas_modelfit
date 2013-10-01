@@ -35,8 +35,66 @@ namespace tbl = lsst::afw::table;
 
 namespace lsst { namespace meas { namespace multifit {
 
-template <int N>
-void MixtureComponent<N>::_stream(std::ostream & os, int offset) const {
+void MixtureComponent::setSigma(Matrix const & sigma) {
+    _sigmaLLT.compute(sigma);
+    _sqrtDet = _sigmaLLT.matrixLLT().diagonal().prod();
+}
+
+MixtureComponent MixtureComponent::project(int dim) const {
+    Vector mu(1);
+    mu << _mu[dim];
+    Matrix sigma(1,1);
+    sigma << getSigma()(dim, dim);
+    return MixtureComponent(weight, mu, sigma);
+}
+
+MixtureComponent MixtureComponent::project(int dim1, int dim2) const {
+    Vector mu(2);
+    mu << _mu[dim1], _mu[dim2];
+    Matrix sigma(2,2);
+    Matrix fullSigma = getSigma();
+    sigma <<
+        fullSigma(dim1, dim1), fullSigma(dim1, dim2),
+        fullSigma(dim2, dim1), fullSigma(dim2, dim2);
+    return MixtureComponent(weight, mu, sigma);
+}
+
+MixtureComponent::MixtureComponent(int dim) :
+    weight(1.0), _sqrtDet(1.0), _mu(Vector::Zero(dim)), _sigmaLLT(Matrix::Identity(dim,dim)) {}
+
+
+MixtureComponent::MixtureComponent(Scalar weight_, Vector const & mu, Matrix const & sigma) :
+    weight(weight_), _mu(mu), _sigmaLLT(mu.size())
+{
+    LSST_ASSERT_EQUAL(
+        sigma.rows(), _mu.size(),
+        "Number of rows of sigma matrix (%d) does not match size of mu vector (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        sigma.cols(), _mu.size(),
+        "Number of columns of sigma matrix (%d) does not match size of mu vector (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    _sigmaLLT.compute(sigma);
+    _sqrtDet = _sigmaLLT.matrixLLT().diagonal().prod();
+}
+
+MixtureComponent & MixtureComponent::operator=(MixtureComponent const & other) {
+    LSST_ASSERT_EQUAL(
+        other.getDimension(), getDimension(),
+        "Cannot assign MixtureComponent with dim=%d to one with dim=%d",
+        pex::exceptions::LengthErrorException
+    );
+    if (&other != this) {
+        _sqrtDet = other._sqrtDet;
+        _mu = other._mu;
+        _sigmaLLT = other._sigmaLLT;
+    }
+    return *this;
+}
+
+void MixtureComponent::_stream(std::ostream & os, int offset) const {
     static Eigen::IOFormat muFormat(12, 0, ",", "\n", "[", "]", "[", "]");
     std::string pad(offset, ' ');
     Eigen::IOFormat sigmaFormat(12, 0, ",", ",\n        " + pad, "[", "]", "[", "]");
@@ -45,58 +103,25 @@ void MixtureComponent<N>::_stream(std::ostream & os, int offset) const {
     os << pad << "  sigma=" << getSigma().format(sigmaFormat) << " )" << std::endl;
 }
 
-template <int N>
-MixtureComponent<1> MixtureComponent<N>::project(int dim) const {
-    MixtureComponent<1>::Vector mu;
-    mu << _mu[dim];
-    MixtureComponent<1>::Matrix sigma;
-    sigma << getSigma()(dim, dim);
-    return MixtureComponent<1>(weight, mu, sigma);
-}
-
-template <int N>
-MixtureComponent<2> MixtureComponent<N>::project(int dim1, int dim2) const {
-    MixtureComponent<2>::Vector mu;
-    mu << _mu[dim1], _mu[dim2];
-    MixtureComponent<2>::Matrix sigma;
-    Matrix fullSigma = getSigma();
-    sigma <<
-        fullSigma(dim1, dim1), fullSigma(dim1, dim2),
-        fullSigma(dim2, dim1), fullSigma(dim2, dim2);
-    return MixtureComponent<2>(weight, mu, sigma);
-}
-
-template <int N>
-void Mixture<N>::_stream(std::ostream & os) const {
-    os << "Mixture([\n";
-    for (const_iterator i = begin(); i != end(); ++i) {
-        i->_stream(os, 2);
-    }
-    os << "],\n  df=" << _df << "\n)";
-}
-
-template <int N>
-Mixture<1> Mixture<N>::project(int dim) const {
-    Mixture<1>::ComponentList components;
+PTR(Mixture) Mixture::project(int dim) const {
+    ComponentList components;
     components.reserve(size());
     for (const_iterator i = begin(); i != end(); ++i) {
         components.push_back(i->project(dim));
     }
-    return Mixture<1>(components, _df);
+    return boost::make_shared<Mixture>(1, boost::ref(components), _df);
 }
 
-template <int N>
-Mixture<2> Mixture<N>::project(int dim1, int dim2) const {
-    Mixture<2>::ComponentList components;
+PTR(Mixture) Mixture::project(int dim1, int dim2) const {
+    ComponentList components;
     components.reserve(size());
     for (const_iterator i = begin(); i != end(); ++i) {
         components.push_back(i->project(dim1, dim2));
     }
-    return Mixture<2>(components, _df);
+    return boost::make_shared<Mixture>(2, boost::ref(components), _df);
 }
 
-template <int N>
-void Mixture<N>::normalize() {
+void Mixture::normalize() {
     Scalar sum = 0.0;
     for (iterator i = begin(); i != end(); ++i) {
         sum += i->weight;
@@ -106,15 +131,13 @@ void Mixture<N>::normalize() {
     }
 }
 
-template <int N>
-void Mixture<N>::shift(int dim, Scalar offset) {
+void Mixture::shift(int dim, Scalar offset) {
     for (iterator i = begin(); i != end(); ++i) {
         i->_mu[dim] += offset;
     }
 }
 
-template <int N>
-std::size_t Mixture<N>::clip(Scalar threshold) {
+std::size_t Mixture::clip(Scalar threshold) {
     std::size_t count = 0;
     iterator i = begin();
     while (i != end()) {
@@ -129,20 +152,18 @@ std::size_t Mixture<N>::clip(Scalar threshold) {
     return count;
 }
 
-template <int N>
-void Mixture<N>::setDegreesOfFreedom(Scalar df) {
+void Mixture::setDegreesOfFreedom(Scalar df) {
     _df = df;
     if (_df == std::numeric_limits<Scalar>::infinity()) {
-        _norm = std::pow(2.0 * M_PI, 0.5*N);
+        _norm = std::pow(2.0 * M_PI, 0.5*_dim);
         _isGaussian = true;
     } else {
-        _norm = boost::math::tgamma_delta_ratio(0.5*_df, 0.5*N) * std::pow(_df*M_PI, 0.5*N);
+        _norm = boost::math::tgamma_delta_ratio(0.5*_df, 0.5*_dim) * std::pow(_df*M_PI, 0.5*_dim);
         _isGaussian = false;
     }
 }
 
-template <int N>
-void Mixture<N>::evaluate(
+void Mixture::evaluate(
     ndarray::Array<Scalar const,2,1> const & x,
     ndarray::Array<Scalar,1,0> const & p
 ) const {
@@ -152,19 +173,18 @@ void Mixture<N>::evaluate(
         pex::exceptions::LengthErrorException
     );
     LSST_ASSERT_EQUAL(
-        x.getSize<1>(), N,
+        x.getSize<1>(), _dim,
         "Second dimension of x array (%d) does not dimension of mixture (%d)",
         pex::exceptions::LengthErrorException
     );
     ndarray::Array<Scalar const,2,1>::Iterator ix = x.begin(), xEnd = x.end();
     ndarray::Array<Scalar,1,0>::Iterator ip = p.begin();
     for (; ix != xEnd; ++ix, ++ip) {
-        *ip = evaluate(ix->asEigen<N,1>());
+        *ip = evaluate(ix->asEigen());
     }
 }
 
-template <int N>
-void Mixture<N>::evaluateComponents(
+void Mixture::evaluateComponents(
     ndarray::Array<Scalar const,2,1> const & x,
     ndarray::Array<Scalar,2,1> const & p
 ) const {
@@ -174,7 +194,7 @@ void Mixture<N>::evaluateComponents(
         pex::exceptions::LengthErrorException
     );
     LSST_ASSERT_EQUAL(
-        x.getSize<1>(), N,
+        x.getSize<1>(), _dim,
         "Second dimension of x array (%d) does not dimension of mixture (%d)",
         pex::exceptions::LengthErrorException
     );
@@ -188,13 +208,12 @@ void Mixture<N>::evaluateComponents(
     for (; ix != xEnd; ++ix, ++ip) {
         ndarray::Array<Scalar,2,1>::Reference::Iterator jp = ip->begin();
         for (const_iterator j = begin(); j != end(); ++j, ++jp) {
-            *jp = evaluate(*j, ix->asEigen<N,1>());
+            *jp = evaluate(*j, ix->asEigen());
         }
     }
 }
 
-template <int N>
-void Mixture<N>::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const {
+void Mixture::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const {
     ndarray::Array<Scalar,2,1>::Iterator ix = x.begin(), xEnd = x.end();
     std::vector<Scalar> cumulative;
     cumulative.reserve(_components.size());
@@ -210,20 +229,117 @@ void Mixture<N>::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const 
             - cumulative.begin();
         assert(k != cumulative.size());
         Component const & component = _components[k];
-        for (int j = 0; j < N; ++j) {
+        for (int j = 0; j < _dim; ++j) {
             _workspace[j] = rng.gaussian();
         }
         if (_isGaussian) {
-            ix->asEigen<N,1>() = component._mu + (component._sigmaLLT.matrixL() * _workspace);
+            ix->asEigen() = component._mu + (component._sigmaLLT.matrixL() * _workspace);
         } else {
-            ix->asEigen<N,1>() = component._mu
+            ix->asEigen() = component._mu
                 + std::sqrt(_df/rng.chisq(_df)) * (component._sigmaLLT.matrixL() * _workspace);
         }
     }
 }
 
-template <int N>
-void Mixture<N>::updateDampedSigma(int k, Matrix const & sigma, double tau1, double tau2) {
+void Mixture::updateEM(
+    ndarray::Array<Scalar const,2,1> const & x,
+    ndarray::Array<Scalar const,1,1> const & w,
+    UpdateRestriction const & restriction,
+    Scalar tau1, Scalar tau2
+) {
+    LSST_ASSERT_EQUAL(
+        x.getSize<0>(), w.getSize<0>(),
+        "First dimension of x array (%d) does not match size of w array (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        x.getSize<1>(), _dim,
+        "Second dimension of x array (%d) does not dimension of mixture (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    int const nSamples = w.getSize<0>();
+    int const nComponents = _components.size();
+    Matrix p(nSamples, nComponents);
+    Matrix gamma(nSamples, nComponents);
+    for (int i = 0; i < nSamples; ++i) {
+        Scalar pSum = 0.0;
+        for (int k = 0; k < nComponents; ++k) {
+            double z = _computeZ(_components[k], x[i].asEigen());
+            pSum += p(i, k) = _components[k].weight*_evaluate(z)/_components[k]._sqrtDet;
+            if (!_isGaussian) {
+                gamma(i, k) = (_df + _dim) / (_df + z);
+            }
+        }
+        p.row(i) *= w[i] / pSum;
+    }
+    if (_isGaussian) {
+        for (int k = 0; k < nComponents; ++k) {
+            double weight = _components[k].weight = p.col(k).sum();
+            Vector & mu = _components[k]._mu;
+            Matrix sigma = Matrix::Zero(_dim, _dim);
+            mu = (p.col(k).adjoint() * x.asEigen()) / weight;
+            restriction.restrictMu(mu);
+            Vector dx = Vector::Zero(_dim);
+            for (int i = 0; i < nSamples; ++i) {
+                dx = x[i].asEigen() - mu;
+                sigma.selfadjointView<Eigen::Lower>().rankUpdate(dx, p(i, k));
+            }
+            sigma /= weight;
+            restriction.restrictSigma(sigma);
+            updateDampedSigma(k, sigma, tau1, tau2);
+        }
+    } else {
+        for (int k = 0; k < nComponents; ++k) {
+            double weight = _components[k].weight = p.col(k).sum();
+            Vector & mu = _components[k]._mu;
+            Matrix sigma = Matrix::Zero(_dim, _dim);
+            mu =
+                ((p.col(k).array() * gamma.col(k).array()).matrix().adjoint() * x.asEigen())
+                / p.col(k).dot(gamma.col(k));
+            restriction.restrictMu(mu);
+            Vector dx = Vector::Zero(_dim);
+            for (int i = 0; i < nSamples; ++i) {
+                dx = x[i].asEigen() - mu;
+                sigma.selfadjointView<Eigen::Lower>().rankUpdate(dx, gamma(i, k) * p(i, k));
+            }
+            sigma /= weight;
+            restriction.restrictSigma(sigma);
+            updateDampedSigma(k, sigma, tau1, tau2);
+        }
+    }
+}
+
+void Mixture::updateEM(
+    ndarray::Array<Scalar const,2,1> const & x,
+    ndarray::Array<Scalar const,1,1> const & w,
+    Scalar tau1, Scalar tau2
+) {
+    updateEM(x, w, UpdateRestriction(_dim), tau1, tau2);
+}
+
+void Mixture::updateEM(
+    ndarray::Array<Scalar const,2,1> const & x,
+    UpdateRestriction const & restriction,
+    Scalar tau1, Scalar tau2
+) {
+    ndarray::Array<Scalar,1,1> w = ndarray::allocate(x.getSize<0>());
+    w.deep() = 1.0 / w.getSize<0>();
+    updateEM(x, w, restriction, tau1, tau2);
+}
+
+PTR(Mixture) Mixture::clone() const {
+    return boost::make_shared<Mixture>(*this);
+}
+
+Mixture::Mixture(int dim, ComponentList & components, Scalar df) :
+    _dim(dim), _df(0.0)
+{
+    setDegreesOfFreedom(df);
+    _components.swap(components);
+    normalize();
+}
+
+void Mixture::updateDampedSigma(int k, Matrix const & sigma, double tau1, double tau2) {
     Eigen::LLT<Matrix> sigmaLLT(sigma);
     Scalar sqrtDet = sigmaLLT.matrixLLT().diagonal().prod();
     Scalar r = sqrtDet / _components[k]._sqrtDet;
@@ -238,118 +354,24 @@ void Mixture<N>::updateDampedSigma(int k, Matrix const & sigma, double tau1, dou
     }
 }
 
-template <int N>
-void Mixture<N>::updateEM(
-    ndarray::Array<Scalar const,2,1> const & x,
-    ndarray::Array<Scalar const,1,1> const & w,
-    UpdateRestriction const & restriction,
-    Scalar tau1, Scalar tau2
-) {
-    typedef Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> MatrixXs;
-    LSST_ASSERT_EQUAL(
-        x.getSize<0>(), w.getSize<0>(),
-        "First dimension of x array (%d) does not match size of w array (%d)",
-        pex::exceptions::LengthErrorException
-    );
-    LSST_ASSERT_EQUAL(
-        x.getSize<1>(), N,
-        "Second dimension of x array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
-    );
-    int const nSamples = w.getSize<0>();
-    int const nComponents = _components.size();
-    MatrixXs p(nSamples, nComponents);
-    MatrixXs gamma(nSamples, nComponents);
-    for (int i = 0; i < nSamples; ++i) {
-        Scalar pSum = 0.0;
-        for (int k = 0; k < nComponents; ++k) {
-            double z = _computeZ(_components[k], x[i].asEigen());
-            pSum += p(i, k) = _components[k].weight*_evaluate(z)/_components[k]._sqrtDet;
-            if (!_isGaussian) {
-                gamma(i, k) = (_df + N) / (_df + z);
-            }
-        }
-        p.row(i) *= w[i] / pSum;
-    }
-    if (_isGaussian) {
-        for (int k = 0; k < nComponents; ++k) {
-            double weight = _components[k].weight = p.col(k).sum();
-            Vector & mu = _components[k]._mu;
-            Matrix sigma = Matrix::Zero();
-            mu = (p.col(k).adjoint() * x.asEigen()) / weight;
-            restriction.restrictMu(mu);
-            Vector dx = Vector::Zero();
-            for (int i = 0; i < nSamples; ++i) {
-                dx = x[i].asEigen() - mu;
-                sigma.template selfadjointView<Eigen::Lower>().rankUpdate(dx, p(i, k));
-            }
-            sigma /= weight;
-            restriction.restrictSigma(sigma);
-            updateDampedSigma(k, sigma, tau1, tau2);
-        }
-    } else {
-        for (int k = 0; k < nComponents; ++k) {
-            double weight = _components[k].weight = p.col(k).sum();
-            Vector & mu = _components[k]._mu;
-            Matrix sigma = Matrix::Zero();
-            mu =
-                ((p.col(k).array() * gamma.col(k).array()).matrix().adjoint() * x.asEigen())
-                / p.col(k).dot(gamma.col(k));
-            restriction.restrictMu(mu);
-            Vector dx = Vector::Zero();
-            for (int i = 0; i < nSamples; ++i) {
-                dx = x[i].asEigen() - mu;
-                sigma.template selfadjointView<Eigen::Lower>().rankUpdate(dx, gamma(i, k) * p(i, k));
-            }
-            sigma /= weight;
-            restriction.restrictSigma(sigma);
-            updateDampedSigma(k, sigma, tau1, tau2);
-        }
-    }
-}
-
-template <int N>
-void Mixture<N>::updateEM(
-    ndarray::Array<Scalar const,2,1> const & x,
-    ndarray::Array<Scalar const,1,1> const & w,
-    Scalar tau1, Scalar tau2
-) {
-    updateEM(x, w, UpdateRestriction(), tau1, tau2);
-}
-
-template <int N>
-void Mixture<N>::updateEM(
-    ndarray::Array<Scalar const,2,1> const & x,
-    UpdateRestriction const & restriction,
-    Scalar tau1, Scalar tau2
-) {
-    ndarray::Array<Scalar,1,1> w = ndarray::allocate(x.getSize<0>());
-    w.deep() = 1.0 / w.getSize<0>();
-    updateEM(x, w, restriction, tau1, tau2);
-}
-
-template <int N>
-Mixture<N>::Mixture(ComponentList & components, Scalar df) :
-    _df(0.0)
-{
-    setDegreesOfFreedom(df);
-    _components.swap(components);
-    normalize();
-}
-
-template <int N>
-Scalar Mixture<N>::_evaluate(Scalar z) const {
+Scalar Mixture::_evaluate(Scalar z) const {
     if (_isGaussian) {
         return std::exp(-0.5*z) / _norm;
     } else {
-        return std::pow(z/_df + 1.0, -0.5*(_df + N)) / _norm;
+        return std::pow(z/_df + 1.0, -0.5*(_df + _dim)) / _norm;
     }
 }
 
-template <int N>
-struct MixturePersistenceName;
+void Mixture::_stream(std::ostream & os) const {
+    os << "Mixture(dim=" << _dim << ", [\n";
+    for (const_iterator i = begin(); i != end(); ++i) {
+        i->_stream(os, 2);
+    }
+    os << "],\n  df=" << _df << "\n)";
+}
 
-template <int N>
+namespace {
+
 class MixturePersistenceKeys : private boost::noncopyable {
 public:
     tbl::Schema schema;
@@ -357,86 +379,72 @@ public:
     tbl::Key< tbl::Array<Scalar> > mu;
     tbl::Key< tbl::Array<Scalar> > sigma;
 
-    static MixturePersistenceKeys const & get() {
-        static MixturePersistenceKeys const instance;
-        return instance;
-    }
-
-private:
-    MixturePersistenceKeys() :
+    explicit MixturePersistenceKeys(int dim) :
         schema(),
         weight(schema.addField<Scalar>("weight", "weight of mixture component")),
-        mu(schema.addField<tbl::Array<Scalar> >("mu", "location parameter", N)),
-        sigma(schema.addField<tbl::Array<Scalar> >("sigma", "size/shape parameter", N*N))
-    {
-        schema.getCitizen().markPersistent();
-    }
+        mu(schema.addField<tbl::Array<Scalar> >("mu", "location parameter", dim)),
+        sigma(schema.addField<tbl::Array<Scalar> >("sigma", "size/shape parameter", dim*dim))
+    {}
+
+    explicit MixturePersistenceKeys(tbl::Schema const & schema_) :
+        schema(schema_),
+        weight(schema["weight"]),
+        mu(schema["mu"]),
+        sigma(schema["sigma"])
+    {}
 };
 
-template <int N>
 class MixtureFactory : public tbl::io::PersistableFactory {
 public:
 
     virtual PTR(tbl::io::Persistable)
     read(InputArchive const & archive, CatalogVector const & catalogs) const {
-        MixturePersistenceKeys<N> const & keys = MixturePersistenceKeys<N>::get();
         LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
         LSST_ARCHIVE_ASSERT(catalogs.front().size() >= 1u);
-        LSST_ARCHIVE_ASSERT(catalogs.front().getSchema() == keys.schema);
+        MixturePersistenceKeys const & keys = MixturePersistenceKeys(catalogs.front().getSchema());
         tbl::BaseCatalog::const_iterator iter = catalogs.front().begin();
         tbl::BaseCatalog::const_iterator const end = catalogs.front().end();
+        int dim = keys.mu.getSize();
         double df = iter->get(keys.weight); // use first record to store df, nothing else.
         ++iter;
-        typename Mixture<N>::ComponentList components;
+        Mixture::ComponentList components;
         components.reserve(end - iter);
         for (; iter != end; ++iter) {
             components.push_back(
-                MixtureComponent<N>(
+                MixtureComponent(
                     iter->get(keys.weight),
-                    Eigen::Map<typename Mixture<N>::Vector const>(iter->getElement(keys.mu), N),
-                    Eigen::Map<typename Mixture<N>::Matrix const>(iter->getElement(keys.sigma), N, N)
+                    Eigen::Map<Vector const>(iter->getElement(keys.mu), dim),
+                    Eigen::Map<Matrix const>(iter->getElement(keys.sigma), dim, dim)
                 )
             );
         }
-        return PTR(Mixture<N>)(new Mixture<N>(components, df));
+        return boost::make_shared<Mixture>(dim, boost::ref(components), df);
     }
 
     explicit MixtureFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}
 
 };
 
-template <int N>
-std::string Mixture<N>::getPersistenceName() const { return MixturePersistenceName<N>::get(); }
+std::string getMixturePersistenceName() { return "Mixture"; }
 
-template <int N>
-void Mixture<N>::write(OutputArchiveHandle & handle) const {
-    MixturePersistenceKeys<N> const & keys = MixturePersistenceKeys<N>::get();
+MixtureFactory registration(getMixturePersistenceName());
+
+} // anonymous
+
+std::string Mixture::getPersistenceName() const { return getMixturePersistenceName(); }
+
+void Mixture::write(OutputArchiveHandle & handle) const {
+    MixturePersistenceKeys const keys(_dim);
     tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
     PTR(tbl::BaseRecord) record = catalog.addNew();
     record->set(keys.weight, _df);
     for (const_iterator i = begin(); i != end(); ++i) {
         record = catalog.addNew();
         record->set(keys.weight, i->weight);
-        Eigen::Map<Vector>(record->getElement(keys.mu), N) = i->_mu;
-        Eigen::Map<Matrix>(record->getElement(keys.sigma), N, N) = i->getSigma();
+        Eigen::Map<Vector>(record->getElement(keys.mu), _dim) = i->_mu;
+        Eigen::Map<Matrix>(record->getElement(keys.sigma), _dim, _dim) = i->getSigma();
     }
     handle.saveCatalog(catalog);
 }
-
-#define INSTANTIATE(N)                          \
-    template <>                                 \
-    struct MixturePersistenceName<N> {          \
-        static std::string get() { return "Mixture" # N; }      \
-    };                                                          \
-    template class MixtureComponent<N>;         \
-    template class MixtureUpdateRestriction<N>; \
-    template class Mixture<N>;                  \
-    template class MixturePersistenceKeys<N>;   \
-    template class MixtureFactory<N>;           \
-    static MixtureFactory<N> registration ## N(MixturePersistenceName<N>::get())
-
-INSTANTIATE(1);
-INSTANTIATE(2);
-INSTANTIATE(3);
 
 }}} // namespace lsst::meas::multifit

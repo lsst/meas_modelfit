@@ -31,28 +31,21 @@
 
 #include "ndarray.h"
 
-#include "lsst/meas/multifit/MixtureBase.h"
+#include "lsst/base.h"
+#include "lsst/afw/math/Random.h"
+#include "lsst/afw/table/io/Persistable.h"
+#include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit {
-
-template <int N> class MixtureComponent;
-template <int N> class Mixture;
-
-template <int N>
-std::ostream & operator<<(std::ostream & os, MixtureComponent<N> const & self);
 
 /**
  *  @brief A weighted Student's T or Gaussian distribution used as a component in a Mixture.
  */
-template <int N>
 class MixtureComponent {
 public:
 
-    typedef Eigen::Matrix<Scalar,N,1> Vector;
-    typedef Eigen::Matrix<Scalar,N,N> Matrix;
-
     /// Return the number of dimensions
-    int getDimension() const { return N; }
+    int getDimension() const { return _mu.size(); }
 
     /// Weight of this distribution in the mixture.
     Scalar weight;
@@ -73,37 +66,31 @@ public:
      *  valid distribution.
      */
     Matrix getSigma() const { return _sigmaLLT.reconstructedMatrix(); }
-    void setSigma(Matrix const & sigma) {
-        _sigmaLLT.compute(sigma);
-        _sqrtDet = _sigmaLLT.matrixLLT().diagonal().prod();
-    }
+    void setSigma(Matrix const & sigma);
     //@}
 
     /// Project the distribution onto the given dimension (marginalize over all others)
-    MixtureComponent<1> project(int dim) const;
+    MixtureComponent project(int dim) const;
 
     /// Project the distribution onto the given dimensions (marginalize over all others)
-    MixtureComponent<2> project(int dim1, int dim2) const;
+    MixtureComponent project(int dim1, int dim2) const;
 
     /// Default-construct a mixture component with weight=1, mu=0, sigma=identity.
-    MixtureComponent() : weight(1.0), _sqrtDet(1.0), _mu(Vector::Zero()), _sigmaLLT(Matrix::Identity()) {}
+    explicit MixtureComponent(int dim);
 
     /// Default-construct a mixture component with the given parameters.
-    MixtureComponent(Scalar weight_, Vector const & mu, Matrix const & sigma) :
-        weight(weight_), _mu(mu), _sigmaLLT(sigma)
-    {
-        _sqrtDet = _sigmaLLT.matrixLLT().diagonal().prod();
+    MixtureComponent(Scalar weight_, Vector const & mu, Matrix const & sigma);
+
+    MixtureComponent & operator=(MixtureComponent const & other);
+
+    friend std::ostream & operator<<(std::ostream & os, MixtureComponent const & self) {
+        self._stream(os);
+        return os;
     }
-
-#ifndef SWIG
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
-    friend std::ostream & operator<< <>(std::ostream & os, MixtureComponent<N> const & self);
-#endif
 
 private:
 
-    template <int M> friend class Mixture;
+    friend class Mixture;
 
     void _stream(std::ostream & os, int offset=0) const;
 
@@ -112,43 +99,35 @@ private:
     Eigen::LLT<Matrix> _sigmaLLT;
 };
 
-template <int N>
-inline std::ostream & operator<<(std::ostream & os, MixtureComponent<N> const & self) {
-    self._stream(os);
-    return os;
-}
-
 /**
  *  @brief Helper class used to define restrictions to the form of the component parameters in
  *         Mixture::updateEM.
  *
  *  The base class implementation does not apply any restrictions.
  */
-template <int N>
 class MixtureUpdateRestriction {
 public:
-    typedef typename MixtureComponent<N>::Vector Vector;
-    typedef typename MixtureComponent<N>::Matrix Matrix;
+
+    int getDimension() const { return _dim; }
 
     virtual void restrictMu(Vector & mu) const {}
 
     virtual void restrictSigma(Matrix & sigma) const {}
 
     virtual ~MixtureUpdateRestriction() {}
+
+    explicit MixtureUpdateRestriction(int dim) : _dim(dim) {}
+
+private:
+    int _dim;
 };
 
-template <int N>
-class Mixture :
-    public afw::table::io::PersistableFacade< Mixture<N> >,
-    public MixtureBase
-{
+class Mixture : public afw::table::io::PersistableFacade<Mixture>, public afw::table::io::Persistable {
 public:
 
-    typedef Eigen::Matrix<Scalar,N,1> Vector;
-    typedef Eigen::Matrix<Scalar,N,N> Matrix;
-    typedef MixtureComponent<N> Component;
-    typedef MixtureUpdateRestriction<N> UpdateRestriction;
-    typedef std::vector< Component, Eigen::aligned_allocator<Component> > ComponentList;
+    typedef MixtureComponent Component;
+    typedef MixtureUpdateRestriction UpdateRestriction;
+    typedef std::vector<Component> ComponentList;
     typedef typename ComponentList::iterator iterator;
     typedef typename ComponentList::const_iterator const_iterator;
 
@@ -178,13 +157,13 @@ public:
     virtual int getComponentCount() const { return size(); }
 
     /// Project the distribution onto the given dimensions (marginalize over all others)
-    Mixture<1> project(int dim) const;
+    PTR(Mixture) project(int dim) const;
 
     /// Project the distribution onto the given dimensions (marginalize over all others)
-    Mixture<2> project(int dim1, int dim2) const;
+    PTR(Mixture) project(int dim1, int dim2) const;
 
     /// Return the number of dimensions
-    virtual int getDimension() const { return N; }
+    int getDimension() const { return _dim; }
 
     /// Iterate over all components, rescaling their weights so they sum to one.
     void normalize();
@@ -195,7 +174,7 @@ public:
     /**
      *  @brief Iterate over all components, removing those with weight less than or equal to threshold
      *
-     *  The weights will be normalized them if any are removed.
+     *  The weights will be normalized if any are removed.
      *
      *  @return the number of components removed.
      */
@@ -221,7 +200,7 @@ public:
     /**
      *  @brief Evaluate the mixture distribution probability density function (PDF) at the given points
      *
-     *  @param[in] x       point to evaluate, as an Eigen expression, shape=(N)
+     *  @param[in] x       point to evaluate, as an Eigen expression, shape=(dim,)
      */
     template <typename Derived>
     Scalar evaluate(Eigen::MatrixBase<Derived> const & x) const {
@@ -232,23 +211,59 @@ public:
         return p;
     }
 
-    /// @copydoc MixtureBase::evaluate
-    virtual void evaluate(
+    /**
+     *  @brief Evaluate the distribution probability density function (PDF) at the given points
+     *
+     *  @param[in] x       array of points, shape=(numSamples, dim)
+     *  @param[out] p      array of probability values, shape=(numSamples,)
+     */
+    void evaluate(
         ndarray::Array<Scalar const,2,1> const & x,
         ndarray::Array<Scalar,1,0> const & p
     ) const;
 
-    /// @copydoc MixtureBase::evaluateComponents
-    virtual void evaluateComponents(
+    /**
+     *  @brief Evaluate the contributions of each component to the full probability at the given points
+     *
+     *  @param[in]  x     points to evaluate at, with number of columns equal to the number of dimensions
+     *  @param[in]  p     array to fill, with number of columns equal to the number of components
+     */
+    void evaluateComponents(
         ndarray::Array<Scalar const,2,1> const & x,
         ndarray::Array<Scalar,2,1> const & p
     ) const;
 
-    /// @copydoc MixtureBase::draw
-    virtual void draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const;
+    /**
+     *  @brief Draw random variates from the distribution.
+     *
+     *  @param[in,out] rng random number generator
+     *  @param[out] x      array of points, shape=(numSamples, dim)
+     */
+    void draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const;
 
-    /// @copydoc MixtureBase::updateEM
-    virtual void updateEM(
+    /**
+     *  @brief Perform an Expectation-Maximization step, updating the component parameters to match
+     *         the given weighted samples.
+     *
+     *  @param[in] x       array of variables, shape=(numSamples, dim)
+     *  @param[in] w       array of weights, shape=(numSamples,)
+     *  @param[in] tau1    damping parameter (see below)
+     *  @param[in] tau2    damping parameter (see below)
+     *
+     *  The updates to the @f$\sigma@f$ matrices are damped according to:
+     *  @f[
+     *  \sigma_d = \alpha\sigma_1 + (1-\alpha)\sigma_0
+     *  @f]
+     *  Where @f$\sigma_0@f$ is the previous matrix, @f$\sigma_1@f$ is the undamped update,
+     *  and @f$\sigma_d@f$ is the damped update.  The parameter @f$\alpha@f$ is set
+     *  by the ratio of the determinants:
+     *  @f[
+     *   r \equiv \frac{|\sigma_1|}{|\sigma_0|}
+     *  @f]
+     *  When @f$r \ge \tau_1@f$, @f$\alpha=1@f$; when @f$r \lt \tau_1@f$, it is rolled off
+     *  quadratically to @f$\tau_2@f$.
+     */
+    void updateEM(
         ndarray::Array<Scalar const,2,1> const & x,
         ndarray::Array<Scalar const,1,1> const & w,
         Scalar tau1=0.0, Scalar tau2=0.5
@@ -258,11 +273,11 @@ public:
      *  @brief Perform an Expectation-Maximization step, updating the component parameters to match
      *         the given weighted samples.
      *
-     *  @param[in] x       array of variables, shape=(numSamples, N)
+     *  @param[in] x       array of variables, shape=(numSamples, dim)
      *  @param[in] w       array of weights, shape=(numSamples,)
      *  @param[in] restriction   Functor used to restrict the form of the updated mu and sigma
-     *  @param[in] tau1    damping parameter (see MixtureBase::updateEM)
-     *  @param[in] tau2    damping parameter (see MixtureBase::updateEM)
+     *  @param[in] tau1    damping parameter (see Mixture::updateEM)
+     *  @param[in] tau2    damping parameter (see Mixture::updateEM)
      */
     void updateEM(
         ndarray::Array<Scalar const,2,1> const & x,
@@ -275,10 +290,10 @@ public:
      *  @brief Perform an Expectation-Maximization step, updating the component parameters to match
      *         the given unweighted samples.
      *
-     *  @param[in] x       array of variables, shape=(numSamples, N)
+     *  @param[in] x       array of variables, shape=(numSamples, dim)
      *  @param[in] restriction   Functor used to restrict the form of the updated mu and sigma
-     *  @param[in] tau1    damping parameter (see MixtureBase::updateEM)
-     *  @param[in] tau2    damping parameter (see MixtureBase::updateEM)
+     *  @param[in] tau1    damping parameter (see Mixture::updateEM)
+     *  @param[in] tau2    damping parameter (see Mixture::updateEM)
      */
     void updateEM(
         ndarray::Array<Scalar const,2,1> const & x,
@@ -287,20 +302,24 @@ public:
     );
 
     /// Polymorphic deep copy
-    virtual PTR(MixtureBase) clone() const {
-        return PTR(MixtureBase)(new Mixture<N>(*this));
-    }
+    virtual PTR(Mixture) clone() const;
 
     /**
      *  @brief Construct a mixture model.
      *
+     *  @param[in] dim           Dimensionality of the distribution
      *  @param[in] df            Number of degrees of freedom for component Student's T distributions
      *                           (inf=Gaussian)
      *  @param[in] components    List of components; will be emptied on return.
      *
      *  The components will be automatically normalized after construction.
      */
-    explicit Mixture(ComponentList & components, Scalar df=std::numeric_limits<Scalar>::infinity());
+    explicit Mixture(int dim, ComponentList & components, Scalar df=std::numeric_limits<Scalar>::infinity());
+
+    friend std::ostream & operator<<(std::ostream & os, Mixture const & self) {
+        self._stream(os);
+        return os;
+    }
 
     virtual bool isPersistable() const { return true; }
 
@@ -326,9 +345,10 @@ private:
 
     Scalar _evaluate(Scalar z) const;
 
-    virtual void _stream(std::ostream & os) const;
+    void _stream(std::ostream & os) const;
 
     bool _isGaussian;
+    int _dim;
     Scalar _df;
     Scalar _norm;
     mutable Vector _workspace;

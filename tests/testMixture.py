@@ -44,28 +44,27 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
 
     @staticmethod
     def makeRandomMixture(nDim, nComponents, df=float("inf")):
-        l = lsst.meas.multifit.Mixture[nDim].ComponentList()
+        l = lsst.meas.multifit.Mixture.ComponentList()
         for i in range(nComponents):
             mu = numpy.random.randn(nDim)*4
             a = numpy.random.randn(nDim+1,nDim)
             sigma = numpy.dot(a.transpose(),a) + numpy.identity(nDim)
-            l.append(lsst.meas.multifit.Mixture[nDim].Component(numpy.random.rand(), mu, sigma))
-        return lsst.meas.multifit.Mixture[nDim](l, df)
+            l.append(lsst.meas.multifit.Mixture.Component(numpy.random.rand(), mu, sigma))
+        return lsst.meas.multifit.Mixture(nDim, l, df)
 
     def testSwig(self):
-        """Test that Swig correctly wrapped tricky things, like std::vectors with custom allocators
-        and NumPy-typemapped array things that involve typedefs inside template classes.
+        """Test that Swig correctly wrapped tricky things.
         """
-        l1 = lsst.meas.multifit.MixtureComponent1List()
-        l1.append(lsst.meas.multifit.MixtureComponent1())
-        l1.append(lsst.meas.multifit.MixtureComponent1())
-        l1.append(lsst.meas.multifit.MixtureComponent1())
+        l1 = lsst.meas.multifit.MixtureComponentList()
+        l1.append(lsst.meas.multifit.MixtureComponent(1))
+        l1.append(lsst.meas.multifit.MixtureComponent(1))
+        l1.append(lsst.meas.multifit.MixtureComponent(1))
         l1[0].weight = 1.0
         l1[0].setMu(numpy.array([1.0], dtype=float))
-        l1[0].setSigma(numpy.array([4.0], dtype=float))
+        l1[0].setSigma(numpy.array([[4.0]], dtype=float))
         l1[1].weight = 0.5
         l1[2].weight = 0.5
-        m1 = lsst.meas.multifit.Mixture1(l1)
+        m1 = lsst.meas.multifit.Mixture(1, l1)
         self.assertEqual(m1[0].weight, 0.5)
         self.assertEqual(len(l1), 0)
         self.assertEqual([0.5, 0.25, 0.25], [c.weight for c in m1])
@@ -124,7 +123,7 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         filename = "testMixturePersistence.fits"
         mix1 = self.makeRandomMixture(3, 4, 3.5)
         mix1.writeFits(filename)
-        mix2 = lsst.meas.multifit.Mixture3.readFits(filename)
+        mix2 = lsst.meas.multifit.Mixture.readFits(filename)
         self.assertEqual(mix1.getDegreesOfFreedom(), mix2.getDegreesOfFreedom())
         self.assertEqual(len(mix1), len(mix2))
         for c1, c2 in zip(mix1, mix2):

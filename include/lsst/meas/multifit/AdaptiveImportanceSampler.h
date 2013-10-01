@@ -28,7 +28,7 @@
 
 #include "lsst/pex/config.h"
 #include "lsst/meas/multifit/Sampler.h"
-#include "lsst/meas/multifit/MixtureBase.h"
+#include "lsst/meas/multifit/Mixture.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -39,8 +39,8 @@ class ImportanceSamplerControl {
 public:
     LSST_CONTROL_FIELD(nSamples, int, "Number of Monte Carlo samples to draw");
     LSST_CONTROL_FIELD(nUpdateSteps, int, "Number of Expectation-Maximization update iterations");
-    LSST_CONTROL_FIELD(tau1, double, "Damping parameter for E-M update (see MixtureBase::updateEM)");
-    LSST_CONTROL_FIELD(tau2, double, "Damping parameter for E-M update (see MixtureBase::updateEM)");
+    LSST_CONTROL_FIELD(tau1, double, "Damping parameter for E-M update (see Mixture::updateEM)");
+    LSST_CONTROL_FIELD(tau2, double, "Damping parameter for E-M update (see Mixture::updateEM)");
     LSST_CONTROL_FIELD(
         targetPerplexity, double,
         "Minimum value for normalized perplexity after this iteration; if the actual value is less "
@@ -86,7 +86,7 @@ public:
 
     virtual void run(
         SamplerObjective const & objective,
-        PTR(MixtureBase) proposal,
+        PTR(Mixture) proposal,
         afw::table::BaseCatalog & samples
     ) const;
 
