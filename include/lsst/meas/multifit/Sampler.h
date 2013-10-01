@@ -24,19 +24,26 @@
 #ifndef LSST_MEAS_MULTIFIT_Sampler_h_INCLUDED
 #define LSST_MEAS_MULTIFIT_Sampler_h_INCLUDED
 
+#include "ndarray.h"
 #include "lsst/afw/table/fwd.h"
+#include "lsst/afw/table/Key.h"
 #include "lsst/meas/multifit/models.h"
 #include "lsst/meas/multifit/Mixture.h"
 #include "lsst/meas/multifit/Likelihood.h"
+#include "lsst/meas/multifit/priors.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 class SamplerObjective {
 public:
 
-    int getParameterDim() const { return _parameterDim; }
+    typedef afw::table::Key< afw::table::Array<Scalar> > ArrayKey;
 
-    virtual double operator()(
+    int getParameterDim() const { return _parameterKey.getSize(); }
+
+    ArrayKey const & getParameterKey() const { return _parameterKey; }
+
+    virtual Scalar operator()(
         ndarray::Array<Scalar const,1,1> const & parameters,
         afw::table::BaseRecord & sample
     ) const = 0;
@@ -44,9 +51,12 @@ public:
     virtual ~SamplerObjective() {}
 
 protected:
-    explicit SamplerObjective(int parameterDim) : _parameterDim(parameterDim) {}
-private:
-    int _parameterDim;
+    SamplerObjective(ArrayKey const & parameterKey, PTR(Likelihood) likelihood, PTR(Prior) prior);
+
+    ArrayKey _parameterKey;
+    PTR(Likelihood) _likelihood;
+    PTR(Prior) _prior;
+    ndarray::Array<Pixel,2,-1> _modelMatrix;
 };
 
 class SamplerObjectiveFactory {
@@ -57,9 +67,15 @@ public:
     SamplerObjectiveFactory(
         afw::table::Schema & sampleSchema,
         PTR(Model) model,
+        PTR(Prior) prior,
         bool marginalizeAmplitudes=true
     );
 
+private:
+    bool _marginalizeAmplitudes;
+    PTR(Prior) _prior;
+    SamplerObjective::ArrayKey _parameterKey;
+    SamplerObjective::ArrayKey _nestedKey;
 };
 
 class Sampler {
