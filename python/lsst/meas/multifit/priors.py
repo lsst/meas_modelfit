@@ -52,16 +52,6 @@ def registerPrior(name):
         return cls
     return decorate
 
-@registerPrior("flat")
-class FlatPriorConfig(lsst.pex.config.Config):
-    maxRadius = lsst.pex.config.Field(dtype=float, default=10.0, doc="Maximum radius in pixels")
-    maxEllipticity = lsst.pex.config.Field(dtype=float, default=1.0,
-                                           doc="Maximum ellipticity, in ReducedShear parametrization")
-
-    @staticmethod
-    def makePrior(config, pixelScale):
-        return multifitLib.FlatPrior(config.maxRadius, config.maxEllipticity)
-
 @registerPrior("mixture")
 class MixturePriorConfig(lsst.pex.config.Config):
     filename = lsst.pex.config.Field(

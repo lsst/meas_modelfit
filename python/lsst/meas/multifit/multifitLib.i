@@ -89,7 +89,6 @@ Basic routines to talk to lsst::meas::multifit classes
 %include "lsst/meas/multifit/constants.h"
 
 %declareTablePersistable(Prior, lsst::meas::multifit::Prior);
-%declareTablePersistable(FlatPrior, lsst::meas::multifit::FlatPrior);
 %declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
 
 %shared_ptr(lsst::meas::multifit::ParameterConverter);

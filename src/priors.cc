@@ -23,6 +23,8 @@
 
 #include "Eigen/LU"
 
+#include "ndarray/eigen.h"
+
 #include "lsst/pex/exceptions.h"
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/afw/table/io/InputArchive.h"
@@ -34,87 +36,26 @@ namespace tbl = lsst::afw::table;
 
 namespace lsst { namespace meas { namespace multifit {
 
-//------------- FlatPrior -----------------------------------------------------------------------------------
-
-Scalar FlatPrior::apply(LogGaussian const & likelihood, Vector const & parameters) const {
-    return integrateGaussian(likelihood.grad, likelihood.fisher)
-        + std::log(_maxRadius * _maxEllipticity * _maxEllipticity * 2 * M_PI);
-}
-
-FlatPrior::FlatPrior(double maxRadius, double maxEllipticity) :
-    Prior(ParameterDefinition::makeEllipseCoreDefinition("SeparableReducedShearTraceRadius")),
-    _maxRadius(maxRadius),
-    _maxEllipticity(maxEllipticity)
-{}
-
-namespace {
-
-class FlatPriorPersistenceKeys : private boost::noncopyable {
-public:
-    tbl::Schema schema;
-    tbl::Key<double> maxRadius;
-    tbl::Key<double> maxEllipticity;
-
-    static FlatPriorPersistenceKeys const & get() {
-        static FlatPriorPersistenceKeys const instance;
-        return instance;
-    }
-private:
-    FlatPriorPersistenceKeys() :
-        schema(),
-        maxRadius(schema.addField<double>("radius.max", "maximum allowed radius")),
-        maxEllipticity(schema.addField<double>("ellipticty.max", "maximum allowed ellipticity"))
-    {
-        schema.getCitizen().markPersistent();
-    }
-};
-
-class FlatPriorFactory : public tbl::io::PersistableFactory {
-public:
-
-    virtual PTR(tbl::io::Persistable)
-    read(InputArchive const & archive, CatalogVector const & catalogs) const {
-        FlatPriorPersistenceKeys const & keys = FlatPriorPersistenceKeys::get();
-        LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
-        LSST_ARCHIVE_ASSERT(catalogs.front().size() == 1u);
-        LSST_ARCHIVE_ASSERT(catalogs.front().getSchema() == keys.schema);
-        tbl::BaseRecord const & record = catalogs.front().front();
-        return boost::make_shared<FlatPrior>(record.get(keys.maxRadius), record.get(keys.maxEllipticity));
-    }
-
-    explicit FlatPriorFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}
-
-};
-
-std::string getFlatPriorPersistenceName() { return "FlatPrior"; }
-
-FlatPriorFactory flatPriorRegistration(getFlatPriorPersistenceName());
-
-} // anonymous
-
-std::string FlatPrior::getPersistenceName() const { return getFlatPriorPersistenceName(); }
-
-void FlatPrior::write(OutputArchiveHandle & handle) const {
-    FlatPriorPersistenceKeys const & keys = FlatPriorPersistenceKeys::get();
-    tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
-    PTR(tbl::BaseRecord) record = catalog.addNew();
-    record->set(keys.maxRadius, _maxRadius);
-    record->set(keys.maxEllipticity, _maxEllipticity);
-    handle.saveCatalog(catalog);
-}
-
 //------------- MixturePrior --------------------------------------------------------------------------------
 
-MixturePrior::MixturePrior(PTR(Mixture const) mixture) :
-    Prior(ParameterDefinition::makeEllipseCoreDefinition("SeparableConformalShearLogTraceRadius")),
-    _mixture(mixture)
-{}
+MixturePrior::MixturePrior(PTR(Mixture const) mixture) : _mixture(mixture) {}
 
-Scalar MixturePrior::apply(
-    LogGaussian const & likelihood, Vector const & parameters
+Scalar MixturePrior::marginalize(
+    Vector const & gradient, Matrix const & fisher,
+    ndarray::Array<Scalar const,1,1> const & parameters
 ) const {
-    return integrateGaussian(likelihood.grad, likelihood.fisher)
-        - std::log(_mixture->evaluate(parameters.head<3>()));
+    return integrateGaussian(gradient, fisher) - std::log(_mixture->evaluate(parameters.asEigen()));
+}
+
+Scalar MixturePrior::evaluate(
+    ndarray::Array<Scalar const,1,1> const & parameters,
+    ndarray::Array<Scalar const,1,1> const & amplitudes
+) const {
+    if ((amplitudes.asEigen<Eigen::ArrayXpr>() < 0.0).any()) {
+        return 0.0;
+    } else {
+        _mixture->evaluate(parameters.asEigen());
+    }
 }
 
 namespace {
