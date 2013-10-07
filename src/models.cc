@@ -22,6 +22,7 @@
  */
 
 #include "lsst/meas/multifit/models.h"
+#include "lsst/meas/multifit/priors.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -104,6 +105,12 @@ Model::Model(BasisVector basisVector, int parameterDim) :
 
 // ========== FixedCenterModel ==============================================================================
 
+/*
+ * FixedCenterModel uses holds the center fixed and hence has no center parameters.
+ * The full parameter vector is ordered
+ * [e1[0], e2[0], r[0], e1[1], e2[1], r[1], ...].
+ */
+
 namespace {
 
 class FixedCenterModel : public Model {
@@ -112,6 +119,16 @@ public:
     FixedCenterModel(BasisVector basisVector, afw::geom::Point2D const & center) :
         Model(basisVector, countParameters(basisVector, 3, 0)), _center(center)
     {}
+
+    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
+        if (prior->getTag() != "single-ellipse") {
+            throw LSST_EXCEPT(
+                pex::exceptions::LogicErrorException,
+                "Cannot adapt prior unless its tag is 'single-ellipse'"
+            );
+        }
+        return prior;
+    }
 
     virtual EllipseVector makeEllipseVector() const {
         return makeEllipseVectorImpl(getBasisVector(), _center);
@@ -147,6 +164,11 @@ PTR(Model) Model::makeFixedCenter(BasisVector basisVector, afw::geom::Point2D co
 
 // ========== SingleCenterModel ==============================================================================
 
+/*
+ * SingleCenterModel uses one center for all bases.  The full parameter vector is ordered
+ * [e1[0], e2[0], r[0], e1[1], e2[1], r[1], ..., x, y].
+ */
+
 namespace {
 
 class SingleCenterModel : public Model {
@@ -155,6 +177,13 @@ public:
     explicit SingleCenterModel(BasisVector basisVector) :
         Model(basisVector, countParameters(basisVector, 3, 0) + 2)
     {}
+
+    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "adaptPrior not implemented for SingleCenterModel"
+        );
+    }
 
     virtual EllipseVector makeEllipseVector() const {
         return makeEllipseVectorImpl(getBasisVector(), afw::geom::Point2D());
@@ -196,43 +225,59 @@ PTR(Model) Model::makeSingleCenter(BasisVector basisVector) {
 
 // ========== MultiCenterModel ==============================================================================
 
+/*
+ * MultiCenterModel gives each basis its own center parameters.  The full parameter vector is ordered
+ * [e1[0], e2[0], r[0], e1[1], e2[1], r[1], ..., x[0], y[0], x[1], y[1], ...].
+ */
+
 namespace {
 
 class MultiCenterModel : public Model {
 public:
 
     explicit MultiCenterModel(BasisVector basisVector) :
-        Model(basisVector, countParameters(basisVector, 3, 2))
+        Model(basisVector, countParameters(basisVector, 3, 2)),
+        _centerParameterOffset(getParameterDim() - getBasisVector().size()*2)
     {}
+
+    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "adaptPrior not implemented for MultiCenterModel"
+        );
+    }
 
     virtual EllipseVector makeEllipseVector() const {
         return makeEllipseVectorImpl(getBasisVector(), afw::geom::Point2D());
     }
 
     virtual void writeEllipses(double const * parameterIter, EllipseIterator ellipseIter) const {
+        double const * centerIter = parameterIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->readParameters(parameterIter);
-                parameterIter += 5;
-            } else {
-                ellipseIter->setCenter(afw::geom::Point2D(parameterIter[0], parameterIter[1]));
-                parameterIter += 2;
+                ellipseIter->getCore().readParameters(parameterIter);
+                parameterIter += 3;
             }
+            ellipseIter->setCenter(afw::geom::Point2D(centerIter[0], centerIter[1]));
+            centerIter += 2;
         }
     }
 
     virtual void readEllipses(EllipseConstIterator ellipseIter, double * parameterIter) const {
+        double * centerIter = parameterIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->writeParameters(parameterIter);
-                parameterIter += 5;
-            } else {
-                parameterIter[0] = ellipseIter->getCenter().getX();
-                parameterIter[1] = ellipseIter->getCenter().getY();
-                parameterIter += 2;
+                ellipseIter->getCore().writeParameters(parameterIter);
+                parameterIter += 3;
             }
+            centerIter[0] = ellipseIter->getCenter().getX();
+            centerIter[1] = ellipseIter->getCenter().getY();
+            centerIter += 2;
         }
     }
+
+private:
+    int _centerParameterOffset;
 };
 
 } // anonymous

@@ -35,6 +35,7 @@
 namespace lsst { namespace meas { namespace multifit {
 
 class Model;
+class Prior;
 
 typedef std::vector<PTR(Model)> ModelVector;
 
@@ -60,6 +61,8 @@ public:
         ndarray::Array<double const,1,1> const & parameters,
         ndarray::Array<double const,1,1> const & amplitudes
     ) const;
+
+    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const = 0;
 
     virtual EllipseVector makeEllipseVector() const = 0;
 

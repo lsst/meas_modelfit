@@ -74,7 +74,7 @@ class GaussianModelConfig(lsst.pex.config.Config):
         else:
             return lsst.meas.multifit.Model.makeSingleCenter(basisVector, center)
 
-class TractorModelBaseConfig(lsst.pex.config.Config):
+class FixedSersicConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
     as optimized by Hogg and Lang's The Tractor.  Intended for use as a subclass or nested config only,
     not a top-level model config.
@@ -103,10 +103,10 @@ class TractorModelBaseConfig(lsst.pex.config.Config):
             maxRadius=self.maxRadius
             )
 
-@registerModel("tractor")
-class TractorModelConfig(TractorBaseModelConfig):
+@registerModel("fixed-sersic")
+class FixedSersicModelConfig(FixedSersicConfig):
     """A single-component fixed-index Sersic model, using a multi-Gaussian approximation to
-    the profile (see TractorModelBaseConfig).
+    the profile (see FixedSersicConfig).
     """
     fixCenter = lsst.pex.config.Field(
         "Fix the center to the position derived from a previous centeroider?",
@@ -128,11 +128,11 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
     """
     disk = lsst.pex.config.ConfigField(
         "multi-Gaussian approximation to be used for the disk component of the model",
-        dtype=TractorModelBaseConfig
+        dtype=FixedSersicConfig
         )
-    bulge = lsst.pex.config.ConfigurableField(
+    bulge = lsst.pex.config.ConfigField(
         "multi-Gaussian approximation to be used for the bulge component of the model",
-        dtype=TractorModelBaseConfig
+        dtype=FixedSersicConfig
         )
     bulgeRadius = lsst.pex.config.Field(
         ("Half-light radius of bulge in units of half-light radius of disk. "
