@@ -65,10 +65,10 @@ class MixturePriorConfig(lsst.pex.config.Config):
             path = config.filename
         else:
             path = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "data", config.filename)
-        mixture = multifitLib.Mixture3.readFits(path)
+        mixture = multifitLib.Mixture.readFits(path)
         # convert from log(r) in arcseconds to log(r) in pixels
         mixture.shift(2, -numpy.log(pixelScale.asArcseconds()))
-        return multifitLib.MixturePrior(mixture)
+        return multifitLib.MixturePrior(mixture, "single-ellipse")
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):
     """Fit a Mixture distribution to a set of (e1, e2, r) data points

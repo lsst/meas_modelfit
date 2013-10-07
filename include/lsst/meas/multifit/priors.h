@@ -41,6 +41,8 @@ class Prior :
 {
 public:
 
+    std::string const & getTag() const { return _tag; }
+
     /**
      *  @brief Evaluate the prior at the given point in parameter and amplitude space.
      *
@@ -92,7 +94,13 @@ public:
     virtual ~Prior() {}
 
 protected:
+
+    explicit Prior(std::string const & tag="") : _tag(tag) {}
+
     virtual std::string getPythonModule() const { return "lsst.meas.multifit"; }
+
+private:
+    std::string _tag;
 };
 
 /**
@@ -104,7 +112,7 @@ class MixturePrior :
 {
 public:
 
-    MixturePrior(PTR(Mixture const) mixture);
+    explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
 
     /// @copydoc Prior::evaluate
     virtual Scalar evaluate(

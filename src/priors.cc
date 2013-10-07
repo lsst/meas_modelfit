@@ -38,7 +38,9 @@ namespace lsst { namespace meas { namespace multifit {
 
 //------------- MixturePrior --------------------------------------------------------------------------------
 
-MixturePrior::MixturePrior(PTR(Mixture const) mixture) : _mixture(mixture) {}
+MixturePrior::MixturePrior(PTR(Mixture const) mixture, std::string const & tag) :
+    Prior(tag), _mixture(mixture)
+{}
 
 Scalar MixturePrior::marginalize(
     Vector const & gradient, Matrix const & fisher,
@@ -91,6 +93,7 @@ class MixturePriorPersistenceKeys : private boost::noncopyable {
 public:
     tbl::Schema schema;
     tbl::Key<int> mixture;
+    tbl::Key<std::string> tag;
 
     static MixturePriorPersistenceKeys const & get() {
         static MixturePriorPersistenceKeys const instance;
@@ -99,7 +102,8 @@ public:
 private:
     MixturePriorPersistenceKeys() :
         schema(),
-        mixture(schema.addField<int>("mixture", "archive ID of mixture"))
+        mixture(schema.addField<int>("mixture", "archive ID of mixture")),
+        tag(schema.addField<std::string>("tag", "string used to indicate certain kinds of priors", 64))
     {
         schema.getCitizen().markPersistent();
     }
@@ -115,7 +119,10 @@ public:
         LSST_ARCHIVE_ASSERT(catalogs.front().size() == 1u);
         LSST_ARCHIVE_ASSERT(catalogs.front().getSchema() == keys.schema);
         tbl::BaseRecord const & record = catalogs.front().front();
-        return boost::make_shared<MixturePrior>(archive.get< Mixture >(record.get(keys.mixture)));
+        return boost::make_shared<MixturePrior>(
+            archive.get< Mixture >(record.get(keys.mixture)),
+            record.get(keys.tag)
+        );
     }
 
     explicit MixturePriorFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}
