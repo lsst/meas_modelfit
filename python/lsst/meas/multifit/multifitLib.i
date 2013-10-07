@@ -91,8 +91,6 @@ Basic routines to talk to lsst::meas::multifit classes
 %declareTablePersistable(Prior, lsst::meas::multifit::Prior);
 %declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
 
-%shared_ptr(lsst::meas::multifit::ParameterConverter);
-%shared_ptr(lsst::meas::multifit::ParameterDefinition);
 %shared_ptr(lsst::meas::multifit::Model);
 %shared_ptr(lsst::meas::multifit::MultiModel);
 %shared_ptr(lsst::meas::multifit::Likelihood);
@@ -151,7 +149,6 @@ Basic routines to talk to lsst::meas::multifit classes
 //----------- Miscellaneous ---------------------------------------------------------------------------------
 
 %include "lsst/meas/multifit/LogGaussian.h"
-%include "lsst/meas/multifit/parameters.h"
 %include "lsst/meas/multifit/models.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Likelihood.h"

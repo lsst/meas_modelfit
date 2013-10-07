@@ -27,7 +27,6 @@
 #include "lsst/base.h"
 #include "lsst/afw/table/io/Persistable.h"
 #include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/parameters.h"
 #include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/Mixture.h"
 
