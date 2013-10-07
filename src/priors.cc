@@ -54,7 +54,7 @@ Scalar MixturePrior::evaluate(
     if ((amplitudes.asEigen<Eigen::ArrayXpr>() < 0.0).any()) {
         return 0.0;
     } else {
-        _mixture->evaluate(parameters.asEigen());
+        return _mixture->evaluate(parameters.asEigen());
     }
 }
 
