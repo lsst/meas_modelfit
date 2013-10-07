@@ -30,7 +30,6 @@
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/MultiEpochLikelihood.h"
 #include "lsst/meas/multifit/priors.h"
-#include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/integrals.h"
 #include "lsst/meas/multifit/models.h"
 #include "lsst/meas/multifit/Mixture.h"

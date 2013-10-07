@@ -148,7 +148,6 @@ Basic routines to talk to lsst::meas::multifit classes
 
 //----------- Miscellaneous ---------------------------------------------------------------------------------
 
-%include "lsst/meas/multifit/LogGaussian.h"
 %include "lsst/meas/multifit/models.h"
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Likelihood.h"

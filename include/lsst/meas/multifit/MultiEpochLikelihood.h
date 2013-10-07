@@ -35,7 +35,6 @@
 #include "lsst/shapelet/MultiShapeletBasis.h"
 
 #include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/SingleEpochLikelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
