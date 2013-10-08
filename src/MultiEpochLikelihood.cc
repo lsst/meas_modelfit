@@ -69,12 +69,13 @@ EpochFootprint::EpochFootprint(
 
 MultiEpochLikelihood::MultiEpochLikelihood(
     PTR(Model) model,
+    ndarray::Array<Scalar const,1,1> const & fixed,
     afw::image::Wcs const & coaddWcs,
     afw::image::Calib const & coaddCalib,
     afw::coord::Coord const & sourceSkyPos,
     std::vector<PTR(EpochFootprint)> const & epochImageList,
     MultiEpochLikelihoodControl const & ctrl
-) : Likelihood(model) {
+) : Likelihood(model, fixed) {
     int totPixels = std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum);
     _data = ndarray::allocate(totPixels);
     afw::geom::AffineTransform coaddToSky = coaddWcs.linearizePixelToSky(sourceSkyPos, afw::geom::radians);
@@ -90,7 +91,7 @@ MultiEpochLikelihood::MultiEpochLikelihood(
 
         _epochLikelihoods.push_back(
             boost::make_shared<SingleEpochLikelihood>(
-                model, (**imPtrIter).psfModel,
+                model, fixed, (**imPtrIter).psfModel,
                 (**imPtrIter).exposure.getMaskedImage(),
                 (**imPtrIter).footprint,
                 skyToCalexp * coaddToSky,

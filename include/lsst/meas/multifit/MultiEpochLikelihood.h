@@ -94,6 +94,7 @@ public:
      * @brief Initialize the MultiEpochLikelihood
      *
      * @param[in] model             Object that defines the model to fit and its parameters.
+     * @param[in] fixed        Model parameters that are held fixed.
      * @param[in] coaddWcs          WCS of coadd (used for parameter coordinate system)
      * @param[in] coaddCalib        Photometric calibration of coadd (used for parameter flux scaling)
      * @param[in] sourceSkyPos      Sky position of source (galaxy)
@@ -102,6 +103,7 @@ public:
      */
     explicit MultiEpochLikelihood(
         PTR(Model) model,
+        ndarray::Array<Scalar const,1,1> const & fixed,
         afw::image::Wcs const & coaddWcs,
         afw::image::Calib const & coaddCalib,
         afw::coord::Coord const & sourceSkyPos,

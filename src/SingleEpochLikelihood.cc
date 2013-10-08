@@ -32,12 +32,13 @@ namespace lsst { namespace meas { namespace multifit {
 
 SingleEpochLikelihood::SingleEpochLikelihood(
     PTR(Model) model,
+    ndarray::Array<Scalar const,1,1> const & fixed,
     shapelet::MultiShapeletFunction const & psf,
     afw::image::MaskedImage<Pixel> const & image,
     afw::detection::Footprint const & footprint,
     SingleEpochLikelihoodControl const & ctrl
 ) :
-    Likelihood(model), _needsTransform(false),
+    Likelihood(model, fixed), _needsTransform(false),
     _weights(afw::detection::flattenArray(footprint, image.getVariance()->getArray(), image.getXY0())),
     _ellipses(model->makeEllipseVector())
 {
@@ -46,6 +47,7 @@ SingleEpochLikelihood::SingleEpochLikelihood(
 
 SingleEpochLikelihood::SingleEpochLikelihood(
     PTR(Model) model,
+    ndarray::Array<Scalar const,1,1> const & fixed,
     shapelet::MultiShapeletFunction const & psf,
     afw::image::MaskedImage<Pixel> const & image,
     afw::detection::Footprint const & footprint,
@@ -54,7 +56,7 @@ SingleEpochLikelihood::SingleEpochLikelihood(
     ndarray::Array<Pixel,1,1> const & dataBuffer,
     SingleEpochLikelihoodControl const & ctrl
 ) :
-    Likelihood(model), _needsTransform(true),
+    Likelihood(model, fixed), _needsTransform(true),
     _weights(afw::detection::flattenArray(footprint, image.getVariance()->getArray(), image.getXY0())),
     _ellipses(model->makeEllipseVector()),
     _transform(transform)
@@ -70,6 +72,11 @@ void SingleEpochLikelihood::_init(
     afw::detection::Footprint const & footprint,
     SingleEpochLikelihoodControl const & ctrl
 ) {
+    LSST_ASSERT_EQUAL(
+        _fixed.getSize<0>(), _model->getFixedDim(),
+        "Fixed parameter vector size (%d) does not match Model fixed parameter dimensionality (%d)",
+        pex::exceptions::LengthErrorException
+    );
     {
         ndarray::Array<Pixel,1,1> x = ndarray::allocate(footprint.getArea());
         ndarray::Array<Pixel,1,1> y = ndarray::allocate(footprint.getArea());
@@ -113,7 +120,7 @@ void SingleEpochLikelihood::computeModelMatrix(
     ndarray::Array<Scalar const,1,1> const & parameters
 ) const {
     int c = 0;
-    _model->writeEllipses(parameters.begin(), _ellipses.begin());
+    _model->writeEllipses(parameters.begin(), _fixed.begin(), _ellipses.begin());
     for (std::size_t i = 0; i < _ellipses.size(); ++i) {
         if (_needsTransform) {
             _ellipses[i].transform(_transform).inPlace();

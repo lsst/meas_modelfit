@@ -47,38 +47,47 @@ public:
     typedef std::vector<afw::geom::ellipses::Ellipse>::iterator EllipseIterator;
     typedef std::vector<afw::geom::ellipses::Ellipse>::const_iterator EllipseConstIterator;
 
-    static PTR(Model) makeFixedCenter(BasisVector basisVector, afw::geom::Point2D const & center);
+    static PTR(Model) makeFixedCenter(BasisVector basisVector);
     static PTR(Model) makeSingleCenter(BasisVector basisVector);
     static PTR(Model) makeMultiCenter(BasisVector basisVector);
 
     int getParameterDim() const { return _parameterDim; }
     int getAmplitudeDim() const { return _amplitudeDim; }
+    int getFixedDim() const { return _fixedDim; }
     int getBasisCount() const { return _basisVector.size(); }
 
     BasisVector const & getBasisVector() const { return _basisVector; }
 
     shapelet::MultiShapeletFunction makeShapeletFunction(
         ndarray::Array<double const,1,1> const & parameters,
-        ndarray::Array<double const,1,1> const & amplitudes
+        ndarray::Array<double const,1,1> const & amplitudes,
+        ndarray::Array<double const,1,1> const & fixed
     ) const;
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const = 0;
 
     virtual EllipseVector makeEllipseVector() const = 0;
 
-    virtual void writeEllipses(double const * parameterIter, EllipseIterator ellipseIter) const = 0;
+    virtual void writeEllipses(
+        double const * parameterIter, double const * fixedIter,
+        EllipseIterator ellipseIter
+    ) const = 0;
 
-    virtual void readEllipses(EllipseConstIterator ellipseIter, double * parameterIter) const = 0;
+    virtual void readEllipses(
+        EllipseConstIterator ellipseIter,
+        double * parameterIter, double * fixedIter
+    ) const = 0;
 
     virtual ~Model() {}
 
 protected:
 
-    Model(BasisVector basisVector, int parameterDim);
+    Model(BasisVector basisVector, int parameterDim, int fixedDim);
 
 private:
     int _parameterDim;
     int _amplitudeDim;
+    int _fixedDim;
     BasisVector _basisVector;
 };
 
@@ -89,11 +98,19 @@ public:
 
     ModelVector const & getComponents() const { return _components; }
 
+    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const;
+
     virtual EllipseVector makeEllipseVector() const;
 
-    virtual void writeEllipses(double const * parameterIter, EllipseIterator ellipseIter) const;
+    virtual void writeEllipses(
+        double const * parameterIter, double const * fixedIter,
+        EllipseIterator ellipseIter
+    ) const;
 
-    virtual void readEllipses(EllipseConstIterator ellipseIter, double * parameterIter) const;
+    virtual void readEllipses(
+        EllipseConstIterator ellipseIter,
+        double * parameterIter, double * fixedIter
+    ) const;
 
 private:
     ModelVector _components;

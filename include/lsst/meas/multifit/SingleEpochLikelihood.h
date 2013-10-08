@@ -72,6 +72,7 @@ public:
      *  transform or flux scaling is necessary).
      *
      *  @param[in] model        Object that defines the model to fit and its parameters
+     *  @param[in] fixed        Model parameters that are held fixed.
      *  @param[in] psf          Multi-shapelet representation of the PSF evaluated at the
      *                          location of the source.
      *  @param[in] image        MaskedImage to fit to.
@@ -80,6 +81,7 @@ public:
      */
     explicit SingleEpochLikelihood(
         PTR(Model) model,
+        ndarray::Array<Scalar const,1,1> const & fixed,
         shapelet::MultiShapeletFunction const & psf,
         afw::image::MaskedImage<Pixel> const & image,
         afw::detection::Footprint const & footprint,
@@ -90,6 +92,7 @@ public:
      *  @brief Constructor intended for use by MultiEpochObjective
      *
      *  @param[in] model        Object that defines the model to fit and its parameters
+     *  @param[in] fixed        Model parameters that are held fixed.
      *  @param[in] psf          Multi-shapelet representation of the PSF evaluated at the
      *                          location of the source.
      *  @param[in] image        MaskedImage to fit to.
@@ -102,6 +105,7 @@ public:
      */
     explicit SingleEpochLikelihood(
         PTR(Model) model,
+        ndarray::Array<Scalar const,1,1> const & fixed,
         shapelet::MultiShapeletFunction const & psf,
         afw::image::MaskedImage<Pixel> const & image,
         afw::detection::Footprint const & footprint,
