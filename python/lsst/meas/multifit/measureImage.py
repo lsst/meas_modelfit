@@ -106,11 +106,6 @@ class MeasureImageConfig(BaseMeasureConfig):
         dtype=SingleEpochLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
-    useRefCat = lsst.pex.config.Field(
-        dtype=bool,
-        default=True,
-        doc="Whether to use the reference catalog to identify objects to fit"
-    )
     doWarmStart = lsst.pex.config.Field(
         dtype=bool,
         default=False,
@@ -158,16 +153,10 @@ class MeasureImageTask(BaseMeasureTask):
           - srcCat ------- lsst.afw.table.SourceCatalog with initial measurements
           - refCat ------- lsst.afw.table.SimpleCatalog with truth values
         """
-        try:
-            refCat = dataRef.get("refcat", immediate=True)
-        except:
-            refCat = None
-        if refCat is None and self.config.useRefCat:
-            raise TaskError("useRefCat true but no reference catalog found")
         return lsst.pipe.base.Struct(
             exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True),
             srcCat = dataRef.get(self.dataPrefix + "src", immediate=True),
-            refCat = refCat
+            refCat = dataRef.get("refcat", immediate=True)
             )
 
     def writeOutputs(self, dataRef, outCat):
