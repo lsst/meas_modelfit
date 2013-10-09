@@ -26,6 +26,7 @@
 
 #include "ndarray_fwd.h"
 
+#include "lsst/pex/exceptions.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/models.h"
 
@@ -85,7 +86,13 @@ public:
 protected:
 
     Likelihood(PTR(Model) model, ndarray::Array<Scalar const,1,1> const & fixed) :
-        _model(model), _fixed(fixed) {}
+        _model(model), _fixed(fixed) {
+        LSST_ASSERT_EQUAL(
+            fixed.getSize<0>(), model->getFixedDim(),
+            "Fixed parameter vector size (%d) does not match Model fixed parameter dimensionality (%d)",
+            pex::exceptions::LengthErrorException
+        );
+    }
 
     PTR(Model) _model;
     ndarray::Array<Scalar const,1,1> _fixed;

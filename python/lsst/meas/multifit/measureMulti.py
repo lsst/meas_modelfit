@@ -28,7 +28,7 @@ from lsst.pipe.base import Struct, TaskError
 import lsst.pex.config
 import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
-from .multifitLib import VectorEpochFootprint, EpochFootprint, MultiEpochLikelihood, ModelFitCatalog, \
+from .multifitLib import VectorEpochFootprint, EpochFootprint, ProjectedLikelihood, ModelFitCatalog, \
     ModelFitTable
 from .measureImage import BaseMeasureConfig, BaseMeasureTask
 from .samplers import *
@@ -47,7 +47,7 @@ class MeasureMultiConfig(BaseMeasureConfig):
         default = "deep",
     )
     likelihood = lsst.pex.config.ConfigField(
-        dtype=MultiEpochLikelihood.ConfigClass,
+        dtype=ProjectedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
     minPixels = lsst.pex.config.Field(

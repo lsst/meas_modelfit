@@ -30,7 +30,7 @@ import lsst.afw.geom.ellipses
 import lsst.meas.extensions.multiShapelet
 
 from .samplers import BaseSamplerTask, AdaptiveImportanceSamplerTask
-from .multifitLib import SingleEpochLikelihood, ModelFitCatalog, ModelFitTable
+from .multifitLib import ProjectedLikelihood, ModelFitCatalog, ModelFitTable
 from .fitRegion import setupFitRegion
 from .models import *
 from .priors import *
@@ -103,7 +103,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
 
 class MeasureImageConfig(BaseMeasureConfig):
     likelihood = lsst.pex.config.ConfigField(
-        dtype=SingleEpochLikelihood.ConfigClass,
+        dtype=ProjectedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
     doWarmStart = lsst.pex.config.Field(
