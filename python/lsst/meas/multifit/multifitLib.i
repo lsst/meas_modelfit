@@ -154,6 +154,14 @@ Basic routines to talk to lsst::meas::multifit classes
 %include "lsst/meas/multifit/Sampler.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 
+%ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
+%ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
+%template(EllipseVector) std::vector<lsst::afw::geom::ellipses::Ellipse>;
+
+%pythoncode %{
+Model.EllipseVector = EllipseVector
+%}
+
 %include "std_map.i"
 %template(ImportanceSamplerControlMap) std::map<int,lsst::meas::multifit::ImportanceSamplerControl>;
 
