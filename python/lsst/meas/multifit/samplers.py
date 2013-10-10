@@ -47,22 +47,8 @@ class BaseSamplerTask(lsst.pipe.base.Task):
     def __init__(self, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
 
-    def setup(self, exposure, ellipse, center, prior):
-        """Bootstrap the sampler for an object with no previous samples, using the given reference catalog
-        ellipse (an afw.geom.ellipses.BaseCore object) and center position.
-
-        @return an instance of a subclass of BaseSampler
-        """
-        raise NotImplementedError("setup() not implemented for this sampler")
-
-    def reset(self, samples, center, prior):
-        """Reinitialize the sampler state given a SampleSet from a previous sampler on the same object.
-
-        The given SampleSet must have the same model definition as self.model.
-
-        @return an instance of a subclass of BaseSampler
-        """
-        raise NotImplementedError("reset() not implemented for this sampler")
+    def makeProposal(self, exposure, parameters):
+        raise NotImplementedError("makeProposal not implemented for this sampler")
 
 @lsst.pex.config.wrap(multifitLib.ImportanceSamplerControl)
 class ImportanceSamplerConfig(lsst.pex.config.Config):
@@ -77,21 +63,13 @@ class AdaptiveImportanceSamplerConfig(BaseSamplerConfig):
         dtype=int, default=1,
         doc="Initial seed for pseudo-random number generator (see afw::math::Random)"
         )
-    initialEllipticitySigma = lsst.pex.config.Field(
+    initialSigma = lsst.pex.config.Field(
         dtype=float, default=0.4,
-        doc="Initial width of proposal components in (ConformalShear) ellipticity dimensions"
+        doc="Initial width of proposal components"
         )
-    initialEllipticitySpacing = lsst.pex.config.Field(
+    initialSpacing = lsst.pex.config.Field(
         dtype=float, default=0.8,
-        doc="Initial spacing of proposal components in (ConformalShear) ellipticity dimensions"
-        )
-    initialRadiusSigma = lsst.pex.config.Field(
-        dtype=float, default=0.5,
-        doc="Initial width of proposal components in log(radius) dimensions"
-        )
-    initialRadiusSpacing = lsst.pex.config.Field(
-        dtype=float, default=0.8,
-        doc="Initial (random) scatter of proposal components in log(radius) dimensions"
+        doc="Initial spacing of proposal components"
         )
     nComponents = lsst.pex.config.Field(
         dtype=int, default=10, doc="Number of mixture components in proposal distribution"
@@ -124,43 +102,32 @@ class AdaptiveImportanceSamplerConfig(BaseSamplerConfig):
 class AdaptiveImportanceSamplerTask(BaseSamplerTask):
     ConfigClass = AdaptiveImportanceSamplerConfig
 
-    def __init__(self, **kwds):
+    def __init__(self, sampleSchema, **kwds):
         BaseSamplerTask.__init__(self, **kwds)
         self.rng = lsst.afw.math.Random(self.config.rngAlgorithm, self.config.rngSeed)
+        self.impl = multifitLib.AdaptiveImportanceSampler(
+            sampleSchema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
+            )
 
-    def makeLatinCube(self, n):
-        design = numpy.zeros((n,3), dtype=float)
+    def makeLatinCube(self, nComponents, parameterDim):
+        design = numpy.zeros((nComponents, parameterDim), dtype=float)
         numpy.random.seed(int(self.rng.uniformInt(1000)))
-        x = numpy.linspace(-1, 1, n)
-        for j in xrange(3):
-            design[:,j] = x[numpy.random.permutation(n)]
+        x = numpy.linspace(-1, 1, nComponents)
+        for j in xrange(parameterDim):
+            design[:,j] = x[numpy.random.permutation(nComponents)]
         # note: we could do some permutations to make this a better sampling
         # of the space (i.e. reduce correlations, move things further apart),
         # but that gets complicated pretty fast, and so far it's simple and
         # easy
         return design
 
-    def setup(self, exposure, ellipse, center, prior):
-        separable = lsst.afw.geom.ellipses.SeparableConformalShearLogTraceRadius(ellipse)
-        fiducial = separable.getParameterVector()
-        components = multifitLib.Mixture3.ComponentList()
-        sigma = numpy.array([[self.config.initialEllipticitySigma**2, 0.0, 0.0],
-                             [0.0, self.config.initialEllipticitySigma**2, 0.0],
-                             [0.0, 0.0, self.config.initialRadiusSigma**2]], dtype=float)
-        design = self.makeLatinCube(self.config.nComponents)
+    def makeProposal(self, exposure, parameters):
+        components = multifitLib.Mixture.ComponentList()
+        sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2
+        design = self.makeLatinCube(self.config.nComponents, parameters.size)
         for n in xrange(self.config.nComponents):
-            mu = fiducial.copy()
-            mu[:2] += design[n,:2]*self.config.initialEllipticitySpacing
-            mu[2] += design[n,2]*self.config.initialRadiusSpacing
-            components.append(multifitLib.Mixture3.Component(1.0, mu, sigma))
+            mu = parameters.copy()
+            mu[:] += design[n,:]*self.config.initialSpacing
+            components.append(multifitLib.Mixture.Component(1.0, mu, sigma))
         df = self.config.degreesOfFreedom or float("inf")
-        proposal = multifitLib.Mixture3(components, df)
-        return multifitLib.AdaptiveImportanceSampler(self.rng, proposal, prior, center,
-                                                     self.config.getIterationMap(),
-                                                     self.config.doSaveIterations)
-
-    def reset(self, samples, center, prior):
-        proposal = samples.getProposal()
-        return multifitLib.AdaptiveImportanceSampler(self.rng, proposal, prior, center,
-                                                     self.config.getIterationMap(),
-                                                     self.config.doSaveIterations)
+        return multifitLib.Mixture(parameters.size, components, df)

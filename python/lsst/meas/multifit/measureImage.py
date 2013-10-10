@@ -58,6 +58,16 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         dtype=setupFitRegion.ConfigClass,
         doc="Parameters that control which pixels to include in the model fit"
     )
+    fitPixelScale = lsst.pex.config.Field(
+        dtype=float,
+        default=0.2,
+        doc="Pixel scale (arcseconds/pixel) for coordinate system used for model parameters"
+    )
+    fitFluxMag0 = lsst.pex.config.Field(
+        dtype=float,
+        default=30.0,
+        doc="Flux at magnitude 0 used for to define the units of amplitude in models"
+    )
     progressChunk = lsst.pex.config.Field(
         dtype=int,
         default=100,
@@ -68,38 +78,15 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         default=False,
         doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
     )
+    marginalizeAmplitudes = lsst.pex.config.Field(
+        dtype=bool,
+        default=True,
+        doc="Marginalize over amplitudes numerically instead of sampling them?"
+    )
 
     def setDefaults(self):
         self.psf.innerOrder = 4
         self.psf.outerOrder = 0
-
-class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
-    """Base class for MeasureImageTask and MeasureMultiTask to aggregate shared code"""
-
-    def addFields(self, prefix, doc):
-        """Add <prefix>.ellipse and <prefix>.center keys to self.schema, saving keys in self.keys
-        @param[in] prefix       key name prefix
-        @param[in] doc          documentation prefix
-        """
-        self.keys["%s.ellipse" % prefix] = self.schema.addField("%s.ellipse" % prefix, type="MomentsD",
-                                                                doc=("%s ellipse" % doc))
-        self.keys["%s.center" % prefix] = self.schema.addField("%s.center" % prefix, type="PointD",
-                                                               doc=("%s center position" % doc))
-    def addDerivedFields(self):
-        """Add fields to self.schema for quantities derived from the SampleSet
-        """
-        self.addFields("mean", "Posterior mean")
-        self.addFields("median", "Posterior median")
-
-    def fillDerivedFields(self, record):
-        samples = record.getSamples()
-        parameterDef = samples.getParameterDefinition()
-        mean = parameterDef.makeEllipse(samples.computeMean())
-        record.set(self.keys["mean.ellipse"], lsst.afw.geom.ellipses.Quadrupole(mean.getCore()))
-        record.set(self.keys["mean.center"], mean.getCenter())
-        median = parameterDef.makeEllipse(samples.computeQuantiles(numpy.array([0.5])))
-        record.set(self.keys["median.ellipse"], lsst.afw.geom.ellipses.Quadrupole(median.getCore()))
-        record.set(self.keys["median.center"], median.getCenter())
 
 class MeasureImageConfig(BaseMeasureConfig):
     likelihood = lsst.pex.config.ConfigField(
@@ -115,7 +102,7 @@ class MeasureImageConfig(BaseMeasureConfig):
              "modelfits footprints, instead of the original detection footprints")
     )
 
-class MeasureImageTask(BaseMeasureTask):
+class MeasureImageTask(lsst.pipe.base.CmdLineTask):
     """Driver class for S13-specific galaxy modeling work
 
     Like ProcessImageTask, MeasureImageTask is intended to be used as a base
@@ -129,23 +116,42 @@ class MeasureImageTask(BaseMeasureTask):
 
     def __init__(self, **kwds):
         BaseMeasureTask.__init__(self, **kwds)
-        self.makeSubtask("sampler")
         self.schemaMapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
         self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
         self.schema = self.schemaMapper.getOutputSchema()
+        self.sampleSchema = lsst.afw.table.Schema()
+        self.objectiveFactory = self.config.objectiveFactory(
+        self.makeSubtask("sampler", sampleSchema=)
         self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
-        self.basis = self.config.model.apply()
-        self.prior = None
+        self.model = self.config.model.apply()
+        self.prior = self.config.prior.apply(self.config.fitPixelScale, self.config.fitFluxMag0)
+        self.calib = lsst.afw.image.Calib()
+        self.calib.setFluxMag0(self.config.fitFluxMag0)
         self.keys = {}
-        self.addFields("source", "Uncorrected source")
-        self.addDerivedFields()
-        self.keys["snr"] = self.schema.addField("snr", type=float,
-                                                doc="signal to noise ratio from source apFlux/apFluxErr")
-        self.addFields("ref", "Reference catalog")
-        self.keys["ref.sindex"] = self.schema.addField("ref.sindex", type=float,
-                                                       doc="Reference catalog Sersic index")
-        self.keys["ref.flux"] = self.schema.addField("ref.flux", type=float,
-                                                     doc="Reference catalog flux")
+        self.keys["ref.center"] = self.schema.addField(
+            "ref.center", type="PointD",
+            doc="position in image coordinates from reference catalog"
+            )
+        self.keys["ref.parameters"] = self.schema.addField(
+            "ref.parameters", type="ArrayD", size=self.model.getParameterDim(),
+            doc="nonlinear parameters from reference catalog"
+            )
+        self.keys["ref.amplitudes"] = self.schema.addField(
+            "ref.amplitudes", type="ArrayD", size=self.model.getAmplitudeDim(),
+            doc="linear amplitudes from reference catalog"
+            )
+        self.keys["ref.fixed"] = self.schema.addField(
+            "ref.fixed", type="ArrayD", size=self.model.getFixedDim(),
+            doc="fixed nonlinear parameters from reference catalog"
+            )
+        self.keys["snr"] = self.schema.addField(
+            "snr", type=float,
+            doc="signal to noise ratio from source apFlux/apFluxErr"
+            )
+        self.keys["mean.parameters"] = self.schema.addField(
+            "mean.parameters", type="ArrayD", size=self.model.getParameterDim(),
+            doc="posterior mean nonlinear parameters"
+            )
 
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing:
@@ -183,8 +189,6 @@ class MeasureImageTask(BaseMeasureTask):
         if record.getSchema() != self.schema:
             raise TaskError("Record schema does not match expected schema; probably a result of using "
                             "doWarmStart with a catalog from an older version of the code.")
-        if self.prior is None:
-            self.prior = self.config.prior.apply(pixelScale=exposure.getWcs().pixelScale())
         psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
         psf = psfModel.asMultiShapelet()
         center = record.getPointD(self.keys["ref.center"])
@@ -206,7 +210,7 @@ class MeasureImageTask(BaseMeasureTask):
         self.fillDerivedFields(record)
         return lsst.pipe.base.Struct(likelihood=likelihood, sampler=sampler, psf=psf, record=record)
 
-    def prepCatalog(self, exposure, srcCat, refCat=None, where=None):
+    def prepCatalog(self, exposure, srcCat, refCat, where=None):
         """Create a ModelFitCatalog with initial parameters and fitting regions
         to be used later by fillCatalog.
 
@@ -230,8 +234,7 @@ class MeasureImageTask(BaseMeasureTask):
         keyTheta = refCat.getSchema().find("ellipse.theta").key
         keyMag = refCat.getSchema().find("mag.%s" % exposure.getFilter().getName()).key
         keySIndex = refCat.getSchema().find("sindex").key
-        wcs = exposure.getWcs()
-        calib = exposure.getCalib()
+
         for match in matches:
             srcRecord = match.second
             refRecord = match.first
@@ -239,22 +242,36 @@ class MeasureImageTask(BaseMeasureTask):
                 continue
             if srcRecord.getShapeFlag():
                 continue
-            ellipse1 = lsst.afw.geom.ellipses.Axes(
-                (refRecord.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
-                (refRecord.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
-                (refRecord.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
-                )
-            transform = wcs.linearizeSkyToPixel(refRecord.getCoord())
-            ellipse2 = lsst.afw.geom.ellipses.Quadrupole(ellipse1.transform(transform.getLinear()))
             outRecord = outCat.addNew()
             outRecord.assign(srcRecord, self.schemaMapper)
-            outRecord.setMomentsD(self.keys["ref.ellipse"], ellipse2)
-            outRecord.setD(self.keys["ref.flux"], calib.getFlux(refRecord.getD(keyMag)))
-            outRecord.setD(self.keys["ref.sindex"], refRecord.getD(keySIndex))
-            outRecord.setPointD(self.keys["ref.center"], wcs.skyToPixel(refRecord.getCoord()))
+            wcs = lsst.afw.image.makeLocalWcs(
+                refRecord.getCoord(), self.config.fitPixelScale * lsst.afw.geom.arcseconds
+                )
+
+            ellipse1 = lsst.afw.geom.ellipses.Ellipse(
+                lsst.afw.geom.ellipses.Axes(
+                    (refRecord.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
+                    (refRecord.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
+                    (refRecord.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
+                    ),
+                refRecord.getCoord().getPosition(lsst.afw.geom.degrees)
+                )
+            transform = wcs.linearizeSkyToPixel(refRecord.getCoord())
+            ellipse2 = ellipse1.transform(transform)
+            ellipses = lsst.meas.multifit.Model.EllipseVector([ellipse2])
+            self.model.readEllipses(
+                ellipses,
+                outRecord[self.keys["ref.parameters"]],
+                outRecord[self.keys["ref.fixed"]]
+                )
+            # this flux->amplitudes conversion assumes ref catalog is single-component, and that the
+            # first component of the model is what that corresponds to; we'll need to generalize
+            # this eventually
+            flux = self.calib.getFlux(refRecord.get(keyMag))
+            outRecord[self.keys["ref.amplitudes"]][:] = 0.0
+            outRecord.setD(self.keys["ref.amplitudes"][0], flux)
             outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
-            outRecord.setPointD(self.keys["source.center"], srcRecord.getCentroid())
-            outRecord.setMomentsD(self.keys["source.ellipse"], srcRecord.getShape())
+            outRecord.setPointD(self.keys["ref.center"], exposure.getWcs().skyToPixel(refRecord.getCoord()))
             outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
             self.fitPsf.fit(outRecord, exposure.getPsf(), outRecord.get(self.keys["ref.center"]))
         outCat.sort()
