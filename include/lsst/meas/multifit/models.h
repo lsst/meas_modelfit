@@ -67,6 +67,8 @@ public:
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const = 0;
 
+#ifndef SWIG
+
     virtual EllipseVector makeEllipseVector() const = 0;
 
     virtual void writeEllipses(
@@ -78,6 +80,19 @@ public:
         EllipseConstIterator ellipseIter,
         Scalar * parameterIter, Scalar * fixedIter
     ) const = 0;
+
+#endif // !SWIG
+
+    EllipseVector writeEllipses(
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar const,1,1> const & fixed
+    ) const;
+
+    void readEllipses(
+        EllipseVector const & ellipses,
+        ndarray::Array<Scalar,1,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & fixed
+    ) const;
 
     virtual ~Model() {}
 

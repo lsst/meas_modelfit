@@ -103,6 +103,48 @@ Model::Model(BasisVector basisVector, int parameterDim, int fixedDim) :
     }
 }
 
+Model::EllipseVector Model::writeEllipses(
+    ndarray::Array<Scalar const,1,1> const & parameters,
+    ndarray::Array<Scalar const,1,1> const & fixed
+) const {
+    LSST_ASSERT_EQUAL(
+        parameters.getSize<0>(), getParameterDim(),
+        "Size of parameter array (%d) does not match dimension of model (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        fixed.getSize<0>(), getFixedDim(),
+        "Size of fixed array (%d) does not match dimension of model (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    EllipseVector r = makeEllipseVector();
+    writeEllipses(parameters.begin(), fixed.begin(), r.begin());
+    return r;
+}
+
+void Model::readEllipses(
+    EllipseVector const & ellipses,
+    ndarray::Array<Scalar,1,1> const & parameters,
+    ndarray::Array<Scalar,1,1> const & fixed
+) const {
+    LSST_ASSERT_EQUAL(
+        parameters.getSize<0>(), getParameterDim(),
+        "Size of parameter array (%d) does not match dimension of model (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        fixed.getSize<0>(), getFixedDim(),
+        "Size of fixed array (%d) does not match dimension of model (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        int(ellipses.size()), getBasisCount(),
+        "Size of ellipse vector (%d) does not match basis count (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    readEllipses(ellipses.begin(), parameters.begin(), fixed.begin());
+}
+
 // ========== FixedCenterModel ==============================================================================
 
 /*
