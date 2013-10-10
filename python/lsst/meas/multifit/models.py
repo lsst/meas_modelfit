@@ -64,15 +64,15 @@ class GaussianModelConfig(lsst.pex.config.Config):
         )
 
     @staticmethod
-    def makeModel(config, center):
+    def makeModel(config):
         basis = lsst.shapelet.MultiShapeletBasis(1)
         basis.addComponent(config.radius, 0, numpy.array([[1.0]], dtype=float))
         basisVector = lsst.meas.multifit.Model.BasisVector()
         basisVector.append(basis)
         if config.fixCenter:
-            return lsst.meas.multifit.Model.makeFixedCenter(basisVector, center)
+            return lsst.meas.multifit.Model.makeFixedCenter(basisVector)
         else:
-            return lsst.meas.multifit.Model.makeSingleCenter(basisVector, center)
+            return lsst.meas.multifit.Model.makeSingleCenter(basisVector)
 
 class FixedSersicConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
@@ -152,7 +152,7 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
         self.bulge.profile = "luv"
 
     @staticmethod
-    def makeModel(config, center):
+    def makeModel(config):
         basisVector = lsst.meas.multifit.Model.BasisVector()
         bulge = config.bulge.makeBasis()
         disk = config.disk.makeBasis()
@@ -164,6 +164,6 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
             disk.merge(bulge)
             basisVector.append(disk)
         if config.fixCenter:
-            return lsst.meas.multifit.Model.makeFixedCenter(basisVector, center)
+            return lsst.meas.multifit.Model.makeFixedCenter(basisVector)
         else:
             return lsst.meas.multifit.Model.makeSingleCenter(basisVector)
