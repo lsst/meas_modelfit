@@ -31,6 +31,7 @@
 #include "lsst/base.h"
 #include "lsst/afw/geom/ellipses/Ellipse.h"
 #include "lsst/shapelet/MultiShapeletBasis.h"
+#include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -59,9 +60,9 @@ public:
     BasisVector const & getBasisVector() const { return _basisVector; }
 
     shapelet::MultiShapeletFunction makeShapeletFunction(
-        ndarray::Array<double const,1,1> const & parameters,
-        ndarray::Array<double const,1,1> const & amplitudes,
-        ndarray::Array<double const,1,1> const & fixed
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar const,1,1> const & amplitudes,
+        ndarray::Array<Scalar const,1,1> const & fixed
     ) const;
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const = 0;
@@ -69,13 +70,13 @@ public:
     virtual EllipseVector makeEllipseVector() const = 0;
 
     virtual void writeEllipses(
-        double const * parameterIter, double const * fixedIter,
+        Scalar const * parameterIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const = 0;
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        double * parameterIter, double * fixedIter
+        Scalar * parameterIter, Scalar * fixedIter
     ) const = 0;
 
     virtual ~Model() {}
@@ -103,13 +104,13 @@ public:
     virtual EllipseVector makeEllipseVector() const;
 
     virtual void writeEllipses(
-        double const * parameterIter, double const * fixedIter,
+        Scalar const * parameterIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const;
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        double * parameterIter, double * fixedIter
+        Scalar * parameterIter, Scalar * fixedIter
     ) const;
 
 private:

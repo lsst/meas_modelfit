@@ -62,9 +62,9 @@ Model::EllipseVector makeEllipseVectorImpl(Model::BasisVector const & basisVecto
 // ========== Model =========================================================================================
 
 shapelet::MultiShapeletFunction Model::makeShapeletFunction(
-    ndarray::Array<double const,1,1> const & parameters,
-    ndarray::Array<double const,1,1> const & amplitudes,
-    ndarray::Array<double const,1,1> const & fixed
+    ndarray::Array<Scalar const,1,1> const & parameters,
+    ndarray::Array<Scalar const,1,1> const & amplitudes,
+    ndarray::Array<Scalar const,1,1> const & fixed
 ) const {
     EllipseVector ellipses = makeEllipseVector();
     writeEllipses(parameters.begin(), fixed.begin(), ellipses.begin());
@@ -135,7 +135,7 @@ public:
     }
 
     virtual void writeEllipses(
-        double const * parameterIter, double const * fixedIter,
+        Scalar const * parameterIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const {
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
@@ -150,7 +150,7 @@ public:
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        double * parameterIter, double * fixedIter
+        Scalar * parameterIter, Scalar * fixedIter
     ) const {
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
@@ -198,7 +198,7 @@ public:
     }
 
     virtual void writeEllipses(
-        double const * parameterIter, double const * fixedIter,
+        Scalar const * parameterIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const {
         afw::geom::Point2D center(parameterIter[getParameterDim()-2], parameterIter[getParameterDim()-1]);
@@ -213,7 +213,7 @@ public:
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        double * parameterIter, double * fixedIter
+        Scalar * parameterIter, Scalar * fixedIter
     ) const {
         // Ellipses have more centers than we need, so we average them.  In most cases, they'll
         // all be the same anyway.
@@ -266,10 +266,10 @@ public:
     }
 
     virtual void writeEllipses(
-        double const * parameterIter, double const * fixedIter,
+        Scalar const * parameterIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const {
-        double const * centerIter = parameterIter + _centerParameterOffset;
+        Scalar const * centerIter = parameterIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
                 ellipseIter->getCore().readParameters(parameterIter);
@@ -282,9 +282,9 @@ public:
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        double * parameterIter, double * fixedIter
+        Scalar * parameterIter, Scalar * fixedIter
     ) const {
-        double * centerIter = parameterIter + _centerParameterOffset;
+        Scalar * centerIter = parameterIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
                 ellipseIter->getCore().writeParameters(parameterIter);
@@ -356,7 +356,7 @@ Model::EllipseVector MultiModel::makeEllipseVector() const {
 }
 
 void MultiModel::writeEllipses(
-    double const * parameterIter, double const * fixedIter,
+    Scalar const * parameterIter, Scalar const * fixedIter,
     EllipseIterator ellipseIter
 ) const {
     for (ModelVector::const_iterator i = _components.begin(); i != _components.end(); ++i) {
@@ -369,7 +369,7 @@ void MultiModel::writeEllipses(
 
 void MultiModel::readEllipses(
     EllipseConstIterator ellipseIter,
-    double * parameterIter, double * fixedIter
+    Scalar * parameterIter, Scalar * fixedIter
 ) const {
     for (ModelVector::const_iterator i = _components.begin(); i != _components.end(); ++i) {
         (**i).readEllipses(ellipseIter, parameterIter, fixedIter);
