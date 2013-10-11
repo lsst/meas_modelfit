@@ -60,7 +60,7 @@ public:
     /// Return the number of dimensions
     virtual int getDimension() const = 0;
 
-    /// Return the number of dimensions
+    /// Return the number of components (individual Student's T distributions) in the mixture.
     virtual int getComponentCount() const = 0;
 
     /**
@@ -78,7 +78,9 @@ public:
      *  @brief Evaluate the contributions of each component to the full probability at the given points
      *
      *  @param[in]  x     points to evaluate at, with number of columns equal to the number of dimensions
+     *                    and number of rows equal to the number of points to evaluate
      *  @param[in]  p     array to fill, with number of columns equal to the number of components
+     *                    and number of rows equal to the number of points to evaluate
      */
     virtual void evaluateComponents(
         ndarray::Array<Scalar const,2,1> const & x,
@@ -310,7 +312,9 @@ public:
      */
     template <typename Derived>
     Scalar evaluate(Component const & component, Eigen::MatrixBase<Derived> const & x) const {
-        Scalar z = _computeZ(component, x);
+        Scalar z = _computeZ(component, x); // z = (x - \mu)^T \Sigma^{-1} (x - \mu)
+        // _evaluate computes an incompletely normalized Student's T or Gaussian PDF given z;
+        // sqrtDet is the last piece of the normalization
         return component.weight * _evaluate(z) / component._sqrtDet;
     }
 
@@ -410,6 +414,7 @@ protected:
 
 private:
 
+    // Computes z = (x - \mu)^T \Sigma^{-1} (x - \mu)
     template <typename Derived>
     Scalar _computeZ(Component const & component, Eigen::MatrixBase<Derived> const & x) const {
         _workspace = x - component._mu;

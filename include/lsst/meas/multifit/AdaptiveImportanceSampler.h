@@ -61,8 +61,8 @@ public:
  *  @brief Sampler class that performs Monte Carlo sampling, while iteratively updating the
  *         analytic distribution from which points are drawn.
  *
- *  Between the iterations defined in the contorl object, the prior is applied to the samples,
- *  and the mixture distribution is updates using expectation-maximization to match the samples.
+ *  Between the iterations defined in the control object, the prior is applied to the samples,
+ *  and the mixture distribution is updated using expectation-maximization to match the samples.
  */
 class AdaptiveImportanceSampler : public BaseSampler {
 public:
