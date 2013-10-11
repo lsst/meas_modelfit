@@ -26,71 +26,15 @@ import numpy
 import lsst.pex.config
 import lsst.pipe.base
 import lsst.afw.table
-import lsst.afw.geom.ellipses
-import lsst.meas.extensions.multiShapelet
 
-from .samplers import BaseSamplerTask, AdaptiveImportanceSamplerTask
-from .multifitLib import ProjectedLikelihood, ModelFitCatalog, ModelFitTable
-from .fitRegion import setupFitRegion
-from .models import *
-from .priors import *
+from . import multifitLib
+from .baseMeasure import BaseMeasureConfig, BaseMeasureTask
 
-__all__ = ("BaseMeasureConfig", "MeasureImageConfig", "MeasureImageTask")
-
-class BaseMeasureConfig(lsst.pex.config.Config):
-    sampler = lsst.pex.config.ConfigurableField(
-        target=AdaptiveImportanceSamplerTask,
-        doc="Subtask that generates samples from the probability of a galaxy model given image data"
-    )
-    model = modelRegistry.makeField(
-        default="bulge+disk",
-        doc="Definition of the galaxy model to fit"
-    )
-    prior = priorRegistry.makeField(
-        default="mixture",
-        doc="Bayesian prior on galaxy parameters"
-    )
-    psf = lsst.pex.config.ConfigField(
-        dtype=lsst.meas.extensions.multiShapelet.FitPsfConfig,
-        doc="Config options for approximating the PSF using shapelets"
-    )
-    fitRegion = lsst.pex.config.ConfigField(
-        dtype=setupFitRegion.ConfigClass,
-        doc="Parameters that control which pixels to include in the model fit"
-    )
-    fitPixelScale = lsst.pex.config.Field(
-        dtype=float,
-        default=0.2,
-        doc="Pixel scale (arcseconds/pixel) for coordinate system used for model parameters"
-    )
-    fitFluxMag0 = lsst.pex.config.Field(
-        dtype=float,
-        default=30.0,
-        doc="Flux at magnitude 0 used for to define the units of amplitude in models"
-    )
-    progressChunk = lsst.pex.config.Field(
-        dtype=int,
-        default=100,
-        doc="Show progress log message every [progressChunk] objects"
-    )
-    prepOnly = lsst.pex.config.Field(
-        dtype=bool,
-        default=False,
-        doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
-    )
-    marginalizeAmplitudes = lsst.pex.config.Field(
-        dtype=bool,
-        default=True,
-        doc="Marginalize over amplitudes numerically instead of sampling them?"
-    )
-
-    def setDefaults(self):
-        self.psf.innerOrder = 4
-        self.psf.outerOrder = 0
+__all__ = ("MeasureImageConfig", "MeasureImageTask")
 
 class MeasureImageConfig(BaseMeasureConfig):
     likelihood = lsst.pex.config.ConfigField(
-        dtype=ProjectedLikelihood.ConfigClass,
+        dtype=multifitLib.ProjectedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
     doWarmStart = lsst.pex.config.Field(
@@ -107,147 +51,86 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
 
     Like ProcessImageTask, MeasureImageTask is intended to be used as a base
     class with CCD and coadd derived-class specializations.  It is run
-    after processCcd.py (or processEImage.py), and generates a single output
+    after process[Ccd|Coadd|Eimage].py, and generates a single output
     catalog with the mapper name 'modelfits'.
     """
 
     ConfigClass = MeasureImageConfig
     dataPrefix = ""
 
-    def __init__(self, **kwds):
-        BaseMeasureTask.__init__(self, **kwds)
-        self.schemaMapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
-        self.schemaMapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
-        self.schema = self.schemaMapper.getOutputSchema()
-        self.sampleSchema = lsst.afw.table.Schema()
-        self.objectiveFactory = self.config.objectiveFactory(
-        self.makeSubtask("sampler", sampleSchema=)
-        self.fitPsf = self.config.psf.makeControl().makeAlgorithm(self.schema)
-        self.model = self.config.model.apply()
-        self.prior = self.config.prior.apply(self.config.fitPixelScale, self.config.fitFluxMag0)
-        self.calib = lsst.afw.image.Calib()
-        self.calib.setFluxMag0(self.config.fitFluxMag0)
-        self.keys = {}
-        self.keys["ref.center"] = self.schema.addField(
-            "ref.center", type="PointD",
-            doc="position in image coordinates from reference catalog"
-            )
-        self.keys["ref.parameters"] = self.schema.addField(
-            "ref.parameters", type="ArrayD", size=self.model.getParameterDim(),
-            doc="nonlinear parameters from reference catalog"
-            )
-        self.keys["ref.amplitudes"] = self.schema.addField(
-            "ref.amplitudes", type="ArrayD", size=self.model.getAmplitudeDim(),
-            doc="linear amplitudes from reference catalog"
-            )
-        self.keys["ref.fixed"] = self.schema.addField(
-            "ref.fixed", type="ArrayD", size=self.model.getFixedDim(),
-            doc="fixed nonlinear parameters from reference catalog"
-            )
-        self.keys["snr"] = self.schema.addField(
-            "snr", type=float,
-            doc="signal to noise ratio from source apFlux/apFluxErr"
-            )
-        self.keys["mean.parameters"] = self.schema.addField(
-            "mean.parameters", type="ArrayD", size=self.model.getParameterDim(),
-            doc="posterior mean nonlinear parameters"
-            )
-
     def readInputs(self, dataRef):
-        """Return a lsst.pipe.base.Struct containing:
-          - exposure ----- lsst.afw.image.ExposureF to fit
-          - srcCat ------- lsst.afw.table.SourceCatalog with initial measurements
-          - refCat ------- lsst.afw.table.SimpleCatalog with truth values
+        """Return a lsst.pipe.base.Struct containing the Exposure to fit and either a previous modelfits
+        catalog (if config.doWarmStart) or the reference and source catalogs.
         """
-        return lsst.pipe.base.Struct(
-            exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True),
-            srcCat = dataRef.get(self.dataPrefix + "src", immediate=True),
-            refCat = dataRef.get("refcat", immediate=True)
-            )
-
-    def writeOutputs(self, dataRef, outCat):
-        """Write task outputs using the butler.
-        """
-        self.log.info("Writing output catalog")
-        dataRef.put(outCat, self.dataPrefix + "modelfits")
-
-    @lsst.pipe.base.timeMethod
-    def processObject(self, exposure, record, doWarmStart=False):
-        """Process a single object.
-
-        @param[in] exposure     lsst.afw.image.ExposureF to fit
-        @param[in,out] record   ModelFitRecord to fill, as prepared by prepCatalog
-        @param[in] doWarmStart  If True, attempt to load the initial proposal distribution
-                                from a SampleSet already attached to the given record.
-
-        @return a Struct containing various intermediate objects and results:
-          - likelihood: the Likelihood object used to evaluate model probabilities
-          - sampler: the Sampler object used to draw samples
-          - psf: a shapelet.MultiShapeletFunction representation of the PSF
-          - record: the output record (identical to the record argument, which is modified in-place)
-        """
-        if record.getSchema() != self.schema:
-            raise TaskError("Record schema does not match expected schema; probably a result of using "
-                            "doWarmStart with a catalog from an older version of the code.")
-        psfModel = lsst.meas.extensions.multiShapelet.FitPsfModel(self.config.psf.makeControl(), record)
-        psf = psfModel.asMultiShapelet()
-        center = record.getPointD(self.keys["ref.center"])
-        if not doWarmStart:
-            sampler = self.sampler.setup(exposure=exposure, center=center, prior=self.prior,
-                                         ellipse=record.getMomentsD(self.keys["ref.ellipse"]))
+        exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True),
+        if self.config.doWarmStart:
+            return lsst.pipe.base.Struct(
+                prevCat=dataRef.get(self.dataPrefix + "modelfits", immediate=True),
+                exposure=exposure
+                )
         else:
-            samples = record.getSamples()
-            if samples is None:
-                raise TaskError("No prior samples found; cannot proceed with warm start")
-            sampler = self.sampler.reset(samples=samples, center=center, prior=self.prior)
-        likelihood = SingleEpochLikelihood(
-            self.config.likelihood.makeControl(), self.basis, psf,
-            exposure.getMaskedImage(), record.getFootprint()
-        )
-        samples = sampler.run(likelihood)
-        samples.applyPrior(self.prior)
-        record.setSamples(samples)
-        self.fillDerivedFields(record)
-        return lsst.pipe.base.Struct(likelihood=likelihood, sampler=sampler, psf=psf, record=record)
+            return lsst.pipe.base.Struct(
+                srcCat=dataRef.get(self.dataPrefix + "src", immediate=True),
+                refCat=dataRef.get("refcat", immediate=True),
+                exposure=exposure
+                )
 
-    def prepCatalog(self, exposure, srcCat, refCat, where=None):
-        """Create a ModelFitCatalog with initial parameters and fitting regions
-        to be used later by fillCatalog.
+    def prepCatalog(self, inputs):
+        """Prepare and return the output catalog, doing everything but the actual fitting.
 
-        @param[in]   exposure         Exposure object that will be fit.
-        @param[in]   srcCat           SourceCatalog containing processCcd measurements
-        @param[in]   refCat           Simulation reference catalog used to add truth
-                                      values for comparison to each record, and to
-                                      set which objects should be fit (i.e. reject stars).
-        @param[in]   where            Callable with signature f(src, ref=None) that takes
-                                      a SourceRecord and optional SimpleRecord and returns
-                                      True if a ModelFitRecord should be created for that
-                                      object.  Ignored if None.
+        If config.doWarmStart, this just returns the previous modelfits catalog we're using
+        for the warm start.  If not, it crease a new modelfits catalog by matching the source
+        and reference catalogs, transforming their fields to the fit coordinate system and
+        amplitude units.
         """
-        self.log.info("Setting up fitting and transferring source/reference fields")
-        outCat = ModelFitCatalog(self.schema)
-        if not exposure.hasPsf():
-            raise lsst.pipe.base.TaskError("Exposure has no PSF")
-        matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
+        if self.config.doWarmStart:
+            return inputs.prevCat
+
+        sampleTable = lsst.afw.table.BaseTable(self.fitter.schema)
+        table = multifitLib.ModelFitTable.make(self.schema, sampleTable)
+        outCat = ModelFitCatalog(table)
+        refCat = inputs.refCat
+        srcCat = inputs.srcCat
+
+        # SchemaMapper will transfer ID, Coord, Footprint (we'll overwrite the Coord with that from RefCat)
+        mapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
+        mapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
+
+        # extract some keys from ref catalog for later use
         keyA = refCat.getSchema().find("ellipse.a").key
         keyB = refCat.getSchema().find("ellipse.b").key
         keyTheta = refCat.getSchema().find("ellipse.theta").key
         keyMag = refCat.getSchema().find("mag.%s" % exposure.getFilter().getName()).key
         keySIndex = refCat.getSchema().find("sindex").key
 
+        # Do a spatial match between srcCat and refCat to determine what to fit: we use
+        # the refCat (which has only galaxies) to avoid fitting stars.
+        matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
         for match in matches:
             srcRecord = match.second
             refRecord = match.first
-            if where is not None and not where(src=srcRecord, ref=refRecord):
-                continue
-            if srcRecord.getShapeFlag():
-                continue
             outRecord = outCat.addNew()
-            outRecord.assign(srcRecord, self.schemaMapper)
-            wcs = lsst.afw.image.makeLocalWcs(
-                refRecord.getCoord(), self.config.fitPixelScale * lsst.afw.geom.arcseconds
-                )
 
+            # Start by setting some miscellaneous calculated fields
+            outRecord.assign(srcRecord, mapper)
+            outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
+            outRecord.setCoord(refRecord.getCoord())
+            outRecord.setPointD(self.keys["ref.center"], exposure.getWcs().skyToPixel(refRecord.getCoord()))
+
+            # Next we determine the pixel region we want to fit.
+            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
+
+            # This is the WCS the parameters are defined in: it's a local tangent plane at
+            # the position of the object, aligned with the celestial coordinate axes.
+            # We have to use this coordinate system even when fitting to a single image
+            # so the prior doesn't have to be transformed to the local coordinate system.
+            # Note that the origin of this coordinate system is at the input position of
+            # the object, so centroid parameters will be the *offset* from that position.
+            fitWcs = self.config.makeFitWcs(outRecord.getCoord())
+
+            # Now we'll transform the refCat ellipse to the fit coordinate system.  Because
+            # the fit coordinate system is aligned with the coordinate axes, this should just
+            # be a scaling and translation.
             ellipse1 = lsst.afw.geom.ellipses.Ellipse(
                 lsst.afw.geom.ellipses.Axes(
                     (refRecord.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
@@ -258,51 +141,50 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
                 )
             transform = wcs.linearizeSkyToPixel(refRecord.getCoord())
             ellipse2 = ellipse1.transform(transform)
+
+            # We now transform this ellipse and the refCat fluxes into the parameters defined by the model.
             ellipses = lsst.meas.multifit.Model.EllipseVector([ellipse2])
             self.model.readEllipses(
                 ellipses,
-                outRecord[self.keys["ref.parameters"]],
+                outRecord[self.keys["ref.nonlinear"]],
                 outRecord[self.keys["ref.fixed"]]
                 )
-            # this flux->amplitudes conversion assumes ref catalog is single-component, and that the
-            # first component of the model is what that corresponds to; we'll need to generalize
-            # this eventually
-            flux = self.calib.getFlux(refRecord.get(keyMag))
-            outRecord[self.keys["ref.amplitudes"]][:] = 0.0
-            outRecord.setD(self.keys["ref.amplitudes"][0], flux)
-            outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
-            outRecord.setPointD(self.keys["ref.center"], exposure.getWcs().skyToPixel(refRecord.getCoord()))
-            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
-            self.fitPsf.fit(outRecord, exposure.getPsf(), outRecord.get(self.keys["ref.center"]))
-        outCat.sort()
-        return outCat
+            # this flux->amplitudes conversion assumes the ref catalog is single-component, and that the
+            # first component of the model is what that corresponds to; we may need to generalize this
+            flux = self.fitCalib.getFlux(refRecord.get(keyMag))
+            amplitudes = outRecord[self.keys["ref.amplitudes"]]
+            amplitudes[:] = 0.0
+            amplitudes[0] = flux
 
-    def fillCatalog(self, exposure, outCat):
-        """For each empty ModelFitRecord in catalog, call processObject()
-        """
-        for n, record in enumerate(outCat):
-            if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
-                self.log.info("Processing object %d/%d (%3.2f%%)" % (n, len(outCat), (100.0*n)/len(outCat)))
-            self.processObject(exposure=exposure, record=record)
+            # Finally, we tell the fitter to initialize the record, which includes setting "ref.parameters",
+            # as only the fitter knows what parameters it will actually fit and how those map to
+            # "ref.nonlinear" and "ref.amplitudes".  Depending on the fitter, it will probably attach
+            # an initial PDF too.
+            self.fitter.initialize(self.model, outRecord)
 
-    def run(self, dataRef):
-        """Process the exposure/catalog associated with the given dataRef, and write the
-        output catalog using the butler.
+    def makeLikelihood(self, inputs, record):
+        """Create a Likelihood object for a single object.
+
+        The MeasureImage implementation creates a ProjectedLikelihood with data from a single
+        exposure.
         """
-        inputs = self.readInputs(dataRef)
-        if self.config.doWarmStart:
-            self.log.info("Using warm start; loading previous catalog and updating footprints and PSFs")
-            outCat = self.dataRef.get(self.dataPrefix + "src", immediate=True)
-            for outRecord in outCat:
-                outRecord.setFootprint(setupFitRegion(self.config.fitRegion, inputs.exposure, outRecord))
-                psfModel = self.fitPsf.fit(outRecord, inputs.exposure.getPsf(),
-                                           outRecord.get(self.keys["ref.center"]))
-        else:
-            outCat = self.prepCatalog(inputs.exposure, srcCat=inputs.srcCat, refCat=inputs.refCat)
-        if not self.config.prepOnly:
-            self.fillCatalog(inputs.exposure, outCat)
-        self.writeOutputs(dataRef, outCat)
-        return outCat
+        psf = TODO()
+        return multifitLib.ProjectedLikelihood(
+            self.model, record[self.keys["ref.fixed"]],
+            self.config.makeFitWcs(record.getCoord()),
+            self.fitCalib,
+            record.getCoord(),
+            inputs.exposure,
+            record.getFootprint(),
+            psf,
+            self.config.likelihood.makeControl()
+            )
+
+    def writeOutputs(self, dataRef, outCat):
+        """Write task outputs using the butler.
+        """
+        self.log.info("Writing output catalog")
+        dataRef.put(outCat, self.dataPrefix + "modelfits")
 
     def getSchemaCatalogs(self):
         """Return a dict of empty catalogs for each catalog dataset produced by this task."""
