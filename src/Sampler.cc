@@ -37,7 +37,7 @@ public:
         ndarray::Array<Scalar const,1,1> const & parameters,
         afw::table::BaseRecord & sample
     ) const {
-        int np = _likelihood->getParameterDim();
+        int np = _likelihood->getNonlinearDim();
         ndarray::Array<Scalar const,1,1> nonlinear
             = parameters[ndarray::view(0, np)];
         ndarray::Array<Scalar const,1,1> amplitudes
@@ -139,7 +139,7 @@ SamplerObjectiveFactory::SamplerObjectiveFactory(
     if (marginalizeAmplitudes) {
         _parameterKey = sampleSchema.addField< afw::table::Array<Scalar> >(
             "parameters", "nonlinear parameters at this sample point (amplitudes are nested)",
-            model->getParameterDim()
+            model->getNonlinearDim()
         );
         int n = model->getAmplitudeDim();
         // TODO: need to provide public interface for interpreting the nested distribution
@@ -150,7 +150,7 @@ SamplerObjectiveFactory::SamplerObjectiveFactory(
     } else {
         _parameterKey = sampleSchema.addField< afw::table::Array<Scalar> >(
             "parameters", "nonlinear and amplitude parameters at this sample point",
-            model->getParameterDim() + model->getAmplitudeDim()
+            model->getNonlinearDim() + model->getAmplitudeDim()
         );
     }
 }

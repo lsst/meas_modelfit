@@ -32,7 +32,7 @@ namespace {
 static afw::geom::ellipses::SeparableConformalShearLogTraceRadius extendedSourceEllipseCore;
 static afw::geom::ellipses::Quadrupole pointSourceEllipseCore(0.0, 0.0, 0.0);
 
-int countParameters(Model::BasisVector const & basisVector, int ellipseFactor, int pointFactor) {
+int countNonlinears(Model::BasisVector const & basisVector, int ellipseFactor, int pointFactor) {
     int r = 0;
     for (Model::BasisVector::const_iterator i = basisVector.begin(); i != basisVector.end(); ++i) {
         if (*i) {
@@ -62,12 +62,12 @@ Model::EllipseVector makeEllipseVectorImpl(Model::BasisVector const & basisVecto
 // ========== Model =========================================================================================
 
 shapelet::MultiShapeletFunction Model::makeShapeletFunction(
-    ndarray::Array<Scalar const,1,1> const & parameters,
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
     ndarray::Array<Scalar const,1,1> const & amplitudes,
     ndarray::Array<Scalar const,1,1> const & fixed
 ) const {
     EllipseVector ellipses = makeEllipseVector();
-    writeEllipses(parameters.begin(), fixed.begin(), ellipses.begin());
+    writeEllipses(nonlinear.begin(), fixed.begin(), ellipses.begin());
     shapelet::MultiShapeletFunction r;
     int c = 0;
     for (int i = 0, n = getBasisCount(); i < n; ++i) {
@@ -88,8 +88,8 @@ shapelet::MultiShapeletFunction Model::makeShapeletFunction(
     return r;
 }
 
-Model::Model(BasisVector basisVector, int parameterDim, int fixedDim) :
-    _parameterDim(parameterDim),
+Model::Model(BasisVector basisVector, int nonlinearDim, int fixedDim) :
+    _nonlinearDim(nonlinearDim),
     _amplitudeDim(0),
     _fixedDim(fixedDim),
     _basisVector(basisVector)
@@ -104,12 +104,12 @@ Model::Model(BasisVector basisVector, int parameterDim, int fixedDim) :
 }
 
 Model::EllipseVector Model::writeEllipses(
-    ndarray::Array<Scalar const,1,1> const & parameters,
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
     ndarray::Array<Scalar const,1,1> const & fixed
 ) const {
     LSST_ASSERT_EQUAL(
-        parameters.getSize<0>(), getParameterDim(),
-        "Size of parameter array (%d) does not match dimension of model (%d)",
+        nonlinear.getSize<0>(), getNonlinearDim(),
+        "Size of nonlinear array (%d) does not match dimension of model (%d)",
         pex::exceptions::LengthErrorException
     );
     LSST_ASSERT_EQUAL(
@@ -118,18 +118,18 @@ Model::EllipseVector Model::writeEllipses(
         pex::exceptions::LengthErrorException
     );
     EllipseVector r = makeEllipseVector();
-    writeEllipses(parameters.begin(), fixed.begin(), r.begin());
+    writeEllipses(nonlinear.begin(), fixed.begin(), r.begin());
     return r;
 }
 
 void Model::readEllipses(
     EllipseVector const & ellipses,
-    ndarray::Array<Scalar,1,1> const & parameters,
+    ndarray::Array<Scalar,1,1> const & nonlinear,
     ndarray::Array<Scalar,1,1> const & fixed
 ) const {
     LSST_ASSERT_EQUAL(
-        parameters.getSize<0>(), getParameterDim(),
-        "Size of parameter array (%d) does not match dimension of model (%d)",
+        nonlinear.getSize<0>(), getNonlinearDim(),
+        "Size of nonlinear array (%d) does not match dimension of model (%d)",
         pex::exceptions::LengthErrorException
     );
     LSST_ASSERT_EQUAL(
@@ -142,14 +142,14 @@ void Model::readEllipses(
         "Size of ellipse vector (%d) does not match basis count (%d)",
         pex::exceptions::LengthErrorException
     );
-    readEllipses(ellipses.begin(), parameters.begin(), fixed.begin());
+    readEllipses(ellipses.begin(), nonlinear.begin(), fixed.begin());
 }
 
 // ========== FixedCenterModel ==============================================================================
 
 /*
  * FixedCenterModel uses holds the center fixed and hence has no free center parameters.
- * The parameter vector is ordered [e1[0], e2[0], r[0], e1[1], e2[1], r[1], ...], while
+ * The nonlinear vector is ordered [e1[0], e2[0], r[0], e1[1], e2[1], r[1], ...], while
  * the fixed parameter vector is simply [x,y].
  */
 
@@ -159,7 +159,7 @@ class FixedCenterModel : public Model {
 public:
 
     explicit FixedCenterModel(BasisVector basisVector) :
-        Model(basisVector, countParameters(basisVector, 3, 0), 2)
+        Model(basisVector, countNonlinears(basisVector, 3, 0), 2)
     {}
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
@@ -177,29 +177,29 @@ public:
     }
 
     virtual void writeEllipses(
-        Scalar const * parameterIter, Scalar const * fixedIter,
+        Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const {
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->getCore().readParameters(parameterIter);
+                ellipseIter->getCore().readParameters(nonlinearIter);
                 ellipseIter->getCenter().setX(fixedIter[0]);
                 ellipseIter->getCenter().setY(fixedIter[1]);
-                parameterIter += 3;
+                nonlinearIter += 3;
             }
         }
     }
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        Scalar * parameterIter, Scalar * fixedIter
+        Scalar * nonlinearIter, Scalar * fixedIter
     ) const {
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->getCore().writeParameters(parameterIter);
+                ellipseIter->getCore().writeParameters(nonlinearIter);
                 fixedIter[0] = ellipseIter->getCenter().getX();
                 fixedIter[1] = ellipseIter->getCenter().getY();
-                parameterIter += 3;
+                nonlinearIter += 3;
             }
         }
     }
@@ -215,7 +215,7 @@ PTR(Model) Model::makeFixedCenter(BasisVector basisVector) {
 // ========== SingleCenterModel ==============================================================================
 
 /*
- * SingleCenterModel uses one center for all bases.  The parameter vector is ordered
+ * SingleCenterModel uses one center for all bases.  The nonlinear vector is ordered
  * [e1[0], e2[0], r[0], e1[1], e2[1], r[1], ..., x, y], while the fixed parameter is empty.
  */
 
@@ -225,7 +225,7 @@ class SingleCenterModel : public Model {
 public:
 
     explicit SingleCenterModel(BasisVector basisVector) :
-        Model(basisVector, countParameters(basisVector, 3, 0) + 2, 0)
+        Model(basisVector, countNonlinears(basisVector, 3, 0) + 2, 0)
     {}
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
@@ -240,14 +240,14 @@ public:
     }
 
     virtual void writeEllipses(
-        Scalar const * parameterIter, Scalar const * fixedIter,
+        Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const {
-        afw::geom::Point2D center(parameterIter[getParameterDim()-2], parameterIter[getParameterDim()-1]);
+        afw::geom::Point2D center(nonlinearIter[getNonlinearDim()-2], nonlinearIter[getNonlinearDim()-1]);
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->getCore().readParameters(parameterIter);
-                parameterIter += 3;
+                ellipseIter->getCore().readParameters(nonlinearIter);
+                nonlinearIter += 3;
             }
             ellipseIter->setCenter(center);
         }
@@ -255,21 +255,21 @@ public:
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        Scalar * parameterIter, Scalar * fixedIter
+        Scalar * nonlinearIter, Scalar * fixedIter
     ) const {
         // Ellipses have more centers than we need, so we average them.  In most cases, they'll
         // all be the same anyway.
         Eigen::Vector2d p = Eigen::Vector2d::Zero();
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->getCore().writeParameters(parameterIter);
-                parameterIter += 3;
+                ellipseIter->getCore().writeParameters(nonlinearIter);
+                nonlinearIter += 3;
             }
             p += ellipseIter->getCenter().asEigen();
         }
         p /= getBasisCount();
-        parameterIter[0] = p.x(); // note that we've already incremented parameterIter, so these
-        parameterIter[1] = p.y(); // are the last two elements, not the first two elements
+        nonlinearIter[0] = p.x(); // note that we've already incremented nonlinearIter, so these
+        nonlinearIter[1] = p.y(); // are the last two elements, not the first two elements
     }
 };
 
@@ -282,7 +282,7 @@ PTR(Model) Model::makeSingleCenter(BasisVector basisVector) {
 // ========== MultiCenterModel ==============================================================================
 
 /*
- * MultiCenterModel gives each basis its own center parameters.  The full parameter vector is ordered
+ * MultiCenterModel gives each basis its own center parameters.  The full nonlinear vector is ordered
  * [e1[0], e2[0], r[0], e1[1], e2[1], r[1], ..., x[0], y[0], x[1], y[1], ...].
  */
 
@@ -292,8 +292,8 @@ class MultiCenterModel : public Model {
 public:
 
     explicit MultiCenterModel(BasisVector basisVector) :
-        Model(basisVector, countParameters(basisVector, 3, 2), 0),
-        _centerParameterOffset(getParameterDim() - getBasisVector().size()*2)
+        Model(basisVector, countNonlinears(basisVector, 3, 2), 0),
+        _centerParameterOffset(getNonlinearDim() - getBasisVector().size()*2)
     {}
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
@@ -308,14 +308,14 @@ public:
     }
 
     virtual void writeEllipses(
-        Scalar const * parameterIter, Scalar const * fixedIter,
+        Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const {
-        Scalar const * centerIter = parameterIter + _centerParameterOffset;
+        Scalar const * centerIter = nonlinearIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->getCore().readParameters(parameterIter);
-                parameterIter += 3;
+                ellipseIter->getCore().readParameters(nonlinearIter);
+                nonlinearIter += 3;
             }
             ellipseIter->setCenter(afw::geom::Point2D(centerIter[0], centerIter[1]));
             centerIter += 2;
@@ -324,13 +324,13 @@ public:
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        Scalar * parameterIter, Scalar * fixedIter
+        Scalar * nonlinearIter, Scalar * fixedIter
     ) const {
-        Scalar * centerIter = parameterIter + _centerParameterOffset;
+        Scalar * centerIter = nonlinearIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
-                ellipseIter->getCore().writeParameters(parameterIter);
-                parameterIter += 3;
+                ellipseIter->getCore().writeParameters(nonlinearIter);
+                nonlinearIter += 3;
             }
             centerIter[0] = ellipseIter->getCenter().getX();
             centerIter[1] = ellipseIter->getCenter().getY();
@@ -375,7 +375,7 @@ static int sumDim(ModelVector const & components, ModelDimGetter getter) {
 MultiModel::MultiModel(ModelVector components) :
     Model(
         concatenateBasisVectors(components),
-        sumDim(components, &Model::getParameterDim),
+        sumDim(components, &Model::getNonlinearDim),
         sumDim(components, &Model::getFixedDim)
     ),
     _components(components)
@@ -398,12 +398,12 @@ Model::EllipseVector MultiModel::makeEllipseVector() const {
 }
 
 void MultiModel::writeEllipses(
-    Scalar const * parameterIter, Scalar const * fixedIter,
+    Scalar const * nonlinearIter, Scalar const * fixedIter,
     EllipseIterator ellipseIter
 ) const {
     for (ModelVector::const_iterator i = _components.begin(); i != _components.end(); ++i) {
-        (**i).writeEllipses(parameterIter, fixedIter, ellipseIter);
-        parameterIter += (**i).getParameterDim();
+        (**i).writeEllipses(nonlinearIter, fixedIter, ellipseIter);
+        nonlinearIter += (**i).getNonlinearDim();
         fixedIter += (**i).getFixedDim();
         ellipseIter += (**i).getBasisCount();
     }
@@ -411,11 +411,11 @@ void MultiModel::writeEllipses(
 
 void MultiModel::readEllipses(
     EllipseConstIterator ellipseIter,
-    Scalar * parameterIter, Scalar * fixedIter
+    Scalar * nonlinearIter, Scalar * fixedIter
 ) const {
     for (ModelVector::const_iterator i = _components.begin(); i != _components.end(); ++i) {
-        (**i).readEllipses(ellipseIter, parameterIter, fixedIter);
-        parameterIter += (**i).getParameterDim();
+        (**i).readEllipses(ellipseIter, nonlinearIter, fixedIter);
+        nonlinearIter += (**i).getNonlinearDim();
         fixedIter += (**i).getFixedDim();
         ellipseIter += (**i).getBasisCount();
     }

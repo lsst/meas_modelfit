@@ -223,9 +223,9 @@ ProjectedLikelihood::~ProjectedLikelihood() {}
 
 void ProjectedLikelihood::computeModelMatrix(
     ndarray::Array<Pixel,2,-1> const & modelMatrix,
-    ndarray::Array<Scalar const,1,1> const & parameters
+    ndarray::Array<Scalar const,1,1> const & nonlinear
 ) const {
-    getModel()->writeEllipses(parameters.begin(), _fixed.begin(), _impl->ellipses.begin());
+    getModel()->writeEllipses(nonlinear.begin(), _fixed.begin(), _impl->ellipses.begin());
     int dataOffset = 0;
     for (
         std::vector<Impl::Epoch>::const_iterator i = _impl->epochs.begin();

@@ -52,7 +52,7 @@ public:
     static PTR(Model) makeSingleCenter(BasisVector basisVector);
     static PTR(Model) makeMultiCenter(BasisVector basisVector);
 
-    int getParameterDim() const { return _parameterDim; }
+    int getNonlinearDim() const { return _nonlinearDim; }
     int getAmplitudeDim() const { return _amplitudeDim; }
     int getFixedDim() const { return _fixedDim; }
     int getBasisCount() const { return _basisVector.size(); }
@@ -60,7 +60,7 @@ public:
     BasisVector const & getBasisVector() const { return _basisVector; }
 
     shapelet::MultiShapeletFunction makeShapeletFunction(
-        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes,
         ndarray::Array<Scalar const,1,1> const & fixed
     ) const;
@@ -72,25 +72,25 @@ public:
     virtual EllipseVector makeEllipseVector() const = 0;
 
     virtual void writeEllipses(
-        Scalar const * parameterIter, Scalar const * fixedIter,
+        Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const = 0;
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        Scalar * parameterIter, Scalar * fixedIter
+        Scalar * nonlinearIter, Scalar * fixedIter
     ) const = 0;
 
 #endif // !SWIG
 
     EllipseVector writeEllipses(
-        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & fixed
     ) const;
 
     void readEllipses(
         EllipseVector const & ellipses,
-        ndarray::Array<Scalar,1,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & nonlinear,
         ndarray::Array<Scalar,1,1> const & fixed
     ) const;
 
@@ -98,10 +98,10 @@ public:
 
 protected:
 
-    Model(BasisVector basisVector, int parameterDim, int fixedDim);
+    Model(BasisVector basisVector, int nonlinearDim, int fixedDim);
 
 private:
-    int _parameterDim;
+    int _nonlinearDim;
     int _amplitudeDim;
     int _fixedDim;
     BasisVector _basisVector;
@@ -119,13 +119,13 @@ public:
     virtual EllipseVector makeEllipseVector() const;
 
     virtual void writeEllipses(
-        Scalar const * parameterIter, Scalar const * fixedIter,
+        Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const;
 
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
-        Scalar * parameterIter, Scalar * fixedIter
+        Scalar * nonlinearIter, Scalar * fixedIter
     ) const;
 
 private:

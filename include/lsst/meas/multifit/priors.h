@@ -44,13 +44,13 @@ public:
     std::string const & getTag() const { return _tag; }
 
     /**
-     *  @brief Evaluate the prior at the given point in parameter and amplitude space.
+     *  @brief Evaluate the prior at the given point in nonlinear and amplitude space.
      *
-     *  @param[in]   parameters       Vector of nonlinear parameters
+     *  @param[in]   nonlinear        Vector of nonlinear parameters
      *  @param[in]   amplitudes       Vector of linear parameters
      */
     virtual Scalar evaluate(
-        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes
     ) const = 0;
 
@@ -88,7 +88,7 @@ public:
      */
     virtual Scalar marginalize(
         Vector const & gradient, Matrix const & fisher,
-        ndarray::Array<Scalar const,1,1> const & parameters
+        ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const = 0;
 
     virtual ~Prior() {}
@@ -116,14 +116,14 @@ public:
 
     /// @copydoc Prior::evaluate
     virtual Scalar evaluate(
-        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes
     ) const;
 
     /// @copydoc Prior::evaluate
     virtual Scalar marginalize(
         Vector const & gradient, Matrix const & fisher,
-        ndarray::Array<Scalar const,1,1> const & parameters
+        ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const;
 
     /**

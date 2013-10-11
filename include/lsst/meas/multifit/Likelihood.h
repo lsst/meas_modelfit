@@ -53,7 +53,7 @@ public:
     int getAmplitudeDim() const { return _model->getAmplitudeDim(); }
 
     /// Return the number of nonlinear parameters (which parameterize the model matrix)
-    int getParameterDim() const { return _model->getParameterDim(); }
+    int getNonlinearDim() const { return _model->getNonlinearDim(); }
 
     /// Return the number of fixed nonlinear parameters (set on LIkelihood construction)
     int getFixedDim() const { return _model->getFixedDim(); }
@@ -74,11 +74,11 @@ public:
      *                           is responsible for guaranteeing that the shape of the matrix
      *                           correct, but implementations should not assume anything about
      *                           the initial values of the matrix elements.
-     *  @param[in] parameters    Vector of nonlinear parameters at which to evaluate the model.
+     *  @param[in] nonlinear     Vector of nonlinear parameters at which to evaluate the model.
      */
     virtual void computeModelMatrix(
         ndarray::Array<Pixel,2,-1> const & modelMatrix,
-        ndarray::Array<Scalar const,1,1> const & parameters
+        ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const = 0;
 
     virtual ~Likelihood() {}

@@ -90,7 +90,7 @@ public:
     /// @copydoc Likelihood::computeModelMatrix
     virtual void computeModelMatrix(
         ndarray::Array<Pixel,2,-1> const & modelMatrix,
-        ndarray::Array<Scalar const,1,1> const & parameters
+        ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const;
 
     /**
