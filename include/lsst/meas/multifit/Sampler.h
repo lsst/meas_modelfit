@@ -64,15 +64,25 @@ public:
 
     PTR(SamplerObjective) operator()(PTR(Likelihood) likelihood) const;
 
+    int getParameterDim() const { return _parameterKey.getSize(); }
+
+    SamplerObjective::ArrayKey const & getParameterKey() const { return _parameterKey; }
+
+    void mapParameters(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & parameters
+    ) const;
+
     SamplerObjectiveFactory(
         afw::table::Schema & sampleSchema,
         PTR(Model) model,
         PTR(Prior) prior,
-        bool marginalizeAmplitudes=true
+        bool doMarginalizeAmplitudes=true
     );
 
 private:
-    bool _marginalizeAmplitudes;
+    bool _doMarginalizeAmplitudes;
     PTR(Prior) _prior;
     SamplerObjective::ArrayKey _parameterKey;
     SamplerObjective::ArrayKey _nestedKey;

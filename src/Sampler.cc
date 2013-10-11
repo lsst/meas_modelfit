@@ -121,7 +121,7 @@ SamplerObjective::SamplerObjective(
 {}
 
 PTR(SamplerObjective) SamplerObjectiveFactory::operator()(PTR(Likelihood) likelihood) const {
-    if (_marginalizeAmplitudes) {
+    if (_doMarginalizeAmplitudes) {
         return boost::make_shared<MarginalizingSamplerObjective>(
             _parameterKey, _nestedKey, likelihood, _prior
         );
@@ -130,13 +130,42 @@ PTR(SamplerObjective) SamplerObjectiveFactory::operator()(PTR(Likelihood) likeli
     }
 }
 
+void SamplerObjectiveFactory::mapParameters(
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    ndarray::Array<Scalar const,1,1> const & amplitudes,
+    ndarray::Array<Scalar,1,1> const & parameters
+) const {
+    LSST_ASSERT_EQUAL(
+        parameters.getSize<0>(), getParameterDim(),
+        "Size of parameter array (%d) does not match expected size (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    if (_doMarginalizeAmplitudes) {
+        LSST_ASSERT_EQUAL(
+            nonlinear.getSize<0>(), getParameterDim(),
+            "Size of nonlinear array (%d) does not match expected size (%d)",
+            pex::exceptions::LengthErrorException
+        );
+        parameters.deep() = nonlinear;
+    } else {
+        int n = nonlinear.getSize<0>();
+        LSST_ASSERT_EQUAL(
+            n + amplitudes.getSize<0>(), getParameterDim(),
+            "Combined size of nonlinear and amplitude arrays (%d) does not match expected size (%d)",
+            pex::exceptions::LengthErrorException
+        );
+        parameters[ndarray::view(0, n)] = nonlinear;
+        parameters[ndarray::view(n, n+amplitudes.getSize<0>())] = amplitudes;
+    }
+}
+
 SamplerObjectiveFactory::SamplerObjectiveFactory(
     afw::table::Schema & sampleSchema,
     PTR(Model) model,
     PTR(Prior) prior,
-    bool marginalizeAmplitudes
-) : _marginalizeAmplitudes(marginalizeAmplitudes), _prior(prior) {
-    if (marginalizeAmplitudes) {
+    bool doMarginalizeAmplitudes
+) : _doMarginalizeAmplitudes(doMarginalizeAmplitudes), _prior(prior) {
+    if (doMarginalizeAmplitudes) {
         _parameterKey = sampleSchema.addField< afw::table::Array<Scalar> >(
             "parameters", "nonlinear parameters at this sample point (amplitudes are nested)",
             model->getNonlinearDim()
