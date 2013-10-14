@@ -46,7 +46,7 @@ class MeasureImageConfig(BaseMeasureConfig):
              "modelfits footprints, instead of the original detection footprints")
     )
 
-class MeasureImageTask(lsst.pipe.base.CmdLineTask):
+class MeasureImageTask(BaseMeasureTask):
     """Driver class for S13-specific galaxy modeling work
 
     Like ProcessImageTask, MeasureImageTask is intended to be used as a base
@@ -86,7 +86,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         if self.config.doWarmStart:
             return inputs.prevCat
 
-        outCat = ModelFitCatalog(self.makeTable())
+        outCat = multifitLib.ModelFitCatalog(self.makeTable())
         refCat = inputs.refCat
         srcCat = inputs.srcCat
 
@@ -183,4 +183,4 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
 
     def getSchemaCatalogs(self):
         """Return a dict of empty catalogs for each catalog dataset produced by this task."""
-        return {self.dataPrefix + "modelfits": ModelFitCatalog(self.makeTable())}
+        return {self.dataPrefix + "modelfits": multifitLib.ModelFitCatalog(self.makeTable())}

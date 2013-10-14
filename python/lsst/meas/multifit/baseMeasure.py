@@ -91,7 +91,14 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         """Initialize the measurement task, including the modelfits catalog schema,
         the model, prior, and calib objects, and the fitter subtask.
         """
-        # start by setting up the schema; this will be the same regardless of whether or not
+        lsst.pipe.base.CmdLineTask.__init__(self, **kwds)
+        # Because we're doing all the fitting in celestial coordinates (actually local tangent planes
+        # that's aligned with celestial coordinates), we can define the model and prior
+        # up front, and use them without modification for all Objects
+        self.model = self.config.model.apply()
+        self.prior = self.config.prior.apply(pixelScale=self.config.fitPixelScale*lsst.afw.geom.arcseconds,
+                                             fluxMag0=self.config.fitFluxMag0)
+        # now we set up the schema; this will be the same regardless of whether or not
         # we do a warm start (use a previous modelfits catalog for initial values).
         self.schema = multifitLib.ModelFitTable.makeMinimalSchema()
         self.keys = {}
@@ -100,7 +107,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
             doc="position in image coordinates from reference catalog"
             )
         self.keys["ref.nonlinear"] = self.schema.addField(
-            "ref.nonlinear", type="ArrayD", size=self.model.getParameterDim(),
+            "ref.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),
             doc="nonlinear parameters from reference catalog"
             )
         self.keys["ref.amplitudes"] = self.schema.addField(
@@ -111,35 +118,22 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
             "ref.fixed", type="ArrayD", size=self.model.getFixedDim(),
             doc="fixed nonlinear parameters from reference catalog"
             )
-        self.keys["ref.parameters"] = self.schema.addField(
-            "ref.parameters", type="ArrayD", size=self.model.getParameterDim(),
-            doc="sampler parameters from reference catalog"
-            )
         self.keys["snr"] = self.schema.addField(
             "snr", type=float,
             doc="signal to noise ratio from source apFlux/apFluxErr"
             )
-        self.keys["fit.parameters"] = self.schema.addField(
-            "fit.parameters", type="ArrayD", size=self.model.getParameterDim(),
-            doc="best-fit nonlinear parameters"
-            )
-        # Because we're doing all the fitting in celestial coordinates (actually local tangent planes
-        # that's aligned with celestial coordinates), we can define the model and prior
-        # up front, and use them without modification for all Objects
-        self.model = self.config.model.apply()
-        self.prior = self.config.prior.apply(self.config.fitPixelScale, self.config.fitFluxMag0)
         # This Calib determines the flux units we use for amplitude parameters; like the WCS,
         # we want this to be a global system so all Objects have the same units
         self.fitCalib = lsst.afw.image.Calib()
         self.fitCalib.setFluxMag0(self.config.fitFluxMag0)
         # Create the fitter subtask that does all the non-bookkeeping work
-        self.makeSubtask("fitter", keys=self.keys, model=self.model, prior=self.prior)
+        self.makeSubtask("fitter", schema=self.schema, model=self.model, prior=self.prior)
 
     def makeTable(self):
         """Return a ModelFitTable object based on the measurement schema and the fitter subtask's
         sample schema.
         """
-        return lsst.meas.multifit.ModelFitTable.make(self.schema, self.fitter.Table())
+        return lsst.meas.multifit.ModelFitTable.make(self.schema, self.fitter.makeTable())
 
     def run(self, dataRef):
         """Main driver for model fitting.

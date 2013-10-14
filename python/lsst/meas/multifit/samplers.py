@@ -92,8 +92,9 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
 
     ConfigClass = AdaptiveImportanceSamplerConfig
 
-    def __init__(self, keys, model, prior, **kwds):
-        # n.b. keys argument is for modelfits catalog; self.schema is for sample catalog
+    def __init__(self, schema, model, prior, **kwds):
+        lsst.pipe.base.Task.__init__(self, **kwds)
+        # n.b. schema argument is for modelfits catalog; self.schema is for sample catalog
         self.schema = lsst.afw.table.Schema()
         self.rng = lsst.afw.math.Random(self.config.rngAlgorithm, self.config.rngSeed)
         self.objectiveFactory = multifitLib.SamplerObjectiveFactory(
@@ -102,7 +103,15 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         self.sampler = multifitLib.AdaptiveImportanceSampler(
             self.schema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
             )
-        self.keys = keys
+        self.keys = {}
+        self.keys["ref.parameters"] = schema.addField(
+            "ref.parameters", type="ArrayD", size=self.objectiveFactory.getParameterDim(),
+            doc="sampler parameters from reference catalog"
+            )
+        self.keys["fit.parameters"] = schema.addField(
+            "fit.parameters", type="ArrayD", size=self.objectiveFactory.getParameterDim(),
+            doc="best-fit nonlinear parameters"
+            )
 
     def makeTable(self):
         """Return a Table object that can be used to construct sample records.
