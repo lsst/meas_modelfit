@@ -156,7 +156,12 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
                     self.log.info("Processing object %d/%d (%3.2f%%)"
                                   % (n, len(outCat), (100.0*n)/len(outCat)))
                 likelihood = self.makeLikelihood(inputs, outRecord)
-                self.fitter.run(likelihood, outRecord)
+                try:
+                    self.fitter.run(likelihood, outRecord)
+                except Exception as err:
+                    self.log.warn("Failure fitting object %d of %d with ID=%d"
+                                  % (n, len(outCat), outRecord.getId()))
+                    continue
         self.log.info("Writing output catalog")
         self.writeOutputs(dataRef, outCat)
         return outCat
