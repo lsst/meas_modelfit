@@ -101,7 +101,7 @@ private:
     afw::table::Key<Scalar> _weightKey;
     afw::table::Key<Scalar> _objectiveKey;
     afw::table::Key<Scalar> _proposalKey;
-    afw::table::Key<Scalar> _parametersKey;
+    afw::table::Key< afw::table::Array<Scalar> > _parametersKey;
     afw::table::Key<int> _iterCtrlKey;
     afw::table::Key<int> _iterRepeatKey;
 };
