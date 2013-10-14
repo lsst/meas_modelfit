@@ -157,7 +157,10 @@ protected:
 
     virtual void _writeRecord(afw::table::BaseRecord const & r);
 
-    virtual void _finish() { _archive.writeFits(*_fits); }
+    virtual void _finish() {
+        _samples.writeFits(*_fits);
+        _archive.writeFits(*_fits);
+    }
 
     afw::table::BaseCatalog _samples;
     afw::table::io::OutputArchive _archive;
