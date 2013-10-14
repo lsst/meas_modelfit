@@ -157,9 +157,11 @@ Basic routines to talk to lsst::meas::multifit classes
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
 %template(EllipseVector) std::vector<lsst::afw::geom::ellipses::Ellipse>;
+%template(BasisVector) std::vector<PTR(lsst::shapelet::MultiShapeletBasis)>;
 
 %pythoncode %{
 Model.EllipseVector = EllipseVector
+Model.BasisVector = BasisVector
 %}
 
 %include "std_map.i"
