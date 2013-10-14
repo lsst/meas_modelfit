@@ -26,12 +26,13 @@ import lsst.pipe.base
 import lsst.afw.image
 import lsst.afw.geom
 import lsst.afw.table
+import lsst.meas.extensions.multiShapelet
 
 from . import multifitLib
 from .models import modelRegistry
 from .priors import priorRegistry
-from .fitRegion import setupFitRegion
 from .samplers import AdaptiveImportanceSamplerTask
+from .fitRegion import setupFitRegion
 
 __all__ = ("BaseMeasureConfig", "BaseMeasureTask")
 
@@ -67,6 +68,10 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         default=100,
         doc="Show progress log message every [progressChunk] objects"
     )
+    psf = lsst.pex.config.ConfigField(
+        dtype=lsst.meas.extensions.multiShapelet.FitPsfConfig,
+        doc="Config options for approximating the PSF using shapelets"
+    )
     prepOnly = lsst.pex.config.Field(
         dtype=bool,
         default=False,
@@ -74,7 +79,7 @@ class BaseMeasureConfig(lsst.pex.config.Config):
     )
 
     def makeFitWcs(self, coord):
-        return lsst.afw.image.makeLocalWcs(coord, self.config.fitPixelScale * lsst.afw.geom.arcseconds)
+        return lsst.afw.image.makeLocalWcs(coord, self.fitPixelScale * lsst.afw.geom.arcseconds)
 
 class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
     """An intermediate base class for top-level model-fitting tasks.
@@ -127,7 +132,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         self.fitCalib = lsst.afw.image.Calib()
         self.fitCalib.setFluxMag0(self.config.fitFluxMag0)
         # Create the fitter subtask that does all the non-bookkeeping work
-        self.makeSubtask("fitter", schema=self.schema, model=self.model, prior=self.prior)
+        self.makeSubtask("fitter", schema=self.schema, keys=self.keys, model=self.model, prior=self.prior)
 
     def makeTable(self):
         """Return a ModelFitTable object based on the measurement schema and the fitter subtask's

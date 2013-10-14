@@ -26,9 +26,11 @@ import numpy
 import lsst.pex.config
 import lsst.pipe.base
 import lsst.afw.table
+from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 from . import multifitLib
 from .baseMeasure import BaseMeasureConfig, BaseMeasureTask
+from .fitRegion import setupFitRegion
 
 __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
@@ -62,7 +64,7 @@ class MeasureImageTask(BaseMeasureTask):
         """Return a lsst.pipe.base.Struct containing the Exposure to fit and either a previous modelfits
         catalog (if config.doWarmStart) or the reference and source catalogs.
         """
-        exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True),
+        exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True)
         if self.config.doWarmStart:
             return lsst.pipe.base.Struct(
                 prevCat=dataRef.get(self.dataPrefix + "modelfits", immediate=True),
@@ -90,6 +92,8 @@ class MeasureImageTask(BaseMeasureTask):
         refCat = inputs.refCat
         srcCat = inputs.srcCat
 
+        exposureWcs = inputs.exposure.getWcs()
+
         # SchemaMapper will transfer ID, Coord, Footprint (we'll overwrite the Coord with that from RefCat)
         mapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
         mapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
@@ -98,7 +102,7 @@ class MeasureImageTask(BaseMeasureTask):
         keyA = refCat.getSchema().find("ellipse.a").key
         keyB = refCat.getSchema().find("ellipse.b").key
         keyTheta = refCat.getSchema().find("ellipse.theta").key
-        keyMag = refCat.getSchema().find("mag.%s" % exposure.getFilter().getName()).key
+        keyMag = refCat.getSchema().find("mag.%s" % inputs.exposure.getFilter().getName()).key
         keySIndex = refCat.getSchema().find("sindex").key
 
         # Do a spatial match between srcCat and refCat to determine what to fit: we use
@@ -113,10 +117,10 @@ class MeasureImageTask(BaseMeasureTask):
             outRecord.assign(srcRecord, mapper)
             outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
             outRecord.setCoord(refRecord.getCoord())
-            outRecord.setPointD(self.keys["ref.center"], exposure.getWcs().skyToPixel(refRecord.getCoord()))
+            outRecord.setPointD(self.keys["ref.center"], exposureWcs.skyToPixel(refRecord.getCoord()))
 
             # Next we determine the pixel region we want to fit.
-            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, exposure, srcRecord))
+            outRecord.setFootprint(setupFitRegion(self.config.fitRegion, inputs.exposure, srcRecord))
 
             # This is the WCS the parameters are defined in: it's a local tangent plane at
             # the position of the object, aligned with the celestial coordinate axes.
@@ -137,11 +141,12 @@ class MeasureImageTask(BaseMeasureTask):
                     ),
                 refRecord.getCoord().getPosition(lsst.afw.geom.degrees)
                 )
-            transform = wcs.linearizeSkyToPixel(refRecord.getCoord())
+            transform = fitWcs.linearizeSkyToPixel(refRecord.getCoord())
             ellipse2 = ellipse1.transform(transform)
 
             # We now transform this ellipse and the refCat fluxes into the parameters defined by the model.
-            ellipses = lsst.meas.multifit.Model.EllipseVector([ellipse2])
+            ellipses = lsst.meas.multifit.Model.EllipseVector()
+            ellipses.append(ellipse2)
             self.model.readEllipses(
                 ellipses,
                 outRecord[self.keys["ref.nonlinear"]],
@@ -158,7 +163,8 @@ class MeasureImageTask(BaseMeasureTask):
             # as only the fitter knows what parameters it will actually fit and how those map to
             # "ref.nonlinear" and "ref.amplitudes".  Depending on the fitter, it will probably attach
             # an initial PDF too.
-            self.fitter.initialize(self.model, outRecord)
+            self.fitter.initialize(outRecord)
+        return outCat
 
     def makeLikelihood(self, inputs, record):
         """Create a Likelihood object for a single object.
@@ -166,7 +172,9 @@ class MeasureImageTask(BaseMeasureTask):
         The MeasureImage implementation creates a ProjectedLikelihood with data from a single
         exposure.
         """
-        psf = TODO()
+        psfModel = FitPsfAlgorithm.apply(self.config.psf.makeControl(), inputs.exposure.getPsf(),
+                                         record.get(self.keys["ref.center"]))
+        psf = psfModel.asMultiShapelet()
         return multifitLib.ProjectedLikelihood(
             self.model, record[self.keys["ref.fixed"]],
             self.config.makeFitWcs(record.getCoord()),

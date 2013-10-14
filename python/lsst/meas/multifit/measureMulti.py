@@ -24,9 +24,8 @@ import traceback
 
 import numpy
 
-from lsst.pipe.base import Struct, TaskError
+import lsst.pipe.base
 import lsst.pex.config
-import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 from . import multifitLib
@@ -141,7 +140,7 @@ class MeasureMultiTask(BaseMeasureTask):
         epochFootprintList = multifitLib.EpochFootprintVector()
 
         psfCtrl = self.config.psf.makeControl()
-        fitWcs = self.makeFitWcs(record.getCoord())
+        fitWcs = self.config.makeFitWcs(record.getCoord())
 
         for exposureRecord in inputs.exposureCat:
             calexpFootprint = coaddFootprint.transform(inputs.footprintWcs, exposureRecord.getWcs(),

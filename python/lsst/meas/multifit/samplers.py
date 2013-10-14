@@ -92,7 +92,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
 
     ConfigClass = AdaptiveImportanceSamplerConfig
 
-    def __init__(self, schema, model, prior, **kwds):
+    def __init__(self, schema, keys, model, prior, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
         # n.b. schema argument is for modelfits catalog; self.schema is for sample catalog
         self.schema = lsst.afw.table.Schema()
@@ -103,7 +103,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         self.sampler = multifitLib.AdaptiveImportanceSampler(
             self.schema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
             )
-        self.keys = {}
+        self.keys = keys
         self.keys["ref.parameters"] = schema.addField(
             "ref.parameters", type="ArrayD", size=self.objectiveFactory.getParameterDim(),
             doc="sampler parameters from reference catalog"
@@ -136,7 +136,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         # easy
         return design
 
-    def initialize(self, model, record):
+    def initialize(self, record):
         """Initialize an output record, setting any derived fields and record
         attributes (i.e. samples or pdf) needed before calling run().
 
@@ -148,13 +148,13 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
                                             parameters)
         components = multifitLib.Mixture.ComponentList()
         sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2
-        design = self.makeLatinCube(self.rng, self.config.nComponents, model.getParameterDim())
+        design = self.makeLatinCube(self.rng, self.config.nComponents, parameters.size)
         for n in xrange(self.config.nComponents):
             mu = parameters.copy()
             mu[:] += design[n,:]*self.config.initialSpacing
             components.append(multifitLib.Mixture.Component(1.0, mu, sigma))
         df = self.config.degreesOfFreedom or float("inf")
-        proposal = multifitLib.Mixture(model.getParameterDim(), components, df)
+        proposal = multifitLib.Mixture(parameters.size, components, df)
         record.setPdf(proposal)
 
     def run(self, likelihood, record):
