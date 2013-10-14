@@ -332,7 +332,7 @@ PTR(Mixture) Mixture::clone() const {
 }
 
 Mixture::Mixture(int dim, ComponentList & components, Scalar df) :
-    _dim(dim), _df(0.0)
+    _dim(dim), _df(0.0), _workspace(dim)
 {
     setDegreesOfFreedom(df);
     _components.swap(components);
