@@ -85,7 +85,7 @@ def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20,
     @param[in] df             number of degrees of freedom for component Student's T distributions
                               (inf=Gaussian).
     """
-    components = lsst.meas.multifit.Mixture3.ComponentList()
+    components = lsst.meas.multifit.Mixture.ComponentList()
     rMu = data[:,2].mean()
     rSigma = data[:,2].var()
     eSigma = 0.5*(data[:,0].var() + data[:,1].var())
@@ -96,8 +96,8 @@ def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20,
     for factor in numpy.linspace(minFactor, maxFactor, nComponents):
         sigma = baseSigma.copy()
         sigma[:2,:2] *= factor
-        components.append(lsst.meas.multifit.Mixture3.Component(1.0, mu, sigma))
-    mixture = lsst.meas.multifit.Mixture3(components, df)
+        components.append(lsst.meas.multifit.Mixture.Component(1.0, mu, sigma))
+    mixture = lsst.meas.multifit.Mixture(3, components, df)
     restriction = lsst.meas.multifit.MixturePrior.getUpdateRestriction()
     for i in range(nIterations):
         mixture.updateEM(data, restriction)
