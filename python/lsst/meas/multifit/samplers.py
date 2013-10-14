@@ -72,7 +72,7 @@ class AdaptiveImportanceSamplerConfig(lsst.pex.config.Config):
         dtype=bool,
         default=True,
         doc="Marginalize over amplitudes numerically instead of sampling them?"
-    )
+        )
 
     def getIterationMap(self):
         """Transform the iterations config dict into a map of C++ control objects."""
@@ -111,6 +111,10 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         self.keys["fit.parameters"] = schema.addField(
             "fit.parameters", type="ArrayD", size=self.objectiveFactory.getParameterDim(),
             doc="best-fit nonlinear parameters"
+            )
+        self.keys["rngstate"] = schema.addField(
+            "rngstate", type=str, size=self.rng.getStateSize(),
+            doc="Random number generator state (blob)"
             )
 
     def makeTable(self):
@@ -162,5 +166,6 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         and save best-fit values in the 'fit.parameters' field.
         """
         objective = self.objectiveFactory(likelihood)
+        record.setString(self.keys["rngstate"], self.rng.getState())
         self.sampler.run(objective, record.getPdf(), record.getSamples())
         # TODO: compute and set best-fit parameters
