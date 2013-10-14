@@ -28,10 +28,9 @@ from lsst.pipe.base import Struct, TaskError
 import lsst.pex.config
 import lsst.afw.geom as afwGeom
 from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
-from .multifitLib import VectorEpochFootprint, EpochFootprint, ProjectedLikelihood, ModelFitCatalog, \
-    ModelFitTable
-from .measureImage import BaseMeasureConfig, BaseMeasureTask
-from .samplers import *
+
+from . import multifitLib
+from .baseMeasure import BaseMeasureConfig, BaseMeasureTask
 
 try:
     from lsst.meas.mosaic import applyMosaicResults
@@ -42,27 +41,32 @@ __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
 
 class MeasureMultiConfig(BaseMeasureConfig):
     coaddName = lsst.pex.config.Field(
-        doc = "coadd name: typically one of deep or goodSeeing",
-        dtype = str,
-        default = "deep",
+        doc="coadd name: typically one of deep or goodSeeing",
+        dtype=str,
+        default="deep",
     )
     likelihood = lsst.pex.config.ConfigField(
-        dtype=ProjectedLikelihood.ConfigClass,
+        dtype=multifitLib.ProjectedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
     minPixels = lsst.pex.config.Field(
-        doc = "minimum number of pixels in a calexp footprint to use that calexp for a given galaxy",
-        dtype = int,
-        default = 5,
+        doc="minimum number of pixels in a calexp footprint to use that calexp for a given galaxy",
+        dtype=int,
+        default=5,
+    )
+    usePreviousMultiFit = lsst.pex.config.Field(
+        dtype=bool,
+        doc="If True, do a warm-start from a previous MeasureMulti run; if False, use MeasureCoadd outputs",
+        default=False
     )
     doApplyUberCal = lsst.pex.config.Field(
-        dtype = bool,
-        doc = "Apply meas_mosaic ubercal results to input calexps?",
-        default = True
+        dtype=bool,
+        doc="Apply meas_mosaic ubercal results to input calexps?",
+        default=True
     )
 
 class MeasureMultiTask(BaseMeasureTask):
-    """Variant of MeasureImageTask for running multifit on the calexp that make up a coadd.
+    """Variant of BaseMeasureTask for running multifit on the calexps that make up a coadd.
 
     The tasks are so different in implementation that no code is shared (yet).
     """
@@ -71,38 +75,7 @@ class MeasureMultiTask(BaseMeasureTask):
 
     def __init__(self, **kwds):
         BaseMeasureTask.__init__(self, **kwds)
-        self.dataPrefix = self.config.coaddName + "Coadd_"
-        self.makeSubtask("sampler")
-        self.schema = None # set later when we have a coadd catalog to copy
-        self.basis = self.config.model.apply()
-        self.prior = None # set later when we can look up coadd pixel scale
-        self.psfControl = self.config.psf.makeControl()
-        self.keys = {}
-        self.readInputExposure = None  # placeholder for closure to be installed by readInputs
-
-    def run(self, dataRef):
-        """Process the catalog associated with the given coadd
-
-        For each source in the catalog find those coadd input images that fully overlap the footprint,
-        and fit the source shape. Combine the fits from all input images to form a multifit catalog.
-
-        @param[in] dataRef: coadd data reference
-        """
-        inputs = self.readInputs(dataRef)
-        outCat = self.prepCatalog(coaddCat=inputs.coaddCat)
-        if not self.config.prepOnly:
-            numObjects = len(outCat)
-            for i, record in enumerate(outCat):
-                if self.config.progressChunk > 0 and i % self.config.progressChunk == 0:
-                    self.log.info("Processing object %d/%d (%3.2f%%)"
-                                  % (i, len(outCat), (100.0*i)/len(outCat)))
-                try:
-                    self.processObject(record=record, coadd=inputs.coadd, coaddInputCat=inputs.coaddInputCat)
-                except Exception, e:
-                    self.log.warn("processObject failed: %s\n" % (e,))
-                    traceback.print_exc(file=sys.stderr)
-        self.writeOutputs(dataRef, outCat)
-        return outCat
+        self.outputName = self.config.coaddName + "Multi_modelfits"
 
     def readInputs(self, dataRef):
         """Return inputs, and attach to the task a closure method (readInputExposure)
@@ -111,15 +84,22 @@ class MeasureMultiTask(BaseMeasureTask):
         @param[in] dataRef: data reference for coadd
 
         @return an lsst.pipe.base.Struct containing:
-          - coadd: coadd patch (lsst.afw.image.ExposureF); the images that make up this coadd are fit
-          - coaddInputCat: catalog of ExposureRecords corresponding to calexps that went into the coadd
-          - coaddCat: catalog with model fits based on the coadd (lsst.meas.multifit.ModelFitCatalog)
+          - prevCat: ModelFitCatalog used for a "warm start" for the fitting
+          - exposureCat: catalog of ExposureRecords that determines which calexps can be used in the fitting
+          - footprintWcs: Wcs of the Footprints attached to prevCat records
+          - readInputExposure: a closure method, used to load individual calexp subimages
         """
-        coadd = dataRef.get(self.dataPrefix[0:-1], immediate=True)
-        coaddInputCat = coadd.getInfo().getCoaddInputs().ccds
-        coaddInputSchema = coaddInputCat.getSchema()
-        visitKey = coaddInputSchema.find("visit").key
-        ccdKey = coaddInputSchema.find("ccd").key
+        if self.config.usePreviousMultiFit:
+            prevCat = dataRef.get(self.outputName, immediate=True)
+        else:
+            prevCat = dataRef.get(self.config.coaddName + "Coadd_modelfits", immediate=True)
+        # TODO: when possible, just load the coaddInputCat and Wcs, not the full coadd
+        coadd = dataRef.get(self.config.coaddName, immediate=True)
+        footprintWcs = coadd.getWcs()
+        exposureCat = coadd.getInfo().getCoaddInputs().ccds
+        exposureSchema = coaddInputCat.getSchema()
+        visitKey = exposureSchema.find("visit").key
+        ccdKey = exposureSchema.find("ccd").key
         butler = dataRef.getButler()
         def readInputExposure(record, bbox):
             """Given an ExposureRecord and bounding box, load the appropriate subimage."""
@@ -139,164 +119,62 @@ class MeasureMultiTask(BaseMeasureTask):
                         )
                 applyMosaicResults(dataRef, calexp=exposure, bbox=bbox)
             return exposure
-        self.readInputExposure = readInputExposure
         return lsst.pipe.base.Struct(
-            coadd=coadd,
-            coaddInputCat=coaddInputCat,
-            coaddCat=dataRef.get(self.dataPrefix + "modelfits", immediate=True),
+            prevCat=prevCat,
+            exposureCat=exposureCat,
+            footprintWcs=footprintWcs,
+            readInputExposure=readInputExposure
         )
 
-    def prepCatalog(self, coaddCat):
-        """Create an output ModelFitCatalog that copies appropriate fields from the coadd ModelFitCatalog
+    def prepCatalog(self, inputs):
+        """Prepare and return the output catalog, doing everything but the actual fitting.
 
-        @param[in] exposure     Exposure object that will be fit.
-        @param[in] coaddCat     SourceCatalog containing MeasureCoaddTask measurements
-        @return a ModelFit catalog with one entry per coaddCat
+        After this step, each output record should be in a state such that makeLikelihood and
+        fitter.run() may be called on it.
         """
-        if self.schema is None:
-            self.setSchema(coaddCat)
-        self.log.info("Copying data from coadd catalog to new catalog")
-        outCat = ModelFitCatalog(self.schema)
-        for coaddRecord in coaddCat:
-            record = outCat.addNew()
-            record.assign(coaddRecord, self.schemaMapper)
-        outCat.sort()
-        return outCat
+        return inputs.prevCat
 
     @lsst.pipe.base.timeMethod
-    def processObject(self, record, coadd, coaddInputCat, doWarmStart=True):
-        """Process a single object.
-
-        @param[in,out] record     multi-fit ModelFitRecord
-        @param[in] coadd          Coadd exposure
-        @param[in] coaddInputCat    ExposureCatalog describing exposures that may be included in the fit
-        @param[in] doWarmStart      If True (default), use the proposal distribution attached to the
-                                    coadd-fit SampleSet as the initial proposal.
-
-        @return a Struct containing various intermediate objects:
-          - likelihood   the Likelihood object used to evaluate model probabilities
-          - sampler     the Sampler object used to draw samples
-          - record      the output record (identical to the record argument, which is modified in-place)
-        """
-        if self.prior is None:
-            self.prior = self.config.prior.apply(pixelScale=coadd.getWcs().pixelScale())
-        likelihood = self.makeLikelihood(
-            record=record,
-            coadd=coadd,
-            coaddInputCat=coaddInputCat,
-        )
-        refCenter = record.getPointD(self.keys["ref.center"])
-        if doWarmStart:
-            samples = record.getSamples()
-            if samples is None:
-                raise TaskError("No prior samples found; cannot proceed with warm start")
-            sampler = self.sampler.reset(samples=samples, center=refCenter, prior=self.prior)
-        else:
-            sampler = self.sampler.setup(
-                exposure=coadd,
-                center=refCenter,
-                ellipse=record.getMomentsD(self.keys["ref.ellipse"]),
-                )
-        samples = sampler.run(likelihood)
-        samples.applyPrior(self.prior)
-        record.setSamples(samples)
-        self.fillDerivedFields(record)
-        return lsst.pipe.base.Struct(likelihood=likelihood, sampler=sampler, record=record)
-
-    @lsst.pipe.base.timeMethod
-    def makeLikelihood(self, record, coadd, coaddInputCat):
-        """Construct a MultiEpochLikelihood from the calexp footprints
-
-        @param[in] record       multi-fit ModelFitRecord
-        @param[in] coadd        Coadd exposure
-        @param[in] coaddInputCat  ExposureCatalog describing exposures that may be included in the fit
-        """
-        if not self.keys:
-            self.keys = {
-                "source.center": record.getSchema().find("source.center").key,
-                "ref.center": record.getSchema().find("ref.center").key,
-                "mean.ellipse": record.getSchema().find("mean.ellipse").key,
-                "mean.center": record.getSchema().find("mean.center").key,
-                "median.ellipse": record.getSchema().find("median.ellipse").key,
-                "median.center": record.getSchema().find("median.center").key,
-                }
-        coaddFootprint = record.getFootprint()
-        sourceCoaddPos = record.getPointD(self.keys["source.center"])
-
-        coaddWcs = coadd.getWcs()
-        sourceSkyPos = coaddWcs.pixelToSky(sourceCoaddPos)
+    def makeLikelihood(self, inputs, record):
 
         # process each calexp that partially overlaps this footprint
-        epochFootprintList = VectorEpochFootprint()
+        epochFootprintList = multifitLib.EpochFootprintVector()
 
-        for exposureRecord in coaddInputCat:
-            calexpFootprint = coaddFootprint.transform(coaddWcs, exposureRecord.getWcs(),
+        psfCtrl = self.config.psf.makeControl()
+        fitWcs = self.makeFitWcs(record.getCoord())
+
+        for exposureRecord in inputs.exposureCat:
+            calexpFootprint = coaddFootprint.transform(inputs.footprintWcs, exposureRecord.getWcs(),
                                                        exposureRecord.getBBox())
-            calexpFootprint.clipTo(exposureRecord.getBBox()) # Footprint.transform does not clip
 
-            # due to ticket #2979 this test is invalid -- getNpix includes clipped pixels!
-            # so also test that the footprint's bbox is not empty
-            if calexpFootprint.getNpix() < self.config.minPixels:
-                # no overlapping pixels, so skip this calexp
+            if calexpFootprint.getArea() < self.config.minPixels:
                 continue
             calexpFootprintBBox = calexpFootprint.getBBox()
-            if calexpFootprintBBox.isEmpty(): # temporary hack due to ticket #2979
-                continue
+            assert not calexpFootprintBBox.isEmpty() # verify that #2979 is fixed in afw
 
             calexp = self.readInputExposure(record=exposureRecord, bbox=calexpFootprintBBox)
 
-            sourceCalexpPos = calexp.getWcs().skyToPixel(sourceSkyPos)
+            sourceCalexpPos = calexp.getWcs().skyToPixel(record.getCoord())
 
-            psfModel = FitPsfAlgorithm.apply(self.psfControl, calexp.getPsf(), sourceCalexpPos)
+            psfModel = FitPsfAlgorithm.apply(psfCtrl, calexp.getPsf(), sourceCalexpPos)
             psf = psfModel.asMultiShapelet()
 
-            epochFootprint = EpochFootprint(calexpFootprint, calexp, psf)
+            epochFootprint = multifitLib.EpochFootprint(calexpFootprint, calexp, psf)
             epochFootprintList.append(epochFootprint)
 
         return MultiEpochLikelihood(
-            self.config.likelihood.makeControl(),
-            self.basis,
-            coaddWcs,
-            sourceSkyPos,
+            self.model, record.get(self.keys["fixed"]),
+            fitWcs, self.fitCalib,
+            record.getCoord(),
             epochFootprintList,
+            self.config.likelihood.makeControl()
         )
 
-    def setSchema(self, coaddCat):
-        """Construct self.schema; call once as soon as you have your first coadd catalog
-
-        @param[in] coaddCat  ModelFitCatalog from coadd
-        @raise RuntimeError if self.schema is not None
-        """
-        if self.schema is not None:
-            raise RuntimeError("self.schema already set")
-
-        self.log.info("Setting the schema")
-        self.schemaMapper = lsst.afw.table.SchemaMapper(coaddCat.getSchema())
-        self.schemaMapper.addMinimalSchema(ModelFitTable.makeMinimalSchema())
-
-        def mapKey(keyName):
-            """Map one key from coaddCat to self.schemaMapper
-            @param[in] keyName      name of key to map
-            """
-            inputKey = coaddCat.getSchema().find(keyName).getKey()
-            self.keys[keyName] = self.schemaMapper.addMapping(inputKey)
-
-        for name in ("source.ellipse", "source.center", "snr", "ref.ellipse", "ref.center", "ref.sindex"):
-            mapKey(name)
-
-        self.schema = self.schemaMapper.getOutputSchema()
-        self.addDerivedFields()
-
     def writeOutputs(self, dataRef, outCat):
-        """Write task outputs using the butler.
-        """
-        self.log.info("Writing output catalog")
-        dataRef.put(outCat, self.dataPrefix + "multiModelfits")
+        dataRef.put(outCat, self.outputName)
 
     @classmethod
     def _makeArgumentParser(cls):
-        """Create an argument parser
-        """
         parser = lsst.pipe.base.ArgumentParser(name=cls._DefaultName)
         parser.add_id_argument("--id", "deepCoadd",
             help="coadd data ID, e.g. --id tract=1 patch=2,2 filter=g")
@@ -311,3 +189,7 @@ class MeasureMultiTask(BaseMeasureTask):
         """Return the name of the metadata dataset
         """
         return "%s_measureMulti_metadata" % (self.config.coaddName,)
+
+    def getSchemaCatalogs(self):
+        """Return a dict of empty catalogs for each catalog dataset produced by this task."""
+        return {self.outputName: ModelFitCatalog(self.makeTable())}

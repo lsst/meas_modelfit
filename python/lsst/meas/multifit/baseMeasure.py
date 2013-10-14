@@ -31,6 +31,7 @@ from . import multifitLib
 from .models import modelRegistry
 from .priors import priorRegistry
 from .fitRegion import setupFitRegion
+from .samplers import AdaptiveImportanceSamplerTask
 
 __all__ = ("BaseMeasureConfig", "BaseMeasureTask")
 
@@ -78,8 +79,8 @@ class BaseMeasureConfig(lsst.pex.config.Config):
 class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
     """An intermediate base class for top-level model-fitting tasks.
 
-    Subclasses (for different kinds of input data) must implement four methods:
-    readInputs(), prepCatalog(), makeLikelihood(), writeOutputs()
+    Subclasses (for different kinds of input data) must implement three methods:
+    readInputs(), prepCatalog(), makeLikelihood(), and writeOutputs().
 
     Different fitting/sampling algorithms can be plugged in via the fitter subtask.
     """
@@ -134,6 +135,12 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         # Create the fitter subtask that does all the non-bookkeeping work
         self.makeSubtask("fitter", keys=self.keys, model=self.model, prior=self.prior)
 
+    def makeTable(self):
+        """Return a ModelFitTable object based on the measurement schema and the fitter subtask's
+        sample schema.
+        """
+        return lsst.meas.multifit.ModelFitTable.make(self.schema, self.fitter.Table())
+
     def run(self, dataRef):
         """Main driver for model fitting.
 
@@ -149,7 +156,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
                 if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
                     self.log.info("Processing object %d/%d (%3.2f%%)"
                                   % (n, len(outCat), (100.0*n)/len(outCat)))
-                likelihood = self.makeLikelihood(inputs, outRecord):
+                likelihood = self.makeLikelihood(inputs, outRecord)
                 self.fitter.run(likelihood, outRecord)
         self.log.info("Writing output catalog")
         self.writeOutputs(dataRef, outCat)

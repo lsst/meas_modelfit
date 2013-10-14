@@ -86,9 +86,7 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
         if self.config.doWarmStart:
             return inputs.prevCat
 
-        sampleTable = lsst.afw.table.BaseTable(self.fitter.schema)
-        table = multifitLib.ModelFitTable.make(self.schema, sampleTable)
-        outCat = ModelFitCatalog(table)
+        outCat = ModelFitCatalog(self.makeTable())
         refCat = inputs.refCat
         srcCat = inputs.srcCat
 
@@ -181,11 +179,8 @@ class MeasureImageTask(lsst.pipe.base.CmdLineTask):
             )
 
     def writeOutputs(self, dataRef, outCat):
-        """Write task outputs using the butler.
-        """
-        self.log.info("Writing output catalog")
         dataRef.put(outCat, self.dataPrefix + "modelfits")
 
     def getSchemaCatalogs(self):
         """Return a dict of empty catalogs for each catalog dataset produced by this task."""
-        return {self.dataPrefix + "modelfits": ModelFitCatalog(self.schema)}
+        return {self.dataPrefix + "modelfits": ModelFitCatalog(self.makeTable())}

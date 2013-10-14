@@ -25,36 +25,18 @@ import numpy
 
 import lsst.pex.config
 import lsst.pipe.base
-import lsst.afw.geom.ellipses
+import lsst.afw.table
+import lsst.afw.math
 
 from . import multifitLib
 
-__all__ = ("BaseSamplerConfig", "BaseSamplerTask", "ImportanceSamplerConfig", "AdaptiveImportanceSamplerConfig", "AdaptiveImportanceSamplerTask")
-
-BaseSamplerConfig = lsst.pex.config.Config
-
-class BaseSamplerTask(lsst.pipe.base.Task):
-    """Base class for sampler subtask; responsible for constructing BaseSample subclass instances
-    that do the actual work via their run() method.
-
-    The same sampler can be used for both multi-epoch and single-epoch processing; the difference is
-    abstracted away by the likelihood function object passed to run(), and to a lesser extent by the
-    different initialization options provided by setup() and reset().
-    """
-
-    ConfigClass = BaseSamplerConfig
-
-    def __init__(self, **kwds):
-        lsst.pipe.base.Task.__init__(self, **kwds)
-
-    def makeProposal(self, exposure, parameters):
-        raise NotImplementedError("makeProposal not implemented for this sampler")
+__all__ = ("ImportanceSamplerConfig", "AdaptiveImportanceSamplerConfig", "AdaptiveImportanceSamplerTask")
 
 @lsst.pex.config.wrap(multifitLib.ImportanceSamplerControl)
 class ImportanceSamplerConfig(lsst.pex.config.Config):
     pass
 
-class AdaptiveImportanceSamplerConfig(BaseSamplerConfig):
+class AdaptiveImportanceSamplerConfig(lsst.pex.config.Config):
     rngAlgorithm = lsst.pex.config.Field(
         dtype=str, default="MT19937",
         doc="Algorithm used by pseudo-random number generator (see afw::math::Random)"
@@ -86,6 +68,11 @@ class AdaptiveImportanceSamplerConfig(BaseSamplerConfig):
         dtype=bool, default=False,
         doc="Whether to save intermediate SampleSets and proposal distributions for debugging perposes"
         )
+    doMarginalizeAmplitudes = lsst.pex.config.Field(
+        dtype=bool,
+        default=True,
+        doc="Marginalize over amplitudes numerically instead of sampling them?"
+    )
 
     def getIterationMap(self):
         """Transform the iterations config dict into a map of C++ control objects."""
@@ -99,19 +86,38 @@ class AdaptiveImportanceSamplerConfig(BaseSamplerConfig):
         self.iterations[1] = ImportanceSamplerConfig(nUpdateSteps=2, targetPerplexity=0.1, maxRepeat=2)
         self.iterations[2] = ImportanceSamplerConfig(nUpdateSteps=8, targetPerplexity=0.95, maxRepeat=3)
 
-class AdaptiveImportanceSamplerTask(BaseSamplerTask):
+class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
+    """A 'fitter' subtask for Measure tasks that uses adaptive importance sampling.
+    """
+
     ConfigClass = AdaptiveImportanceSamplerConfig
 
-    def __init__(self, sampleSchema, **kwds):
-        BaseSamplerTask.__init__(self, **kwds)
+    def __init__(self, keys, model, prior, **kwds):
+        # n.b. keys argument is for modelfits catalog; self.schema is for sample catalog
+        self.schema = lsst.afw.table.Schema()
         self.rng = lsst.afw.math.Random(self.config.rngAlgorithm, self.config.rngSeed)
-        self.impl = multifitLib.AdaptiveImportanceSampler(
-            sampleSchema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
+        self.objectiveFactory = multifitLib.SamplerObjectiveFactory(
+            self.schema, model, prior, self.config.doMarginalizeAmplitudes
             )
+        self.sampler = multifitLib.AdaptiveImportanceSampler(
+            self.schema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
+            )
+        self.keys = keys
 
-    def makeLatinCube(self, nComponents, parameterDim):
+    def makeTable(self):
+        """Return a Table object that can be used to construct sample records.
+        """
+        return lsst.afw.table.BaseTable.make(self.schema)
+
+    @staticmethod
+    def makeLatinCube(rng, nComponents, parameterDim):
+        """Create a (nComponents, parameterDim) design matrix that represents
+        an Latin hypercube sampling of a space with dimension parameterDim
+        using nComponents samples.  The range of each dimension is assumed to
+        be (-1,1).
+        """
         design = numpy.zeros((nComponents, parameterDim), dtype=float)
-        numpy.random.seed(int(self.rng.uniformInt(1000)))
+        numpy.random.seed(int(rng.uniformInt(1000)))
         x = numpy.linspace(-1, 1, nComponents)
         for j in xrange(parameterDim):
             design[:,j] = x[numpy.random.permutation(nComponents)]
@@ -121,13 +127,31 @@ class AdaptiveImportanceSamplerTask(BaseSamplerTask):
         # easy
         return design
 
-    def makeProposal(self, exposure, parameters):
+    def initialize(self, model, record):
+        """Initialize an output record, setting any derived fields and record
+        attributes (i.e. samples or pdf) needed before calling run().
+
+        This method is not called when using a "warm start" from a previous fit.
+        """
+        parameters = record[self.keys["ref.parameters"]]
+        self.objectiveFactory.mapParameters(record[self.keys["ref.nonlinear"]],
+                                            record[self.keys["ref.amplitudes"]],
+                                            parameters)
         components = multifitLib.Mixture.ComponentList()
         sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2
-        design = self.makeLatinCube(self.config.nComponents, parameters.size)
+        design = self.makeLatinCube(self.rng, self.config.nComponents, model.getParameterDim())
         for n in xrange(self.config.nComponents):
             mu = parameters.copy()
             mu[:] += design[n,:]*self.config.initialSpacing
             components.append(multifitLib.Mixture.Component(1.0, mu, sigma))
         df = self.config.degreesOfFreedom or float("inf")
-        return multifitLib.Mixture(parameters.size, components, df)
+        proposal = multifitLib.Mixture(model.getParameterDim(), components, df)
+        record.setPdf(proposal)
+
+    def run(self, likelihood, record):
+        """Do the actual fitting, using the given likelihood, update the 'pdf' and 'samples' attributes,
+        and save best-fit values in the 'fit.parameters' field.
+        """
+        objective = self.objectiveFactory(likelihood)
+        self.sampler.run(objective, record.getPdf(), record.getSamples())
+        # TODO: compute and set best-fit parameters
