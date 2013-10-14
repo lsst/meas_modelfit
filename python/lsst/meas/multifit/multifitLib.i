@@ -71,7 +71,7 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/shapelet/shapeletLib.i"
 %import "lsst/pex/config.h"
 
-%template(VectorEpochFootprint) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
+%template(EpochFootprintVector) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,0>);
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,1>);

@@ -147,20 +147,21 @@ ProjectedLikelihood::ProjectedLikelihood(
     afw::image::Wcs const & fitWcs,
     afw::image::Calib const & fitCalib,
     afw::coord::Coord const & sourceSkyPos,
-    std::vector<PTR(EpochFootprint)> const & epochImageList,
+    std::vector<PTR(EpochFootprint)> const & epochFootprintList,
     ProjectedLikelihoodControl const & ctrl
 ) : Likelihood(model, fixed), _impl(new Impl()) {
-    int totPixels = std::accumulate(epochImageList.begin(), epochImageList.end(), 0, componentPixelSum);
+    int totPixels = std::accumulate(epochFootprintList.begin(), epochFootprintList.end(),
+                                    0, componentPixelSum);
     _data = ndarray::allocate(totPixels);
     _impl->weights = ndarray::allocate(totPixels);
-    _impl->epochs.reserve(epochImageList.size());
+    _impl->epochs.reserve(epochFootprintList.size());
     _impl->ellipses = model->makeEllipseVector();
     afw::geom::AffineTransform fitToSky = fitWcs.linearizePixelToSky(sourceSkyPos, afw::geom::radians);
     double fitFluxMag0 = fitCalib.getFluxMag0().first;
     int dataOffset = 0;
     for (
-        std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochImageList.begin();
-        imPtrIter != epochImageList.end(); ++imPtrIter
+        std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochFootprintList.begin();
+        imPtrIter != epochFootprintList.end(); ++imPtrIter
     ) {
         afw::geom::AffineTransform skyToCalexp =
             (*imPtrIter)->exposure.getWcs()->linearizeSkyToPixel(sourceSkyPos, afw::geom::radians);

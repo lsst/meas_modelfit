@@ -101,7 +101,7 @@ public:
      * @param[in] fitWcs            WCS to be used for parameter coordinate system
      * @param[in] fitCalib          Photometric system for parameters
      * @param[in] sourceSkyPos      Sky position of object being fit
-     * @param[in] epochImageList    List of shared pointers to EpochFootprint
+     * @param[in] epochFootprintList   List of shared pointers to EpochFootprint
      * @param[in] ctrl              Control object with various options
      */
     explicit ProjectedLikelihood(
@@ -110,7 +110,7 @@ public:
         afw::image::Wcs const & fitWcs,
         afw::image::Calib const & fitCalib,
         afw::coord::Coord const & sourceSkyPos,
-        std::vector<PTR(EpochFootprint)> const & epochImageList,
+        std::vector<PTR(EpochFootprint)> const & epochFootprintList,
         ProjectedLikelihoodControl const & ctrl
     );
 
