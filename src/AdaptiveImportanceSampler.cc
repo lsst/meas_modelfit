@@ -133,6 +133,7 @@ void AdaptiveImportanceSampler::run(
                 double objectiveValue = objective(parameters[k], *record);
                 if (utils::isfinite(objectiveValue)) {
                     subSamples.push_back(record);
+                    record->set(_parametersKey, parameters[k]);
                     record->set(_objectiveKey, objectiveValue);
                     record->set(_proposalKey, -std::log(probability[k]));
                     if (_doSaveIterations) {
@@ -145,6 +146,12 @@ void AdaptiveImportanceSampler::run(
                 } else {
                     samples.pop_back();
                 }
+            }
+            if (samples.empty()) {
+                throw LSST_EXCEPT(
+                    pex::exceptions::LogicErrorException,
+                    "No finite objective values in entire sample set"
+                );
             }
             computeRobustWeights(subSamples, _weightKey);
             perplexity = computeNormalizedPerplexity(subSamples);
