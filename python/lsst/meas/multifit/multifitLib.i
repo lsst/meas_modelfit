@@ -97,6 +97,7 @@ Basic routines to talk to lsst::meas::multifit classes
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
 %shared_ptr(lsst::meas::multifit::ProjectedLikelihood);
 %shared_ptr(lsst::meas::multifit::Sampler);
+%shared_ptr(lsst::meas::multifit::SamplerObjective);
 %shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
 
 //----------- Mixtures --------------------------------------------------------------------------------------
