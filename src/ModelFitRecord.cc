@@ -107,7 +107,7 @@ struct PersistenceSchema : private boost::noncopyable {
         output.set(footprint, archive.put(input.getFootprint()));
         output.set(pdf, archive.put(input.getPdf()));
         output.set(samplesBegin, samples.size());
-        samples.insert(samples.begin(), input.getSamples().begin(), input.getSamples().end(), false);
+        samples.insert(samples.end(), input.getSamples().begin(), input.getSamples().end(), false);
         output.set(samplesEnd, samples.size());
     }
 
@@ -117,7 +117,7 @@ struct PersistenceSchema : private boost::noncopyable {
         afw::table::BaseCatalog const & samples, afw::table::io::InputArchive const & archive
     ) const {
         output.assign(input, mapper);
-        output.getSamples().insert(output.getSamples().begin(), samples.begin() + input.get(samplesBegin),
+        output.getSamples().insert(output.getSamples().end(), samples.begin() + input.get(samplesBegin),
                                    samples.begin() + input.get(samplesEnd), false);
         output.setFootprint(archive.get<afw::detection::Footprint>(input.get(footprint)));
         output.setPdf(archive.get<Mixture>(input.get(pdf)));
