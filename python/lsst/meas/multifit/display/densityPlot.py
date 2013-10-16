@@ -13,22 +13,40 @@ class TestData(object):
 
     def __init__(self):
         self.dimensions = ["a", "b", "c"]
-        self.ranges = numpy.array([[-9.0, 9.0],
-                                   [-6.0, 6.0],
-                                   [-3.0, 3.0]], dtype=float)
-        self.values = numpy.random.randn(500, 3)
-        self.values[:,0] *= 3.0
-        self.values[:,1] *= 2.0
+        self.sigmas = numpy.array([3.0, 2.0, 1.0])
+        self.ranges = numpy.array([[-3*sigma, 3*sigma] for sigma in self.sigmas], dtype=float)
+        self.values = numpy.random.randn(2000, 3) * self.sigmas[numpy.newaxis,:]
 
     def hist1d(self, dim, limits, bins):
         i = self.dimensions.index(dim)
         return numpy.histogram(self.values[:,i], bins=bins, range=limits, normed=True)
 
+    def hist2d(self, xDim, yDim, xLimits, yLimits, bins):
+        i = self.dimensions.index(yDim)
+        j = self.dimensions.index(xDim)
+        return numpy.histogram2d(self.values[:,j], self.values[:,i], bins=bins,
+                                 range=(xLimits, yLimits), normed=True)
+
+    def eval1d(self, dim, x):
+        i = self.dimensions.index(dim)
+        return numpy.exp(-0.5*(x/self.sigmas[i])**2) / ((2.0*numpy.pi)**0.5 * self.sigmas[i])
+
+    def eval2d(self, xDim, yDim, x, y):
+        i = self.dimensions.index(yDim)
+        j = self.dimensions.index(xDim)
+        return (numpy.exp(-0.5*((x/self.sigmas[j])**2 + (y/self.sigmas[i])**2))
+                / (2.0*numpy.pi * self.sigmas[j]*self.sigmas[i]))
+
 class HistogramLayer(object):
 
-    def __init__(self, bins1d, bins2d, kwds1d=None, kwds2d=None):
-        self.bins1d = int(bins1d)
-        self.bins2d = int(bins2d)
+    defaults1d=dict(facecolor='b', alpha=0.5)
+    defaults2d=dict(cmap=matplotlib.cm.Blues, vmin=0.0, interpolation='nearest')
+
+    def __init__(self, bins1d=20, bins2d=(20,30), kwds1d=None, kwds2d=None):
+        self.bins1d = bins1d
+        self.bins2d = bins2d
+        if kwds1d is None: kwds1d = self.defaults1d
+        if kwds2d is None: kwds2d = self.defaults2d
         self.kwds1d = dict(kwds1d)
         self.kwds2d = dict(kwds2d)
 
@@ -36,7 +54,7 @@ class HistogramLayer(object):
         return data.hist1d(dim, limits, self.bins1d)
 
     def hist2d(self, data, xDim, yDim, xLimits, yLimits):
-        return data.hist2d(xDim, yDim, xLimits, yLimits)
+        return data.hist2d(xDim, yDim, xLimits, yLimits, self.bins2d)
 
     def plotX(self, axes, data, dim):
         y, xEdge = self.hist1d(data, dim, axes.get_xlim())
@@ -52,45 +70,60 @@ class HistogramLayer(object):
 
     def plotXY(self, axes, data, xDim, yDim):
         z, xEdge, yEdge = self.hist2d(data, xDim, yDim, axes.get_xlim(), axes.get_ylim())
-        axes.imshow(z, aspect='auto', extent=(xEdge[0], xEdge[-1], yEdge[0], yEdge[-1]),
+        axes.imshow(z.transpose(), aspect='auto', extent=(xEdge[0], xEdge[-1], yEdge[0], yEdge[-1]),
                     origin='lower', **self.kwds2d)
 
 class SurfaceLayer(object):
 
-    def __init__(self, kwds1d, kwds2d):
+    defaults1d=dict(linewidth=2, color='r')
+    defaults2d=dict(linewidths=2, cmap=matplotlib.cm.Reds)
+
+    def __init__(self, steps1d=200, steps2d=200, kwds1d=None, kwds2d=None):
+        self.steps1d = int(steps1d)
+        self.steps2d = int(steps2d)
+        if kwds1d is None: kwds1d = self.defaults1d
+        if kwds2d is None: kwds2d = self.defaults2d
         self.kwds1d = dict(kwds1d)
         self.kwds2d = dict(kwds2d)
 
     def eval1d(self, data, dim, x):
-        
+        return data.eval1d(dim, x)
+
+    def eval2d(self, data, xDim, yDim, x, y):
+        return data.eval2d(xDim, yDim, x, y)
 
     def plotX(self, axes, data, dim):
-        y, xEdge = self.hist1d(data, dim, axes.get_xlim())
-        xCenter = 0.5*(xEdge[:-1] + xEdge[1:])
-        width = xEdge[1:] - xEdge[:-1]
-        axes.bar(xCenter, y, width=width, align='center', **self.kwds1d)
+        xMin, xMax = axes.get_xlim()
+        x = numpy.linspace(xMin, xMax, self.steps1d)
+        z = self.eval1d(data, dim, x)
+        axes.plot(x, z, **self.kwds1d)
 
     def plotY(self, axes, data, dim):
-        x, yEdge = self.hist1d(data, dim, axes.get_ylim())
-        yCenter = 0.5*(yEdge[:-1] + yEdge[1:])
-        height = yEdge[1:] - yEdge[:-1]
-        axes.barh(yCenter, x, height=height, align='center', **self.kwds1d)
+        yMin, yMax = axes.get_ylim()
+        y = numpy.linspace(yMin, yMax, self.steps1d)
+        z = self.eval1d(data, dim, y)
+        axes.plot(z, y, **self.kwds1d)
 
     def plotXY(self, axes, data, xDim, yDim):
-        z, xEdge, yEdge = self.hist2d(data, xDim, yDim, axes.get_xlim(), axes.get_ylim())
-        axes.imshow(z, aspect='auto', extent=(xEdge[0], xEdge[-1], yEdge[0], yEdge[-1]),
-                    origin='lower', **self.kwds2d)
+        xMin, xMax = axes.get_xlim()
+        yMin, yMax = axes.get_ylim()
+        xc = numpy.linspace(xMin, xMax, self.steps2d)
+        yc = numpy.linspace(yMin, yMax, self.steps2d)
+        xg, yg = numpy.meshgrid(xc, yc)
+        z = self.eval2d(data, xDim, yDim, xg, yg)
+        axes.contour(xg, yg, z, 6, **self.kwds2d)
 
 class DensityPlot(object):
 
     def __init__(self, figure, data):
         self.figure = figure
         self.dimensions = tuple(data.dimensions)
+        self.data = data
         self._active = self.dimensions
         self._all_dims = frozenset(self._active)
         if len(self._all_dims) != len(self._active):
             raise ValueError("Dimensions list contains duplicates")
-        self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.0, wspace=0.0)
+        self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.025, wspace=0.025)
         self.ranges = numpy.array(data.ranges)
         self._build_axes()
         self._layers = []
@@ -103,10 +136,10 @@ class DensityPlot(object):
         self._replotLayer(layer)
 
     def _replotLayer(self, layer):
-        for i, yDim in self._active:
+        for i, yDim in enumerate(self._active):
             layer.plotX(self._axes[None,i], self.data, yDim)
-            layer.plotY(self._axes[i,None], self.yDim)
-            for j, xDim in self._active:
+            layer.plotY(self._axes[i,None], self.data, yDim)
+            for j, xDim in enumerate(self._active):
                 if i == j: continue
                 layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
 
@@ -141,7 +174,9 @@ class DensityPlot(object):
             self._axes[None,i].set_position(bbox)
             self._axes[i,None] = self.figure.add_subplot(n, n, (i+1)*n + 1)
             self._axes[i,None].yaxis.tick_left()
-            self._axes[i,None].set_xlim(self.ranges[i,0], self.ranges[i,1])
+            self._axes[i,None].set_ylim(self.ranges[i,0], self.ranges[i,1])
+            self._axes[i,None].set_xlim(1, 0)
+            self._axes[i,None].autoscale(True, axis='x')
             hide_xticklabels(self._axes[i,None])
             bbox = self._axes[i,None].get_position()
             bbox.x1 -= 0.025
@@ -164,4 +199,8 @@ class DensityPlot(object):
 
 def replot():
     fig = matplotlib.pyplot.figure()
-    return DensityPlot(fig, 3, TestData())
+    p = DensityPlot(fig, TestData())
+    p.addLayer(HistogramLayer())
+    p.addLayer(SurfaceLayer())
+    p.draw()
+    return p
