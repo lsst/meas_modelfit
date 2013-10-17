@@ -1,5 +1,43 @@
+#
+# LSST Data Management System
+# Copyright 2008-2013 LSST Corporation.
+#
+# This product includes software developed by the
+# LSST Project (http://www.lsst.org/).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
+# see <http://www.lsstcorp.org/LegalNotices/>.
+#
+
+"""A set of matplotlib-based classes that displays a grid of 1-d and 2-d slices through an
+N-d density.
+
+The main class, DensityPlot, manages the grid of matplotlib.axes.Axes objects, and holds
+a sequence of Layer objects that each know how to draw individual 1-d or 2-d plots and a
+data object that abstracts away how the N-d density data is actually represented.
+
+For simple cases, users can just create a custom data class with an interface like that of
+the ExampleData class provided here, and use the provided HistogramLayer and SurfaceLayer
+classes directly.  In more complicated cases, users may want to create their own Layer classes,
+which may define their own relationship with the data object.
+"""
+
+import collections
 import numpy
 import matplotlib
+
+__all__ = ("HistogramLayer", "SurfaceLayer", "ScatterLayer", "DensityPlot", "ExampleData", "demo")
 
 def hide_xticklabels(axes):
     for label in axes.get_xticklabels():
@@ -9,87 +47,142 @@ def hide_yticklabels(axes):
     for label in axes.get_yticklabels():
         label.set_visible(False)
 
-class TestData(object):
-
-    def __init__(self):
-        self.dimensions = ["a", "b", "c"]
-        self.sigmas = numpy.array([3.0, 2.0, 1.0])
-        self.ranges = numpy.array([[-3*sigma, 3*sigma] for sigma in self.sigmas], dtype=float)
-        self.values = numpy.random.randn(2000, 3) * self.sigmas[numpy.newaxis,:]
-
-    def hist1d(self, dim, limits, bins):
-        i = self.dimensions.index(dim)
-        return numpy.histogram(self.values[:,i], bins=bins, range=limits, normed=True)
-
-    def hist2d(self, xDim, yDim, xLimits, yLimits, bins):
-        i = self.dimensions.index(yDim)
-        j = self.dimensions.index(xDim)
-        return numpy.histogram2d(self.values[:,j], self.values[:,i], bins=bins,
-                                 range=(xLimits, yLimits), normed=True)
-
-    def eval1d(self, dim, x):
-        i = self.dimensions.index(dim)
-        return numpy.exp(-0.5*(x/self.sigmas[i])**2) / ((2.0*numpy.pi)**0.5 * self.sigmas[i])
-
-    def eval2d(self, xDim, yDim, x, y):
-        i = self.dimensions.index(yDim)
-        j = self.dimensions.index(xDim)
-        return (numpy.exp(-0.5*((x/self.sigmas[j])**2 + (y/self.sigmas[i])**2))
-                / (2.0*numpy.pi * self.sigmas[j]*self.sigmas[i]))
+def mergeDefaults(kwds, defaults):
+    copy = defaults.copy()
+    if kwds is not None:
+        copy.update(**kwds)
+    return copy
 
 class HistogramLayer(object):
+    """A Layer class for DensityPlot for gridded histograms, drawing bar plots in 1-d and
+    colormapped large-pixel images in 2-d.
+
+    Relies on two data object attributes:
+
+       values ----- a (M,N) array of data points, where N is the dimension of the dataset and M is the
+                    number of data points
+
+       weights ---- (optional) an array of weights with shape (M,); if not present, all weights will
+                    be set to unity
+
+    The need for these data object attributes can be removed by subclassing HistogramLayer and overriding
+    the hist1d and hist2d methods.
+    """
 
     defaults1d=dict(facecolor='b', alpha=0.5)
     defaults2d=dict(cmap=matplotlib.cm.Blues, vmin=0.0, interpolation='nearest')
 
-    def __init__(self, bins1d=20, bins2d=(20,30), kwds1d=None, kwds2d=None):
+    def __init__(self, bins1d=20, bins2d=(20,20), kwds1d=None, kwds2d=None):
         self.bins1d = bins1d
         self.bins2d = bins2d
-        if kwds1d is None: kwds1d = self.defaults1d
-        if kwds2d is None: kwds2d = self.defaults2d
-        self.kwds1d = dict(kwds1d)
-        self.kwds2d = dict(kwds2d)
+        self.kwds1d = mergeDefaults(kwds1d, self.defaults1d)
+        self.kwds2d = mergeDefaults(kwds2d, self.defaults2d)
 
     def hist1d(self, data, dim, limits):
-        return data.hist1d(dim, limits, self.bins1d)
+        """Extract points from the data object and compute a 1-d histogram.
+
+        Return value should match that of numpy.histogram: a tuple of (hist, edges),
+        where hist is a 1-d array with size=bins1d, and edges is a 1-d array with
+        size=self.bins1d+1 giving the upper and lower edges of the bins.
+        """
+        i = data.dimensions.index(dim)
+        if hasattr(data, "weights") and data.weights is not None:
+            weights = data.weights
+        else:
+            weights = None
+        return numpy.histogram(data.values[:,i], bins=self.bins1d, weights=weights,
+                               range=limits, normed=True)
 
     def hist2d(self, data, xDim, yDim, xLimits, yLimits):
-        return data.hist2d(xDim, yDim, xLimits, yLimits, self.bins2d)
+        """Extract points from the data object and compute a 1-d histogram.
+
+        Return value should match that of numpy.histogram2d: a tuple of (hist, xEdges, yEdges),
+        where hist is a 2-d array with shape=bins2d, xEdges is a 1-d array with size=bins2d[0]+1,
+        and yEdges is a 1-d array with size=bins2d[1]+1.
+        """
+        i = data.dimensions.index(yDim)
+        j = data.dimensions.index(xDim)
+        if hasattr(data, "weights") and data.weights is not None:
+            weights = data.weights
+        else:
+            weights = None
+        return numpy.histogram2d(data.values[:,j], data.values[:,i], bins=self.bins2d, weights=weights,
+                                 range=(xLimits, yLimits), normed=True)
 
     def plotX(self, axes, data, dim):
         y, xEdge = self.hist1d(data, dim, axes.get_xlim())
         xCenter = 0.5*(xEdge[:-1] + xEdge[1:])
         width = xEdge[1:] - xEdge[:-1]
-        axes.bar(xCenter, y, width=width, align='center', **self.kwds1d)
+        return axes.bar(xCenter, y, width=width, align='center', **self.kwds1d)
 
     def plotY(self, axes, data, dim):
         x, yEdge = self.hist1d(data, dim, axes.get_ylim())
         yCenter = 0.5*(yEdge[:-1] + yEdge[1:])
         height = yEdge[1:] - yEdge[:-1]
-        axes.barh(yCenter, x, height=height, align='center', **self.kwds1d)
+        return axes.barh(yCenter, x, height=height, align='center', **self.kwds1d)
 
     def plotXY(self, axes, data, xDim, yDim):
         z, xEdge, yEdge = self.hist2d(data, xDim, yDim, axes.get_xlim(), axes.get_ylim())
-        axes.imshow(z.transpose(), aspect='auto', extent=(xEdge[0], xEdge[-1], yEdge[0], yEdge[-1]),
-                    origin='lower', **self.kwds2d)
+        return axes.imshow(z.transpose(), aspect='auto', extent=(xEdge[0], xEdge[-1], yEdge[0], yEdge[-1]),
+                           origin='lower', **self.kwds2d)
+
+class ScatterLayer(object):
+    """A Layer class that plots individual points in 2-d, and does nothing in 1-d.
+
+    Relies on two data object attributes:
+
+       values ----- a (M,N) array of data points, where N is the dimension of the dataset and M is the
+                    number of data points
+
+       weights ---- (optional) an array of weights with shape (M,); will be used to set the color of points
+
+    """
+
+    defaults = dict(linewidth=0, alpha=0.2)
+
+    def __init__(self, **kwds):
+        self.kwds = mergeDefaults(kwds, self.defaults)
+
+    def plotX(self, axes, data, dim):
+        pass
+
+    def plotY(self, axes, data, dim):
+        pass
+
+    def plotXY(self, axes, data, xDim, yDim):
+        i = data.dimensions.index(yDim)
+        j = data.dimensions.index(xDim)
+        if hasattr(data, "weights") and data.weights is not None:
+            args = data.values[:,j], data.values[:,i], data.weights
+        else:
+            args = data.values[:,j], data.values[:,i]
+        return axes.scatter(*args, **self.kwds)
 
 class SurfaceLayer(object):
+    """A Layer class for analytic N-d distributions that can be evaluated in 1-d or 2-d slices.
+
+    The 2-d slices are drawn as contours, and the 1-d slices are drawn as simple curves.
+
+    Relies on eval1d and eval2d methods in the data object; this can be avoided by subclassing
+    SurfaceLayer and reimplementing its own eval1d and eval2d methods.
+    """
 
     defaults1d=dict(linewidth=2, color='r')
     defaults2d=dict(linewidths=2, cmap=matplotlib.cm.Reds)
 
-    def __init__(self, steps1d=200, steps2d=200, kwds1d=None, kwds2d=None):
+    def __init__(self, steps1d=200, steps2d=200, filled=False, kwds1d=None, kwds2d=None):
         self.steps1d = int(steps1d)
         self.steps2d = int(steps2d)
-        if kwds1d is None: kwds1d = self.defaults1d
-        if kwds2d is None: kwds2d = self.defaults2d
-        self.kwds1d = dict(kwds1d)
-        self.kwds2d = dict(kwds2d)
+        self.filled = bool(filled)
+        self.kwds1d = mergeDefaults(kwds1d, self.defaults1d)
+        self.kwds2d = mergeDefaults(kwds2d, self.defaults2d)
 
     def eval1d(self, data, dim, x):
+        """Return analytic function values for the given values."""
         return data.eval1d(dim, x)
 
     def eval2d(self, data, xDim, yDim, x, y):
+        """Return analytic function values for the given values."""
         return data.eval2d(xDim, yDim, x, y)
 
     def plotX(self, axes, data, dim):
@@ -111,45 +204,96 @@ class SurfaceLayer(object):
         yc = numpy.linspace(yMin, yMax, self.steps2d)
         xg, yg = numpy.meshgrid(xc, yc)
         z = self.eval2d(data, xDim, yDim, xg, yg)
-        axes.contour(xg, yg, z, 6, **self.kwds2d)
+        if self.filled:
+            return axes.contourf(xg, yg, z, 6, **self.kwds2d)
+        else:
+            return axes.contour(xg, yg, z, 6, **self.kwds2d)
 
 class DensityPlot(object):
+    """An object that manages a matrix of matplotlib.axes.Axes objects that represent a set of 1-d and 2-d
+    slices through an N-d density.
+    """
+
+    class LayerDict(collections.MutableMapping):
+
+        def __init__(self, parent):
+            self._dict = dict()
+            self._parent = parent
+
+        def __delitem__(self, name):
+            layer = self._dict.pop(name)
+            self._parent._dropLayer(name, layer)
+
+        def __setitem__(self, name, layer):
+            self.pop(name, None)
+            self._dict[name] = layer
+            self._parent._plotLayer(name, layer)
+
+        def __getitem__(self, name):
+            return self._dict[name]
+
+        def __iter__(self):
+            return iter(self._dict)
+
+        def __len__(self):
+            return len(self._dict)
+
+        def __str__(self):
+            return str(self._dict)
+
+        def __repr__(self):
+            return repr(self._dict)
+
+        def replot(self, name):
+            layer = self._dict[name]
+            self._parent._dropLayer(name, layer)
+            self._parent._plotLayer(name, layer)
 
     def __init__(self, figure, data):
         self.figure = figure
-        self.dimensions = tuple(data.dimensions)
         self.data = data
-        self._active = self.dimensions
+        self._active = tuple(self.data.dimensions)
         self._all_dims = frozenset(self._active)
         if len(self._all_dims) != len(self._active):
             raise ValueError("Dimensions list contains duplicates")
         self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.025, wspace=0.025)
         self.ranges = numpy.array(data.ranges)
         self._build_axes()
-        self._layers = []
+        self.layers = self.LayerDict(self)
 
-    @property
-    def layers(self): return tuple(self._layers)
-
-    def addLayer(self, layer):
-        self._layers.append(layer)
-        self._replotLayer(layer)
-
-    def _replotLayer(self, layer):
+    def _dropLayer(self, name, layer):
+        def removeArtist(*key):
+            try:
+                self._objs.pop(key).remove()
+            except AttributeError:
+                # sometimes the value might be None, which doesn't have a remove
+                pass
+            except TypeError:
+                # probably a matplotlib bug: remove sometimes raises an exception,
+                # but it still works
+                pass
         for i, yDim in enumerate(self._active):
-            layer.plotX(self._axes[None,i], self.data, yDim)
-            layer.plotY(self._axes[i,None], self.data, yDim)
+            removeArtist(None,i,name)
+            removeArtist(i,None,name)
             for j, xDim in enumerate(self._active):
                 if i == j: continue
-                layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
+                removeArtist(i,j,name)
+
+    def _plotLayer(self, name, layer):
+        for i, yDim in enumerate(self._active):
+            self._objs[None,i,name] = layer.plotX(self._axes[None,i], self.data, yDim)
+            self._objs[i,None,name] = layer.plotY(self._axes[i,None], self.data, yDim)
+            for j, xDim in enumerate(self._active):
+                if i == j: continue
+                self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
 
     def _replotBox(self, xDim, yDim):
         i = self._active.index(yDim)
         j = self._active.index(xDim)
         for z, layer in enumerate(self._layers):
-            layer.plotX(self._axes[None,j], self.data, xDim)
-            layer.plotY(self._axes[i,None], self.data, yDim)
-            layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
+            self._objs[None,j,name] = layer.plotX(self._axes[None,j], self.data, xDim)
+            self._objs[i,None,name] = layer.plotY(self._axes[i,None], self.data, yDim)
+            self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
 
     def _get_active(self): return self._active
     def _set_active(self, active):
@@ -159,48 +303,108 @@ class DensityPlot(object):
         if not self._all_dims.issuperset(s):
             raise ValueError("Invalid values in active set")
         self._active = tuple(active)
-    active = property(_get_active, _set_active, doc="sequence of active dimensions to plot")
+        self.ranges = numpy.array([self.data.ranges[self.data.dimensions.index(k)] for k in self._active])
+        self._build_axes()
+        for layer in self._layers:
+            self._replotLayer(layer)
+    active = property(_get_active, _set_active, doc="sequence of active dimensions to plot (sequence of str)")
 
     def _build_axes(self):
+        self.figure.clear()
         self._axes = dict()
-        n = len(self._active) + 1
-        for i in range(n - 1):
-            self._axes[None,i] = self.figure.add_subplot(n, n, i+2)
-            self._axes[None,i].xaxis.tick_top()
-            self._axes[None,i].set_xlim(self.ranges[i,0], self.ranges[i,1])
-            hide_yticklabels(self._axes[None,i])
-            bbox = self._axes[None,i].get_position()
+        self._objs = dict()
+        n = len(self._active)
+        iStride = n + 1
+        jStride = -1
+        iStart = n + 1
+        jStart = n
+        for i in range(n):
+            j = i
+            axesX = self._axes[None,j] = self.figure.add_subplot(n+1, n+1, jStart+j*jStride)
+            axesX.xaxis.tick_top()
+            axesX.set_xlim(self.ranges[i,0], self.ranges[i,1])
+            hide_yticklabels(axesX)
+            bbox = axesX.get_position()
             bbox.y0 += 0.025
-            self._axes[None,i].set_position(bbox)
-            self._axes[i,None] = self.figure.add_subplot(n, n, (i+1)*n + 1)
-            self._axes[i,None].yaxis.tick_left()
-            self._axes[i,None].set_ylim(self.ranges[i,0], self.ranges[i,1])
-            self._axes[i,None].set_xlim(1, 0)
-            self._axes[i,None].autoscale(True, axis='x')
-            hide_xticklabels(self._axes[i,None])
-            bbox = self._axes[i,None].get_position()
+            axesX.set_position(bbox)
+            axesX.autoscale(False, axis='x')
+            axesY = self._axes[i,None] = self.figure.add_subplot(n+1, n+1, iStart + iStart+i*iStride)
+            axesY.yaxis.tick_right()
+            axesY.set_ylim(self.ranges[i,0], self.ranges[i,1])
+            hide_xticklabels(axesY)
+            bbox = axesY.get_position()
             bbox.x1 -= 0.025
-            self._axes[i,None].set_position(bbox)
-        for i in range(n - 1):
-            for j in range(i + 1, n - 1):
-                self._axes[i,j] = self.figure.add_subplot(n, n, (i+1)*n+j+2,
-                                                          sharex=self._axes[None,j],
-                                                          sharey=self._axes[i,None])
-                self._axes[j,i] = self.figure.add_subplot(n, n, (j+1)*n+i+2,
-                                                          sharex=self._axes[None,i],
-                                                          sharey=self._axes[j,None])
-                hide_yticklabels(self._axes[i,j])
-                hide_xticklabels(self._axes[i,j])
-                hide_yticklabels(self._axes[j,i])
-                hide_xticklabels(self._axes[j,i])
+            axesY.set_position(bbox)
+            axesY.autoscale(False, axis='y')
+        for i in range(n):
+            for j in range(n):
+                if i == j: continue
+                axesXY = self._axes[i,j] = self.figure.add_subplot(
+                    n+1, n+1, iStart+i*iStride + jStart+j*jStride,
+                    sharex=self._axes[None,j],
+                    sharey=self._axes[i,None]
+                    )
+                axesXY.autoscale(False)
+                hide_yticklabels(axesXY)
+                hide_xticklabels(axesXY)
 
     def draw(self):
         self.figure.canvas.draw()
 
-def replot():
+class ExampleData(object):
+    """An example data object for DensityPlot, demonstrating the necessarity interface.
+
+    There are two levels of requirements for a data object.  First are the attributes
+    required by the DensityPlot object itself; these must be present on every data object:
+
+       dimensions ------ a sequence of strings that provide names for the dimensions
+
+       ranges ---------- an array with shape (N,2) giving the minimum (first column) and
+                         maximum (second column) values for each dimension.
+
+    The second level of requirements are those of the Layer objects provided here.  These
+    may be absent if the associated Layer is not used or is subclassed to reimplement the
+    Layer method that calls the data object method.  Currently, these include:
+
+       eval1d, eval2d -- methods used by the SurfaceLayer class; see their docs for more info
+
+       values ---------- attribute used by the HistogramLayer and ScatterLayer classes, an array
+                         with shape (M,N), where N is the number of dimension and M is the number
+                         of data points
+
+       weights --------- optional attribute used by the HistogramLayer and ScatterLayer classes,
+                         a 1-d array with size=M that provides weights for each data point
+    """
+
+    def __init__(self):
+        self.dimensions = ["a", "b", "c"]
+        self.mu = numpy.array([-10.0, 0.0, 10.0])
+        self.sigma = numpy.array([3.0, 2.0, 1.0])
+        self.ranges = numpy.array([[-3*sigma, 3*sigma] for sigma in self.sigma], dtype=float)
+        self.ranges += self.mu[:,numpy.newaxis]
+        self.values = numpy.random.randn(2000, 3) * self.sigma[numpy.newaxis,:] + self.mu[numpy.newaxis,:]
+
+    def eval1d(self, dim, x):
+        """Evaluate the 1-d analytic function for the given dim at points x (a 1-d numpy array;
+        this method must be numpy-vectorized).
+        """
+        i = self.dimensions.index(dim)
+        return numpy.exp(-0.5*((x-self.mu[i])/self.sigma[i])**2) / ((2.0*numpy.pi)**0.5 * self.sigma[i])
+
+    def eval2d(self, xDim, yDim, x, y):
+        """Evaluate the 2-d analytic function for the given xDim and yDim at points x,y
+        (2-d numpy arrays with the same shape; this method must be numpy-vectorized).
+        """
+        i = self.dimensions.index(yDim)
+        j = self.dimensions.index(xDim)
+        return (numpy.exp(-0.5*(((x-self.mu[j])/self.sigma[j])**2 + ((y-self.mu[i])/self.sigma[i])**2))
+                / (2.0*numpy.pi * self.sigma[j]*self.sigma[i]))
+
+def demo():
+    """Create and return a DensityPlot with example data."""
     fig = matplotlib.pyplot.figure()
-    p = DensityPlot(fig, TestData())
-    p.addLayer(HistogramLayer())
-    p.addLayer(SurfaceLayer())
+    p = DensityPlot(fig, ExampleData())
+    p.layers['histogram'] = HistogramLayer()
+    p.layers['surface'] = SurfaceLayer()
     p.draw()
     return p
