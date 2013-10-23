@@ -213,6 +213,55 @@ void Mixture::evaluateComponents(
     }
 }
 
+void Mixture::evaluateDerivatives(
+    ndarray::Array<Scalar const,1,1> const & x,
+    ndarray::Array<Scalar,1,1> const & gradient,
+    ndarray::Array<Scalar,2,1> const & hessian
+) const {
+    LSST_ASSERT_EQUAL(
+        x.getSize<0>(), _dim,
+        "Size of x array (%d) does not dimension of mixture (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        gradient.getSize<0>(), _dim,
+        "Size of gradient array (%d) does not dimension of mixture (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        hessian.getSize<0>(), _dim,
+        "Number of rows of hessian array (%d) does not dimension of mixture (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    LSST_ASSERT_EQUAL(
+        hessian.getSize<1>(), _dim,
+        "Number of columns of hessian array (%d) does not dimension of mixture (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    gradient.deep() = 0.0;
+    hessian.deep() = 0.0;
+    Eigen::MatrixXd sigmaInv(_dim, _dim);
+    for (ComponentList::const_iterator i = _components.begin(); i != _components.end(); ++i) {
+        _workspace = x.asEigen() - i->_mu;
+        i->_sigmaLLT.matrixL().solveInPlace(_workspace);
+        Scalar z = _workspace.squaredNorm();
+        i->_sigmaLLT.matrixL().adjoint().solveInPlace(_workspace);
+        sigmaInv.setIdentity();
+        i->_sigmaLLT.matrixL().solveInPlace(sigmaInv);
+        i->_sigmaLLT.matrixL().adjoint().solveInPlace(sigmaInv);
+        Scalar f = _evaluate(z) / i->_sqrtDet;
+        if (_isGaussian) {
+            gradient.asEigen() += -i->weight * f * _workspace;
+            hessian.asEigen() += i->weight * f * (_workspace * _workspace.adjoint() - sigmaInv);
+        } else {
+            double v = (_dim + _df) / (_df + z);
+            double u = v*v*(1.0 + 2.0/(_dim + _df));
+            gradient.asEigen() += -i->weight * f * v * _workspace;
+            hessian.asEigen() += i->weight * f * (u * _workspace * _workspace.adjoint() - v * sigmaInv);
+        }
+    }
+}
+
 void Mixture::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x) const {
     ndarray::Array<Scalar,2,1>::Iterator ix = x.begin(), xEnd = x.end();
     std::vector<Scalar> cumulative;

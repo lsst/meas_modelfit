@@ -234,6 +234,19 @@ public:
     ) const;
 
     /**
+     *  @brief Evaluate the derivative of the distribution at the given point
+     *
+     *  @param[in]  x         point to evaluate the derivative, with size equal to the number of dimensions
+     *  @param[in]  gradient  1st derivative array to fill
+     *  @param[in]  hessian   2nd derivative array to fill
+     */
+    void evaluateDerivatives(
+        ndarray::Array<Scalar const,1,1> const & x,
+        ndarray::Array<Scalar,1,1> const & gradient,
+        ndarray::Array<Scalar,2,1> const & hessian
+    ) const;
+
+    /**
      *  @brief Draw random variates from the distribution.
      *
      *  @param[in,out] rng random number generator

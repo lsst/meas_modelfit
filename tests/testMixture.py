@@ -92,7 +92,7 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         x = numpy.zeros((1000000,2), dtype=float)
         m.draw(rng, x)
         self.assertClose(x.mean(axis=0), mu, rtol=2E-2)
-        self.assertClose(numpy.cov(x, rowvar=False), sigma, rtol=2E-2)
+        self.assertClose(numpy.cov(x, rowvar=False), sigma, rtol=3E-2)
         if scipy is None: return
         self.assertGreater(scipy.stats.normaltest(x[:,0])[1], 0.05)
         self.assertGreater(scipy.stats.normaltest(x[:,1])[1], 0.05)
@@ -121,16 +121,59 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
     def testPersistence(self):
         """Test table-based persistence of Mixtures"""
         filename = "testMixturePersistence.fits"
-        mix1 = self.makeRandomMixture(3, 4, 3.5)
+        mix1 = self.makeRandomMixture(3, 4, df=3.5)
         mix1.writeFits(filename)
         mix2 = lsst.meas.multifit.Mixture.readFits(filename)
         self.assertEqual(mix1.getDegreesOfFreedom(), mix2.getDegreesOfFreedom())
         self.assertEqual(len(mix1), len(mix2))
         for c1, c2 in zip(mix1, mix2):
-            self.assertEqual(c1.weight, c2.weight)
+            self.assertClose(c1.weight, c2.weight)
             self.assertClose(c1.getMu(), c2.getMu())
             self.assertClose(c1.getSigma(), c2.getSigma())
         os.remove(filename)
+
+    def testDerivatives(self):
+        epsilon = 1E-7
+        g = self.makeRandomMixture(3, 4)
+        t = self.makeRandomMixture(4, 3, df=4.0)
+        def doTest(mixture, point):
+            n = mixture.getDimension()
+            # Compute numeric first derivatives
+            testPoints = numpy.zeros((2*n, n), dtype=float)
+            testPoints[:,:] = point[numpy.newaxis,:]
+            for i in range(n):
+                testPoints[i, i] += epsilon
+                testPoints[n+i, i] -= epsilon
+            testValues = numpy.zeros(2*n, dtype=float)
+            mixture.evaluate(testPoints, testValues)
+            numericGradient = numpy.zeros(n, dtype=float)
+            for i in range(n):
+                numericGradient[i] = (testValues[i] - testValues[n+i]) / (2.0 * epsilon)
+            # Compute numeric second derivatives from analytic first derivatives
+            numericHessian = numpy.zeros((n,n), dtype=float)
+            testGrad1 = numpy.zeros(n, dtype=float)
+            testGrad2 = numpy.zeros(n, dtype=float)
+            testHessian = numpy.zeros((n,n), dtype=float)
+            for i in range(n):
+                testPoint = point.copy()
+                testPoint[i] += epsilon
+                mixture.evaluateDerivatives(testPoint, testGrad1, testHessian)
+                testPoint[i] -= 2.0*epsilon
+                mixture.evaluateDerivatives(testPoint, testGrad2, testHessian)
+                numericHessian[i,:] = (testGrad1 - testGrad2) / (2.0 * epsilon)
+            # Compute analytic derivatives and compare
+            analyticGradient = numpy.zeros(n, dtype=float)
+            analyticHessian = numpy.zeros((n,n), dtype=float)
+            mixture.evaluateDerivatives(point, analyticGradient, analyticHessian)
+            self.assertClose(analyticGradient, numericGradient, rtol=1E-6)
+            self.assertClose(analyticHessian, numericHessian, rtol=1E-6)
+
+        for x in numpy.random.randn(10, g.getDimension()):
+            doTest(g, x)
+
+        for x in numpy.random.randn(10, t.getDimension()):
+            doTest(t, x)
+
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
