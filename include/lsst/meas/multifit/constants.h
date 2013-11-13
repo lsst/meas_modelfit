@@ -37,9 +37,16 @@ namespace lsst { namespace meas { namespace multifit {
 typedef float Pixel;
 //@}
 
+//@{
+/**
+ *  Typedefs to be used for probability and parameter values
+ */
 typedef double Scalar;
 typedef Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> Matrix;
 typedef Eigen::Matrix<Scalar,Eigen::Dynamic,1> Vector;
+typedef afw::table::Key<Scalar> ScalarKey;
+typedef afw::table::Key< afw::table::Array<Scalar> > ArrayKey;
+//@}
 
 }}} // namespace lsst::meas::multifit
 
