@@ -94,22 +94,23 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
 
     def __init__(self, schema, keys, model, prior, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
-        # n.b. schema argument is for modelfits catalog; self.schema is for sample catalog
-        self.schema = lsst.afw.table.Schema()
+        # n.b. schema argument is for modelfits catalog; self.sampleSchema is for sample catalog
+        self.sampleSchema = lsst.afw.table.Schema()
         self.rng = lsst.afw.math.Random(self.config.rngAlgorithm, self.config.rngSeed)
-        self.objectiveFactory = multifitLib.SamplerObjectiveFactory(
-            self.schema, model, prior, self.config.doMarginalizeAmplitudes
-            )
+        if self.config.doMarginalizeAmplitudes:
+            self.interpreter = multifitLib.MarginalSamplingInterpreter(self.sampleSchema, model, prior)
+        else:
+            self.interpreter = multifitLib.DirectSamplingInterpreter(self.sampleSchema, model, prior)
         self.sampler = multifitLib.AdaptiveImportanceSampler(
-            self.schema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
+            self.sampleSchema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
             )
         self.keys = keys
         self.keys["ref.parameters"] = schema.addField(
-            "ref.parameters", type="ArrayD", size=self.objectiveFactory.getParameterDim(),
+            "ref.parameters", type="ArrayD", size=self.interpreter.getParameterDim(),
             doc="sampler parameters from reference catalog"
             )
         self.keys["fit.parameters"] = schema.addField(
-            "fit.parameters", type="ArrayD", size=self.objectiveFactory.getParameterDim(),
+            "fit.parameters", type="ArrayD", size=self.interpreter.getParameterDim(),
             doc="best-fit nonlinear parameters"
             )
         self.keys["rngstate"] = schema.addField(
@@ -120,7 +121,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
     def makeTable(self):
         """Return a Table object that can be used to construct sample records.
         """
-        return lsst.afw.table.BaseTable.make(self.schema)
+        return lsst.afw.table.BaseTable.make(self.sampleSchema)
 
     @staticmethod
     def makeLatinCube(rng, nComponents, parameterDim):
@@ -147,9 +148,9 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         This method is not called when using a "warm start" from a previous fit.
         """
         parameters = record[self.keys["ref.parameters"]]
-        self.objectiveFactory.mapParameters(record[self.keys["ref.nonlinear"]],
-                                            record[self.keys["ref.amplitudes"]],
-                                            parameters)
+        self.interpreter.packParameters(record[self.keys["ref.nonlinear"]],
+                                        record[self.keys["ref.amplitudes"]],
+                                        parameters)
         components = multifitLib.Mixture.ComponentList()
         sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2
         design = self.makeLatinCube(self.rng, self.config.nComponents, parameters.size)
@@ -165,7 +166,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         """Do the actual fitting, using the given likelihood, update the 'pdf' and 'samples' attributes,
         and save best-fit values in the 'fit.parameters' field.
         """
-        objective = self.objectiveFactory(likelihood)
+        objective = multifitLib.makeSamplingObjective(self.interpreter, likelihood)
         record.setString(self.keys["rngstate"], self.rng.getState())
         self.sampler.run(objective, record.getPdf(), record.getSamples())
         # TODO: compute and set best-fit parameters

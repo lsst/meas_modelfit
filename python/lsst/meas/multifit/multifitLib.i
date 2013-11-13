@@ -93,11 +93,15 @@ Basic routines to talk to lsst::meas::multifit classes
 
 %shared_ptr(lsst::meas::multifit::Model);
 %shared_ptr(lsst::meas::multifit::MultiModel);
+%shared_ptr(lsst::meas::multifit::Interpreter);
 %shared_ptr(lsst::meas::multifit::Likelihood);
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
 %shared_ptr(lsst::meas::multifit::ProjectedLikelihood);
 %shared_ptr(lsst::meas::multifit::Sampler);
-%shared_ptr(lsst::meas::multifit::SamplerObjective);
+%shared_ptr(lsst::meas::multifit::SamplingObjective);
+%shared_ptr(lsst::meas::multifit::SamplingInterpreter);
+%shared_ptr(lsst::meas::multifit::DirectSamplingInterpreter);
+%shared_ptr(lsst::meas::multifit::MarginalSamplingInterpreter);
 %shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
 
 //----------- Mixtures --------------------------------------------------------------------------------------
@@ -150,9 +154,12 @@ Basic routines to talk to lsst::meas::multifit classes
 
 %include "lsst/meas/multifit/models.h"
 %include "lsst/meas/multifit/priors.h"
+%include "lsst/meas/multifit/Interpreter.h"
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/ProjectedLikelihood.h"
-%include "lsst/meas/multifit/Sampler.h"
+%include "lsst/meas/multifit/Sampling.h"
+%include "lsst/meas/multifit/DirectSampling.h"
+%include "lsst/meas/multifit/MarginalSampling.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);

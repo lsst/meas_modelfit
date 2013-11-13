@@ -138,7 +138,9 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         """Return a ModelFitTable object based on the measurement schema and the fitter subtask's
         sample schema.
         """
-        return lsst.meas.multifit.ModelFitTable.make(self.schema, self.fitter.makeTable())
+        table = lsst.meas.multifit.ModelFitTable.make(self.schema, self.fitter.makeTable())
+        table.setInterpreter(self.fitter.interpreter)
+        return table
 
     def run(self, dataRef):
         """Main driver for model fitting.

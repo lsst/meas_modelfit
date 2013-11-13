@@ -29,6 +29,7 @@
 #include "lsst/afw/table/io/FitsWriter.h"
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/meas/multifit/Mixture.h"
+#include "lsst/meas/multifit/Interpreter.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -56,6 +57,8 @@ public:
     CONST_PTR(ModelFitTable) getTable() const {
         return boost::static_pointer_cast<ModelFitTable const>(afw::table::BaseRecord::getTable());
     }
+
+    PTR(Interpreter) getInterpreter() const;
 
     afw::table::BaseCatalog const & getSamples() const { return _samples; }
     afw::table::BaseCatalog & getSamples() { return _samples; }
@@ -110,6 +113,12 @@ public:
     /// Set the table object used to allocate records in the related sample catalogs.
     void setSampleTable(PTR(afw::table::BaseTable) sampleTable) { _sampleTable = sampleTable; }
 
+    /// Return an object that can be used to interpret the attached Samples and Pdf
+    PTR(Interpreter) getInterpreter() const { return _interpreter; }
+
+    /// Set the object that can be used to interpret the attached Samples and Pdf
+    void setInterpreter(PTR(Interpreter) interpreter) { _interpreter = interpreter; }
+
     /// @copydoc afw::table::BaseTable::clone
     PTR(ModelFitTable) clone() const { return boost::static_pointer_cast<ModelFitTable>(_clone()); }
 
@@ -145,9 +154,12 @@ private:
     virtual PTR(afw::table::io::FitsWriter) makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const;
 
     PTR(afw::table::BaseTable) _sampleTable;
+    PTR(Interpreter) _interpreter;
 };
 
 #ifndef SWIG
+
+inline PTR(Interpreter) ModelFitRecord::getInterpreter() const { return getTable()->getInterpreter(); }
 
 typedef afw::table::ColumnViewT<ModelFitRecord> ModelFitColumnView;
 typedef afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;

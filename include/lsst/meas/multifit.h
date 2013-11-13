@@ -24,11 +24,14 @@
 #ifndef LSST_MEAS_MULTIFIT_H
 #define LSST_MEAS_MULTIFIT_H
 
+#include "lsst/meas/multifit/MarginalSampling.h"
+#include "lsst/meas/multifit/DirectSampling.h"
 #include "lsst/meas/multifit/ModelFitRecord.h"
 #include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
-#include "lsst/meas/multifit/Sampler.h"
+#include "lsst/meas/multifit/Sampling.h"
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/ProjectedLikelihood.h"
+#include "lsst/meas/multifit/Interpreter.h"
 #include "lsst/meas/multifit/priors.h"
 #include "lsst/meas/multifit/integrals.h"
 #include "lsst/meas/multifit/models.h"

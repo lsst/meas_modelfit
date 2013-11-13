@@ -91,7 +91,7 @@ AdaptiveImportanceSampler::AdaptiveImportanceSampler(
     _doSaveIterations(doSaveIterations),
     _rng(rng),
     _ctrls(ctrls),
-    _weightKey(sampleSchema.addField<Scalar>("weight", "normalized Monte Carlo weight")),
+    _weightKey(sampleSchema["weight"]),
     _objectiveKey(sampleSchema.addField<Scalar>(
                       "objective", "value of the objective function (usually -log posterior)")),
     _proposalKey(sampleSchema.addField<Scalar>(
@@ -109,7 +109,7 @@ AdaptiveImportanceSampler::AdaptiveImportanceSampler(
 }
 
 void AdaptiveImportanceSampler::run(
-    SamplerObjective const & objective,
+    SamplingObjective const & objective,
     PTR(Mixture) proposal,
     afw::table::BaseCatalog & samples
 ) const {
