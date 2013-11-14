@@ -118,7 +118,7 @@ public:
     );
 
     LSST_CONTROL_FIELD(
-        skipSR1UpdateThreshold, bool,
+        skipSR1UpdateThreshold, double,
         "Skip the SR1 update if |v||s| / (|v||s|) is less than this threshold"
     );
 
@@ -148,8 +148,8 @@ public:
     );
 
     LSST_CONTROL_FIELD(
-        trustRegionInitialSizeFactor, double,
-        "the initial trust region will be set to this fraction of the initial Newton step length"
+        trustRegionInitialSize, double,
+        "the initial trust region will be set to this value"
     );
 
     LSST_CONTROL_FIELD(
@@ -168,13 +168,8 @@ public:
     );
 
     LSST_CONTROL_FIELD(
-        trustRegionShrinkMaxReductionRatio, double,
-        "steps with reduction radio less than this may decrease the trust radius"
-    );
-
-    LSST_CONTROL_FIELD(
-        trustRegionShrinkMinReductionRatio, double,
-        "steps with reduction radio less than this will not decrease the trust radius"
+        trustRegionShrinkReductionRatio, double,
+        "steps with reduction radio less than this will decrease the trust radius"
     );
 
     LSST_CONTROL_FIELD(
@@ -193,6 +188,11 @@ public:
     );
 
     LSST_CONTROL_FIELD(
+        maxOuterIterations, int,
+        "maximum number of steps"
+    );
+
+    LSST_CONTROL_FIELD(
         doSaveIterations, bool,
         "whether to save all iterations for debugging purposes"
     );
@@ -201,15 +201,17 @@ public:
         noSR1Term(false), skipSR1UpdateThreshold(1E-8),
         minTrustRadiusThreshold(1E-8),
         gradientThreshold(1E-8),
-        numDiffRelStep(1E-8), numDiffAbsStep(1E-8),
+        numDiffRelStep(1E-6), numDiffAbsStep(1E-6),
         stepAcceptThreshold(0.0),
+        trustRegionInitialSize(1.0),
         trustRegionGrowReductionRatio(0.75),
         trustRegionGrowStepFraction(0.8),
         trustRegionGrowFactor(2.0),
-        trustRegionShrinkMaxReductionRatio(0.75),
-        trustRegionShrinkMinReductionRatio(0.1),
+        trustRegionShrinkReductionRatio(0.75),
         trustRegionShrinkFactor(1.0/3.0),
         trustRegionSolverTolerance(1E-8),
+        maxInnerIterations(20),
+        maxOuterIterations(500),
         doSaveIterations(false)
     {}
 };
@@ -288,7 +290,8 @@ public:
         FAILED_MAX_INNER_ITERATIONS = 0x0010,
         FAILED_MAX_OUTER_ITERATIONS = 0x0020,
         FAILED_EXCEPTION = 0x0040,
-        FAILED = FAILED_MAX_INNER_ITERATIONS | FAILED_MAX_OUTER_ITERATIONS | FAILED_EXCEPTION,
+        FAILED_NAN = 0x0080,
+        FAILED = FAILED_MAX_INNER_ITERATIONS | FAILED_MAX_OUTER_ITERATIONS | FAILED_EXCEPTION | FAILED_NAN,
         STATUS_STEP_REJECTED = 0x0100,
         STATUS_STEP_ACCEPTED = 0x0200,
         STATUS_STEP = STATUS_STEP_REJECTED | STATUS_STEP_ACCEPTED,
@@ -310,6 +313,8 @@ public:
     Control const & getControl() const { return _ctrl; }
 
     bool step();
+
+    int run();
 
     int getState() const { return _state; }
 

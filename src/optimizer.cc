@@ -27,6 +27,7 @@
 
 #define LSST_MAX_DEBUG 10
 #include "lsst/pex/logging/Debug.h"
+#include "lsst/utils/ieee.h"
 
 #include "lsst/meas/multifit/optimizer.h"
 #include "lsst/meas/multifit/Likelihood.h"
@@ -68,7 +69,7 @@ void solveTrustRegion(
         tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
         int n = 0;
         while (eigh.eigenvalues()[++n] < threshold);
-        log.debug<7>("Starting with %d zero eigenvalue(s)", n);
+        log.debug<7>("Starting with %d zero eigenvalue(s) (of %d)", n, d);
         if ((qtg.head(n).array() < ROOT_EPS * g.asEigen().lpNorm<Eigen::Infinity>()).all()) {
             x.asEigen() = -eigh.eigenvectors().rightCols(n) * tmp.tail(n);
             xsn = x.asEigen().squaredNorm();
@@ -127,6 +128,7 @@ public:
         _likelihood->computeModelMatrix(_modelMatrix, parameters[ndarray::view(0, nlDim)]);
         residuals.asEigen() = _modelMatrix.asEigen().cast<Scalar>()
             * parameters[ndarray::view(nlDim, nlDim+ampDim)].asEigen();
+        residuals.asEigen() -= _likelihood->getData().asEigen().cast<Scalar>();
     }
 
     virtual bool hasPrior() const { return _prior; }
@@ -207,7 +209,7 @@ Optimizer::Optimizer(
     _state(0x0),
     _objective(objective),
     _ctrl(ctrl),
-    _trustRadius(std::numeric_limits<double>::infinity()),
+    _trustRadius(ctrl.trustRegionInitialSize),
     _current(objective->dataSize, objective->parameterSize),
     _next(objective->dataSize, objective->parameterSize),
     _step(ndarray::allocate(objective->parameterSize)),
@@ -218,6 +220,7 @@ Optimizer::Optimizer(
     _sr1v(objective->parameterSize),
     _sr1jtr(objective->parameterSize)
 {
+    pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
     if (parameters.getSize<0>() != _objective->parameterSize) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthErrorException,
@@ -233,6 +236,7 @@ Optimizer::Optimizer(
         _current.priorValue = _objective->computePrior(_current.parameters);
         _current.objectiveValue -= std::log(_current.priorValue);
     }
+    log.debug<6>("Initial objective value is %g", _current.objectiveValue);
     _sr1b.setZero();
     _computeDerivatives();
     _hessian.asEigen() = _hessian.asEigen().selfadjointView<Eigen::Lower>();
@@ -267,25 +271,44 @@ void Optimizer::_computeDerivatives() {
 }
 
 bool Optimizer::step() {
+    pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
+    _state &= ~int(STATUS);
+    if (_gradient.asEigen().lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
+        log.debug<6>("max(gradient)=%g below threshold; declaring convergence",
+                     _gradient.asEigen().lpNorm<Eigen::Infinity>());
+        _state |= CONVERGED_GRADZERO;
+        return false;
+    }
     for (int iterCount = 0; iterCount < _ctrl.maxInnerIterations; ++iterCount) {
+        log.debug<6>("Starting inner iteration %d", iterCount);
         _state &= ~int(STATUS);
-        _state |= FAILED_EXCEPTION; // set in advance in case we throw
+        _next.objectiveValue = 0.0;
+        _next.priorValue = 1.0;
         solveTrustRegion(
             _step, _hessian, _gradient, _trustRadius, _ctrl.trustRegionSolverTolerance
         );
         _next.parameters.asEigen() = _current.parameters.asEigen() + _step.asEigen();
         double stepLength = _step.asEigen().norm();
-        if (_trustRadius == std::numeric_limits<double>::infinity()) {
-            _trustRadius = stepLength;
+        if (utils::isnan(stepLength)) {
+            log.debug<6>("NaN encountered in step length");
+            std::cerr << "gradient:\n" << _gradient << std::endl;
+            std::cerr << "hessian:\n" << _hessian << std::endl;
+            _state |= FAILED_NAN;
+            return false;
         }
+        log.debug<6>("Step has length %g", stepLength);
         if (_objective->hasPrior()) {
             _next.priorValue = _objective->computePrior(_next.parameters);
             if (_next.priorValue <= 0.0) {
+                log.debug<6>("Rejecting step due to zero prior");
                 _trustRadius *= _ctrl.trustRegionShrinkFactor;
+                log.debug<6>("Decreasing trust radius to %g", _trustRadius);
                 _state |= STATUS_STEP_REJECTED | STATUS_TR_DECREASED;
                 if (_trustRadius <= _ctrl.minTrustRadiusThreshold) {
+                    log.debug<6>("Trust radius %g has dropped below threshold %g; declaring convergence",
+                                 _trustRadius, _ctrl.minTrustRadiusThreshold);
                     _state |= CONVERGED_TR_SMALL;
-                    return true;
+                    return false;
                 }
                 continue;
             }
@@ -293,12 +316,19 @@ bool Optimizer::step() {
         }
         _objective->computeResiduals(_next.parameters, _next.residuals);
         _next.objectiveValue += 0.5*_next.residuals.asEigen().squaredNorm();
-        double actualReduction = _current.objectiveValue - _next.objectiveValue;
-        double predictedReduction = -_step.asEigen().dot(
+        double actualChange = _next.objectiveValue - _current.objectiveValue;
+        double predictedChange = _step.asEigen().dot(
             _gradient.asEigen() + 0.5*_hessian.asEigen()*_step.asEigen()
         );
-        double rho = actualReduction / predictedReduction;
+        double rho = actualChange / predictedChange;
+        if (utils::isnan(rho)) {
+            log.debug<6>("NaN encountered in rho");
+            _state |= FAILED_NAN;
+            return false;
+        }
+        log.debug<6>("Reduction ratio rho=%g; actual=%g, predicted=%g", rho, actualChange, predictedChange);
         if (rho > _ctrl.stepAcceptThreshold) {
+            log.debug<6>("Step accepted");
             _state |= STATUS_STEP_ACCEPTED;
             _current.swap(_next);
             if (!_ctrl.noSR1Term) {
@@ -308,38 +338,61 @@ bool Optimizer::step() {
             if (!_ctrl.noSR1Term) {
                 _sr1v += _sr1jtr;
                 double vs = _sr1v.dot(_step.asEigen());
-                if (vs >= _ctrl.skipSR1UpdateThreshold * _sr1v.norm() * stepLength) {
+                if (vs >= (_ctrl.skipSR1UpdateThreshold * _sr1v.norm() * stepLength + 1.0)) {
                     _sr1b.selfadjointView<Eigen::Lower>().rankUpdate(_sr1v, 1.0 / vs);
                 }
                 _hessian.asEigen() += _sr1b;
             }
             _hessian.asEigen() = _hessian.asEigen().selfadjointView<Eigen::Lower>();
-            if (_gradient.asEigen().lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
-                _state |= CONVERGED_GRADZERO;
-                return true;
+            if (
+                rho > _ctrl.trustRegionGrowReductionRatio &&
+                (stepLength/_trustRadius) > _ctrl.trustRegionGrowStepFraction
+            ) {
+                _state |= STATUS_TR_INCREASED;
+                _trustRadius *= _ctrl.trustRegionGrowFactor;
+                log.debug<6>("Increasing trust radius to %g", _trustRadius);
+            } else {
+                log.debug<6>("Leaving trust radius unchanged at %g", _trustRadius);
+                _state |= STATUS_TR_UNCHANGED;
             }
-            return false;
+            return true;
         }
-        if (rho > _ctrl.trustRegionGrowReductionRatio && rho > _ctrl.trustRegionGrowStepFraction) {
-            _state |= STATUS_TR_INCREASED;
-            _trustRadius *= _ctrl.trustRegionGrowFactor;
-        } else if (
-            rho > _ctrl.trustRegionShrinkMinReductionRatio
-            && rho < _ctrl.trustRegionShrinkMaxReductionRatio
-        ) {
+        log.debug<6>("Step rejected");
+        if (rho < _ctrl.trustRegionShrinkReductionRatio) {
             _state |= STATUS_TR_DECREASED;
             _trustRadius *= _ctrl.trustRegionShrinkFactor;
+            log.debug<6>("Decreasing trust radius to %g", _trustRadius);
             if (_trustRadius <= _ctrl.minTrustRadiusThreshold) {
                 _state |= CONVERGED_TR_SMALL;
-                return true;
+                log.debug<6>("Trust radius %g has dropped below threshold %g; declaring convergence",
+                             _trustRadius, _ctrl.minTrustRadiusThreshold);
+                return false;
             }
         } else {
+            log.debug<6>("Leaving trust radius unchanged at %g", _trustRadius);
             _state |= STATUS_TR_UNCHANGED;
         }
-        _state &= ~int(FAILED_EXCEPTION); // clear the exception flag if we got here
     }
+    log.debug<6>("Max inner iteration number exceeded");
     _state |= FAILED_MAX_INNER_ITERATIONS;
-    return true;
+    return false;
 }
+
+int Optimizer::run() {
+    pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
+    int iterCount = 0;
+    try {
+        for (; iterCount < _ctrl.maxOuterIterations; ++iterCount) {
+            log.debug<6>("Starting outer iteration %d", iterCount);
+            if (!step()) return iterCount;
+        }
+        _state |= FAILED_MAX_OUTER_ITERATIONS;
+    } catch (...) {
+        _state |= FAILED_EXCEPTION;
+    }
+    return iterCount;
+}
+
+
 
 }}} // namespace lsst::meas::multifit
