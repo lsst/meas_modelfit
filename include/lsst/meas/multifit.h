@@ -37,5 +37,6 @@
 #include "lsst/meas/multifit/models.h"
 #include "lsst/meas/multifit/Mixture.h"
 #include "lsst/meas/multifit/optimizer.h"
+#include "lsst/meas/multifit/psf.h"
 
 #endif // !LSST_MEAS_MULTIFIT_H

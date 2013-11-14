@@ -257,7 +257,7 @@ class DensityPlot(object):
         if len(self._all_dims) != len(self._active):
             raise ValueError("Dimensions list contains duplicates")
         self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.025, wspace=0.025)
-        self.ranges = numpy.array(data.ranges)
+        self._ranges = numpy.array(data.ranges)
         self._build_axes()
         self.layers = self.LayerDict(self)
 
@@ -303,11 +303,14 @@ class DensityPlot(object):
         if not self._all_dims.issuperset(s):
             raise ValueError("Invalid values in active set")
         self._active = tuple(active)
-        self.ranges = numpy.array([self.data.ranges[self.data.dimensions.index(k)] for k in self._active])
+        self.replot()
+    active = property(_get_active, _set_active, doc="sequence of active dimensions to plot (sequence of str)")
+
+    def replot(self):
+        self._ranges = numpy.array([self.data.ranges[self.data.dimensions.index(k)] for k in self._active])
         self._build_axes()
         for layer in self._layers:
             self._replotLayer(layer)
-    active = property(_get_active, _set_active, doc="sequence of active dimensions to plot (sequence of str)")
 
     def _build_axes(self):
         self.figure.clear()
@@ -322,7 +325,7 @@ class DensityPlot(object):
             j = i
             axesX = self._axes[None,j] = self.figure.add_subplot(n+1, n+1, jStart+j*jStride)
             axesX.xaxis.tick_top()
-            axesX.set_xlim(self.ranges[i,0], self.ranges[i,1])
+            axesX.set_xlim(self._ranges[i,0], self._ranges[i,1])
             hide_yticklabels(axesX)
             bbox = axesX.get_position()
             bbox.y0 += 0.025
@@ -330,7 +333,7 @@ class DensityPlot(object):
             axesX.autoscale(False, axis='x')
             axesY = self._axes[i,None] = self.figure.add_subplot(n+1, n+1, iStart + iStart+i*iStride)
             axesY.yaxis.tick_right()
-            axesY.set_ylim(self.ranges[i,0], self.ranges[i,1])
+            axesY.set_ylim(self._ranges[i,0], self._ranges[i,1])
             hide_xticklabels(axesY)
             bbox = axesY.get_position()
             bbox.x1 -= 0.025

@@ -33,26 +33,20 @@ namespace lsst { namespace meas { namespace multifit {
 PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders) {
     ModelVector components;
     Model::BasisVector basisVector(1);
-    double radius = -orders.size() * 0.5;
-    int fullBasisSize = 0;
-    for (std::size_t i = 0; i != orders.size(); ++i) {
-        fullBasisSize += shapelet::computeSize(orders[i]);
-    }
-    int offset = 0;
+    double radius = std::pow(2.0, -(orders.size() - 1) / 2);
     PTR(shapelet::MultiShapeletBasis) & basis = basisVector.front();
-    for (std::size_t i = 0; i != orders.size(); ++i) {
+    for (std::size_t i = 0; i != orders.size(); ++i, radius *= 2) {
         int componentSize = shapelet::computeSize(orders[i]);
-        ndarray::Array<double,2,2> matrix = ndarray::allocate(componentSize, fullBasisSize);
-        matrix.deep() = 0.0;
-        matrix.asEigen().block(0, componentSize, offset, componentSize).setIdentity();
-        basis = boost::make_shared<shapelet::MultiShapeletBasis>(fullBasisSize);
+        ndarray::Array<double,2,2> matrix = ndarray::allocate(componentSize, componentSize);
+        matrix.asEigen().setIdentity();
+        basis = boost::make_shared<shapelet::MultiShapeletBasis>(componentSize);
         basis->addComponent(radius, orders[i], matrix);
         components.push_back(Model::makeMultiCenter(basisVector));
     }
     return boost::make_shared<MultiModel>(components);
 }
 
-class PsfApproximationLikelihood::Impl {
+class MultiShapeletPsfLikelihood::Impl {
 public:
 
     explicit Impl(
@@ -101,9 +95,9 @@ private:
     ndarray::Array<Pixel,2,-2> _workspace;
 };
 
-PsfApproximationLikelihood::PsfApproximationLikelihood(
+MultiShapeletPsfLikelihood::MultiShapeletPsfLikelihood(
     ndarray::Array<Pixel const,2,2> const & image,
-    afw::geom::Extent2I const & xy0,
+    afw::geom::Point2I const & xy0,
     PTR(Model) model,
     ndarray::Array<Scalar const,1,1> const & fixed
 ) :
@@ -125,13 +119,13 @@ PsfApproximationLikelihood::PsfApproximationLikelihood(
     _data = ndarray::copy(ndarray::flatten<1>(image));
 }
 
-void PsfApproximationLikelihood::computeModelMatrix(
+void MultiShapeletPsfLikelihood::computeModelMatrix(
     ndarray::Array<Pixel,2,-1> const & modelMatrix,
     ndarray::Array<Scalar const,1,1> const & nonlinear
 ) const {
     return _impl->computeModelMatrix(modelMatrix, nonlinear, _fixed, *getModel());
 }
 
-PsfApproximationLikelihood::~PsfApproximationLikelihood() {}
+MultiShapeletPsfLikelihood::~MultiShapeletPsfLikelihood() {}
 
 }}} // namespace lsst::meas::multifit

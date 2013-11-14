@@ -71,14 +71,41 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/shapelet/shapeletLib.i"
 %import "lsst/pex/config.h"
 
+// We should have something like this macro in p_lsstSwig.i
+%define %downcastPtr(BASE, DERIVED)
+%extend DERIVED {
+    static PTR(DERIVED) cast(PTR(BASE) base) {
+        return boost::dynamic_pointer_cast< DERIVED >(base);
+    }
+}
+%enddef
+
 %template(EpochFootprintVector) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,0>);
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,1>);
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,2>);
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,1,0>);
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,1,1>);
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,-2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,-2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,-2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,-2>);
 %declareNumPyConverters(lsst::meas::multifit::Vector);
 %declareNumPyConverters(lsst::meas::multifit::Matrix);
 %declareNumPyConverters(Eigen::VectorXd);
@@ -87,6 +114,12 @@ Basic routines to talk to lsst::meas::multifit classes
 %declareNumPyConverters(ndarray::Array<double,2,2>);
 
 %include "lsst/meas/multifit/constants.h"
+
+%pythoncode %{
+import numpy
+Scalar = numpy.float64
+Pixel = numpy.float32
+%}
 
 %declareTablePersistable(Prior, lsst::meas::multifit::Prior);
 %declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
@@ -103,6 +136,7 @@ Basic routines to talk to lsst::meas::multifit classes
 %shared_ptr(lsst::meas::multifit::DirectSamplingInterpreter);
 %shared_ptr(lsst::meas::multifit::MarginalSamplingInterpreter);
 %shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
+%shared_ptr(lsst::meas::multifit::MultiShapeletPsfLikelihood);
 
 //----------- Mixtures --------------------------------------------------------------------------------------
 
@@ -161,11 +195,18 @@ Basic routines to talk to lsst::meas::multifit classes
 %include "lsst/meas/multifit/DirectSampling.h"
 %include "lsst/meas/multifit/MarginalSampling.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
+%include "lsst/meas/multifit/psf.h"
+
+%downcastPtr(lsst::meas::multifit::Model, lsst::meas::multifit::MultiModel)
+%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::SamplingInterpreter)
+%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::DirectSamplingInterpreter)
+%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::MarginalSamplingInterpreter)
 
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
 %template(EllipseVector) std::vector<lsst::afw::geom::ellipses::Ellipse>;
 %template(BasisVector) std::vector<PTR(lsst::shapelet::MultiShapeletBasis)>;
+%template(ModelVector) std::vector<PTR(lsst::meas::multifit::Model)>;
 
 %pythoncode %{
 Model.EllipseVector = EllipseVector

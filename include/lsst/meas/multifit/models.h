@@ -67,9 +67,9 @@ public:
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const = 0;
 
-#ifndef SWIG
-
     virtual EllipseVector makeEllipseVector() const = 0;
+
+#ifndef SWIG
 
     virtual void writeEllipses(
         Scalar const * nonlinearIter, Scalar const * fixedIter,

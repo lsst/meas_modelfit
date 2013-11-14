@@ -33,12 +33,12 @@ namespace lsst { namespace meas { namespace multifit {
 
 PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders);
 
-class PsfApproximationLikelihood : public Likelihood {
+class MultiShapeletPsfLikelihood : public Likelihood {
 public:
 
-    PsfApproximationLikelihood(
+    MultiShapeletPsfLikelihood(
         ndarray::Array<Pixel const,2,2> const & image,
-        afw::geom::Extent2I const & xy0,
+        afw::geom::Point2I const & xy0,
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed
     );
@@ -48,7 +48,7 @@ public:
         ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const;
 
-    virtual ~PsfApproximationLikelihood();
+    virtual ~MultiShapeletPsfLikelihood();
 
 private:
     class Impl;
