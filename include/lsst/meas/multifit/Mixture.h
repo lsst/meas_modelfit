@@ -128,8 +128,8 @@ public:
     typedef MixtureComponent Component;
     typedef MixtureUpdateRestriction UpdateRestriction;
     typedef std::vector<Component> ComponentList;
-    typedef typename ComponentList::iterator iterator;
-    typedef typename ComponentList::const_iterator const_iterator;
+    typedef ComponentList::iterator iterator;
+    typedef ComponentList::const_iterator const_iterator;
 
     //@{
     /**
