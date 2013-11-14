@@ -29,6 +29,8 @@
 #include "lsst/pex/logging/Debug.h"
 
 #include "lsst/meas/multifit/optimizer.h"
+#include "lsst/meas/multifit/Likelihood.h"
+#include "lsst/meas/multifit/priors.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -101,6 +103,73 @@ void solveTrustRegion(
     }
     log.debug<7>("Ending at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
     return;
+}
+
+namespace {
+
+class LikelihoodOptimizerObjective : public OptimizerObjective {
+public:
+
+    LikelihoodOptimizerObjective(PTR(Likelihood) likelihood, PTR(Prior) prior) :
+        OptimizerObjective(
+            likelihood->getDataDim(), likelihood->getNonlinearDim() + likelihood->getAmplitudeDim()
+        ),
+        _likelihood(likelihood), _prior(prior),
+        _modelMatrix(ndarray::allocate(likelihood->getDataDim(), likelihood->getAmplitudeDim()))
+    {}
+
+    virtual void computeResiduals(
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & residuals
+    ) const {
+        int nlDim = _likelihood->getNonlinearDim();
+        int ampDim = _likelihood->getAmplitudeDim();
+        _likelihood->computeModelMatrix(_modelMatrix, parameters[ndarray::view(0, nlDim)]);
+        residuals.asEigen() = _modelMatrix.asEigen().cast<Scalar>()
+            * parameters[ndarray::view(nlDim, nlDim+ampDim)].asEigen();
+    }
+
+    virtual bool hasPrior() const { return _prior; }
+
+    virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {
+        int nlDim = _likelihood->getNonlinearDim();
+        int ampDim = _likelihood->getAmplitudeDim();
+        return _prior->evaluate(parameters[ndarray::view(0, nlDim)],
+                                parameters[ndarray::view(nlDim, nlDim+ampDim)]);
+    }
+
+    virtual void differentiatePrior(
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & gradient,
+        ndarray::Array<Scalar,2,1> const & hessian
+    ) const {
+        int nlDim = _likelihood->getNonlinearDim();
+        int ampDim = _likelihood->getAmplitudeDim();
+        int totDim = nlDim + ampDim;
+        _prior->evaluateDerivatives(
+            parameters[ndarray::view(0, nlDim)],
+            parameters[ndarray::view(nlDim, totDim)],
+            gradient[ndarray::view(0, nlDim)],
+            gradient[ndarray::view(nlDim, totDim)],
+            hessian[ndarray::view(0, nlDim)(0, nlDim)],
+            hessian[ndarray::view(nlDim, totDim)(nlDim, totDim)],
+            hessian[ndarray::view(0, nlDim)(nlDim, totDim)]
+        );
+    }
+
+private:
+    PTR(Likelihood) _likelihood;
+    PTR(Prior) _prior;
+    ndarray::Array<Pixel,2,-1> _modelMatrix;
+};
+
+} // anonymous
+
+PTR(OptimizerObjective) OptimizerObjective::makeFromLikelihood(
+    PTR(Likelihood) likelihood,
+    PTR(Prior) prior
+) {
+    return boost::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
 }
 
 Scalar OptimizerObjective::computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {

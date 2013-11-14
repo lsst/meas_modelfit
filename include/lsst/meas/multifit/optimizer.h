@@ -32,6 +32,9 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+class Likelihood;
+class Prior;
+
 /**
  *  @brief Solve a symmetric quadratic matrix equation with a ball constraint.
  *
@@ -62,6 +65,11 @@ public:
 
     int const dataSize;
     int const parameterSize;
+
+    static PTR(OptimizerObjective) makeFromLikelihood(
+        PTR(Likelihood) likelihood,
+        PTR(Prior) prior = PTR(Prior)()
+    );
 
     OptimizerObjective(int dataSize_, int parameterSize_) :
         dataSize(dataSize_), parameterSize(parameterSize_)
