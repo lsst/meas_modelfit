@@ -55,6 +55,31 @@ public:
     ) const = 0;
 
     /**
+     *  @brief Evaluate the derivatives of the prior at the given point in nonlinear and amplitude space.
+     *
+     *  Note that while the model is linear in the amplitudes, the prior is not necessarily
+     *  linear in the amplitudes, so we do care about second derivatives w.r.t. amplitudes.
+     *
+     *  @param[in]   nonlinear           Vector of nonlinear parameters
+     *  @param[in]   amplitudes          Vector of linear parameters
+     *  @param[in]   nonlinearGradient   First derivative w.r.t. nonlinear parameters
+     *  @param[in]   amplitudeGradient   First derivative w.r.t. linear parameters parameters
+     *  @param[in]   nonlinearHessian    Second derivative w.r.t. nonlinear parameters
+     *  @param[in]   amplitudeHessian    Second derivative w.r.t. linear parameters parameters
+     *  @param[in]   crossHessian        Second derivative cross term of d(nonlinear)d(amplitudes);
+     *                                   shape is [nonlinearDim, amplitudeDim].
+     */
+    virtual void evaluateDerivatives(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & nonlinearGradient,
+        ndarray::Array<Scalar,1,1> const & amplitudeGradient,
+        ndarray::Array<Scalar,2,1> const & nonlinearHessian,
+        ndarray::Array<Scalar,2,1> const & amplitudeHessian,
+        ndarray::Array<Scalar,2,1> const & crossHessian
+    ) const = 0;
+
+    /**
      *  @brief Return the -log amplitude integral of the prior*likelihood product.
      *
      *  If @f$\alpha@f$ are the amplitudes, @f$\theta@f$ are the nonlinear parameters, and @f$D@f$ is
@@ -118,6 +143,17 @@ public:
     virtual Scalar evaluate(
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes
+    ) const;
+
+    /// @copydoc Prior::evaluateDerivatives
+    virtual void evaluateDerivatives(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & nonlinearGradient,
+        ndarray::Array<Scalar,1,1> const & amplitudeGradient,
+        ndarray::Array<Scalar,2,1> const & nonlinearHessian,
+        ndarray::Array<Scalar,2,1> const & amplitudeHessian,
+        ndarray::Array<Scalar,2,1> const & crossHessian
     ) const;
 
     /// @copydoc Prior::evaluate

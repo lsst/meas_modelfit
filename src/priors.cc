@@ -60,6 +60,22 @@ Scalar MixturePrior::evaluate(
     }
 }
 
+void MixturePrior::evaluateDerivatives(
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    ndarray::Array<Scalar const,1,1> const & amplitudes,
+    ndarray::Array<Scalar,1,1> const & nonlinearGradient,
+    ndarray::Array<Scalar,1,1> const & amplitudeGradient,
+    ndarray::Array<Scalar,2,1> const & nonlinearHessian,
+    ndarray::Array<Scalar,2,1> const & amplitudeHessian,
+    ndarray::Array<Scalar,2,1> const & crossHessian
+) const {
+    _mixture->evaluateDerivatives(nonlinear, nonlinearGradient, nonlinearHessian);
+    amplitudeGradient.deep() = 0.0;
+    amplitudeHessian.deep() = 0.0;
+    crossHessian.deep() = 0.0;
+}
+
+
 namespace {
 
 class EllipseUpdateRestriction : public Mixture::UpdateRestriction {
