@@ -53,9 +53,11 @@ public:
         ndarray::Array<Pixel const,1,1> const & x,
         ndarray::Array<Pixel const,1,1> const & y,
         Model::EllipseVector const & ellipses,
-        Model::BasisVector const & basisVector
+        Model::BasisVector const & basisVector,
+        Scalar sigma
     ) : _ellipses(ellipses),
-        _builder(x, y)
+        _builder(x, y),
+        _sigma(sigma)
     {
         int maxOrder = 0;
         for (Model::BasisVector::const_iterator i = basisVector.begin(); i != basisVector.end(); ++i) {
@@ -87,18 +89,21 @@ public:
                 modelMatrix.asEigen() += _workspace.asEigen() * j->getMatrix().asEigen().cast<Pixel>();
             }
         }
+        modelMatrix.asEigen() /= _sigma;
     }
 
 private:
     Model::EllipseVector _ellipses;
     shapelet::ModelBuilder<Pixel> _builder;
     ndarray::Array<Pixel,2,-2> _workspace;
+    Scalar _sigma;
 };
 
 MultiShapeletPsfLikelihood::MultiShapeletPsfLikelihood(
     ndarray::Array<Pixel const,2,2> const & image,
     afw::geom::Point2I const & xy0,
     PTR(Model) model,
+    Scalar sigma,
     ndarray::Array<Scalar const,1,1> const & fixed
 ) :
     Likelihood(model, fixed)
@@ -115,8 +120,9 @@ MultiShapeletPsfLikelihood::MultiShapeletPsfLikelihood(
             y[j] = iy;
         }
     }
-    _impl.reset(new Impl(x, y, model->makeEllipseVector(), model->getBasisVector()));
+    _impl.reset(new Impl(x, y, model->makeEllipseVector(), model->getBasisVector(), sigma));
     _data = ndarray::copy(ndarray::flatten<1>(image));
+    _data.deep() /= sigma;
 }
 
 void MultiShapeletPsfLikelihood::computeModelMatrix(

@@ -40,6 +40,7 @@ public:
         ndarray::Array<Pixel const,2,2> const & image,
         afw::geom::Point2I const & xy0,
         PTR(Model) model,
+        Scalar sigma,
         ndarray::Array<Scalar const,1,1> const & fixed
     );
 
