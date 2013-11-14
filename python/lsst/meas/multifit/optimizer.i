@@ -2,13 +2,6 @@
 #include "lsst/meas/multifit/optimizer.h"
 %}
 
-%declareNumPyConverters(ndarray::Array<double,1,1>)
-%declareNumPyConverters(ndarray::Array<double const,1,1>)
-%declareNumPyConverters(ndarray::Array<double,2,1>)
-%declareNumPyConverters(ndarray::Array<double const,2,1>)
-%declareNumPyConverters(ndarray::Array<double,2,2>)
-%declareNumPyConverters(ndarray::Array<double const,2,2>)
-
 %returnCopy(Optimizer::getControl)
 %returnCopy(Optimizer::getIterations)
 %shared_ptr(lsst::meas::multifit::OptimizerObjective)

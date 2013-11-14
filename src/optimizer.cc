@@ -33,9 +33,9 @@
 namespace lsst { namespace meas { namespace multifit {
 
 void solveTrustRegion(
-    ndarray::Array<double,1,1> const & x,
-    ndarray::Array<double const,2,1> const & F,
-    ndarray::Array<double const,1,1> const & g,
+    ndarray::Array<Scalar,1,1> const & x,
+    ndarray::Array<Scalar const,2,1> const & F,
+    ndarray::Array<Scalar const,1,1> const & g,
     double r, double tolerance
 ) {
     static double const ROOT_EPS = std::sqrt(std::numeric_limits<double>::epsilon());
@@ -45,10 +45,10 @@ void solveTrustRegion(
     double const r2min = r2 * (1.0 - tolerance) * (1.0 - tolerance);
     double const r2max = r2 * (1.0 + tolerance) * (1.0 + tolerance);
     int const d = g.getSize<0>();
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigh(F.asEigen());
+    Eigen::SelfAdjointEigenSolver<Matrix> eigh(F.asEigen());
     double const threshold = ROOT_EPS * eigh.eigenvalues()[d - 1];
-    Eigen::VectorXd qtg = eigh.eigenvectors().adjoint() * g.asEigen();
-    Eigen::VectorXd tmp(d);
+    Vector qtg = eigh.eigenvectors().adjoint() * g.asEigen();
+    Vector tmp(d);
     double mu = 0.0;
     double xsn = 0.0;
     if (eigh.eigenvalues()[0] >= threshold) {
@@ -103,14 +103,14 @@ void solveTrustRegion(
     return;
 }
 
-double OptimizerObjective::computePrior(ndarray::Array<double const,1,1> const & parameters) const {
+Scalar OptimizerObjective::computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {
     return 1.0;
 }
 
 void OptimizerObjective::differentiatePrior(
-    ndarray::Array<double const,1,1> const & parameters,
-    ndarray::Array<double,1,1> const & gradient,
-    ndarray::Array<double,2,1> const & hessian
+    ndarray::Array<Scalar const,1,1> const & parameters,
+    ndarray::Array<Scalar,1,1> const & gradient,
+    ndarray::Array<Scalar,2,1> const & hessian
 ) const {
     gradient.deep() = 0.0;
     hessian.deep() = 0.0;
@@ -132,7 +132,7 @@ void OptimizerIterationData::swap(OptimizerIterationData & other) {
 
 Optimizer::Optimizer(
     PTR(Objective const) objective,
-    ndarray::Array<double const,1,1> const & parameters,
+    ndarray::Array<Scalar const,1,1> const & parameters,
     Control const & ctrl
 ) :
     _state(0x0),

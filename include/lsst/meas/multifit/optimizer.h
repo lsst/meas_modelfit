@@ -28,6 +28,7 @@
 
 #include "lsst/base.h"
 #include "lsst/pex/config.h"
+#include "lsst/meas/multifit/constants.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -47,8 +48,8 @@ namespace lsst { namespace meas { namespace multifit {
  *  "Nonlinear Optimization" by Nocedal and Wright.
  */
 void solveTrustRegion(
-    ndarray::Array<double,1,1> const & x,
-    ndarray::Array<double const,2,1> const & F, ndarray::Array<double const,1,1> const & g,
+    ndarray::Array<Scalar,1,1> const & x,
+    ndarray::Array<Scalar const,2,1> const & F, ndarray::Array<Scalar const,1,1> const & g,
     double r, double tolerance
 );
 
@@ -67,18 +68,18 @@ public:
     {}
 
     virtual void computeResiduals(
-        ndarray::Array<double const,1,1> const & parameters,
-        ndarray::Array<double,1,1> const & residuals
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & residuals
     ) const = 0;
 
     virtual bool hasPrior() const { return false; }
 
-    virtual double computePrior(ndarray::Array<double const,1,1> const & parameters) const;
+    virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const;
 
     virtual void differentiatePrior(
-        ndarray::Array<double const,1,1> const & parameters,
-        ndarray::Array<double,1,1> const & gradient,
-        ndarray::Array<double,2,1> const & hessian
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & gradient,
+        ndarray::Array<Scalar,2,1> const & hessian
     ) const;
 
     virtual ~OptimizerObjective() {}
@@ -211,10 +212,10 @@ public:
  *  @note This is logically an inner class, but Swig doesn't support those.
  */
 struct OptimizerIterationData {
-    double objectiveValue;
-    double priorValue;
-    ndarray::Array<double,1,1> parameters;
-    ndarray::Array<double,1,1> residuals;
+    Scalar objectiveValue;
+    Scalar priorValue;
+    ndarray::Array<Scalar,1,1> parameters;
+    ndarray::Array<Scalar,1,1> residuals;
 
     OptimizerIterationData(int dataSize, int parameterSize);
 
@@ -292,7 +293,7 @@ public:
 
     Optimizer(
         PTR(Objective const) objective,
-        ndarray::Array<double const,1,1> const & parameters,
+        ndarray::Array<Scalar const,1,1> const & parameters,
         Control const & ctrl
     );
 
@@ -304,15 +305,15 @@ public:
 
     int getState() const { return _state; }
 
-    double getObjectiveValue() const { return _current.objectiveValue; }
+    Scalar getObjectiveValue() const { return _current.objectiveValue; }
 
-    ndarray::Array<double const,1,1> getParameters() const { return _current.parameters; }
+    ndarray::Array<Scalar const,1,1> getParameters() const { return _current.parameters; }
 
-    ndarray::Array<double const,1,1> getResiduals() const { return _current.residuals; }
+    ndarray::Array<Scalar const,1,1> getResiduals() const { return _current.residuals; }
 
-    ndarray::Array<double const,1,1> getGradient() const { return _gradient; }
+    ndarray::Array<Scalar const,1,1> getGradient() const { return _gradient; }
 
-    ndarray::Array<double const,2,2> getHessian() const { return _hessian; }
+    ndarray::Array<Scalar const,2,2> getHessian() const { return _hessian; }
 
     IterationDataVector const & getIterations() const { return _iterations; }
 
@@ -326,13 +327,13 @@ private:
     double _trustRadius;
     IterationData _current;
     IterationData _next;
-    ndarray::Array<double,1,1> _step;
-    ndarray::Array<double,1,1> _gradient;
-    ndarray::Array<double,2,2> _hessian;
-    Eigen::MatrixXd _jacobian;
-    Eigen::MatrixXd _sr1b;
-    Eigen::VectorXd _sr1v;
-    Eigen::VectorXd _sr1jtr;
+    ndarray::Array<Scalar,1,1> _step;
+    ndarray::Array<Scalar,1,1> _gradient;
+    ndarray::Array<Scalar,2,2> _hessian;
+    Matrix _jacobian;
+    Matrix _sr1b;
+    Vector _sr1v;
+    Vector _sr1jtr;
     IterationDataVector _iterations;
 };
 
