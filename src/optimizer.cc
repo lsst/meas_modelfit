@@ -103,12 +103,11 @@ void solveTrustRegion(
     return;
 }
 
-
-double PosteriorOptimizerObjective::computePrior(ndarray::Array<double const,1,1> const & parameters) const {
+double OptimizerObjective::computePrior(ndarray::Array<double const,1,1> const & parameters) const {
     return 1.0;
 }
 
-void PosteriorOptimizerObjective::differentiatePrior(
+void OptimizerObjective::differentiatePrior(
     ndarray::Array<double const,1,1> const & parameters,
     ndarray::Array<double,1,1> const & gradient,
     ndarray::Array<double,2,1> const & hessian
@@ -117,13 +116,13 @@ void PosteriorOptimizerObjective::differentiatePrior(
     hessian.deep() = 0.0;
 }
 
-PosteriorOptimizerIterationData::PosteriorOptimizerIterationData(int dataSize, int parameterSize) :
+OptimizerIterationData::OptimizerIterationData(int dataSize, int parameterSize) :
     objectiveValue(0.0), priorValue(0.0),
     parameters(ndarray::allocate(parameterSize)),
     residuals(ndarray::allocate(dataSize))
 {}
 
-void PosteriorOptimizerIterationData::swap(PosteriorOptimizerIterationData & other) {
+void OptimizerIterationData::swap(OptimizerIterationData & other) {
     std::swap(objectiveValue, other.objectiveValue);
     std::swap(priorValue, other.priorValue);
     parameters.swap(other.parameters);
@@ -131,7 +130,7 @@ void PosteriorOptimizerIterationData::swap(PosteriorOptimizerIterationData & oth
 }
 
 
-PosteriorOptimizer::PosteriorOptimizer(
+Optimizer::Optimizer(
     PTR(Objective const) objective,
     ndarray::Array<double const,1,1> const & parameters,
     Control const & ctrl
@@ -170,7 +169,7 @@ PosteriorOptimizer::PosteriorOptimizer(
     _hessian.asEigen() = _hessian.asEigen().selfadjointView<Eigen::Lower>();
 }
 
-void PosteriorOptimizer::_computeDerivatives() {
+void Optimizer::_computeDerivatives() {
     _jacobian.setZero();
     _next.parameters.deep() = _current.parameters;
     for (int n = 0; n < _objective->parameterSize; ++n) {
@@ -198,7 +197,7 @@ void PosteriorOptimizer::_computeDerivatives() {
     _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(_jacobian.adjoint(), 1.0);
 }
 
-bool PosteriorOptimizer::step() {
+bool Optimizer::step() {
     for (int iterCount = 0; iterCount < _ctrl.maxInnerIterations; ++iterCount) {
         _state &= ~int(STATUS);
         _state |= FAILED_EXCEPTION; // set in advance in case we throw

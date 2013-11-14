@@ -9,24 +9,24 @@
 %declareNumPyConverters(ndarray::Array<double,2,2>)
 %declareNumPyConverters(ndarray::Array<double const,2,2>)
 
-%returnCopy(PosteriorOptimizer::getControl)
-%returnCopy(PosteriorOptimizer::getIterations)
-%shared_ptr(lsst::meas::multifit::PosteriorOptimizerObjective)
+%returnCopy(Optimizer::getControl)
+%returnCopy(Optimizer::getIterations)
+%shared_ptr(lsst::meas::multifit::OptimizerObjective)
 
 %include "lsst/meas/multifit/optimizer.h"
 
-%usePointerEquality(lsst::meas::multifit::PosteriorOptimizerObjective)
+%usePointerEquality(lsst::meas::multifit::OptimizerObjective)
 
 // ignore std::vector methods that require a default ctor, as we don't have one for this class
-%ignore std::vector<lsst::meas::multifit::PosteriorOptimizerIterationData>::vector(size_type);
-%ignore std::vector<lsst::meas::multifit::PosteriorOptimizerIterationData>::resize(size_type);
-%template(PosteriorOptimizerIterationDataVector) std::vector<lsst::meas::multifit::PosteriorOptimizerIterationData>;
+%ignore std::vector<lsst::meas::multifit::OptimizerIterationData>::vector(size_type);
+%ignore std::vector<lsst::meas::multifit::OptimizerIterationData>::resize(size_type);
+%template(OptimizerIterationDataVector) std::vector<lsst::meas::multifit::OptimizerIterationData>;
 
-%extend lsst::meas::multifit::PosteriorOptimizer {
+%extend lsst::meas::multifit::Optimizer {
     %pythoncode %{
-        IterationData = PosteriorOptimizerIterationData
-        Objective = PosteriorOptimizerObjective
-        Control = PosteriorOptimizerControl
+        IterationData = OptimizerIterationData
+        Objective = OptimizerObjective
+        Control = OptimizerControl
 
         def getConfig(self):
             config = self.ConfigClass()
@@ -37,9 +37,9 @@
 
 %pythoncode %{
     import lsst.pex.config
-    @lsst.pex.config.wrap(PosteriorOptimizerControl)
-    class PosteriorOptimizerConfig(lsst.pex.config.Config):
+    @lsst.pex.config.wrap(OptimizerControl)
+    class OptimizerConfig(lsst.pex.config.Config):
         pass
-    PosteriorOptimizer.ConfigClass = PosteriorOptimizerConfig
-    PosteriorOptimizer.IterationDataVector = PosteriorOptimizerIterationDataVector
+    Optimizer.ConfigClass = OptimizerConfig
+    Optimizer.IterationDataVector = OptimizerIterationDataVector
 %}

@@ -53,16 +53,16 @@ void solveTrustRegion(
 );
 
 /**
- *  @brief Base class for objective functions for PosteriorOptimizer
+ *  @brief Base class for objective functions for Optimizer
  *
  */
-class PosteriorOptimizerObjective {
+class OptimizerObjective {
 public:
 
     int const dataSize;
     int const parameterSize;
 
-    PosteriorOptimizerObjective(int dataSize_, int parameterSize_) :
+    OptimizerObjective(int dataSize_, int parameterSize_) :
         dataSize(dataSize_), parameterSize(parameterSize_)
     {}
 
@@ -81,11 +81,11 @@ public:
         ndarray::Array<double,2,1> const & hessian
     ) const;
 
-    virtual ~PosteriorOptimizerObjective() {}
+    virtual ~OptimizerObjective() {}
 };
 
 /**
- *  @brief Configuration object for PosteriorOptimizer
+ *  @brief Configuration object for Optimizer
  *
  *  Many of these configuration options pertain to how the trust region is
  *  updated.  It's easiest to understand these together rather than separately.
@@ -101,7 +101,7 @@ public:
  *   - if @c trustRegionShrinkMinReductionRatio @f$< \rho < @f$ @c trustRegionShrinkMaxReductionRatio,
  *     the trust region radius will be multiplied by @c trustRegionShrinkFactor.
  */
-class PosteriorOptimizerControl {
+class OptimizerControl {
 public:
     LSST_CONTROL_FIELD(
         noSR1Term, bool,
@@ -188,7 +188,7 @@ public:
         "whether to save all iterations for debugging purposes"
     );
 
-    PosteriorOptimizerControl() :
+    OptimizerControl() :
         noSR1Term(false), skipSR1UpdateThreshold(1E-8),
         minTrustRadiusThreshold(1E-8),
         gradientThreshold(1E-8),
@@ -210,21 +210,21 @@ public:
  *
  *  @note This is logically an inner class, but Swig doesn't support those.
  */
-struct PosteriorOptimizerIterationData {
+struct OptimizerIterationData {
     double objectiveValue;
     double priorValue;
     ndarray::Array<double,1,1> parameters;
     ndarray::Array<double,1,1> residuals;
 
-    PosteriorOptimizerIterationData(int dataSize, int parameterSize);
+    OptimizerIterationData(int dataSize, int parameterSize);
 
-    void swap(PosteriorOptimizerIterationData & other);
+    void swap(OptimizerIterationData & other);
 };
 
 /**
  *  @brief A numerical optimizer customized for least-squares problems with Bayesian priors
  *
- *  The algorithm used by PosteriorOptimizer combines the Gauss-Newton approach of approximating
+ *  The algorithm used by Optimizer combines the Gauss-Newton approach of approximating
  *  the second-derivative (Hessian) matrix as the inner product of the Jacobian of the residuals, while
  *  maintaining a matrix of corrections to this to account for large residuals, which is updated
  *  using a symmetric rank-1 (SR1) secant formula.  We assume the prior has analytic first and second
@@ -264,12 +264,12 @@ struct PosteriorOptimizerIterationData {
  *  converge, but spend more time computing each step; this is ideal when we expect the time spent
  *  in function evaluation to dominate the time per step anyway.
  */
-class PosteriorOptimizer {
+class Optimizer {
 public:
 
-    typedef PosteriorOptimizerObjective Objective;
-    typedef PosteriorOptimizerControl Control;
-    typedef PosteriorOptimizerIterationData IterationData;
+    typedef OptimizerObjective Objective;
+    typedef OptimizerControl Control;
+    typedef OptimizerIterationData IterationData;
     typedef std::vector<IterationData> IterationDataVector;
 
     enum StateFlags {
@@ -290,7 +290,7 @@ public:
         STATUS = STATUS_STEP | STATUS_TR,
     };
 
-    PosteriorOptimizer(
+    Optimizer(
         PTR(Objective const) objective,
         ndarray::Array<double const,1,1> const & parameters,
         Control const & ctrl
