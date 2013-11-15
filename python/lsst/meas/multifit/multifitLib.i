@@ -124,6 +124,8 @@ Pixel = numpy.float32
 %declareTablePersistable(Prior, lsst::meas::multifit::Prior);
 %declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
 
+%shared_ptr(lsst::meas::multifit::ModelFitTable);
+%shared_ptr(lsst::meas::multifit::ModelFitRecord);
 %shared_ptr(lsst::meas::multifit::Model);
 %shared_ptr(lsst::meas::multifit::MultiModel);
 %shared_ptr(lsst::meas::multifit::Interpreter);
@@ -237,9 +239,6 @@ ProjectedLikelihood.ConfigClass = ProjectedLikelihoodConfig
 %}
 
 //----------- ModelFitRecord/Table/Catalog ------------------------------------------------------------------
-
-%shared_ptr(lsst::meas::multifit::ModelFitTable);
-%shared_ptr(lsst::meas::multifit::ModelFitRecord);
 
 %include "lsst/meas/multifit/ModelFitRecord.h"
 
