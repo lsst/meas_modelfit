@@ -111,7 +111,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
             )
         self.keys["fit.parameters"] = schema.addField(
             "fit.parameters", type="ArrayD", size=self.interpreter.getParameterDim(),
-            doc="best-fit nonlinear parameters"
+            doc="best-fit sampler parameters"
             )
         self.keys["rngstate"] = schema.addField(
             "rngstate", type=str, size=self.rng.getStateSize(),
@@ -169,4 +169,4 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         objective = multifitLib.makeSamplingObjective(self.interpreter, likelihood)
         record.setString(self.keys["rngstate"], self.rng.getState())
         self.sampler.run(objective, record.getPdf(), record.getSamples())
-        # TODO: compute and set best-fit parameters
+        record[self.keys["fit.parameters"]] = self.interpreter.computeParameterMean(record)
