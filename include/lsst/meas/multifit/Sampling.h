@@ -92,12 +92,11 @@ public:
 
 protected:
 
-    // Protected constructor; subclasses must also initialize _nestedKey in their ctor
-    // body, but this is not accepted as a ctor argument because it's derived from
-    // parameterKey.
+    // Protected constructor; subclasses must also initialize _parameterKey and _nestedKey in their ctor body
+    // (it just works better that way)
     SamplingInterpreter(
         afw::table::Schema & sampleSchema,
-        ArrayKey const & parameterKey,
+        Model::NameVector const & parameterNames,
         PTR(Model) model,
         PTR(Prior) prior
     );

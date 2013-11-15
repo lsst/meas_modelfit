@@ -72,11 +72,10 @@ ndarray::Array<Scalar,2,2> SamplingInterpreter::computeNonlinearCovariance(
 
 SamplingInterpreter::SamplingInterpreter(
     afw::table::Schema & sampleSchema,
-    ArrayKey const & parameterKey,
+    Model::NameVector const & parameterNames,
     PTR(Model) model,
     PTR(Prior) prior
-) : Interpreter(parameterKey.getSize(), model, prior),
-    _parameterKey(parameterKey),
+) : Interpreter(parameterNames, model, prior),
     _weightKey(sampleSchema.addField<Scalar>("weight", "normalized Monte Carlo weight"))
 {}
 

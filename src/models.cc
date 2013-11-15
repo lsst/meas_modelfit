@@ -88,19 +88,30 @@ shapelet::MultiShapeletFunction Model::makeShapeletFunction(
     return r;
 }
 
-Model::Model(BasisVector basisVector, int nonlinearDim, int fixedDim) :
-    _nonlinearDim(nonlinearDim),
-    _amplitudeDim(0),
-    _fixedDim(fixedDim),
+Model::Model(
+    BasisVector basisVector,
+    NameVector nonlinearNames,
+    NameVector amplitudeNames,
+    NameVector fixedNames
+) :
+    _nonlinearNames(nonlinearNames),
+    _amplitudeNames(amplitudeNames),
+    _fixedNames(fixedNames),
     _basisVector(basisVector)
 {
+    int amplitudeDim = 0;
     for (BasisVector::const_iterator i = _basisVector.begin(); i != _basisVector.end(); ++i) {
         if (!(*i)) {
-            ++_amplitudeDim; // null basis indicates a point source
+            ++amplitudeDim; // null basis indicates a point source
         } else {
-            _amplitudeDim += (**i).getSize();
+            amplitudeDim += (**i).getSize();
         }
     }
+    LSST_ASSERT_EQUAL(
+        amplitudeDim, getAmplitudeDim(),
+        "Number of amplitudes in basis vectors (%d) does not match number of amplitude names (%d)",
+        pex::exceptions::LengthErrorException
+    );
 }
 
 Model::EllipseVector Model::writeEllipses(
@@ -158,8 +169,15 @@ namespace {
 class FixedCenterModel : public Model {
 public:
 
-    explicit FixedCenterModel(BasisVector basisVector) :
-        Model(basisVector, countNonlinears(basisVector, 3, 0), 2)
+    static NameVector getFixedNames() {
+        NameVector r(2);
+        r[0] = "x";
+        r[1] = "y";
+        return r;
+    }
+
+    FixedCenterModel(BasisVector basisVector, NameVector nonlinearNames, NameVector amplitudeNames) :
+        Model(basisVector, nonlinearNames, amplitudeNames, getFixedNames())
     {}
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
@@ -208,8 +226,40 @@ public:
 
 } // anonymous
 
-PTR(Model) Model::makeFixedCenter(BasisVector basisVector) {
-    return boost::make_shared<FixedCenterModel>(basisVector);
+PTR(Model) Model::makeFixedCenter(BasisVector basisVector, NameVector const & prefixes) {
+    LSST_ASSERT_EQUAL(
+        basisVector.size(), prefixes.size(),
+        "Size of basis vector (%d) does not match number of prefixes (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    NameVector nonlinearNames;
+    NameVector amplitudeNames;
+    for (std::size_t i = 0, n = basisVector.size(); i < n; ++i) {
+        if (basisVector[i]) {
+            nonlinearNames.push_back(prefixes[i] + "eta1");
+            nonlinearNames.push_back(prefixes[i] + "eta2");
+            nonlinearNames.push_back(prefixes[i] + "logR");
+        }
+        for (std::size_t j = 0, m = basisVector[i]->getSize(); j < m; ++j) {
+            amplitudeNames.push_back((boost::format("%salpha%d") % prefixes[i] % j).str());
+        }
+    }
+    return boost::make_shared<FixedCenterModel>(basisVector, nonlinearNames, amplitudeNames);
+}
+
+PTR(Model) Model::makeFixedCenter(PTR(shapelet::MultiShapeletBasis) basis) {
+    NameVector nonlinearNames;
+    NameVector amplitudeNames;
+    if (basis) {
+        nonlinearNames.push_back("eta1");
+        nonlinearNames.push_back("eta2");
+        nonlinearNames.push_back("logR");
+    }
+    for (std::size_t j = 0, m = basis->getSize(); j < m; ++j) {
+        amplitudeNames.push_back((boost::format("alpha%d") % j).str());
+    }
+    BasisVector basisVector(1, basis);
+    return boost::make_shared<FixedCenterModel>(basisVector, nonlinearNames, amplitudeNames);
 }
 
 // ========== SingleCenterModel ==============================================================================
@@ -224,8 +274,8 @@ namespace {
 class SingleCenterModel : public Model {
 public:
 
-    explicit SingleCenterModel(BasisVector basisVector) :
-        Model(basisVector, countNonlinears(basisVector, 3, 0) + 2, 0)
+    SingleCenterModel(BasisVector basisVector, NameVector nonlinearNames, NameVector amplitudeNames) :
+        Model(basisVector, nonlinearNames, amplitudeNames, NameVector())
     {}
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
@@ -275,8 +325,44 @@ public:
 
 } // anonymous
 
-PTR(Model) Model::makeSingleCenter(BasisVector basisVector) {
-    return boost::make_shared<SingleCenterModel>(basisVector);
+PTR(Model) Model::makeSingleCenter(BasisVector basisVector, NameVector const & prefixes) {
+    LSST_ASSERT_EQUAL(
+        basisVector.size(), prefixes.size(),
+        "Size of basis vector (%d) does not match number of prefixes (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    NameVector nonlinearNames;
+    NameVector amplitudeNames;
+    for (std::size_t i = 0, n = basisVector.size(); i < n; ++i) {
+        if (basisVector[i]) {
+            nonlinearNames.push_back(prefixes[i] + "eta1");
+            nonlinearNames.push_back(prefixes[i] + "eta2");
+            nonlinearNames.push_back(prefixes[i] + "logR");
+        }
+        for (std::size_t j = 0, m = basisVector[i]->getSize(); j < m; ++j) {
+            amplitudeNames.push_back((boost::format("%salpha%d") % prefixes[i] % j).str());
+        }
+    }
+    nonlinearNames.push_back("x");
+    nonlinearNames.push_back("y");
+    return boost::make_shared<SingleCenterModel>(basisVector, nonlinearNames, amplitudeNames);
+}
+
+PTR(Model) Model::makeSingleCenter(PTR(shapelet::MultiShapeletBasis) basis) {
+    NameVector nonlinearNames;
+    NameVector amplitudeNames;
+    if (basis) {
+        nonlinearNames.push_back("eta1");
+        nonlinearNames.push_back("eta2");
+        nonlinearNames.push_back("logR");
+    }
+    for (std::size_t j = 0, m = basis->getSize(); j < m; ++j) {
+        amplitudeNames.push_back((boost::format("alpha%d") % j).str());
+    }
+    nonlinearNames.push_back("x");
+    nonlinearNames.push_back("y");
+    BasisVector basisVector(1, basis);
+    return boost::make_shared<FixedCenterModel>(basisVector, nonlinearNames, amplitudeNames);
 }
 
 // ========== MultiCenterModel ==============================================================================
@@ -291,8 +377,8 @@ namespace {
 class MultiCenterModel : public Model {
 public:
 
-    explicit MultiCenterModel(BasisVector basisVector) :
-        Model(basisVector, countNonlinears(basisVector, 3, 2), 0),
+    explicit MultiCenterModel(BasisVector basisVector, NameVector nonlinearNames, NameVector amplitudeNames) :
+        Model(basisVector, nonlinearNames, amplitudeNames, NameVector()),
         _centerParameterOffset(getNonlinearDim() - getBasisVector().size()*2)
     {}
 
@@ -344,8 +430,29 @@ private:
 
 } // anonymous
 
-PTR(Model) Model::makeMultiCenter(BasisVector basisVector) {
-    return boost::make_shared<MultiCenterModel>(basisVector);
+PTR(Model) Model::makeMultiCenter(BasisVector basisVector, NameVector const & prefixes) {
+    LSST_ASSERT_EQUAL(
+        basisVector.size(), prefixes.size(),
+        "Size of basis vector (%d) does not match number of prefixes (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    NameVector nonlinearNames;
+    NameVector amplitudeNames;
+    for (std::size_t i = 0, n = basisVector.size(); i < n; ++i) {
+        if (basisVector[i]) {
+            nonlinearNames.push_back(prefixes[i] + "eta1");
+            nonlinearNames.push_back(prefixes[i] + "eta2");
+            nonlinearNames.push_back(prefixes[i] + "logR");
+        }
+        for (std::size_t j = 0, m = basisVector[i]->getSize(); j < m; ++j) {
+            amplitudeNames.push_back((boost::format("%salpha%d") % prefixes[i] % j).str());
+        }
+    }
+    for (std::size_t i = 0, n = basisVector.size(); i < n; ++i) {
+        nonlinearNames.push_back(prefixes[i] + "x");
+        nonlinearNames.push_back(prefixes[i] + "y");
+    }
+    return boost::make_shared<MultiCenterModel>(basisVector, nonlinearNames, amplitudeNames);
 }
 
 // ========== MultiModel ====================================================================================
@@ -360,23 +467,34 @@ static Model::BasisVector concatenateBasisVectors(ModelVector const & components
     return r;
 }
 
-typedef int (Model::*ModelDimGetter)() const;
+typedef Model::NameVector const & (Model::*ModelNameGetter)() const;
 
-static int sumDim(ModelVector const & components, ModelDimGetter getter) {
-    int r = 0;
+static Model::NameVector concatenateNameVectors(
+    ModelVector const & components, Model::NameVector const & prefixes, ModelNameGetter getter
+) {
+    LSST_ASSERT_EQUAL(
+        components.size(), prefixes.size(),
+        "Number of model components (%d) does not match number of prefixes (%d)",
+        pex::exceptions::LengthErrorException
+    );
+    Model::NameVector r;
     for (ModelVector::const_iterator i = components.begin(); i != components.end(); ++i) {
-        r += ((**i).*getter)();
+        Model::NameVector const & componentNames = ((**i).*getter)();
+        for (std::size_t j = 0, n = componentNames.size(); j < n; ++j) {
+            r.push_back(prefixes[j] + componentNames[j]);
+        }
     }
     return r;
 }
 
 } // anonymous
 
-MultiModel::MultiModel(ModelVector components) :
+MultiModel::MultiModel(ModelVector components, NameVector const & prefixes) :
     Model(
         concatenateBasisVectors(components),
-        sumDim(components, &Model::getNonlinearDim),
-        sumDim(components, &Model::getFixedDim)
+        concatenateNameVectors(components, prefixes, &Model::getNonlinearNames),
+        concatenateNameVectors(components, prefixes, &Model::getAmplitudeNames),
+        concatenateNameVectors(components, prefixes, &Model::getFixedNames)
     ),
     _components(components)
 {}

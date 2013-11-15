@@ -34,19 +34,25 @@ class ModelFitRecord;
 class Interpreter {
 public:
 
-    Interpreter(int parameterDim, PTR(Model) model, PTR(Prior) prior);
-
     PTR(Model) getModel() const { return _model; }
 
     PTR(Prior) getPrior() const { return _prior; }
 
-    int getParameterDim() const { return _parameterDim; }
+    int getParameterDim() const { return _parameterNames.size(); }
 
     int getNonlinearDim() const { return _model->getNonlinearDim(); }
 
     int getAmplitudeDim() const { return _model->getAmplitudeDim(); }
 
     int getFixedDim() const { return _model->getFixedDim(); }
+
+    Model::NameVector const & getParameterNames() const { return _parameterNames; }
+
+    Model::NameVector const & getNonlinearNames() const { return _model->getNonlinearNames(); }
+
+    Model::NameVector const & getAmplitudeNames() const { return _model->getAmplitudeNames(); }
+
+    Model::NameVector const & getFixedNames() const { return _model->getFixedNames(); }
 
     void packParameters(
         ndarray::Array<Scalar const,1,1> const & nonlinear,
@@ -161,6 +167,8 @@ public:
 
 protected:
 
+    Interpreter(Model::NameVector parameterNames, PTR(Model) model, PTR(Prior) prior);
+
     virtual void _packParameters(
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes,
@@ -173,7 +181,7 @@ protected:
     ) const = 0;
 
 private:
-    int _parameterDim;
+    Model::NameVector _parameterNames;
     PTR(Model) _model;
     PTR(Prior) _prior;
 };

@@ -63,6 +63,14 @@ private:
     ndarray::Array<Pixel,1,1> _residuals;
 };
 
+Model::NameVector concatenateNameVectors(Model::NameVector const & a, Model::NameVector const & b) {
+    Model::NameVector r;
+    r.reserve(a.size() + b.size());
+    r.insert(r.end(), a.begin(), a.end());
+    r.insert(r.end(), b.begin(), b.end());
+    return r;
+}
+
 } // anonymous
 
 DirectSamplingInterpreter::DirectSamplingInterpreter(
@@ -72,14 +80,15 @@ DirectSamplingInterpreter::DirectSamplingInterpreter(
 ) :
     SamplingInterpreter(
         sampleSchema,
-        sampleSchema.addField< afw::table::Array<Scalar> >(
-            "parameters", "nonlinear and amplitude parameters at this sample point",
-            model->getNonlinearDim() + model->getAmplitudeDim()
-        ),
+        concatenateNameVectors(model->getNonlinearNames(), model->getAmplitudeNames()),
         model,
         prior
     )
 {
+    _parameterKey = sampleSchema.addField< afw::table::Array<Scalar> >(
+        "parameters", "nonlinear and amplitude parameters at this sample point",
+        model->getNonlinearDim() + model->getAmplitudeDim()
+    );
     _nonlinearKey = _parameterKey.slice(0, model->getNonlinearDim());
 }
 

@@ -78,14 +78,15 @@ MarginalSamplingInterpreter::MarginalSamplingInterpreter(
 ) :
     SamplingInterpreter(
         sampleSchema,
-        sampleSchema.addField< afw::table::Array<Scalar> >(
-            "parameters", "nonlinear parameters at this sample point (amplitudes are nested)",
-            model->getNonlinearDim()
-        ),
+        model->getNonlinearNames(),
         model,
         prior
     )
 {
+    _parameterKey = sampleSchema.addField< afw::table::Array<Scalar> >(
+        "parameters", "nonlinear parameters at this sample point (amplitudes are nested)",
+        model->getNonlinearDim()
+    );
     int n = model->getAmplitudeDim();
     _nestedKey = sampleSchema.addField< afw::table::Array<Scalar> >(
         "nested", "an opaque representation of the nested amplitude likelihood",

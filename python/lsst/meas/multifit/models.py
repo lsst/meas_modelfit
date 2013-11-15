@@ -29,6 +29,8 @@ import numpy
 import lsst.pex.config
 import lsst.shapelet.tractor
 
+from . import multifitLib
+
 __all__ = ("modelRegistry", "registerModel")
 
 modelRegistry = lsst.pex.config.makeRegistry(
@@ -67,12 +69,10 @@ class GaussianModelConfig(lsst.pex.config.Config):
     def makeModel(config):
         basis = lsst.shapelet.MultiShapeletBasis(1)
         basis.addComponent(config.radius, 0, numpy.array([[1.0]], dtype=float))
-        basisVector = lsst.meas.multifit.Model.BasisVector()
-        basisVector.append(basis)
         if config.fixCenter:
-            return lsst.meas.multifit.Model.makeFixedCenter(basisVector)
+            return multifitLib.Model.makeFixedCenter(basis)
         else:
-            return lsst.meas.multifit.Model.makeSingleCenter(basisVector)
+            return multifitLib.Model.makeSingleCenter(basis)
 
 class FixedSersicConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
@@ -114,13 +114,11 @@ class FixedSersicModelConfig(FixedSersicConfig):
         )
 
     @staticmethod
-    def makeModel(config, center):
-        basisVector = lsst.meas.multifit.Model.BasisVector()
-        basisVector.append(config.makeBasis())
+    def makeModel(config):
         if config.fixCenter:
-            return lsst.meas.multifit.Model.makeFixedCenter(basisVector, center)
+            return multifitLib.Model.makeFixedCenter(config.makeBasis())
         else:
-            return lsst.meas.multifit.Model.makeSingleCenter(basisVector)
+            return multifitLib.Model.makeSingleCenter(config.makeBasis())
 
 @registerModel("bulge+disk")
 class BulgeDiskModelConfig(lsst.pex.config.Config):
@@ -153,17 +151,24 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
 
     @staticmethod
     def makeModel(config):
-        basisVector = lsst.meas.multifit.Model.BasisVector()
         bulge = config.bulge.makeBasis()
         disk = config.disk.makeBasis()
         if config.bulgeRadius is None:
+            basisVector = multifitLib.Model.BasisVector()
             basisVector.append(disk)
             basisVector.append(bulge)
+            prefixes = multifitLib.Model.NameVector()
+            prefixes.append("exp.")
+            prefixes.append("dev.")
+            if config.fixCenter:
+                return multifitLib.Model.makeFixedCenter(basisVector, prefixes)
+            else:
+                return multifitLib.Model.makeSingleCenter(basisVector, prefixes)
         else:
+            basis = disk
             bulge.scale(config.bulgeRadius)
-            disk.merge(bulge)
-            basisVector.append(disk)
-        if config.fixCenter:
-            return lsst.meas.multifit.Model.makeFixedCenter(basisVector)
-        else:
-            return lsst.meas.multifit.Model.makeSingleCenter(basisVector)
+            basis.merge(bulge)
+            if config.fixCenter:
+                return multifitLib.Model.makeFixedCenter(basis)
+            else:
+                return multifitLib.Model.makeSingleCenter(basis)

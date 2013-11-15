@@ -207,12 +207,14 @@ Pixel = numpy.float32
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
 %template(EllipseVector) std::vector<lsst::afw::geom::ellipses::Ellipse>;
+%template(NameVector) std::vector<std::string>;
 %template(BasisVector) std::vector<PTR(lsst::shapelet::MultiShapeletBasis)>;
 %template(ModelVector) std::vector<PTR(lsst::meas::multifit::Model)>;
 
 %pythoncode %{
 Model.EllipseVector = EllipseVector
 Model.BasisVector = BasisVector
+Model.NameVector = NameVector
 %}
 
 %include "std_map.i"

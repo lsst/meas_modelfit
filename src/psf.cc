@@ -31,19 +31,19 @@
 namespace lsst { namespace meas { namespace multifit {
 
 PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders) {
-    ModelVector components;
-    Model::BasisVector basisVector(1);
     double radius = std::pow(2.0, -(orders.size() - 1) / 2);
-    PTR(shapelet::MultiShapeletBasis) & basis = basisVector.front();
+    Model::NameVector prefixes;
+    Model::BasisVector basisVector;
     for (std::size_t i = 0; i != orders.size(); ++i, radius *= 2) {
-        int componentSize = shapelet::computeSize(orders[i]);
-        ndarray::Array<double,2,2> matrix = ndarray::allocate(componentSize, componentSize);
+        int n = shapelet::computeSize(orders[i]);
+        ndarray::Array<double,2,2> matrix = ndarray::allocate(n, n);
         matrix.asEigen().setIdentity();
-        basis = boost::make_shared<shapelet::MultiShapeletBasis>(componentSize);
+        PTR(shapelet::MultiShapeletBasis) basis = boost::make_shared<shapelet::MultiShapeletBasis>(n);
         basis->addComponent(radius, orders[i], matrix);
-        components.push_back(Model::makeMultiCenter(basisVector));
+        basisVector.push_back(basis);
+        prefixes.push_back((boost::format("%d.") % i).str());
     }
-    return boost::make_shared<MultiModel>(components);
+    return Model::makeMultiCenter(basisVector, prefixes);
 }
 
 class MultiShapeletPsfLikelihood::Impl {

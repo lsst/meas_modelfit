@@ -49,11 +49,14 @@ class PsfFittingTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(model.getAmplitudeDim(), sum(lsst.shapelet.computeSize(order) for order in orders))
         self.assertEqual(model.getFixedDim(), 0)
         self.assertEqual(model.getBasisCount(), len(orders))
-        for order, component in zip(orders, lsst.meas.multifit.MultiModel.cast(model).getComponents()):
-            self.assertEqual(component.getNonlinearDim(), 5)
-            self.assertEqual(component.getAmplitudeDim(), lsst.shapelet.computeSize(order))
-            self.assertEqual(component.getFixedDim(), 0)
-            self.assertEqual(component.getBasisCount(), 1)
+        nonlinearNames = ["%d.%s" % (n, s) for n in range(len(orders)) for s in ["eta1", "eta2", "logR"]]
+        nonlinearNames += ["%d.%s" % (n, s) for n in range(len(orders)) for s in ["x", "y"]]
+        self.assertEqual(list(model.getNonlinearNames()), nonlinearNames)
+        amplitudeNames = []
+        for i, order in enumerate(orders):
+            amplitudeNames.extend("%d.alpha%d" % (i, n) for n in range(lsst.shapelet.computeSize(order)))
+        self.assertEqual(list(model.getAmplitudeNames()), amplitudeNames)
+        self.assertEqual(list(model.getFixedNames()), [])
 
     def testSingleGaussianFit(self):
         orders = [0]

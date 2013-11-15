@@ -43,19 +43,27 @@ typedef std::vector<PTR(Model)> ModelVector;
 class Model : private boost::noncopyable {
 public:
 
+    typedef std::vector<std::string> NameVector;
     typedef std::vector<PTR(shapelet::MultiShapeletBasis)> BasisVector;
     typedef std::vector<afw::geom::ellipses::Ellipse> EllipseVector;
     typedef std::vector<afw::geom::ellipses::Ellipse>::iterator EllipseIterator;
     typedef std::vector<afw::geom::ellipses::Ellipse>::const_iterator EllipseConstIterator;
 
-    static PTR(Model) makeFixedCenter(BasisVector basisVector);
-    static PTR(Model) makeSingleCenter(BasisVector basisVector);
-    static PTR(Model) makeMultiCenter(BasisVector basisVector);
+    static PTR(Model) makeFixedCenter(BasisVector basisVector, NameVector const & prefixes);
+    static PTR(Model) makeSingleCenter(BasisVector basisVector, NameVector const & prefixes);
+    static PTR(Model) makeMultiCenter(BasisVector basisVector, NameVector const & prefixes);
 
-    int getNonlinearDim() const { return _nonlinearDim; }
-    int getAmplitudeDim() const { return _amplitudeDim; }
-    int getFixedDim() const { return _fixedDim; }
+    static PTR(Model) makeFixedCenter(PTR(shapelet::MultiShapeletBasis) basis);
+    static PTR(Model) makeSingleCenter(PTR(shapelet::MultiShapeletBasis) basis);
+
+    int getNonlinearDim() const { return _nonlinearNames.size(); }
+    int getAmplitudeDim() const { return _amplitudeNames.size(); }
+    int getFixedDim() const { return _fixedNames.size(); }
     int getBasisCount() const { return _basisVector.size(); }
+
+    NameVector const & getNonlinearNames() const { return _nonlinearNames; }
+    NameVector const & getAmplitudeNames() const { return _amplitudeNames; }
+    NameVector const & getFixedNames() const { return _fixedNames; }
 
     BasisVector const & getBasisVector() const { return _basisVector; }
 
@@ -98,19 +106,24 @@ public:
 
 protected:
 
-    Model(BasisVector basisVector, int nonlinearDim, int fixedDim);
+    Model(
+        BasisVector basisVector,
+        NameVector nonlinearNames,
+        NameVector amplitudeNames,
+        NameVector fixedNames
+    );
 
 private:
-    int _nonlinearDim;
-    int _amplitudeDim;
-    int _fixedDim;
+    NameVector _nonlinearNames;
+    NameVector _amplitudeNames;
+    NameVector _fixedNames;
     BasisVector _basisVector;
 };
 
 class MultiModel : public Model {
 public:
 
-    explicit MultiModel(ModelVector components);
+    explicit MultiModel(ModelVector components, NameVector const & prefixes);
 
     ModelVector const & getComponents() const { return _components; }
 

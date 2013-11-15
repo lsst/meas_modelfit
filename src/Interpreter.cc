@@ -25,8 +25,8 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-Interpreter::Interpreter(int parameterDim, PTR(Model) model, PTR(Prior) prior)
-  : _parameterDim(parameterDim), _model(model), _prior(prior)
+Interpreter::Interpreter(Model::NameVector parameterNames, PTR(Model) model, PTR(Prior) prior)
+  : _parameterNames(parameterNames), _model(model), _prior(prior)
 {}
 
 void Interpreter::packParameters(
