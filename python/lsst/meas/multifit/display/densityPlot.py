@@ -290,7 +290,7 @@ class DensityPlot(object):
     def _replotBox(self, xDim, yDim):
         i = self._active.index(yDim)
         j = self._active.index(xDim)
-        for z, layer in enumerate(self._layers):
+        for z, layer in enumerate(self.layers):
             self._objs[None,j,name] = layer.plotX(self._axes[None,j], self.data, xDim)
             self._objs[i,None,name] = layer.plotY(self._axes[i,None], self.data, yDim)
             self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
@@ -309,8 +309,8 @@ class DensityPlot(object):
     def replot(self):
         self._ranges = numpy.array([self.data.ranges[self.data.dimensions.index(k)] for k in self._active])
         self._build_axes()
-        for layer in self._layers:
-            self._replotLayer(layer)
+        for name, layer in self.layers.iteritems():
+            self._plotLayer(name, layer)
 
     def _build_axes(self):
         self.figure.clear()

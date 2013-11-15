@@ -36,8 +36,12 @@ class ModelFitDataAdapter(object):
         # hack; we need more machinery in the C++ classes to make this
         # more general, but it's just not worth doing that yet
         self.dimensions = ["gamma1", "gamma2", "log(radius)"]
-        self.ranges = numpy.array([[-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0]], dtype=float)
+        self.setRangesFromQuantiles(0.001, 0.999)
         assert self.values.shape[1] == len(self.dimensions)
+
+    def setRangesFromQuantiles(self, lower, upper):
+        fractions = numpy.array([lower, upper], dtype=float)
+        self.ranges = self.record.getInterpreter().computeParameterQuantiles(self.record, fractions)
 
     def eval1d(self, dim, x):
         i = self.dimensions.index(dim)
