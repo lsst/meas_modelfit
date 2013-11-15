@@ -32,10 +32,7 @@ class ModelFitDataAdapter(object):
         self.samples = record.getSamples().copy(deep=True)
         self.values = self.samples["parameters"]
         self.weights = self.samples["weight"]
-        # This list of parameter names is just a temporary hard-coded
-        # hack; we need more machinery in the C++ classes to make this
-        # more general, but it's just not worth doing that yet
-        self.dimensions = ["gamma1", "gamma2", "log(radius)"]
+        self.dimensions = list(record.getInterpreter().getParameterNames())
         self.setRangesFromQuantiles(0.001, 0.999)
         assert self.values.shape[1] == len(self.dimensions)
 

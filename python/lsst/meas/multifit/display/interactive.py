@@ -110,7 +110,7 @@ class Interactive(object):
         """Plot the samples and proposal distribution from a ModelFitRecord.
         """
         data = ModelFitDataAdapter(record)
-        figure = matplotlib.pyplot.figure(record.getId())
+        figure = matplotlib.pyplot.figure(record.getId(), figsize=(10, 10))
         p = DensityPlot(figure, data)
         p.layers["samples"] = HistogramLayer()
         p.layers["proposal"] = SurfaceLayer()

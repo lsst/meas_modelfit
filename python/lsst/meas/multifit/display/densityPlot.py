@@ -256,7 +256,7 @@ class DensityPlot(object):
         self._all_dims = frozenset(self._active)
         if len(self._all_dims) != len(self._active):
             raise ValueError("Dimensions list contains duplicates")
-        self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.025, wspace=0.025)
+        self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.01, wspace=0.01)
         self._ranges = numpy.array(data.ranges)
         self._build_axes()
         self.layers = self.LayerDict(self)
@@ -286,14 +286,10 @@ class DensityPlot(object):
             for j, xDim in enumerate(self._active):
                 if i == j: continue
                 self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
-
-    def _replotBox(self, xDim, yDim):
-        i = self._active.index(yDim)
-        j = self._active.index(xDim)
-        for z, layer in enumerate(self.layers):
-            self._objs[None,j,name] = layer.plotX(self._axes[None,j], self.data, xDim)
-            self._objs[i,None,name] = layer.plotY(self._axes[i,None], self.data, yDim)
-            self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
+            self._axes[None,i].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
+            self._axes[i,None].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
+            self._axes[None,i].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+            self._axes[i,None].yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
     def _get_active(self): return self._active
     def _set_active(self, active):
@@ -324,32 +320,40 @@ class DensityPlot(object):
         for i in range(n):
             j = i
             axesX = self._axes[None,j] = self.figure.add_subplot(n+1, n+1, jStart+j*jStride)
+            axesX.autoscale(False, axis='x')
             axesX.xaxis.tick_top()
-            axesX.set_xlim(self._ranges[i,0], self._ranges[i,1])
+            axesX.set_xlim(self._ranges[j,0], self._ranges[j,1])
             hide_yticklabels(axesX)
             bbox = axesX.get_position()
-            bbox.y0 += 0.025
+            bbox.y1 -= 0.035
             axesX.set_position(bbox)
-            axesX.autoscale(False, axis='x')
             axesY = self._axes[i,None] = self.figure.add_subplot(n+1, n+1, iStart + iStart+i*iStride)
+            axesY.autoscale(False, axis='y')
             axesY.yaxis.tick_right()
             axesY.set_ylim(self._ranges[i,0], self._ranges[i,1])
             hide_xticklabels(axesY)
             bbox = axesY.get_position()
-            bbox.x1 -= 0.025
+            bbox.x1 -= 0.035
             axesY.set_position(bbox)
-            axesY.autoscale(False, axis='y')
         for i in range(n):
             for j in range(n):
-                if i == j: continue
                 axesXY = self._axes[i,j] = self.figure.add_subplot(
                     n+1, n+1, iStart+i*iStride + jStart+j*jStride,
                     sharex=self._axes[None,j],
                     sharey=self._axes[i,None]
                     )
                 axesXY.autoscale(False)
-                hide_yticklabels(axesXY)
-                hide_xticklabels(axesXY)
+                if j < n - 1:
+                    hide_yticklabels(axesXY)
+                if i < n - 1:
+                    hide_xticklabels(axesXY)
+        for i in range(n):
+            j = i
+            xbox = self._axes[None,j].get_position()
+            ybox = self._axes[i,None].get_position()
+            self.figure.text(0.5*(xbox.x0 + xbox.x1), 0.5*(ybox.y0 + ybox.y1), self.active[i],
+                             ha='center', va='center', weight='bold')
+            self._axes[i,j].get_frame().set_facecolor('none')
 
     def draw(self):
         self.figure.canvas.draw()
