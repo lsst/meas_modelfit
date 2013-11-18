@@ -55,8 +55,11 @@ public:
     /// Return the number of nonlinear parameters (which parameterize the model matrix)
     int getNonlinearDim() const { return _model->getNonlinearDim(); }
 
-    /// Return the number of fixed nonlinear parameters (set on LIkelihood construction)
+    /// Return the number of fixed nonlinear parameters (set on Likelihood construction)
     int getFixedDim() const { return _model->getFixedDim(); }
+
+    /// Return the vector of fixed nonlinear parameters.
+    ndarray::Array<Scalar const,1,1> getFixed() const { return _fixed; }
 
     /// Return the vector of data points (possibly weighted)
     ndarray::Array<Pixel const,1,1> getData() const { return _data; }
