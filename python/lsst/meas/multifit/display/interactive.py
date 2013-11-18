@@ -117,74 +117,68 @@ class Interactive(object):
         p.draw()
         return p
 
-    def displayResiduals(self, r, parameters=None):
+    def displayResiduals(self, record, nonlinear="ref", amplitudes="ref"):
         """Display the data postage stamp along with the model image and residuals in ds9.
 
-        @param[in] r            Result Struct returned by fit()
-        @param[in] parameters   Parameter vector for the model; defaults to the posterior mean.
-        """
-        center = r.record.getPointD(self.task.keys["source.center"])
-        if parameters == "truth":
-            key = self.task.keys["ref.ellipse"]
-            ellipse = lsst.afw.geom.ellipses.Ellipse(r.record.get(key), center)
-        else:
-            samples = r.record.getSamples()
-            if parameters == "mean" or parameters is None:
-                parameters = samples.computeMean()
-            elif parameters == "median":
-                parameters = samples.computeQuantiles(numpy.array([0.5]))
-            else:
-                parameters = numpy.array(parameters)
-            paramDef = samples.getParameterDefinition()
-            ellipse = paramDef.makeEllipse(parameters, center)
-        joint = r.likelihood.evaluate(ellipse)
-        bbox = r.record.getFootprint().getBBox()
-        bbox.grow(2)
-        xe = numpy.arange(bbox.getBeginX(), bbox.getEndX(), dtype=numpy.float32)
-        ye = numpy.arange(bbox.getBeginY(), bbox.getEndY(), dtype=numpy.float32)
-        xg, yg = numpy.meshgrid(xe, ye)
-        matrixBuilder = lsst.shapelet.MultiShapeletMatrixBuilderF(
-            self.task.basis, r.psf, xg.ravel(), yg.ravel(), self.task.config.likelihood.useApproximateExp
-            )
-        matrix = numpy.zeros((joint.grad.size, xg.size), dtype=numpy.float32).transpose()
-        matrixBuilder.build(matrix, ellipse)
-        mu,_,_,_ = numpy.linalg.lstsq(joint.fisher, -joint.grad)
-        array = numpy.dot(matrix, mu).reshape(*xg.shape)
+        @param[in] record       ModelFitRecord defining the object to display
+        @param[in] nonlinear    Vector of nonlinear parameters, or a string tag (see below)
+        @param[in] amplitudes   Vector of linear parameters, or a string tag (see below)
 
-        data = lsst.afw.image.MaskedImageF(self.exposure.getMaskedImage(), bbox,
-                                           lsst.afw.image.PARENT, True)
-        bitmask = data.getMask().addMaskPlane("FIT_REGION")
+        String tags for the parameter arguments may be:
+          mean -- use record.getIntepreter().compute*Mean()
+          ref --- use record.get("ref.*")
+          lstsq - solve the (unweighted) linear least-squares problem and use the solution
+        """
+        likelihood = self.task.makeLikelihood(self.inputs, record)
+
+        if nonlinear == "mean":
+            nonlinear = record.getInterpreter().computeNonlinearMean(record)
+        elif nonlinear == "ref":
+            nonlinear = record.get("ref.nonlinear")
+        else:
+            assert nonlinear.shape == (likelihood.getNonlinearDim(),)
+
+        matrix = numpy.zeros((likelihood.getAmplitudeDim(), likelihood.getDataDim()),
+                             dtype=multifitLib.Pixel).transpose()
+        likelihood.computeModelMatrix(matrix, nonlinear)
+
+        if amplitudes == "mean":
+            amplitudes = record.getInterpreter().computeAmplitudeMean()
+        elif amplitudes == "ref":
+            amplitudes = record.get("ref.amplitudes")
+        elif amplitudes == "lstsq":
+            amplitudes, chisq, rank, sv = numpy.linalg.lstsq(matrix, likelihood.getData())
+        else:
+            assert amplitudes.shape == (likelihood.getAmplitudeDim(),)
+
+        bbox = record.getFootprint().getBBox()
+        bbox.grow(2)
+        flatModelW = numpy.zeros(likelihood.getDataDim(), dtype=multifitLib.Pixel)
+        flatModelW[:] = numpy.dot(matrix, amplitudes)
+        flatDataW = likelihood.getData()
+
+        imgDataU = lsst.afw.image.MaskedImageF(self.inputs.exposure.getMaskedImage(), bbox,
+                                               lsst.afw.image.PARENT, True)
+        bitmask = imgDataU.getMask().addMaskPlane("FIT_REGION")
         regionMask = lsst.afw.image.MaskU(bbox)
-        lsst.afw.detection.setMaskFromFootprint(regionMask, r.record.getFootprint(), bitmask)
-        dataMask = data.getMask()
+        lsst.afw.detection.setMaskFromFootprint(regionMask, record.getFootprint(), bitmask)
+        dataMask = imgDataU.getMask()
         dataMask |= regionMask
-        model = lsst.afw.image.MaskedImageF(lsst.afw.image.ImageF(bbox), regionMask)
-        model.getImage().getArray()[:,:] = array
-        residuals = lsst.afw.image.MaskedImageF(data, True)
-        residuals -= model
+        imgDataW = imgDataU.clone()
+        imgDataW.getImage().set(0.0)
+        imgDataW.getVariance().set(0.0)
+        lsst.afw.detection.expandArray(record.getFootprint(), flatDataW, imgDataW.getImage().getArray(),
+                                       imgDataW.getXY0())
+        imgModelW = lsst.afw.image.MaskedImageF(lsst.afw.image.ImageF(bbox), regionMask)
+        lsst.afw.detection.expandArray(record.getFootprint(), flatModelW, imgModelW.getImage().getArray(),
+                                       imgModelW.getXY0())
+        imgResidualsW = lsst.afw.image.MaskedImageF(imgDataW, True)
+        imgResidualsW -= imgModelW
         mosaic = lsst.afw.display.utils.Mosaic()
         mosaic.setMode("x")
-        mosaic.append(data, "data")
-        mosaic.append(model, "model")
-        mosaic.append(residuals, "data-model")
+        mosaic.append(imgDataW, "data")
+        mosaic.append(imgModelW, "model")
+        mosaic.append(imgResidualsW, "data-model")
         grid = mosaic.makeMosaic()
         lsst.afw.display.ds9.mtv(grid)
         lsst.afw.display.ds9.setMaskTransparency(85)
-        for i in range(3):
-            ds9box = mosaic.getBBox(i)
-            center = ellipse.getCenter() + lsst.afw.geom.Extent2D(ds9box.getMin() - bbox.getMin())
-            lsst.afw.display.ds9.dot(ellipse.getCore(), center.getX(), center.getY())
-
-    def displayExposure(self, frame=0, doLabel=False):
-        lsst.afw.display.ds9.mtv(self.exposure, frame=frame)
-        ellipseKey = self.modelfits.schema.find("ref.ellipse").key
-        centerKey = self.modelfits.schema.find("ref.center").key
-        with lsst.afw.display.ds9.Buffering():
-            for record in self.modelfits:
-                lsst.afw.display.ds9.dot(record.get(ellipseKey),
-                                         record.get(centerKey.getX()), record.get(centerKey.getY()),
-                                         ctype="green")
-                if doLabel:
-                    lsst.afw.display.ds9.dot(str(record.getId()),
-                                             record.get(centerKey.getX()), record.get(centerKey.getY()),
-                                             ctype="cyan")
