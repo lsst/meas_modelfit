@@ -42,7 +42,7 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         doc="Subtask that actually does the fitting"
     )
     model = modelRegistry.makeField(
-        default="bulge+disk",
+        default="fixed-sersic",
         doc="Definition of the galaxy model to fit"
     )
     prior = priorRegistry.makeField(
