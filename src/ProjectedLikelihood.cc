@@ -246,6 +246,7 @@ void ProjectedLikelihood::computeModelMatrix(
         }
         dataOffset = dataEnd;
     }
+    modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _impl->weights.asEigen<Eigen::ArrayXpr>();
 }
 
 }}} // namespace lsst::meas::multifit
