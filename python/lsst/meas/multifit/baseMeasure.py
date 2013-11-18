@@ -60,7 +60,7 @@ class BaseMeasureConfig(lsst.pex.config.Config):
     )
     fitFluxMag0 = lsst.pex.config.Field(
         dtype=float,
-        default=30.0,
+        default=1E10,
         doc="Flux at magnitude 0 used for to define the units of amplitude in models"
     )
     progressChunk = lsst.pex.config.Field(
