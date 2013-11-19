@@ -25,57 +25,65 @@
 import os
 import unittest
 import numpy
+import matplotlib
 
+import lsst.pex.logging
 import lsst.utils.tests
+import lsst.shapelet.tests
 import lsst.afw.geom.ellipses
 import lsst.afw.image
 import lsst.afw.detection
-import lsst.shapelet.tests
 import lsst.meas.multifit
+import lsst.meas.multifit.display
+import lsst.afw.display.ds9
+from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 numpy.random.seed(500)
 
+log = lsst.pex.logging.Debug("meas.multifit.AdaptiveImportanceSampler", 10)
+
+DO_MAKE_PLOTS = True
+
 DATA_DIR = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "tests", "data")
+
+class FakeDataRef(object):
+
+    def __init__(self):
+        self.data = dict()
+        self.data['refcat'] = lsst.afw.table.SimpleCatalog.readFits(os.path.join(DATA_DIR, 'refcat.fits'))
+        self.data['src'] = lsst.afw.table.SourceCatalog.readFits(os.path.join(DATA_DIR, 'src.fits'))
+        self.data['calexp'] = lsst.afw.image.ExposureF(os.path.join(DATA_DIR, 'calexp.fits'))
+
+    def get(self, name, immediate=True):
+        return self.data[name]
+
+    def put(self, obj, name):
+        self.data[name] = obj
 
 class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
 
     def setUp(self):
-        self.task = lsst.meas.multifit.MeasureCcdTask()
-        self.modelfits = lsst.meas.multifit.ModelFitCatalog.readFits(os.path.join(DATA_DIR, "outcat.fits"))
-        self.calexp = lsst.afw.image.ExposureF(os.path.join(DATA_DIR, "calexp.fits"))
+        self.dataRef = FakeDataRef()
+        self.config = lsst.meas.multifit.MeasureImageTask.ConfigClass()
+        self.config.progressChunk = 1
+        self.config.doRaise = True
+        self.models = [
+            'bulge+disk',
+            'fixed-sersic',
+            ]
+
+    def testMarginalSampler(self):
+        self.config.fitter.retarget(lsst.meas.multifit.AdaptiveImportanceSamplerTask)
+        self.config.fitter.doMarginalizeAmplitudes = True
+        for model in self.models:
+            self.config.model.name = model
+            name = 'testMarginalSampler/%s' % model
+            task = lsst.meas.multifit.MeasureImageTask(config=self.config, name=name)
+            results = task.run(self.dataRef)
 
     def tearDown(self):
-        del self.task
-        del self.modelfits
-        del self.calexp
-
-    def testProcessObject(self):
-        # For now, just test that there are no exceptions; should test the outputs better later
-        result = self.task.processObject(exposure=self.calexp, record=self.modelfits[0])
-
-        # Test persistence of ModelFitCatalog and especially SampleSet (done here just because
-        # it's otherwise a pain to build a realistically complex SampleSet).
-        filename = "testModelFitPersistence.fits"
-        self.modelfits.writeFits(filename)
-        loaded = lsst.meas.multifit.ModelFitCatalog.readFits(filename)
-        self.assertEqual(self.modelfits.schema.compare(loaded.schema, lsst.afw.table.Schema.IDENTICAL),
-                         lsst.afw.table.Schema.IDENTICAL)
-        self.assertEqual(len(self.modelfits), len(loaded))
-        samples1 = self.modelfits[0].getSamples()
-        samples2 = loaded[0].getSamples()
-        cat1 = samples1.getCatalog().copy(deep=True)
-        cat2 = samples2.getCatalog().copy(deep=True)
-        self.assertEqual(len(cat1), len(cat2))
-        self.assertEqual(samples1.getParameterDefinition(), samples2.getParameterDefinition())
-        self.assertEqual(samples1.getDataSquaredNorm(), samples2.getDataSquaredNorm())
-        # n.b. just using assertClose because it lets us test arrays
-        self.assertClose(cat1.get("joint.grad"), cat2.get("joint.grad"), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get("marginal"), cat2.get("marginal"), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get("proposal"), cat2.get("proposal"), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get("weight"), cat2.get("weight"), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get("parameters"), cat2.get("parameters"), rtol=0.0, atol=0.0)
-        self.assertClose(cat1.get("joint.fisher"), cat2.get("joint.fisher"), rtol=0.0, atol=0.0)
-        os.remove(filename)
+        del self.dataRef
+        del self.config
 
 def suite():
     """Returns a suite containing all the test cases in this module."""

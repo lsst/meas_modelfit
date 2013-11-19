@@ -67,30 +67,36 @@ class Interactive(object):
         @param[in]  mode     One of "ccd", "coadd", or "multi", indicating whether
                              to use MeasureCcdTask, MeasureCoaddTask, or MeasureMultiTask.
         """
-        root = os.environ["S13_DATA_DIR"]
-        self.butler = lsst.daf.persistence.Butler(os.path.join(root, "output", rerun))
         self.mode = mode.lower()
-        if self.mode == "ccd":
-            if dataId is None:
-                dataId = dict(visit=100, raft="2,2", sensor="1,1")
-            self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
+        if self.mode.startswith("test"):
+            self.dataRef = rerun
             if config is None:
-                config = self.butler.get("measureCcd_config", immediate=True)
+                config = MeasureCcdTask.ConfigClass()
             self.task = MeasureCcdTask(config=config)
-        elif self.mode == "coadd":
-            if dataId is None:
-                dataId = dict(tract=0, patch="2,2", filter="i")
-            self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
-            if config is None:
-                config = self.butler.get("deep_measureCoadd_config", immediate=True)
-            self.task = MeasureCoaddTask(config=config)
-        elif self.mode.startswith("multi"):
-            if dataId is None:
-                dataId = dict(tract=0, patch="2,2", filter="i")
-            self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
-            if config is None:
-                config = self.butler.get("deep_measureMulti_config", immediate=True)
-            self.task = MeasureMultiTask(config=config)
+        else:
+            root = os.environ["S13_DATA_DIR"]
+            self.butler = lsst.daf.persistence.Butler(os.path.join(root, "output", rerun))
+            if self.mode == "ccd":
+                if dataId is None:
+                    dataId = dict(visit=100, raft="2,2", sensor="1,1")
+                self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
+                if config is None:
+                    config = self.butler.get("measureCcd_config", immediate=True)
+                self.task = MeasureCcdTask(config=config)
+            elif self.mode == "coadd":
+                if dataId is None:
+                    dataId = dict(tract=0, patch="2,2", filter="i")
+                self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
+                if config is None:
+                    config = self.butler.get("deep_measureCoadd_config", immediate=True)
+                self.task = MeasureCoaddTask(config=config)
+            elif self.mode.startswith("multi"):
+                if dataId is None:
+                    dataId = dict(tract=0, patch="2,2", filter="i")
+                self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
+                if config is None:
+                    config = self.butler.get("deep_measureMulti_config", immediate=True)
+                self.task = MeasureMultiTask(config=config)
         self.inputs = self.task.readInputs(self.dataRef)
         self.cat = self.task.prepCatalog(self.inputs)
 
