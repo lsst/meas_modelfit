@@ -132,6 +132,10 @@ PTR(SamplingObjective) MarginalSamplingInterpreter::makeObjective(
     return boost::make_shared<MarginalSamplingObjective>(self, likelihood);
 }
 
+PTR(Interpreter) MarginalSamplingInterpreter::_clone() const {
+    return boost::make_shared<MarginalSamplingInterpreter>(*this);
+}
+
 void MarginalSamplingInterpreter::_packParameters(
     ndarray::Array<Scalar const,1,1> const & nonlinear,
     ndarray::Array<Scalar const,1,1> const & amplitudes,

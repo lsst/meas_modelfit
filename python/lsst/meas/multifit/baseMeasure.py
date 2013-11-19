@@ -55,13 +55,19 @@ class BaseMeasureConfig(lsst.pex.config.Config):
     )
     fitPixelScale = lsst.pex.config.Field(
         dtype=float,
-        default=0.2,
-        doc="Pixel scale (arcseconds/pixel) for coordinate system used for model parameters"
+        default=None,
+        optional=True,
+        doc=("Pixel scale (arcseconds/pixel) for coordinate system used for model parameters. "
+             "If None, we'll use the calexp Wcs instead of a local tangent-plane (note that "
+             "will result in a subtly incorrect Prior being used, as the Prior is only rescaled, "
+             "not fully transformed)")
     )
     fitFluxMag0 = lsst.pex.config.Field(
         dtype=float,
-        default=1E10,
-        doc="Flux at magnitude 0 used for to define the units of amplitude in models"
+        default=None,
+        optional=True,
+        doc=("Flux at magnitude 0 used for to define the units of amplitude in models. "
+             "If None, we'll fit in the calexp's photometric system.")
     )
     progressChunk = lsst.pex.config.Field(
         dtype=int,
@@ -83,8 +89,35 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         doc="If True, raise exceptions when individual objects fail instead of warning."
     )
 
-    def makeFitWcs(self, coord):
+    def makeFitWcs(self, coord, exposure=None):
+        if self.fitPixelScale is None:
+            assert exposure is not None
+            return exposure.getWcs()
         return lsst.afw.image.makeLocalWcs(coord, self.fitPixelScale * lsst.afw.geom.arcseconds)
+
+    def makeFitCalib(self, exposure=None):
+        if self.fitFluxMag0 is None:
+            assert exposure is not None
+            # We'll use each Exposure's photometric system for the amplitude units
+            return exposure.getCalib()
+        # This Calib determines the flux units we use for amplitude parameters; like the WCS,
+        # we want this to be a global system so all Objects have the same units
+        fitCalib = lsst.afw.image.Calib()
+        fitCalib.setFluxMag0(self.fitFluxMag0)
+        return fitCalib
+
+    def makePrior(self, exposure=None):
+        if self.fitPixelScale is None:
+            assert exposure is not None
+            fitPixelScale = exposure.getWcs().pixelScale()
+        else:
+            fitPixelScale = self.fitPixelScale*lsst.afw.geom.arcseconds
+        if self.fitFluxMag0 is None:
+            assert exposure is not None
+            fitFluxMag0 = exposure.getCalib().getFluxMag0()
+        else:
+            fitFluxMag0 = self.fitFluxMag0
+        return self.prior.apply(pixelScale=fitPixelScale, fluxMag0=fitFluxMag0)
 
 class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
     """An intermediate base class for top-level model-fitting tasks.
@@ -106,8 +139,6 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         # that's aligned with celestial coordinates), we can define the model and prior
         # up front, and use them without modification for all Objects
         self.model = self.config.model.apply()
-        self.prior = self.config.prior.apply(pixelScale=self.config.fitPixelScale*lsst.afw.geom.arcseconds,
-                                             fluxMag0=self.config.fitFluxMag0)
         # now we set up the schema; this will be the same regardless of whether or not
         # we do a warm start (use a previous modelfits catalog for initial values).
         self.schema = multifitLib.ModelFitTable.makeMinimalSchema()
@@ -132,19 +163,14 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
             "snr", type=float,
             doc="signal to noise ratio from source apFlux/apFluxErr"
             )
-        # This Calib determines the flux units we use for amplitude parameters; like the WCS,
-        # we want this to be a global system so all Objects have the same units
-        self.fitCalib = lsst.afw.image.Calib()
-        self.fitCalib.setFluxMag0(self.config.fitFluxMag0)
         # Create the fitter subtask that does all the non-bookkeeping work
-        self.makeSubtask("fitter", schema=self.schema, keys=self.keys, model=self.model, prior=self.prior)
+        self.makeSubtask("fitter", schema=self.schema, keys=self.keys, model=self.model)
 
     def makeTable(self):
         """Return a ModelFitTable object based on the measurement schema and the fitter subtask's
         sample schema.
         """
         table = lsst.meas.multifit.ModelFitTable.make(self.schema, self.fitter.makeTable())
-        table.setInterpreter(self.fitter.interpreter)
         return table
 
     def run(self, dataRef):
@@ -175,7 +201,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
                         continue
         self.log.info("Writing output catalog")
         self.writeOutputs(dataRef, outCat)
-        return outCat
+        return lsst.pipe.base.Struct(outCat=outCat, inputs=inputs)
 
     def readInputs(self, dataRef):
         """Read task inputs using the butler.

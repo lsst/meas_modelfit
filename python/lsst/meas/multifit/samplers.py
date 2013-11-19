@@ -96,15 +96,20 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
 
     ConfigClass = AdaptiveImportanceSamplerConfig
 
-    def __init__(self, schema, keys, model, prior, **kwds):
+    def __init__(self, schema, keys, model, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
         # n.b. schema argument is for modelfits catalog; self.sampleSchema is for sample catalog
         self.sampleSchema = lsst.afw.table.Schema()
         self.rng = lsst.afw.math.Random(self.config.rngAlgorithm, self.config.rngSeed)
+        # The Interpreter we create here is incomplete; it doesn't have a Prior.
+        # That's why we'll later prefer to use the Interpreter that's attached to the
+        # ModelFitRecords we get - they do have Priors.
+        # The reason for this is that we can't create a Prior unless we know the pixel scale,
+        # and we can't always do that until we have an Exposure.
         if self.config.doMarginalizeAmplitudes:
-            self.interpreter = multifitLib.MarginalSamplingInterpreter(self.sampleSchema, model, prior)
+            self.interpreter = multifitLib.MarginalSamplingInterpreter(self.sampleSchema, model)
         else:
-            self.interpreter = multifitLib.DirectSamplingInterpreter(self.sampleSchema, model, prior)
+            self.interpreter = multifitLib.DirectSamplingInterpreter(self.sampleSchema, model)
         self.sampler = multifitLib.AdaptiveImportanceSampler(
             self.sampleSchema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
             )
@@ -152,9 +157,9 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         This method is not called when using a "warm start" from a previous fit.
         """
         parameters = record[self.keys["ref.parameters"]]
-        self.interpreter.packParameters(record[self.keys["ref.nonlinear"]],
-                                        record[self.keys["ref.amplitudes"]],
-                                        parameters)
+        record.getInterpreter().packParameters(record[self.keys["ref.nonlinear"]],
+                                               record[self.keys["ref.amplitudes"]],
+                                               parameters)
         components = multifitLib.Mixture.ComponentList()
         sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2
         design = self.makeLatinCube(self.rng, self.config.nComponents, parameters.size)
@@ -170,7 +175,10 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         """Do the actual fitting, using the given likelihood, update the 'pdf' and 'samples' attributes,
         and save best-fit values in the 'fit.parameters' field.
         """
-        objective = multifitLib.makeSamplingObjective(self.interpreter, likelihood)
+        # As discussed in __init__, self.interpreter doesn't have a prior, so we use the one attached
+        # to the record
+        interpreter = multifitLib.SamplingInterpreter.cast(record.getInterpreter())
+        objective = multifitLib.makeSamplingObjective(interpreter, likelihood)
         nRetries = 0
         while True:
             try:
@@ -183,4 +191,4 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
                 self.log.warn("Failure fitting object %s; retrying with new RNG state" % record.getId())
                 self.initialize(record)
                 nRetries += 1
-        record[self.keys["fit.parameters"]] = self.interpreter.computeParameterMean(record)
+        record[self.keys["fit.parameters"]] = record.getInterpreter().computeParameterMean(record)

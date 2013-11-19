@@ -64,6 +64,15 @@ class MeasureMultiConfig(BaseMeasureConfig):
         default=True
     )
 
+    def validate(self):
+        BaseMeasureConfig.validate(self)
+        if self.fitPixelScale is None:
+            raise lsst.pex.config.ValidationError("fitPixelScale", self,
+                                                  "value may not be None in MeasureMulti")
+        if self.fitFluxMag0 is None:
+            raise lsst.pex.config.ValidationError("fitFluxMag0", self,
+                                                  "value may not be None in MeasureMulti")
+
 class MeasureMultiTask(BaseMeasureTask):
     """Variant of BaseMeasureTask for running multifit on the calexps that make up a coadd.
 
@@ -74,6 +83,8 @@ class MeasureMultiTask(BaseMeasureTask):
 
     def __init__(self, **kwds):
         BaseMeasureTask.__init__(self, **kwds)
+        self.prior = self.config.makePrior()
+        self.fitter.interpreter.setPrior(self.prior)
         self.outputName = self.config.coaddName + "Multi_modelfits"
 
     def readInputs(self, dataRef):
@@ -131,6 +142,7 @@ class MeasureMultiTask(BaseMeasureTask):
         After this step, each output record should be in a state such that makeLikelihood and
         fitter.run() may be called on it.
         """
+        self.inputs.prevCat.table.setInterpreter(self.fitter.interpreter)
         return inputs.prevCat
 
     @lsst.pipe.base.timeMethod
@@ -141,6 +153,7 @@ class MeasureMultiTask(BaseMeasureTask):
 
         psfCtrl = self.config.psf.makeControl()
         fitWcs = self.config.makeFitWcs(record.getCoord())
+        fitCalib = self.config.makeFitCalib()
 
         for exposureRecord in inputs.exposureCat:
             calexpFootprint = coaddFootprint.transform(inputs.footprintWcs, exposureRecord.getWcs(),
@@ -163,7 +176,7 @@ class MeasureMultiTask(BaseMeasureTask):
 
         return MultiEpochLikelihood(
             self.model, record.get(self.keys["fixed"]),
-            fitWcs, self.fitCalib,
+            fitWcs, fitCalib,
             record.getCoord(),
             epochFootprintList,
             self.config.likelihood.makeControl()

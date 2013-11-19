@@ -66,6 +66,7 @@ class MeasureImageTask(BaseMeasureTask):
         """
         exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True)
         if self.config.doWarmStart:
+            # TODO: load previous config, makes sure it's compatible (i.e. same fit coordinate system)
             return lsst.pipe.base.Struct(
                 prevCat=dataRef.get(self.dataPrefix + "modelfits", immediate=True),
                 exposure=exposure
@@ -85,10 +86,20 @@ class MeasureImageTask(BaseMeasureTask):
         and reference catalogs, transforming their fields to the fit coordinate system and
         amplitude units.
         """
+
+        prior = self.config.makePrior(exposure=inputs.exposure)
+        interpreter = self.fitter.interpreter.clone()
+        interpreter.setPrior(prior)
+
         if self.config.doWarmStart:
+            # Interpreters aren't persisted with the ModelFitCatalog, since they can be
+            # reconstructed entirely from Config, so we reattach one here.
+            inputs.prevCat.table.setInterpreter(interpreter)
             return inputs.prevCat
 
-        outCat = multifitLib.ModelFitCatalog(self.makeTable())
+        table = self.makeTable()
+        table.setInterpreter(interpreter)
+        outCat = multifitLib.ModelFitCatalog(table)
         refCat = inputs.refCat
         srcCat = inputs.srcCat
 
@@ -128,7 +139,7 @@ class MeasureImageTask(BaseMeasureTask):
             # so the prior doesn't have to be transformed to the local coordinate system.
             # Note that the origin of this coordinate system is at the input position of
             # the object, so centroid parameters will be the *offset* from that position.
-            fitWcs = self.config.makeFitWcs(outRecord.getCoord())
+            fitWcs = self.config.makeFitWcs(outRecord.getCoord(), exposure=inputs.exposure)
 
             # Now we'll transform the refCat ellipse to the fit coordinate system.  Because
             # the fit coordinate system is aligned with the coordinate axes, this should just
@@ -154,7 +165,8 @@ class MeasureImageTask(BaseMeasureTask):
                 )
             # this flux->amplitudes conversion assumes the ref catalog is single-component, and that the
             # first component of the model is what that corresponds to; we may need to generalize this
-            flux = self.fitCalib.getFlux(refRecord.get(keyMag))
+            fitCalib = self.config.makeFitCalib(exposure=inputs.exposure)
+            flux = fitCalib.getFlux(refRecord.get(keyMag))
             amplitudes = outRecord[self.keys["ref.amplitudes"]]
             amplitudes[:] = 0.0
             amplitudes[0] = flux
@@ -177,8 +189,8 @@ class MeasureImageTask(BaseMeasureTask):
         psf = psfModel.asMultiShapelet()
         return multifitLib.ProjectedLikelihood(
             self.model, record[self.keys["ref.fixed"]],
-            self.config.makeFitWcs(record.getCoord()),
-            self.fitCalib,
+            self.config.makeFitWcs(record.getCoord(), exposure=inputs.exposure),
+            self.config.makeFitCalib(exposure=inputs.exposure),
             record.getCoord(),
             inputs.exposure,
             record.getFootprint(),

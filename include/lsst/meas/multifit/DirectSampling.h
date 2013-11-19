@@ -42,8 +42,12 @@ public:
     DirectSamplingInterpreter(
         afw::table::Schema & sampleSchema,
         PTR(Model) model,
-        PTR(Prior) prior
+        PTR(Prior) prior=PTR(Prior)()
     );
+
+    PTR(DirectSamplingInterpreter) clone() const {
+        return boost::static_pointer_cast<DirectSamplingInterpreter>(_clone());
+    }
 
     virtual ndarray::Array<Scalar,1,1> computeAmplitudeQuantiles(
         ModelFitRecord const & record,
@@ -61,6 +65,8 @@ public:
     ) const;
 
 protected:
+
+    virtual PTR(Interpreter) _clone() const;
 
     virtual PTR(SamplingObjective) makeObjective(
         PTR(SamplingInterpreter) self,

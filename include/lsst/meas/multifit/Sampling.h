@@ -55,6 +55,10 @@ public:
 
     ScalarKey const & getWeightKey() const { return _weightKey; }
 
+    PTR(SamplingInterpreter) clone() const {
+        return boost::static_pointer_cast<SamplingInterpreter>(_clone());
+    }
+
     virtual ndarray::Array<Scalar,1,1> computeParameterQuantiles(
         ModelFitRecord const & record,
         ndarray::Array<Scalar const,1,1> const & fractions,
@@ -152,6 +156,9 @@ protected:
 
 /**
  *  @brief Factory function used to create SamplingObjectives
+ *
+ *  If the given Prior is not null, it will be used instead of any Prior attached to the
+ *  Interpreter.
  *
  *  The actual work is delegated to a protected member function of the SamplingInterpreter,
  *  but we have to provide this interface so we can provide it with a shared_ptr to itself
