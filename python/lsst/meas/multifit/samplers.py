@@ -64,6 +64,10 @@ class AdaptiveImportanceSamplerConfig(lsst.pex.config.Config):
         keytype=int, itemtype=ImportanceSamplerConfig, default={},
         doc=("Sequence of importance sampling iterations, ordered by their keys, which should be")
         )
+    maxRetries = lsst.pex.config.Field(
+        dtype=int, default=1,
+        doc="Number of times we attempt to fit an object with different RNG states before giving up"
+        )
     doSaveIterations = lsst.pex.config.Field(
         dtype=bool, default=False,
         doc="Whether to save intermediate SampleSets and proposal distributions for debugging perposes"
@@ -167,6 +171,16 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         and save best-fit values in the 'fit.parameters' field.
         """
         objective = multifitLib.makeSamplingObjective(self.interpreter, likelihood)
-        record.setString(self.keys["rngstate"], self.rng.getState())
-        self.sampler.run(objective, record.getPdf(), record.getSamples())
+        nRetries = 0
+        while True:
+            try:
+                record.setString(self.keys["rngstate"], self.rng.getState())
+                self.sampler.run(objective, record.getPdf(), record.getSamples())
+                break
+            except Exception as err:
+                if nRetries >= self.config.maxRetries:
+                    raise
+                self.log.warn("Failure fitting object %s; retrying with new RNG state" % record.getId())
+                self.initialize(record)
+                nRetries += 1
         record[self.keys["fit.parameters"]] = self.interpreter.computeParameterMean(record)

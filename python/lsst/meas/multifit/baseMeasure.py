@@ -77,6 +77,11 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         default=False,
         doc="If True, only prepare the catalog (match, transfer fields, fit PSF)"
     )
+    doRaise = lsst.pex.config.Field(
+        dtype=bool,
+        default=False,
+        doc="If True, raise exceptions when individual objects fail instead of warning."
+    )
 
     def makeFitWcs(self, coord):
         return lsst.afw.image.makeLocalWcs(coord, self.fitPixelScale * lsst.afw.geom.arcseconds)
@@ -161,9 +166,13 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
                 try:
                     self.fitter.run(likelihood, outRecord)
                 except Exception as err:
-                    self.log.warn("Failure fitting object %d of %d with ID=%d"
-                                  % (n, len(outCat), outRecord.getId()))
-                    continue
+                    if self.config.doRaise:
+                        raise
+                    else:
+                        self.log.warn("Failure fitting object %d of %d with ID=%d:"
+                                      % (n, len(outCat), outRecord.getId()))
+                        self.log.warn(str(err))
+                        continue
         self.log.info("Writing output catalog")
         self.writeOutputs(dataRef, outCat)
         return outCat
