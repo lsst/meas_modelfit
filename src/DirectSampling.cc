@@ -85,9 +85,12 @@ DirectSamplingInterpreter::DirectSamplingInterpreter(
         prior
     )
 {
-    _parameterKey = sampleSchema.addField< afw::table::Array<Scalar> >(
-        "parameters", "nonlinear and amplitude parameters at this sample point",
-        model->getNonlinearDim() + model->getAmplitudeDim()
+    _parameterKey = sampleSchema.addField(
+        afw::table::Field< afw::table::Array<Scalar> >(
+            "parameters", "nonlinear and amplitude parameters at this sample point",
+            model->getNonlinearDim() + model->getAmplitudeDim()
+        ),
+        true // doReplace
     );
     _nonlinearKey = _parameterKey.slice(0, model->getNonlinearDim());
 }

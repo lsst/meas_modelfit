@@ -76,7 +76,12 @@ SamplingInterpreter::SamplingInterpreter(
     PTR(Model) model,
     PTR(Prior) prior
 ) : Interpreter(parameterNames, model, prior),
-    _weightKey(sampleSchema.addField<Scalar>("weight", "normalized Monte Carlo weight"))
+    _weightKey(
+        sampleSchema.addField(
+            afw::table::Field<Scalar>("weight", "normalized Monte Carlo weight"),
+            true // doReplace
+        )
+    )
 {}
 
 ndarray::Array<Scalar,1,1> SamplingInterpreter::computeSampleQuantiles(

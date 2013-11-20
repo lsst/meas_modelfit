@@ -83,14 +83,20 @@ MarginalSamplingInterpreter::MarginalSamplingInterpreter(
         prior
     )
 {
-    _parameterKey = sampleSchema.addField< afw::table::Array<Scalar> >(
-        "parameters", "nonlinear parameters at this sample point (amplitudes are nested)",
-        model->getNonlinearDim()
+    _parameterKey = sampleSchema.addField(
+        afw::table::Field< afw::table::Array<Scalar> >(
+            "parameters", "nonlinear parameters at this sample point (amplitudes are nested)",
+            model->getNonlinearDim()
+        ),
+        true // doReplace
     );
     int n = model->getAmplitudeDim();
-    _nestedKey = sampleSchema.addField< afw::table::Array<Scalar> >(
-        "nested", "an opaque representation of the nested amplitude likelihood",
-        n + n*(n+1)/2
+    _nestedKey = sampleSchema.addField(
+        afw::table::Field< afw::table::Array<Scalar> >(
+            "nested", "an opaque representation of the nested amplitude likelihood",
+            n + n*(n+1)/2
+        ),
+        true
     );
     _nonlinearKey = _parameterKey;
 }
@@ -149,6 +155,15 @@ void MarginalSamplingInterpreter::_unpackNonlinear(
     ndarray::Array<Scalar,1,1> const & nonlinear
 ) const {
     nonlinear.deep() = parameters;
+}
+
+ModelFitCatalog MarginalSamplingInterpreter::unnset(
+    ModelFitCatlog const & inCat,
+    afw::math::Random & rng,
+    double multiplier
+) {
+    afw::table::SchemaMapper mapper(inCat.getTable()->getSampleTable()->getSchema());
+    
 }
 
 }}} // namespace lsst::meas::multifit

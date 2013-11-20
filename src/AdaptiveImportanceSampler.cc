@@ -73,18 +73,34 @@ AdaptiveImportanceSampler::AdaptiveImportanceSampler(
     _rng(rng),
     _ctrls(ctrls),
     _weightKey(sampleSchema["weight"]),
-    _objectiveKey(sampleSchema.addField<Scalar>(
-                      "objective", "value of the objective function (usually -log posterior)")),
-    _proposalKey(sampleSchema.addField<Scalar>(
-                     "proposal", "-log value of the proposal function")),
+    _objectiveKey(
+        sampleSchema.addField(
+            afw::table::Field<Scalar>(
+                "objective", "value of the objective function (usually -log posterior)"
+            ),
+            true // doReplace
+        )
+    ),
+    _proposalKey(
+        sampleSchema.addField(
+            afw::table::Field<Scalar>("proposal", "-log value of the proposal function"),
+            true // doReplace
+        )
+    ),
     _parametersKey(sampleSchema["parameters"])
 {
     if (_doSaveIterations) {
-        _iterCtrlKey = sampleSchema.addField<int>(
-            "iter.ctrl", "iteration major ID; corresponds to control map key"
+        _iterCtrlKey = sampleSchema.addField(
+            afw::table::Field<int>(
+                "iter.ctrl", "iteration major ID; corresponds to control map key"
+            ),
+            true // doReplace
         );
-        _iterRepeatKey = sampleSchema.addField<int>(
-            "iter.repeat", "iteration minor ID; corresponds to repeats within a single control object"
+        _iterRepeatKey = sampleSchema.addField(
+            afw::table::Field<int>(
+                "iter.repeat", "iteration minor ID; corresponds to repeats within a single control object"
+            ),
+            true // doReplace
         );
     }
 }
