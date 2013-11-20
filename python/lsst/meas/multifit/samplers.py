@@ -65,7 +65,7 @@ class AdaptiveImportanceSamplerConfig(lsst.pex.config.Config):
         doc=("Sequence of importance sampling iterations, ordered by their keys, which should be")
         )
     maxRetries = lsst.pex.config.Field(
-        dtype=int, default=1,
+        dtype=int, default=0,
         doc="Number of times we attempt to fit an object with different RNG states before giving up"
         )
     doSaveIterations = lsst.pex.config.Field(
