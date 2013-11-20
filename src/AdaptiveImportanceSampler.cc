@@ -23,6 +23,8 @@
 
 #include "ndarray/eigen.h"
 
+#define LSST_MAX_DEBUG 10
+#include "lsst/pex/logging/Debug.h"
 #include "lsst/utils/ieee.h"
 #include "lsst/afw/table/BaseRecord.h"
 #include "lsst/afw/table/Catalog.h"
@@ -34,50 +36,29 @@ namespace {
 
 // Given a sample catalog with log unnormalized weights, transform to normalized weights
 Scalar computeRobustWeights(afw::table::BaseCatalog & samples, afw::table::Key<Scalar> const & weightKey) {
+    static Scalar const CLIP_THRESHOLD = 100; // clip samples with weight < e^{-CLIP_THRESHOLD} * wMax
+    pex::logging::Debug log("meas.multifit.AdaptiveImportanceSampler");
+    log.debug<8>("Starting computeRobustWeights with %d samples", int(samples.size()));
     // Sort the sample by weight so we can accumulate robustly.
     samples.sort(weightKey);
-    // We now compute z, the arithmetic mean of ln(p_i/q_i).
-    Scalar z = 0.0;
-    for (afw::table::BaseCatalog::iterator i = samples.begin(); i != samples.end(); ++i) {
-        z += i->get(weightKey);
+    Scalar uMax = samples.back().get(weightKey);
+    Scalar uClip = uMax - CLIP_THRESHOLD;
+    afw::table::BaseCatalog::iterator const iClip = samples.lower_bound(uClip, weightKey);
+    log.debug<8>("uMax=%g, uClip=%g, iClip at offset %d", uMax, uClip, int(iClip - samples.begin()));
+    for (afw::table::BaseCatalog::iterator i = samples.begin(); i != iClip; ++i) {
+        i->set(weightKey, 0.0);
     }
-    z /= samples.size();
-    // We now subtract z from w_i and exponentiate, accumulating the sums.
-    // This makes w_i = e^{-z} p_i/q_i, which is proportional to the
-    // desired p_i/q_i.
     Scalar wSum = 0.0;
-    for (afw::table::BaseCatalog::iterator i = samples.begin(); i != samples.end(); ++i) {
-        wSum += (*i)[weightKey] = std::exp(i->get(weightKey) - z);
-        if (!utils::isfinite(i->get(weightKey))) {
-            throw LSST_EXCEPT(
-                pex::exceptions::LogicErrorException,
-                (boost::format(
-                    "weight = %g not finite in samples before normalization")
-                    % i->get(weightKey)).str()
-            );
-        }
+    for (afw::table::BaseCatalog::iterator i = iClip; i != samples.end(); ++i) {
+        Scalar w = std::exp(i->get(weightKey) - uMax);
+        i->set(weightKey, w);
+        wSum += w;
     }
-    if (wSum <= 0.0) {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
-            (boost::format("wSum = %g not positive in samples before normalization") % wSum).str()
-        );
-    }
-    // finally, we normalize w_i...
-    for (afw::table::BaseCatalog::iterator i = samples.begin(); i != samples.end(); ++i) {
+    log.debug<8>("Uncorrected wSum=%g", wSum);
+    for (afw::table::BaseCatalog::iterator i = iClip; i != samples.end(); ++i) {
         (*i)[weightKey] /= wSum;
-        if (!utils::isfinite(i->get(weightKey))) {
-            throw LSST_EXCEPT(
-                pex::exceptions::LogicErrorException,
-                (boost::format(
-                    "sample weight %g not finite after normalization")
-                    % i->get(weightKey)).str()
-            );
-        }
     }
-    // ..and return the log of wSum, corrected for the z term we took out earlier,
-    // and including the r/2 term we've ignored all along.
-    return - z - std::log(wSum / samples.size());
+    return - uMax - std::log(wSum / samples.size());
 }
 
 } // anonymous
@@ -113,12 +94,17 @@ void AdaptiveImportanceSampler::run(
     PTR(Mixture) proposal,
     afw::table::BaseCatalog & samples
 ) const {
+    pex::logging::Debug log("meas.multifit.AdaptiveImportanceSampler");
     double perplexity = 0.0;
     int parameterDim = objective.getParameterDim();
     for (std::map<int,ImportanceSamplerControl>::const_iterator i = _ctrls.begin(); i != _ctrls.end(); ++i) {
         ImportanceSamplerControl const & ctrl = i->second;
         int nRepeat = 0;
         while (nRepeat <= ctrl.maxRepeat && perplexity < ctrl.targetPerplexity) {
+            log.debug<7>(
+                "Starting repeat %d with nSamples=%d, nUpdateSteps=%d, targetPerplexity=%g",
+                nRepeat, ctrl.nSamples, ctrl.nUpdateSteps, ctrl.targetPerplexity
+            );
             ++nRepeat;
             if (!_doSaveIterations) {
                 samples.clear();
@@ -155,6 +141,16 @@ void AdaptiveImportanceSampler::run(
             }
             computeRobustWeights(subSamples, _weightKey);
             perplexity = computeNormalizedPerplexity(subSamples);
+            if (!lsst::utils::isfinite(perplexity)) {
+                throw LSST_EXCEPT(
+                    pex::exceptions::LogicErrorException,
+                    "Normalized perplexity is non-finite."
+                );
+            }
+            log.debug<7>(
+                "Normalized perplexity is %g; target is %g",
+                perplexity, ctrl.targetPerplexity
+            );
             if (ctrl.nUpdateSteps > 0) {
                 for (std::size_t k = 0; k < subSamples.size(); ++k) {
                     parameters[k] = subSamples[k].get(_parametersKey);
@@ -177,7 +173,9 @@ double AdaptiveImportanceSampler::computeNormalizedPerplexity(
 ) const {
     double h = 0.0;
     for (afw::table::BaseCatalog::const_iterator s = samples.begin(); s != samples.end(); ++s) {
-        h -= s->get(_weightKey) * std::log(s->get(_weightKey));
+        if (s->get(_weightKey) > 0.0) {
+            h -= s->get(_weightKey) * std::log(s->get(_weightKey));
+        }
     }
     return std::exp(h) / samples.size();
 }
