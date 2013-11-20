@@ -292,7 +292,7 @@ void Mixture::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x
 
 void Mixture::updateEM(
     ndarray::Array<Scalar const,2,1> const & x,
-    ndarray::Array<Scalar const,1,1> const & w,
+    ndarray::Array<Scalar const,1,0> const & w,
     UpdateRestriction const & restriction,
     Scalar tau1, Scalar tau2
 ) {
@@ -360,7 +360,7 @@ void Mixture::updateEM(
 
 void Mixture::updateEM(
     ndarray::Array<Scalar const,2,1> const & x,
-    ndarray::Array<Scalar const,1,1> const & w,
+    ndarray::Array<Scalar const,1,0> const & w,
     Scalar tau1, Scalar tau2
 ) {
     updateEM(x, w, UpdateRestriction(_dim), tau1, tau2);

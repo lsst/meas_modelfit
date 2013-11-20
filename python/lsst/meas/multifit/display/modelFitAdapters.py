@@ -42,18 +42,22 @@ class ModelFitDataAdapter(object):
 
     def eval1d(self, dim, x):
         i = self.dimensions.index(dim)
-        projection = self.pdf.project(i)
         z = numpy.zeros(x.shape, dtype=float)
+        if i >= self.pdf.getDimension():
+            return None
+        projection = self.pdf.project(i)
         projection.evaluate(x.reshape(x.shape + (1,)), z)
         return z
 
     def eval2d(self, xDim, yDim, x, y):
         i = self.dimensions.index(yDim)
         j = self.dimensions.index(xDim)
+        z = numpy.zeros(x.size, dtype=float)
+        if i >= self.pdf.getDimension() or j >= self.pdf.getDimension():
+            return None
         projection = self.pdf.project(j, i)
         xy = numpy.zeros((x.size, 2), dtype=float)
         xy[:,0] = x.flatten()
         xy[:,1] = y.flatten()
-        z = numpy.zeros(x.size, dtype=float)
         projection.evaluate(xy, z)
         return z.reshape(x.shape)

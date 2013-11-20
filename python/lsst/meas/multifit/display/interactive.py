@@ -82,6 +82,7 @@ class Interactive(object):
                 self.dataRef = self.butler.dataRef("calexp", dataId=dataId)
                 if config is None:
                     config = self.butler.get("measureCcd_config", immediate=True)
+                    config.doWarmStart = True
                 self.task = MeasureCcdTask(config=config)
             elif self.mode == "coadd":
                 if dataId is None:
@@ -89,6 +90,7 @@ class Interactive(object):
                 self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
                 if config is None:
                     config = self.butler.get("deep_measureCoadd_config", immediate=True)
+                    config.doWarmStart = True
                 self.task = MeasureCoaddTask(config=config)
             elif self.mode.startswith("multi"):
                 if dataId is None:
@@ -96,6 +98,7 @@ class Interactive(object):
                 self.dataRef = self.butler.dataRef("deepCoadd_calexp", dataId=dataId)
                 if config is None:
                     config = self.butler.get("deep_measureMulti_config", immediate=True)
+                    config.doWarmStart = True
                 self.task = MeasureMultiTask(config=config)
         self.inputs = self.task.readInputs(self.dataRef)
         self.cat = self.task.prepCatalog(self.inputs)

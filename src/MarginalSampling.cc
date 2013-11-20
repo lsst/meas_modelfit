@@ -21,9 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "boost/math/special_functions/round.hpp"
+
 #include "ndarray/eigen.h"
 
 #include "lsst/meas/multifit/MarginalSampling.h"
+#include "lsst/meas/multifit/DirectSampling.h"
 #include "lsst/meas/multifit/ModelFitRecord.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -101,6 +104,18 @@ MarginalSamplingInterpreter::MarginalSamplingInterpreter(
     _nonlinearKey = _parameterKey;
 }
 
+void MarginalSamplingInterpreter::unpackNested(
+    ndarray::Array<Scalar const,1,1> const & nested, Vector & gradient, Matrix & hessian
+) const {
+    int const n = getAmplitudeDim();
+    for (int i = 0, k = n; i < n; ++i) {
+        gradient[i] = nested[i];
+        for (int j = 0; j <= i; ++j, ++k) {
+            hessian(i, j) = hessian(j, i) = nested[k];
+        }
+    }
+}
+
 ndarray::Array<Scalar,1,1> MarginalSamplingInterpreter::computeAmplitudeQuantiles(
     ModelFitRecord const & record,
     ndarray::Array<Scalar const,1,1> const & fractions,
@@ -157,13 +172,151 @@ void MarginalSamplingInterpreter::_unpackNonlinear(
     nonlinear.deep() = parameters;
 }
 
-ModelFitCatalog MarginalSamplingInterpreter::unnset(
-    ModelFitCatlog const & inCat,
-    afw::math::Random & rng,
+namespace {
+
+// This functor is applied to every field in a direct sampling schema; it
+// finds the corresponding field in a marginal sampling schema (the input
+// schema of the mapper), and thus creates a mapper that reproduces the
+// direct schema while transferring appropriate fields from the marginal
+// schcema.
+struct MapSamplingFields {
+
+    template <typename T>
+    void operator()(afw::table::SchemaItem<T> const & directItem) const {
+        afw::table::Key<T> directKey;
+        if (directItem.field.getName() == "parameters") {
+            // this is the only field we expect to be different
+            directKey = mapper->addOutputField(directItem.field);
+        } else {
+            afw::table::Key<T> marginalKey = mapper->getInputSchema()[directItem.field.getName()];
+            directKey = mapper->addMapping(marginalKey);
+        }
+        if (directKey != directItem.key) {
+            throw LSST_EXCEPT(
+                pex::exceptions::LogicErrorException,
+                (boost::format("Unexpected mismatch between direct and marginal schemas at field '%s'")
+                 % directItem.field.getName()).str()
+            );
+        }
+    };
+
+    afw::table::SchemaMapper * mapper;
+};
+
+} // anonymous
+
+
+UnnestMarginalSamples::UnnestMarginalSamples(
+    afw::table::Schema const & marginalSchema,
+    afw::table::Schema const & directSchema,
+    PTR(MarginalSamplingInterpreter) marginalInterpreter,
+    PTR(DirectSamplingInterpreter) directInterpreter,
+    PTR(afw::math::Random) rng,
     double multiplier
-) {
-    afw::table::SchemaMapper mapper(inCat.getTable()->getSampleTable()->getSchema());
-    
+) : _mapper(marginalSchema),
+    _multiplier(multiplier),
+    _rng(rng),
+    _marginalInterpreter(marginalInterpreter),
+    _directInterpreter(directInterpreter),
+    _prior(_marginalInterpreter->getPrior())
+{
+    if (!_prior) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "Cannot unnest without a Prior"
+        );
+    }
+    MapSamplingFields mapFunc = { &_mapper };
+    directSchema.forEach(mapFunc);
+    assert(directSchema == _mapper.getOutputSchema()); // should have already thrown an exception if !=
+}
+
+void UnnestMarginalSamples::apply(
+    ModelFitRecord const & marginalRecord, ModelFitRecord & directRecord
+) const {
+
+    // First pass, just to see how many samples we'll have in the new catalog; we want
+    // to preallocate space not just for efficiency but so we can call Mixture::updateEM
+    // on the columns.
+    int nNewSamplesTotal = 0;
+    for (
+        afw::table::BaseCatalog::const_iterator marginalIter = marginalRecord.getSamples().begin();
+        marginalIter != marginalRecord.getSamples().end();
+        ++marginalIter
+    ) {
+        nNewSamplesTotal += boost::math::iround(
+            _multiplier
+            * marginalRecord.getSamples().size()
+            * marginalIter->get(_marginalInterpreter->getWeightKey())
+        );
+    }
+
+    // Second pass, draw new samples
+    int const nonlinearDim = _marginalInterpreter->getNonlinearDim();
+    int const amplitudeDim = _marginalInterpreter->getAmplitudeDim();
+    int const parameterDim = nonlinearDim + amplitudeDim;
+    Vector gradient(amplitudeDim);
+    Matrix hessian(amplitudeDim, amplitudeDim);
+    directRecord.getSamples().getTable()->preallocate(nNewSamplesTotal);
+    ArrayKey amplitudeKey = _directInterpreter->getParameterKey().slice(nonlinearDim, parameterDim);
+    for (
+        afw::table::BaseCatalog::const_iterator marginalIter = marginalRecord.getSamples().begin();
+        marginalIter != marginalRecord.getSamples().end();
+        ++marginalIter
+    ) {
+        Scalar marginalWeight = marginalIter->get(_marginalInterpreter->getWeightKey());
+        int nNewSamples = boost::math::iround(
+            _multiplier * marginalRecord.getSamples().size() * marginalWeight
+        );
+        if (nNewSamples == 0) continue;
+        Scalar directWeight = marginalWeight / nNewSamples;
+        ndarray::Array<Scalar const,1,1> nonlinear
+            = marginalIter->get(_marginalInterpreter->getParameterKey());
+        _marginalInterpreter->unpackNested(*marginalIter, gradient, hessian);
+        ndarray::Array<Scalar,2,2> amplitudes = ndarray::allocate(nNewSamples, amplitudeDim);
+        ndarray::Array<Scalar,1,1> weights = ndarray::allocate(nNewSamples);
+        weights.deep() = directWeight;
+        _prior->drawAmplitudes(gradient, hessian, nonlinear, *_rng, amplitudes, weights, true);
+        for (int k = 0; k < nNewSamples; ++k) {
+            PTR(afw::table::BaseRecord) newRecord = directRecord.getSamples().addNew();
+            newRecord->assign(*marginalIter, _mapper);
+            newRecord->set(_directInterpreter->getWeightKey(), weights[k]);
+            (*newRecord)[_directInterpreter->getNonlinearKey()] = nonlinear;
+            (*newRecord)[amplitudeKey] = amplitudes[k];
+        }
+    }
+
+    // Now we use the direct interpreter and the new samples to compute a single mean and
+    // covariance for the amplitudes; we'll use this to set the mean and covariance of the
+    // amplitude parameters for each component in in the Mixture PDF, and then run an E-M
+    // update to tweak it up and fill in the covariances between the nonlinear and amplitude
+    // parameters.
+    PTR(Mixture) marginalPdf = marginalRecord.getPdf();
+    ndarray::Array<Scalar,1,1> amplitudeMu
+        = _directInterpreter->computeAmplitudeMean(directRecord);
+    ndarray::Array<Scalar,2,2> amplitudeSigma
+        = _directInterpreter->computeAmplitudeCovariance(directRecord, amplitudeMu);
+    Mixture::ComponentList directComponents;
+    Vector directMu = Vector::Zero(parameterDim);
+    Matrix directSigma = Matrix::Zero(parameterDim, parameterDim);
+    for (
+        Mixture::iterator marginalIter = marginalPdf->begin();
+        marginalIter != marginalPdf->end();
+        ++marginalIter
+    ) {
+        directMu.head(nonlinearDim) = marginalIter->getMu();
+        directMu.tail(amplitudeDim) = amplitudeMu.asEigen();
+        directSigma.topLeftCorner(nonlinearDim, nonlinearDim) = marginalIter->getSigma();
+        directSigma.bottomRightCorner(amplitudeDim, amplitudeDim) = amplitudeSigma.asEigen();
+        directComponents.push_back(Mixture::Component(marginalIter->weight, directMu, directSigma));
+    }
+    PTR(Mixture) directPdf = boost::make_shared<Mixture>(
+        parameterDim, boost::ref(directComponents), marginalPdf->getDegreesOfFreedom()
+    );
+    afw::table::BaseColumnView columns = directRecord.getSamples().getColumnView();
+    directPdf->updateEM(columns[_directInterpreter->getParameterKey()],
+                        columns[_directInterpreter->getWeightKey()]);
+    directRecord.setPdf(directPdf);
 }
 
 }}} // namespace lsst::meas::multifit

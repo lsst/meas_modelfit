@@ -189,12 +189,14 @@ class SurfaceLayer(object):
         xMin, xMax = axes.get_xlim()
         x = numpy.linspace(xMin, xMax, self.steps1d)
         z = self.eval1d(data, dim, x)
+        if z is None: return
         axes.plot(x, z, **self.kwds1d)
 
     def plotY(self, axes, data, dim):
         yMin, yMax = axes.get_ylim()
         y = numpy.linspace(yMin, yMax, self.steps1d)
         z = self.eval1d(data, dim, y)
+        if z is None: return
         axes.plot(z, y, **self.kwds1d)
 
     def plotXY(self, axes, data, xDim, yDim):
@@ -204,6 +206,7 @@ class SurfaceLayer(object):
         yc = numpy.linspace(yMin, yMax, self.steps2d)
         xg, yg = numpy.meshgrid(xc, yc)
         z = self.eval2d(data, xDim, yDim, xg, yg)
+        if z is None: return
         if self.filled:
             return axes.contourf(xg, yg, z, 6, **self.kwds2d)
         else:

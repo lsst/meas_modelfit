@@ -278,7 +278,7 @@ public:
      */
     void updateEM(
         ndarray::Array<Scalar const,2,1> const & x,
-        ndarray::Array<Scalar const,1,1> const & w,
+        ndarray::Array<Scalar const,1,0> const & w,
         Scalar tau1=0.0, Scalar tau2=0.5
     );
 
@@ -294,7 +294,7 @@ public:
      */
     void updateEM(
         ndarray::Array<Scalar const,2,1> const & x,
-        ndarray::Array<Scalar const,1,1> const & w,
+        ndarray::Array<Scalar const,1,0> const & w,
         UpdateRestriction const & restriction,
         Scalar tau1=0.0, Scalar tau2=0.5
     );

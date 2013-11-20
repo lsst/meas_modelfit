@@ -26,6 +26,7 @@
 
 #include "lsst/base.h"
 #include "lsst/afw/table/io/Persistable.h"
+#include "lsst/afw/math/Random.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/Mixture.h"
 
@@ -117,6 +118,34 @@ public:
         ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const = 0;
 
+    /**
+     *  @brief Draw a set of Monte Carlo amplitude vectors
+     *
+     *  This provides a Monte Carlo approach to extracting the conditional amplitude distribution that
+     *  is integrated by the marginalize() method.
+     *
+     *  @param[in]  gradient     Gradient of the -log likelihood in @f$\alpha@f$ at fixed @f$\theta@f$.
+     *  @param[in]  fisher       Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
+     *                           @f$\theta@f$.
+     *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$ at which we are evaluating
+     *                           the conditional distribution @f$P(\alpha|\theta)@f$.
+     *  @param[in,out]  rng      Random number generator.
+     *  @param[out] amplitudes   The Monte Carlo sample of amplitude parameters @f$\alpha@f$.  The
+     *                           number of rows sets the number of samples, while the number of
+     *                           columns must match the dimensionality of @f$\alpha@f$.
+     *  @param[out] weights      The weights of the Monte Carlo samples; should asymptotically average
+     *                           to one.
+     *  @param[in]  multiplyWeights  If true, multiply weight vector instead of overwriting it.
+     */
+    virtual void drawAmplitudes(
+        Vector const & gradient, Matrix const & fisher,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        afw::math::Random & rng,
+        ndarray::Array<Scalar,2,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & weights,
+        bool multiplyWeights=false
+    ) const = 0;
+
     virtual ~Prior() {}
 
 protected:
@@ -161,6 +190,16 @@ public:
     virtual Scalar marginalize(
         Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear
+    ) const;
+
+    /// @copydoc Prior::drawAmplitudes
+    virtual void drawAmplitudes(
+        Vector const & gradient, Matrix const & fisher,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        afw::math::Random & rng,
+        ndarray::Array<Scalar,2,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & weights,
+        bool multiplyWeights=false
     ) const;
 
     /**

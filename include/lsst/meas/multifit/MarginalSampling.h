@@ -25,10 +25,13 @@
 #define LSST_MEAS_MULTIFIT_MarginalSampling_h_INCLUDED
 
 #include "ndarray.h"
+#include "lsst/afw/math/Random.h"
 #include "lsst/meas/multifit/Sampling.h"
+#include "lsst/meas/multifit/ModelFitRecord.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
+class DirectSamplingInterpreter;
 
 /**
  *  @brief A SamplingInterpreter for when we marginalize over amplitudes at each parameter point.
@@ -64,6 +67,16 @@ public:
     }
 
     ArrayKey getNestedKey() const { return _nestedKey; }
+
+    void unpackNested(
+        ndarray::Array<Scalar const,1,1> const & nested, Vector & gradient, Matrix & hessian
+    ) const;
+
+    void unpackNested(
+        afw::table::BaseRecord const & sample, Vector & gradient, Matrix & hessian
+    ) const {
+        unpackNested(sample.get(_nestedKey), gradient, hessian);
+    }
 
     virtual ndarray::Array<Scalar,1,1> computeAmplitudeQuantiles(
         ModelFitRecord const & record,
@@ -102,6 +115,43 @@ protected:
 
 private:
     ArrayKey _nestedKey;
+};
+
+/**
+ *  @brief Convert the samples and proposal pdf done with marginal sampling to direct sampling.
+ *
+ *  This functor is initialized with the marginal and direct Schemas and Interpreters, and uses
+ *  these to draw new samples that include the amplitudes in the parameters, and then create a
+ *  new proposal that includes amplitude dimensions that match those samples.
+ *
+ *  This object does not handle mapping fields in the ModelFitRecords themselves (that's a task
+ *  left for Python code, which handles those Schemas).
+ */
+class UnnestMarginalSamples {
+public:
+
+    /**
+     *  @brief Construct from existing schemas and interpreters
+     */
+    UnnestMarginalSamples(
+        afw::table::Schema const & marginalSchema,
+        afw::table::Schema const & directSchema,
+        PTR(MarginalSamplingInterpreter) marginalInterpreter,
+        PTR(DirectSamplingInterpreter) directInterpreter,
+        PTR(afw::math::Random) rng,
+        double multiplier
+    );
+
+    /// Create a new sample catalog and proposal pdf from marginalRecord, and add them to directRecord.
+    void apply(ModelFitRecord const & marginalRecord, ModelFitRecord & directRecord) const;
+
+private:
+    afw::table::SchemaMapper _mapper;
+    double _multiplier;
+    PTR(afw::math::Random) _rng;
+    PTR(MarginalSamplingInterpreter) _marginalInterpreter;
+    PTR(DirectSamplingInterpreter) _directInterpreter;
+    PTR(Prior) _prior;
 };
 
 }}} // namespace lsst::meas::multifit

@@ -76,6 +76,19 @@ void MixturePrior::evaluateDerivatives(
     crossHessian.deep() = 0.0;
 }
 
+void MixturePrior::drawAmplitudes(
+    Vector const & gradient, Matrix const & hessian,
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    afw::math::Random & rng,
+    ndarray::Array<Scalar,2,1> const & amplitudes,
+    ndarray::Array<Scalar,1,1> const & weights,
+    bool multiplyWeights
+) const {
+    TruncatedGaussian::Sampler sampler
+        = TruncatedGaussian::fromSeriesParameters(0.0, gradient, hessian).sample();
+    sampler(rng, amplitudes, weights, multiplyWeights);
+}
+
 namespace {
 
 class EllipseUpdateRestriction : public Mixture::UpdateRestriction {
