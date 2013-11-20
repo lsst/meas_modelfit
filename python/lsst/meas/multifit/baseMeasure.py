@@ -186,8 +186,8 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         if not self.config.prepOnly:
             for n, outRecord in enumerate(outCat):
                 if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
-                    self.log.info("Processing object %d/%d (%3.2f%%)"
-                                  % (n, len(outCat), (100.0*n)/len(outCat)))
+                    self.log.info("Processing objects %d-%d of %d (currently %3.2f%%)"
+                                  % (n+1, n+self.config.progressChunk, len(outCat), (100.0*n)/len(outCat)))
                 likelihood = self.makeLikelihood(inputs, outRecord)
                 try:
                     self.fitter.run(likelihood, outRecord)
