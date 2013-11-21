@@ -43,10 +43,10 @@ MixturePrior::MixturePrior(PTR(Mixture const) mixture, std::string const & tag) 
 {}
 
 Scalar MixturePrior::marginalize(
-    Vector const & gradient, Matrix const & fisher,
+    Vector const & gradient, Matrix const & hessian,
     ndarray::Array<Scalar const,1,1> const & parameters
 ) const {
-    return integrateGaussian(gradient, fisher) - std::log(_mixture->evaluate(parameters.asEigen()));
+    return integrateGaussian(gradient, hessian) - std::log(_mixture->evaluate(parameters.asEigen()));
 }
 
 Scalar MixturePrior::evaluate(
@@ -74,7 +74,6 @@ void MixturePrior::evaluateDerivatives(
     amplitudeHessian.deep() = 0.0;
     crossHessian.deep() = 0.0;
 }
-
 
 namespace {
 

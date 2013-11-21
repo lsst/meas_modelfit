@@ -42,17 +42,17 @@ double bvnu(double h, double k, double rho);
  *
  *  This routine computes:
  *  @f[
- *  -\ln\int_0^{\inf} dx e^{-g^T x - \frac{1}{2}x^T F x}
+ *  -\ln\int_0^{\inf} dx e^{-g^T x - \frac{1}{2}x^T H x}
  *  @f]
  *
  *  @param[in]  grad        The 'g' vector in the above formula; so-called because it's usually
  *                          the gradient vector of a log-likelihood function.
- *  @param[in]  fisher      The 'F' matrix in the above formula; so-called because it's usually
- *                          the Fisher (second-derivative) matrix of a log-likelihood function.
+ *  @param[in]  hessian     The 'H' matrix in the above formula; so-called because it's usually
+ *                          the Hessian (second-derivative) matrix of a log-likelihood function.
  *
  *  Currently only the 1-d and 2-d cases are supported.
  */
-double integrateGaussian(Vector const & grad, Matrix const & fisher);
+double integrateGaussian(Vector const & grad, Matrix const & hessian);
 
 }}} // namespace lsst::meas::multifit
 

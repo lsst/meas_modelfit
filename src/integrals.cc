@@ -173,21 +173,21 @@ bool factor(Eigen::Matrix2d const & m, Eigen::Vector2d & x, double & det) {
 
 } // anonymous
 
-double integrateGaussian(Vector const & grad, Matrix const & fisher) {
-    if (fisher.rows() != grad.size() || fisher.cols() != grad.size()) {
+double integrateGaussian(Vector const & grad, Matrix const & hessian) {
+    if (hessian.rows() != grad.size() || hessian.cols() != grad.size()) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthErrorException,
-            (boost::format("Mismatch between grad size (%d) and fisher dimensions (%d, %d)")
-             % grad.size() % fisher.rows() % fisher.cols()).str()
+            (boost::format("Mismatch between grad size (%d) and hessian dimensions (%d, %d)")
+             % grad.size() % hessian.rows() % hessian.cols()).str()
         );
     }
     if (grad.size() == 1) {
         double g = grad[0];
-        double f = fisher(0,0);
+        double f = hessian(0,0);
         return 0.5*std::log((2.0*f)/M_PI) - 0.5*g*g/f - std::log(boost::math::erfc(g/std::sqrt(2.0*f)));
     } else if (grad.size() == 2) {
         // Switch to static-size objects, rescale problem by maximum coefficient value
-        Eigen::Matrix2d F = fisher.block<2,2>(0,0);
+        Eigen::Matrix2d F = hessian.block<2,2>(0,0);
         Eigen::Vector2d g = grad.head<2>();
         Eigen::Vector2d mu = -g;
         double det = 0.0;

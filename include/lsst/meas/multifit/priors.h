@@ -101,18 +101,19 @@ public:
      *  noise on the data is generally Gaussian.  In detail, we represent the likelihood at fixed
      *  @f$\theta@f$ as
      *  @f[
-     *     P(D|\alpha,\theta) = A e^{-g^T\alpha - \frac{1}{2}\alpha^T F \alpha}
+     *     P(D|\alpha,\theta) = A e^{-g^T\alpha - \frac{1}{2}\alpha^T H \alpha}
      *  @f]
      *  The normalization @f$A@f$ can be brought outside the integral as a constant to be added
      *  to the return value, so it is not passed as an argument to this function.
      *
      *  @param[in]  gradient     Gradient of the -log likelihood in @f$\alpha@f$ at fixed @f$\theta@f$;
      *                           the vector @f$g@f$ in the equation above.
-     *  @param[in]  fisher       Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
-     *                           @f$\theta@f$; the matrix @f$F@f$ in the equation above.
+     *  @param[in]  hessian      Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
+     *                           @f$\theta@f$; the matrix @f$H@f$ in the equation above.
+     *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$.
      */
     virtual Scalar marginalize(
-        Vector const & gradient, Matrix const & fisher,
+        Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const = 0;
 
@@ -158,7 +159,7 @@ public:
 
     /// @copydoc Prior::evaluate
     virtual Scalar marginalize(
-        Vector const & gradient, Matrix const & fisher,
+        Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const;
 
