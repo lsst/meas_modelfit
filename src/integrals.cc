@@ -22,14 +22,13 @@
  */
 
 #include "boost/math/special_functions/erf.hpp"
-#include "Eigen/Eigenvalues"
 
+#define LSST_MAX_DEBUG 10
+#include "lsst/pex/logging/Debug.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/multifit/integrals.h"
 
-namespace lsst { namespace meas { namespace multifit {
-
-namespace detail {
+namespace lsst { namespace meas { namespace multifit { namespace detail {
 
 // translation of matlab 'bvn.m' routines by Alan Genz:
 // http://www.math.wsu.edu/faculty/genz/homepage
@@ -39,6 +38,8 @@ double phid(double z) {
 }
 
 double bvnu(double h, double k, double rho) {
+    pex::logging::Debug log("meas.multifit.integrals");
+    log.debug<8>("Starting bvnu: h=%g, k=%g, rho=%g", h, k, rho);
     if (h == std::numeric_limits<double>::infinity() || h == std::numeric_limits<double>::infinity()) {
         return 0.0;
     } else if (h == -std::numeric_limits<double>::infinity()) {
@@ -149,79 +150,4 @@ double bvnu(double h, double k, double rho) {
     return std::max(0.0, std::min(1.0, bvn));
 }
 
-} // namespace detail
-
-namespace {
-
-static double const THRESHOLD = 1E-15;
-
-bool factor(Eigen::Matrix2d const & m, Eigen::Vector2d & x, double & det) {
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eigh;
-    eigh.computeDirect(m);
-    if (eigh.eigenvalues()[0] < eigh.eigenvalues()[1] * THRESHOLD) {
-        det = 0.0;
-        x = eigh.eigenvectors().col(1) * (eigh.eigenvectors().col(1).dot(x) / eigh.eigenvalues()[1]);
-        return true;
-    } else {
-        det = eigh.eigenvalues()[0] * eigh.eigenvalues()[1];
-        Eigen::Vector2d tmp = eigh.eigenvectors().adjoint() * x;
-        tmp.array() /= eigh.eigenvalues().array();
-        x = eigh.eigenvectors() * tmp;
-        return false;
-    }
-}
-
-} // anonymous
-
-double integrateGaussian(Vector const & grad, Matrix const & hessian) {
-    if (hessian.rows() != grad.size() || hessian.cols() != grad.size()) {
-        throw LSST_EXCEPT(
-            pex::exceptions::LengthErrorException,
-            (boost::format("Mismatch between grad size (%d) and hessian dimensions (%d, %d)")
-             % grad.size() % hessian.rows() % hessian.cols()).str()
-        );
-    }
-    if (grad.size() == 1) {
-        double g = grad[0];
-        double f = hessian(0,0);
-        return 0.5*std::log((2.0*f)/M_PI) - 0.5*g*g/f - std::log(boost::math::erfc(g/std::sqrt(2.0*f)));
-    } else if (grad.size() == 2) {
-        // Switch to static-size objects, rescale problem by maximum coefficient value
-        Eigen::Matrix2d F = hessian.block<2,2>(0,0);
-        Eigen::Vector2d g = grad.head<2>();
-        Eigen::Vector2d mu = -g;
-        double det = 0.0;
-        bool isSingular = factor(F, mu, det);
-        double k = 0.5*g.dot(mu);
-        if (isSingular) {
-            if (!g.isApprox(-F*mu, std::sqrt(THRESHOLD))) {
-                throw LSST_EXCEPT(
-                    pex::exceptions::RuntimeErrorException,
-                    "Integral diverges: F \\mu = -g has no solution"
-                );
-            }
-            double d = F(0,0);
-            double r = F(0,1) / F(0,0);
-            if (r < 0) {
-                throw LSST_EXCEPT(
-                    pex::exceptions::RuntimeErrorException,
-                    "Integral diverges"
-                );
-            }
-            k += std::log(2.0*d*r);
-            double t = (mu[0] + r*mu[1])*std::sqrt(d);
-            return k - std::log(2.0*std::exp(-0.5*t*t)
-                                + std::sqrt(2.0*M_PI)*t*(1.0 + boost::math::erf(t/M_SQRT2)));
-        } else {
-            double rho = -F(0,1) / std::sqrt(F(0,0) * F(1,1));
-            return k + std::log(std::sqrt(det) / (2.0*M_PI))
-                - std::log(detail::bvnu(-std::sqrt(det/F(1,1))*mu[0], -std::sqrt(det/F(0,0))*mu[1], rho));
-        }
-    }
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "integrateGaussian not implemented for n > 2"
-    );
-}
-
-}}} // namespace lsst::meas::multifit
+}}}} // namespace lsst::meas::multifit::detail

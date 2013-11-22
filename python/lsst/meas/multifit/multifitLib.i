@@ -198,6 +198,7 @@ Pixel = numpy.float32
 %include "lsst/meas/multifit/MarginalSampling.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 %include "lsst/meas/multifit/psf.h"
+%include "lsst/meas/multifit/TruncatedGaussian.h"
 
 %downcastPtr(lsst::meas::multifit::Model, lsst::meas::multifit::MultiModel)
 %downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::SamplingInterpreter)

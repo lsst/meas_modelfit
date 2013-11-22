@@ -68,7 +68,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.config.progressChunk = 1
         self.config.doRaise = True
         self.models = [
-            'bulge+disk',
+            #'bulge+disk',
             'fixed-sersic',
             ]
 

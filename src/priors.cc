@@ -30,7 +30,7 @@
 #include "lsst/afw/table/io/InputArchive.h"
 #include "lsst/afw/table/io/CatalogVector.h"
 #include "lsst/meas/multifit/priors.h"
-#include "lsst/meas/multifit/integrals.h"
+#include "lsst/meas/multifit/TruncatedGaussian.h"
 
 namespace tbl = lsst::afw::table;
 
@@ -46,7 +46,8 @@ Scalar MixturePrior::marginalize(
     Vector const & gradient, Matrix const & hessian,
     ndarray::Array<Scalar const,1,1> const & parameters
 ) const {
-    return integrateGaussian(gradient, hessian) - std::log(_mixture->evaluate(parameters.asEigen()));
+    return TruncatedGaussian::fromSeriesParameters(0.0, gradient, hessian).getLogIntegral()
+        - std::log(_mixture->evaluate(parameters.asEigen()));
 }
 
 Scalar MixturePrior::evaluate(

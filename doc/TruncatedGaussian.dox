@@ -1,0 +1,255 @@
+// -*- lsst-c++ -*-
+
+namespace lsst { namespace meas { namespace multifit {
+
+/**
+ *  @page multifitTruncatedGaussianMath Truncated Gaussian Math
+ *
+ *  The implementation of the TruncatedGaussian class is a bit opaque due to the
+ *  complex mathematics involved.  This page provides formulae and explanations
+ *  to help explain how it works.
+ *
+ *  Except where otherwise noted, we'll assume 2 dimensions here, as 1-d is trivial and higher
+ *  dimensions are not supported.
+ *
+ *  @section multifitTruncatedGaussianStandardIntegral Standard-Parameter Integrals
+ *
+ *  In the standard parameters form, we are modeling the function
+ *  @f[
+ *    f(\alpha) = \frac{1_{\alpha \ge 0}(\alpha)}{k\left|2\pi\Sigma\right|^{1/2}}
+ *      e^{-\frac{1}{2}(\alpha-\mu)^T \Sigma^{-1} (\alpha-\mu)}
+ *  @f]
+ *  Where @f$1_{\alpha \ge 0}(\alpha)@f$ is the indicator function
+ *  @f[
+ *    1_{\alpha \ge 0}(\alpha) \equiv \begin{cases}
+ *       1 & \text{if $\alpha \ge 0$}\\
+ *       0 & \text{if $\alpha \lt 0$}
+ *    \end{cases}
+ *  @f]
+ *  and @f$k@f$ is the normalization constant that ensures that @f$f(\alpha)@f$ integrates to unity:
+ *  @f[
+ *    k \equiv \int_0^{\infty}\!\!d\alpha\;
+ *       \frac{1}{\left|2\pi\Sigma\right|^{1/2}}\;
+ *       e^{-\frac{1}{2}(\alpha-\mu)^T \Sigma^{-1} (\alpha-\mu)}
+ *  @f]
+ *  we assume that the matrix @f$\Sigma@f$ is full-rank (and throw
+ *  an exception if it is not), because @f$k@f$ is infinite if @f$\sigma@f$ is singular.
+ *
+ *  In this case, there is no analytic integral, and we use a translation/reimplementation
+ *  of the "bvnu" MatLab routine by Alan Genz to do the numerical integration (see detail::bvnu).
+ *
+ *  However, bvnu takes its arguments in a different form, computing the integral
+ *  @f[
+ *    \text{bvnu}(h, k, \rho) = \frac{1}{2\pi\sqrt{1-\rho^2}}\int_h^{\infty}dx\int_k^{\infty}dy
+ *        \;e^{-(x^2 - 2\rho x y + y^2)/(2(1-\rho^2))}
+ *  @f]
+ *  Computing the correlation coefficient @f$\rho@f$ from the covariance matrix is straightforward:
+ *  @f[
+ *    \rho \equiv \frac{\Sigma_{1,2}}{\sqrt{\Sigma_{1,1} \Sigma_{2,2}}}
+ *  @f]
+ *  and transforming to the new form is simply a matter of making the substitution
+ *  @f[
+ *    \eta_1 = \frac{\alpha_1 - \mu_1}{\sqrt{\Sigma_{1,1}}}
+ *  @f]
+ *  @f[
+ *    \eta_2 = \frac{\alpha_2 - \mu_2}{\sqrt{\Sigma_{2,2}}}
+ *  @f]
+ *  Since both integrals are normalized in the untruncated case, we have
+ *  @f[
+ *    \frac{1}{\left|2\pi\Sigma\right|}\int_0^{\infty}d\alpha_1\,\int_0^{\infty}d\alpha_2\,
+ *    e^{-\frac{1}{2}(\alpha-\mu)^T\,\Sigma^{-1}\,(\alpha-\mu)}
+ *    = \text{bvnu}\left(-\frac{\mu_1}{\sqrt{\Sigma_{1,1}}}, -\frac{\mu_2}{\sqrt{\Sigma_{2,2}}},
+ *                       \frac{\Sigma_{1,2}}{\sqrt{\Sigma_{1,1} \Sigma_{2,2}}}\right)
+ *  @f]
+ *
+ *  @section multifitTruncatedGaussianSeriesIntegral Series-Parameter Integrals
+ *
+ *  In the series form, we are modeling the function
+ *  @f[
+ *    f(\alpha) = 1_{\alpha \ge 0}(\alpha) \; e^{-q(0) -g^T \alpha -\frac{1}{2}\alpha^T H \alpha}
+ *              = 1_{\alpha \ge 0}(\alpha) \; e^{-q(\alpha)}
+ *  @f]
+ *
+ *  There are two distinct cases, depending on whether @f$H@f$ is singular.  In both cases,
+ *  we begin by compute an eigensystem decomposition of @f$H@f$:
+ *  @f[
+ *    H = V\,S\,V^T
+ *  @f]
+ *  where @f$S@f$ is diagonal and @f$V@f$ is orthogonal.  We use this to determine whether @f$H@f$
+ *  is singular, and if so, to compute its inverse and determinant.  In the nonsingular case, we
+ *  can then use the same bvnu routine used for the standard parameters form, noting that
+ *  @f[
+ *    \mu = -H^{-1} g
+ *  @f]
+ *  @f[
+ *    \Sigma_{11} = \frac{H_{22}}{|H|}
+ *  @f]
+ *  @f[
+ *    \Sigma_{22} = \frac{H_{11}}{|H|}
+ *  @f]
+ *  @f[
+ *    \rho = -\frac{H_{12}}{\sqrt{H_{11}H_{22}}}
+ *  @f]
+ *
+ *  The singular case in the series form can arise when a linear combination of the parameters is
+ *  completely unconstrained, but the total amplitude is well constrained (and hence the integral
+ *  of the TruncatedGaussian is bounded due to the truncation).  This happens extremely
+ *  often, when a galaxy model has two components and the radii of both approach zero.
+ *
+ *  In the singular case (which bvnu does not handle), we assume the eigensystem is structured as
+ *  @f[
+ *    H = V\,S\,V^T
+ *      = \left[\begin{array}{c c}
+ *          V_{1,1} & V_{1,2} \\
+ *          V_{2,1} & V_{2,2} \\
+ *        \end{array}\right]
+ *        \left[\begin{array}{c c}
+ *          0 & 0 \\
+ *          0 & S_2
+ *        \end{array}\right]
+ *       \left[\begin{array}{c c}
+ *          V_{1,1} & V_{2,1} \                 \
+ *          V_{1,2} & V_{2,2}
+ *        \end{array}\right]
+ *      = \left[\begin{array}{c c}
+ *          V_{:,1}
+ *          V_{:,2}
+ *        \end{array}\right]
+ *        \left[\begin{array}{c c}
+ *          0 & 0 \\
+ *          0 & S_2
+ *        \end{array}\right]
+ *      = \left[\begin{array}{c}
+ *          V_{:,1}^T
+ *          V_{:,2}^T
+ *        \end{array}\right]
+ *  @f]
+ *  and we change variables to isolate the zero eigenvalue:
+ *  @f[
+ *    \alpha = V\beta = V_{:,1} \beta_1 + V_{:,2} \beta_2
+ *  @f]
+ *  @f[
+ *    \beta = V^T\alpha
+ *      = \left[\begin{array}{c}
+ *           V_{:,1}^T\alpha \\
+ *           V_{:,2}^T\alpha
+ *        \end{array}\right]
+ *      = \left[\begin{array}{c}
+ *           \beta_1 \\
+ *           \beta_2
+ *        \end{array}\right]
+ *  @f]
+ *  We will assume that @f$V_{1,2}@f$ and @f$V_{2,2}@f$ are both positive (both negative would be an
+ *  equally valid assumption, just a different convention, but mixed sign would indicate a
+ *  divergent integral), and that @f$V_{:,1}^T g=0@f$ (this is equivalent to stating that the
+ *  singularity arises because the least-squares problem represented by the series expansion
+ *  has many degenerate solutions).
+ *
+ *  The region of integration defined by the indicator function, in the rotated @f$\beta@f$ frame,
+ *  lies between the lines that represent the rotates @f$\alpha_1-@f$ and @f$\alpha_1-@f$ axes,
+ *  which are
+ *  @f[
+ *    \beta_1 = -\frac{V_{1,2}}{V_{1,1}}\beta_2
+ *  @f]
+ *  and
+ *  @f[
+ *    \beta_1 = -\frac{V_{2,2}}{V_{2,1}}\beta_2
+ *  @f]
+ *  with @f$\beta_2 \ge 0@f$.  We can thus write the integral in @f$\beta@f$ as
+ *  @f[
+ *    \int_{0}^{\infty} d\beta_2 e^{-q(0) - g^T V_{:,2} \beta_2 -\frac{1}{2}S_2\beta_2^2}
+ *    \int_{-\frac{V_{1,2}}{V_{1,1}}\beta_2}^{-\frac{V_{2,2}}{V_{2,1}}\beta_2} d\beta_1
+ *    =\left(\frac{V_{1,2}}{V_{1,1}}-\frac{V_{2,2}}{V_{2,1}}\right)
+ *    \int_{0}^{\infty} d\beta_2\;\beta_2\;e^{-q(0) - g^T V_{:,2} \beta_2 -\frac{1}{2}S_2\beta_2^2}
+ *  @f]
+ *
+ *  This can now be integrated using integration by parts and standard 1-d Gaussian integrals
+ *  (I used Mathematica) to yield
+ *  @f[
+ *    \left(\frac{V_{1,2}}{V_{1,1}}-\frac{V_{2,2}}{V_{2,1}}\right)\frac{e^{-q(0)}}{S_2}\left[
+ *      1 - z\sqrt{\pi}\;e^{z^2}\;\text{erfc}\left(z\right)
+ *    \right]
+ *  @f]
+ *  where
+ *  @f[
+ *    z \equiv \frac{V_{:,2}^T\,g}{\sqrt{2S_2}}
+ *  @f]
+ *
+ *  @section multifitTruncatedGaussianSampling Sampling
+ *
+ *  TruncatedGaussian supports two strategies for sampling, set by the
+ *  TruncatedGaussian::SampleStrategy enum.  The "direct-with-rejection" strategy is quite simple,
+ *  and needs no further development here (see the enum docs for more information).  The
+ *  "align-and-weight" strategy is a bit more complex.
+ *
+ *  With this strategy, instead of sampling from the untruncated Gaussian, we use importance sampling:
+ *  we draw samples from a similar "importance" distribution, then weigh these by the ratio of the
+ *  true distribution to the importance distribution at each point.  For the importance distribution,
+ *  we'll use an "axis-aligned" Gaussian (i.e. one with a diagonal covariance matrix); this will allow
+ *  us to draw from each dimension independently.  Instead of doing this by drawing directly from the
+ *  1-d Gaussian and rejecting, however, we'll draw directly from the truncated 1-d Gaussian using its
+ *  inverse CDF.
+ *
+ *  In detail, then, we start with a function @f$f(\alpha)@f$, for which we know the total integral
+ *  @f[
+ *    A_f = \int\!\!d\alpha\;f(\alpha)
+ *  @f]
+ *  (note that this includes the truncation), as well as the Hessian matrix @f$H@f$ and mean @f$\mu@f$.
+ *  This mixing of the series and standard parametrizations is useful because we can always compute
+ *  @f$H@f$ from @f$\Sigma@f$ because we assume the latter is always nonsingular, but we do not assume
+ *  that @f$H@f$ is nonsingular.  Similarly, we can compute @f$\mu=-H^+g@f$ from the series form.
+ *  Because one logically draws from normalized probability distributions, not arbitrarily scaled
+ *  functions, we are thus logically drawing from @f$f(\alpha)/A_f@f$, not simply @f$f(\alpha)@f$.
+ *
+ *  To construct the importance distribution, we'd like to use the diagonal of @f$H^{-1}=\Sigma@f$,
+ *  but because we cannot guarantee that @f$H@f$ is nonsingular, we will instead use the inverse of
+ *  the diagonal of @f$H@f$.  This represents the width in each dimension at fixed values in the
+ *  other dimensions (note that the diagonal of @f$\Sigma@f$ would represent the marginal values
+ *  if the Gaussian were not truncated), so it's not quite wide enough to make a good importance
+ *  distribution.  To address this, we'll simply multiply by 2, so the importance distribution
+ *  will have the diagonal covariance matrix @f$D@f$ defined by:
+ *  @f[
+ *    D_i = 2\sqrt{H_{i,i}}
+ *  @f]
+ *  We could do much more clever things by computing the actual confidence limits of the truncated
+ *  Gaussian, but the current approach seems to work well enough so it doesn't seem to be worth the
+ *  extra work.
+ *
+ *  Our importance function is thus
+ *  @f[
+ *    p(\alpha) = 1_{\alpha\ge 0}\;\frac{1}{2\pi|D|^{1/2}}\;
+ *                   e^{-\frac{1}{2}\left(\alpha-\mu\right)^T\,D\,\left(\alpha-\mu\right)}
+ *        = \prod_i p(\alpha_i)
+ *  @f]
+ *  @f[
+ *    p(\alpha_i) = \frac{1_{\alpha_i\ge 0}}{\sqrt{2\pi D_i}}\;e^{-\frac{1}{2D_i}(\alpha_i-\mu_i)^2}
+ *  @f]
+ *  with normalization factor
+ *  @f[
+ *    A_p = \int\!\! d\alpha\;p(\alpha) = \prod_i A_{p_i}
+ *  @f]
+ *  @f[
+ *    A_{p_i} = \int_0^{\infty}\!\!d\alpha_i\;p(\alpha_i)
+ *         = \frac{1}{2}\text{erfc}\left(\frac{-\mu_i}{\sqrt{2D_i}}\right)
+ *         = \Phi\left(\frac{\mu_i}{\sqrt{D_i}}\right)
+ *         = 1-\Phi\left(\frac{-\mu_i}{\sqrt{D_i}}\right)
+ *  @f]
+ *
+ *  To draw from @f$p(\alpha)@f$, we draw from each @f$r(\alpha_i)@f$ in turn, which can be accomplished
+ *  via
+ *  @f[
+ *    \alpha_i = \Phi^{-1}\left(\Phi\left(\frac{-\mu_i}{D_i}\right)
+ *                              + u\left[1 - \Phi\left(\frac{-\mu_i}{D_i}\right) \right]\right)
+ *                              \sqrt{D_i} + \mu_i
+ *       = \Phi^{-1}\left(1 - A_{p_i} + u A_{p_i}\right)\sqrt{D_i} + \mu_i
+ *       = -\sqrt{2}\,\text{erfc}^{-1}\left(2\left[1-u A_{p_i}\right]\right)\sqrt{D_i} + \mu_i
+ *  @f]
+ *  where @f$u@f$ is a uniform random variate on @f$(0,1)@f$, and we have used the fact that
+ *  @f$1-u@f$ and @f$-u@f$ are both random variates on @f$(-1,0)@f$.
+ *
+ *  After drawing these from the importance distribution, we compute the weight for each point as
+ *  @f[
+ *   w = \frac{A_p\;f(\alpha)}{A_f\;f(\alpha)}
+ *  @f]
+ */
+}}}

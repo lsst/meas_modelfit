@@ -29,6 +29,7 @@
 #include "lsst/meas/multifit/ModelFitRecord.h"
 #include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 #include "lsst/meas/multifit/Sampling.h"
+#include "lsst/meas/multifit/TruncatedGaussian.h"
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/ProjectedLikelihood.h"
 #include "lsst/meas/multifit/Interpreter.h"
