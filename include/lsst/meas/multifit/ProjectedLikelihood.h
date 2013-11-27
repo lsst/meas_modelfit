@@ -37,6 +37,7 @@
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/models.h"
 #include "lsst/meas/multifit/Likelihood.h"
+#include "lsst/meas/multifit/UnitSystem.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -98,18 +99,16 @@ public:
      *
      * @param[in] model             Object that defines the model to fit and its parameters.
      * @param[in] fixed             Model parameters that are held fixed.
-     * @param[in] fitWcs            WCS to be used for parameter coordinate system
-     * @param[in] fitCalib          Photometric system for parameters
-     * @param[in] sourceSkyPos      Sky position of object being fit
+     * @param[in] fitSys            Geometric and photometric system to fit in
+     * @param[in] position          Sky position of object being fit
      * @param[in] epochFootprintList   List of shared pointers to EpochFootprint
      * @param[in] ctrl              Control object with various options
      */
     explicit ProjectedLikelihood(
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
-        afw::image::Wcs const & fitWcs,
-        afw::image::Calib const & fitCalib,
-        afw::coord::Coord const & sourceSkyPos,
+        UnitSystem const & fitSys,
+        afw::coord::Coord const & position,
         std::vector<PTR(EpochFootprint)> const & epochFootprintList,
         ProjectedLikelihoodControl const & ctrl
     );
@@ -119,9 +118,8 @@ public:
      *
      * @param[in] model             Object that defines the model to fit and its parameters.
      * @param[in] fixed             Model parameters that are held fixed.
-     * @param[in] fitWcs            WCS to be used for parameter coordinate system
-     * @param[in] fitCalib          Photometric system for parameters
-     * @param[in] sourceSkyPos      Sky position of object being fit
+     * @param[in] fitSys            Geometric and photometric system to fit in
+     * @param[in] position          Sky position of object being fit
      * @param[in] exposure          Exposure containing the data to fit
      * @param[in] footprint         Footprint that defines the pixels to include in the fit
      * @param[in] psf               Shapelet approximation to the PSF
@@ -130,9 +128,8 @@ public:
     explicit ProjectedLikelihood(
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
-        afw::image::Wcs const & fitWcs,
-        afw::image::Calib const & fitCalib,
-        afw::coord::Coord const & sourceSkyPos,
+        UnitSystem const & fitSys,
+        afw::coord::Coord const & position,
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,

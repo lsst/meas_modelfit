@@ -32,6 +32,7 @@
 #include "lsst/meas/multifit/TruncatedGaussian.h"
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/ProjectedLikelihood.h"
+#include "lsst/meas/multifit/UnitSystem.h"
 #include "lsst/meas/multifit/Interpreter.h"
 #include "lsst/meas/multifit/priors.h"
 #include "lsst/meas/multifit/integrals.h"

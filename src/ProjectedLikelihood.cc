@@ -88,7 +88,6 @@ void setupArrays(
     afw::detection::Footprint const & footprint,
     ndarray::Array<Pixel,1,1> const & data,
     ndarray::Array<Pixel,1,1> const & weights,
-    double fluxScaling,
     bool usePixelWeights
 ) {
     afw::detection::flattenArray(footprint, image.getImage()->getArray(), data, image.getXY0());
@@ -104,7 +103,6 @@ void setupArrays(
         );
     }
     data.asEigen<Eigen::ArrayXpr>() *= weights.asEigen<Eigen::ArrayXpr>();
-    weights.asEigen<Eigen::ArrayXpr>() *= fluxScaling;
 }
 
 } // anonymous
@@ -125,17 +123,16 @@ public:
     class Epoch {
     public:
 
-        Epoch(int nPix_, MatrixBuilderVector matrixBuilders_, afw::geom::AffineTransform transform_) :
-            nPix(nPix_), matrixBuilders(matrixBuilders_), transform(transform_) {}
+        Epoch(int nPix_, LocalUnitTransform transform_, MatrixBuilderVector matrixBuilders_) :
+            nPix(nPix_), transform(transform_), matrixBuilders(matrixBuilders_) {}
 
         int nPix;
+        LocalUnitTransform transform;
         MatrixBuilderVector matrixBuilders;
-        afw::geom::AffineTransform transform;
     };
 
     Impl() : scratch(afw::geom::ellipses::Quadrupole(), afw::geom::Point2D()) {}
 
-    ndarray::Array<Pixel,1,1> weights;
     std::vector<Epoch> epochs;
     Model::EllipseVector ellipses;
     afw::geom::ellipses::Ellipse scratch;
@@ -144,44 +141,37 @@ public:
 ProjectedLikelihood::ProjectedLikelihood(
     PTR(Model) model,
     ndarray::Array<Scalar const,1,1> const & fixed,
-    afw::image::Wcs const & fitWcs,
-    afw::image::Calib const & fitCalib,
-    afw::coord::Coord const & sourceSkyPos,
+    UnitSystem const & fitSys,
+    afw::coord::Coord const & position,
     std::vector<PTR(EpochFootprint)> const & epochFootprintList,
     ProjectedLikelihoodControl const & ctrl
 ) : Likelihood(model, fixed), _impl(new Impl()) {
     int totPixels = std::accumulate(epochFootprintList.begin(), epochFootprintList.end(),
                                     0, componentPixelSum);
     _data = ndarray::allocate(totPixels);
-    _impl->weights = ndarray::allocate(totPixels);
+    _weights = ndarray::allocate(totPixels);
     _impl->epochs.reserve(epochFootprintList.size());
     _impl->ellipses = model->makeEllipseVector();
-    afw::geom::AffineTransform fitToSky = fitWcs.linearizePixelToSky(sourceSkyPos, afw::geom::radians);
-    double fitFluxMag0 = fitCalib.getFluxMag0().first;
     int dataOffset = 0;
     for (
         std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochFootprintList.begin();
-        imPtrIter != epochFootprintList.end(); ++imPtrIter
+        imPtrIter != epochFootprintList.end();
+        ++imPtrIter
     ) {
-        afw::geom::AffineTransform skyToCalexp =
-            (*imPtrIter)->exposure.getWcs()->linearizeSkyToPixel(sourceSkyPos, afw::geom::radians);
-        double calexpFluxMag0 = (**imPtrIter).exposure.getCalib()->getFluxMag0().first;
         int nPix = (**imPtrIter).footprint.getArea();
         int dataEnd = dataOffset + nPix;
         _impl->epochs.push_back(
             Impl::Epoch(
-                nPix,
+                nPix, LocalUnitTransform(position, fitSys, (**imPtrIter).exposure),
                 makeMatrixBuilders(model->getBasisVector(), (**imPtrIter).psf, (**imPtrIter).footprint,
-                                   ctrl.useApproximateExp),
-                skyToCalexp * fitToSky
+                                   ctrl.useApproximateExp)
             )
         );
         setupArrays(
             (**imPtrIter).exposure.getMaskedImage(),
             (**imPtrIter).footprint,
             _data[ndarray::view(dataOffset, dataEnd)],
-            _impl->weights[ndarray::view(dataOffset, dataEnd)],
-            fitFluxMag0 / calexpFluxMag0,
+            _weights[ndarray::view(dataOffset, dataEnd)],
             ctrl.usePixelWeights
         );
     }
@@ -190,9 +180,8 @@ ProjectedLikelihood::ProjectedLikelihood(
 ProjectedLikelihood::ProjectedLikelihood(
     PTR(Model) model,
     ndarray::Array<Scalar const,1,1> const & fixed,
-    afw::image::Wcs const & fitWcs,
-    afw::image::Calib const & fitCalib,
-    afw::coord::Coord const & sourceSkyPos,
+    UnitSystem const & fitSys,
+    afw::coord::Coord const & position,
     afw::image::Exposure<Pixel> const & exposure,
     afw::detection::Footprint const & footprint,
     shapelet::MultiShapeletFunction const & psf,
@@ -200,24 +189,15 @@ ProjectedLikelihood::ProjectedLikelihood(
 ) : Likelihood(model, fixed), _impl(new Impl()) {
     int totPixels = footprint.getArea();
     _data = ndarray::allocate(totPixels);
-    _impl->weights = ndarray::allocate(totPixels);
+    _weights = ndarray::allocate(totPixels);
     _impl->ellipses = model->makeEllipseVector();
-    afw::geom::AffineTransform fitToSky = fitWcs.linearizePixelToSky(sourceSkyPos, afw::geom::radians);
-    double fitFluxMag0 = fitCalib.getFluxMag0().first;
-    afw::geom::AffineTransform skyToCalexp =
-        exposure.getWcs()->linearizeSkyToPixel(sourceSkyPos, afw::geom::radians);
-    double calexpFluxMag0 = exposure.getCalib()->getFluxMag0().first;
     _impl->epochs.push_back(
         Impl::Epoch(
-            totPixels,
-            makeMatrixBuilders(model->getBasisVector(), psf, footprint, ctrl.useApproximateExp),
-            skyToCalexp * fitToSky
+            totPixels, LocalUnitTransform(position, fitSys, exposure),
+            makeMatrixBuilders(model->getBasisVector(), psf, footprint, ctrl.useApproximateExp)
         )
     );
-    setupArrays(
-        exposure.getMaskedImage(), footprint, _data, _impl->weights,
-        fitFluxMag0 / calexpFluxMag0, ctrl.usePixelWeights
-    );
+    setupArrays(exposure.getMaskedImage(), footprint, _data, _weights, ctrl.usePixelWeights);
 }
 
 ProjectedLikelihood::~ProjectedLikelihood() {}
@@ -236,7 +216,7 @@ void ProjectedLikelihood::computeModelMatrix(
         int dataEnd = dataOffset + i->nPix;
         int amplitudeOffset = 0;
         for (std::size_t j = 0; j < _impl->ellipses.size(); ++j) {
-            _impl->scratch = _impl->ellipses[j].transform(i->transform);
+            _impl->scratch = _impl->ellipses[j].transform(i->transform.geometric);
             int amplitudeEnd = amplitudeOffset + i->matrixBuilders[j].getBasisSize();
             i->matrixBuilders[j].build(
                 modelMatrix[ndarray::view(dataOffset, dataEnd)(amplitudeOffset, amplitudeEnd)],
@@ -244,9 +224,10 @@ void ProjectedLikelihood::computeModelMatrix(
             );
             amplitudeOffset = amplitudeEnd;
         }
+        modelMatrix[ndarray::view(dataOffset, dataEnd)()] *= i->transform.flux;
         dataOffset = dataEnd;
     }
-    modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _impl->weights.asEigen<Eigen::ArrayXpr>();
+    modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
 }
 
 }}} // namespace lsst::meas::multifit

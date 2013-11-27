@@ -192,6 +192,7 @@ Pixel = numpy.float32
 %include "lsst/meas/multifit/priors.h"
 %include "lsst/meas/multifit/Interpreter.h"
 %include "lsst/meas/multifit/Likelihood.h"
+%include "lsst/meas/multifit/UnitSystem.h"
 %include "lsst/meas/multifit/ProjectedLikelihood.h"
 %include "lsst/meas/multifit/Sampling.h"
 %include "lsst/meas/multifit/DirectSampling.h"
@@ -199,6 +200,11 @@ Pixel = numpy.float32
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 %include "lsst/meas/multifit/psf.h"
 %include "lsst/meas/multifit/TruncatedGaussian.h"
+
+%extend lsst::meas::multifit::UnitSystem {
+    %template(UnitSystem) UnitSystem<float>;
+    %template(UnitSystem) UnitSystem<double>;
+}
 
 %downcastPtr(lsst::meas::multifit::Model, lsst::meas::multifit::MultiModel)
 %downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::SamplingInterpreter)

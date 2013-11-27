@@ -53,22 +53,6 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         dtype=setupFitRegion.ConfigClass,
         doc="Parameters that control which pixels to include in the model fit"
     )
-    fitPixelScale = lsst.pex.config.Field(
-        dtype=float,
-        default=None,
-        optional=True,
-        doc=("Pixel scale (arcseconds/pixel) for coordinate system used for model parameters. "
-             "If None, we'll use the calexp Wcs instead of a local tangent-plane (note that "
-             "will result in a subtly incorrect Prior being used, as the Prior is only rescaled, "
-             "not fully transformed)")
-    )
-    fitFluxMag0 = lsst.pex.config.Field(
-        dtype=float,
-        default=None,
-        optional=True,
-        doc=("Flux at magnitude 0 used for to define the units of amplitude in models. "
-             "If None, we'll fit in the calexp's photometric system.")
-    )
     progressChunk = lsst.pex.config.Field(
         dtype=int,
         default=100,
@@ -88,36 +72,6 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         default=False,
         doc="If True, raise exceptions when individual objects fail instead of warning."
     )
-
-    def makeFitWcs(self, coord, exposure=None):
-        if self.fitPixelScale is None:
-            assert exposure is not None
-            return exposure.getWcs()
-        return lsst.afw.image.makeLocalWcs(coord, self.fitPixelScale * lsst.afw.geom.arcseconds)
-
-    def makeFitCalib(self, exposure=None):
-        if self.fitFluxMag0 is None:
-            assert exposure is not None
-            # We'll use each Exposure's photometric system for the amplitude units
-            return exposure.getCalib()
-        # This Calib determines the flux units we use for amplitude parameters; like the WCS,
-        # we want this to be a global system so all Objects have the same units
-        fitCalib = lsst.afw.image.Calib()
-        fitCalib.setFluxMag0(self.fitFluxMag0)
-        return fitCalib
-
-    def makePrior(self, exposure=None):
-        if self.fitPixelScale is None:
-            assert exposure is not None
-            fitPixelScale = exposure.getWcs().pixelScale()
-        else:
-            fitPixelScale = self.fitPixelScale*lsst.afw.geom.arcseconds
-        if self.fitFluxMag0 is None:
-            assert exposure is not None
-            fitFluxMag0 = exposure.getCalib().getFluxMag0()
-        else:
-            fitFluxMag0 = self.fitFluxMag0
-        return self.prior.apply(pixelScale=fitPixelScale, fluxMag0=fitFluxMag0)
 
 class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
     """An intermediate base class for top-level model-fitting tasks.

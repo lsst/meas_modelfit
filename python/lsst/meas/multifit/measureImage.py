@@ -39,6 +39,13 @@ class MeasureImageConfig(BaseMeasureConfig):
         dtype=multifitLib.ProjectedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
+    doUseDataUnitSystem = lsst.pex.config.Field(
+        dtype=bool,
+        default=False,
+        doc=("If True, use the WCS and Calib of the Exposure being fit to define the units for the "
+             "parameters to be fit.  The default is False, which sets up a local unit system that "
+             "ensures all parameters are of order unity and the prior unit system matches exactly.")
+    )
     doWarmStart = lsst.pex.config.Field(
         dtype=bool,
         default=False,
@@ -47,6 +54,26 @@ class MeasureImageConfig(BaseMeasureConfig):
              "and reference catalogs.  NOTE: Also causes fit region footprints to be based on the previous "
              "modelfits footprints, instead of the original detection footprints")
     )
+
+    def makeUnitSystem(self, position, magnitude, exposure):
+        """Create the UnitSystem that defines the geometric and photometric units for the parameters.
+
+        All arguments are always passed, but which are used depends on the value of doUseDataUnitSystem.
+
+        @param[in] position    Position of the object to be fit, as an afw::coord::Coord, used to create
+                               a local TAN WCS at the position of the object with arcsecond pixels.  Used
+                               only if doUseDataUnitSystem is False.
+        @param[in] magnitude   Approximate magnitude of the object to be fit; used to scale the flux units
+                               such that amplitude parameters are of order 1.  Used only if
+                               doUseDataUnitSystem is False.
+        @param[in] exposure    The exposure being providing data for the fit.  Used only if
+                               doUseDataUnitSystem is True.
+
+        """
+        if self.doUseDataUnitSystem:
+            return multifitLib.UnitSystem(exposure)
+        else:
+            return multifitLib.UnitSystem(position, magnitude)
 
 class MeasureImageTask(BaseMeasureTask):
     """Driver class for S13-specific galaxy modeling work
@@ -60,13 +87,25 @@ class MeasureImageTask(BaseMeasureTask):
     ConfigClass = MeasureImageConfig
     dataPrefix = ""
 
+    def __init__(self, **kwds):
+        BaseMeasureTask.__init__(self, **kwds)
+        if not self.config.doUseDataUnitSystem:
+            self.keys["sys.position"] = self.schema.addField(
+                "sys.position", type="Coord",
+                doc="nominal position used to construct UnitSystem for parameters"
+                )
+            self.keys["sys.magnitude"] = self.schema.addField(
+                "sys.mag", type=float,
+                doc="nominal magnitude used to construct UnitSystem for parameters"
+                )
+
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing the Exposure to fit and either a previous modelfits
         catalog (if config.doWarmStart) or the reference and source catalogs.
         """
         exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True)
         if self.config.doWarmStart:
-            # TODO: load previous config, makes sure it's compatible (i.e. same fit coordinate system)
+            # TODO: load previous config, makes sure it's compatible (in particular, has same unit system)
             return lsst.pipe.base.Struct(
                 prevCat=dataRef.get(self.dataPrefix + "modelfits", immediate=True),
                 exposure=exposure
@@ -133,17 +172,10 @@ class MeasureImageTask(BaseMeasureTask):
             # Next we determine the pixel region we want to fit.
             outRecord.setFootprint(setupFitRegion(self.config.fitRegion, inputs.exposure, srcRecord))
 
-            # This is the WCS the parameters are defined in: it's a local tangent plane at
-            # the position of the object, aligned with the celestial coordinate axes.
-            # We have to use this coordinate system even when fitting to a single image
-            # so the prior doesn't have to be transformed to the local coordinate system.
-            # Note that the origin of this coordinate system is at the input position of
-            # the object, so centroid parameters will be the *offset* from that position.
-            fitWcs = self.config.makeFitWcs(outRecord.getCoord(), exposure=inputs.exposure)
+            # Setup the coordinate and photometric systems to use for the fit
+            fitSys = self.config.makeFitSystem(outRecord.getCoord(), exposure=inputs.exposure)
 
-            # Now we'll transform the refCat ellipse to the fit coordinate system.  Because
-            # the fit coordinate system is aligned with the coordinate axes, this should just
-            # be a scaling and translation.
+            # Now we'll transform the refCat ellipse to the fit coordinate system.
             ellipse1 = lsst.afw.geom.ellipses.Ellipse(
                 lsst.afw.geom.ellipses.Axes(
                     (refRecord.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
@@ -152,7 +184,7 @@ class MeasureImageTask(BaseMeasureTask):
                     ),
                 refRecord.getCoord().getPosition(lsst.afw.geom.degrees)
                 )
-            transform = fitWcs.linearizeSkyToPixel(refRecord.getCoord())
+            transform = fitSys.wcs.linearizeSkyToPixel(refRecord.getCoord())
             ellipse2 = ellipse1.transform(transform)
 
             # We now transform this ellipse and the refCat fluxes into the parameters defined by the model.
@@ -163,10 +195,10 @@ class MeasureImageTask(BaseMeasureTask):
                 outRecord[self.keys["ref.nonlinear"]],
                 outRecord[self.keys["ref.fixed"]]
                 )
+
             # this flux->amplitudes conversion assumes the ref catalog is single-component, and that the
             # first component of the model is what that corresponds to; we may need to generalize this
-            fitCalib = self.config.makeFitCalib(exposure=inputs.exposure)
-            flux = fitCalib.getFlux(refRecord.get(keyMag))
+            flux = fitSys.calib.getFlux(refRecord.get(keyMag))
             amplitudes = outRecord[self.keys["ref.amplitudes"]]
             amplitudes[:] = 0.0
             amplitudes[0] = flux
@@ -189,8 +221,7 @@ class MeasureImageTask(BaseMeasureTask):
         psf = psfModel.asMultiShapelet()
         return multifitLib.ProjectedLikelihood(
             self.model, record[self.keys["ref.fixed"]],
-            self.config.makeFitWcs(record.getCoord(), exposure=inputs.exposure),
-            self.config.makeFitCalib(exposure=inputs.exposure),
+            self.config.makeFitSystem(record.getCoord(), exposure=inputs.exposure),
             record.getCoord(),
             inputs.exposure,
             record.getFootprint(),
