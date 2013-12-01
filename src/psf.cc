@@ -43,7 +43,7 @@ PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders) {
         basisVector.push_back(basis);
         prefixes.push_back((boost::format("%d.") % i).str());
     }
-    return Model::makeMultiCenter(basisVector, prefixes);
+    return Model::make(basisVector, prefixes, Model::MULTI_CENTER);
 }
 
 class MultiShapeletPsfLikelihood::Impl {

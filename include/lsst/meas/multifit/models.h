@@ -43,18 +43,23 @@ typedef std::vector<PTR(Model)> ModelVector;
 class Model : private boost::noncopyable {
 public:
 
+    enum CenterEnum {
+        FIXED_CENTER  = 0x0,
+        SINGLE_CENTER = 0x1,
+        MULTI_CENTER  = 0x2
+    };
+
     typedef std::vector<std::string> NameVector;
     typedef std::vector<PTR(shapelet::MultiShapeletBasis)> BasisVector;
     typedef std::vector<afw::geom::ellipses::Ellipse> EllipseVector;
     typedef std::vector<afw::geom::ellipses::Ellipse>::iterator EllipseIterator;
     typedef std::vector<afw::geom::ellipses::Ellipse>::const_iterator EllipseConstIterator;
 
-    static PTR(Model) makeFixedCenter(BasisVector basisVector, NameVector const & prefixes);
-    static PTR(Model) makeSingleCenter(BasisVector basisVector, NameVector const & prefixes);
-    static PTR(Model) makeMultiCenter(BasisVector basisVector, NameVector const & prefixes);
+    static PTR(Model) make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center);
 
-    static PTR(Model) makeFixedCenter(PTR(shapelet::MultiShapeletBasis) basis);
-    static PTR(Model) makeSingleCenter(PTR(shapelet::MultiShapeletBasis) basis);
+    static PTR(Model) make(PTR(shapelet::MultiShapeletBasis) basis, CenterEnum center);
+
+    static PTR(Model) makeGaussian(CenterEnum center, double radius=1.0);
 
     int getNonlinearDim() const { return _nonlinearNames.size(); }
     int getAmplitudeDim() const { return _amplitudeNames.size(); }

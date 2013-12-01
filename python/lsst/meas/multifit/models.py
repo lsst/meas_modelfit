@@ -52,6 +52,10 @@ def registerModel(name):
         return cls
     return decorate
 
+def getCenterEnum(config):
+    """Helper function to turn config boolean option into enum value"""
+    return multifitLib.Model.FIXED_CENTER if config.fixCenter else multifitLib.Model.SINGLE_CENTER
+
 @registerModel("gaussian")
 class GaussianModelConfig(lsst.pex.config.Config):
     """Config class used to define a simple Gaussian galaxy model.
@@ -67,12 +71,7 @@ class GaussianModelConfig(lsst.pex.config.Config):
 
     @staticmethod
     def makeModel(config):
-        basis = lsst.shapelet.MultiShapeletBasis(1)
-        basis.addComponent(config.radius, 0, numpy.array([[1.0]], dtype=float))
-        if config.fixCenter:
-            return multifitLib.Model.makeFixedCenter(basis)
-        else:
-            return multifitLib.Model.makeSingleCenter(basis)
+        return multifitLib.Model.makeGaussian(getCenterEnum(config), self.config.radius)
 
 class FixedSersicConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
@@ -115,10 +114,7 @@ class FixedSersicModelConfig(FixedSersicConfig):
 
     @staticmethod
     def makeModel(config):
-        if config.fixCenter:
-            return multifitLib.Model.makeFixedCenter(config.makeBasis())
-        else:
-            return multifitLib.Model.makeSingleCenter(config.makeBasis())
+        return multifitLib.Model.make(config.makeBasis(), getCenterEnum(config))
 
 @registerModel("bulge+disk")
 class BulgeDiskModelConfig(lsst.pex.config.Config):
@@ -160,15 +156,9 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
             prefixes = multifitLib.Model.NameVector()
             prefixes.append("exp.")
             prefixes.append("dev.")
-            if config.fixCenter:
-                return multifitLib.Model.makeFixedCenter(basisVector, prefixes)
-            else:
-                return multifitLib.Model.makeSingleCenter(basisVector, prefixes)
+            return multifitLib.Model.make(basisVector, prefixes, getCenterEnum(config))
         else:
             basis = disk
             bulge.scale(config.bulgeRadius)
             basis.merge(bulge)
-            if config.fixCenter:
-                return multifitLib.Model.makeFixedCenter(basis)
-            else:
-                return multifitLib.Model.makeSingleCenter(basis)
+            return multifitLib.Model.make(basis, getCenterEnum(config))
