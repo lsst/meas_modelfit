@@ -28,83 +28,16 @@
 #define LSST_MAX_DEBUG 10
 #include "lsst/pex/logging/Debug.h"
 #include "lsst/utils/ieee.h"
-
+#include "lsst/afw/table/Catalog.h"
+#include "lsst/afw/table/BaseTable.h"
+#include "lsst/afw/table/BaseRecord.h"
 #include "lsst/meas/multifit/optimizer.h"
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/priors.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-void solveTrustRegion(
-    ndarray::Array<Scalar,1,1> const & x,
-    ndarray::Array<Scalar const,2,1> const & F,
-    ndarray::Array<Scalar const,1,1> const & g,
-    double r, double tolerance
-) {
-    static double const ROOT_EPS = std::sqrt(std::numeric_limits<double>::epsilon());
-    static int const ITER_MAX = 10;
-    pex::logging::Debug log("meas.multifit.optimizer.solveTrustRegion");
-    double const r2 = r*r;
-    double const r2min = r2 * (1.0 - tolerance) * (1.0 - tolerance);
-    double const r2max = r2 * (1.0 + tolerance) * (1.0 + tolerance);
-    int const d = g.getSize<0>();
-    Eigen::SelfAdjointEigenSolver<Matrix> eigh(F.asEigen());
-    double const threshold = ROOT_EPS * eigh.eigenvalues()[d - 1];
-    Vector qtg = eigh.eigenvectors().adjoint() * g.asEigen();
-    Vector tmp(d);
-    double mu = 0.0;
-    double xsn = 0.0;
-    if (eigh.eigenvalues()[0] >= threshold) {
-        log.debug<7>("Starting with full-rank matrix");
-        tmp = (eigh.eigenvalues().array().inverse() * qtg.array()).matrix();
-        x.asEigen() = -eigh.eigenvectors() * tmp;
-        xsn = x.asEigen().squaredNorm();
-        if (xsn <= r2max) {
-            log.debug<7>("Ending with unconstrained solution");
-            // unconstrained solution is within the constraint; no more work to do
-            return;
-        }
-    } else {
-        mu = -eigh.eigenvalues()[0] + 2.0*ROOT_EPS*eigh.eigenvalues()[d - 1];
-        tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
-        int n = 0;
-        while (eigh.eigenvalues()[++n] < threshold);
-        log.debug<7>("Starting with %d zero eigenvalue(s) (of %d)", n, d);
-        if ((qtg.head(n).array() < ROOT_EPS * g.asEigen().lpNorm<Eigen::Infinity>()).all()) {
-            x.asEigen() = -eigh.eigenvectors().rightCols(n) * tmp.tail(n);
-            xsn = x.asEigen().squaredNorm();
-            if (xsn < r2min) {
-                // Nocedal and Wright's "Hard Case", which is actually
-                // easier: Q_1^T g is zero (where the columns of Q_1
-                // are the eigenvectors that correspond to the
-                // smallest eigenvalue \lambda_1), so \mu = -\lambda_1
-                // and we can add a multiple of any column of Q_1 to x
-                // to get ||x|| == r.  If ||x|| > r, we can find the
-                // solution with the usual iteration by increasing \mu.
-                double tau = std::sqrt(r*r - x.asEigen().squaredNorm());
-                x.asEigen() += tau * eigh.eigenvectors().col(0);
-                log.debug<7>("Ending; Q_1^T g == 0, and ||x|| < r");
-                return;
-            }
-            log.debug<7>("Continuing; Q_1^T g == 0, but ||x|| > r");
-        } else {
-            x.asEigen() = -eigh.eigenvectors() * tmp;
-            xsn = x.asEigen().squaredNorm();
-            log.debug<7>("Continuing; Q_1^T g != 0");
-        }
-    }
-    int nIter = 0;
-    while ((xsn < r2min || xsn > r2max) && ++nIter < ITER_MAX) {
-        log.debug<7>("Iterating at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
-        mu += xsn*(std::sqrt(xsn) / r - 1.0)
-            / (qtg.array().square() / (eigh.eigenvalues().array() + mu).cube()).sum();
-        tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
-        x.asEigen() = -eigh.eigenvectors() * tmp;
-        xsn = x.asEigen().squaredNorm();
-    }
-    log.debug<7>("Ending at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
-    return;
-}
+// ----------------- OptimizerObjective ---------------------------------------------------------------------
 
 namespace {
 
@@ -187,6 +120,8 @@ void OptimizerObjective::differentiatePrior(
     hessian.deep() = 0.0;
 }
 
+// ----------------- OptimizerIterationData -----------------------------------------------------------------
+
 OptimizerIterationData::OptimizerIterationData(int dataSize, int parameterSize) :
     objectiveValue(0.0), priorValue(0.0),
     parameters(ndarray::allocate(parameterSize)),
@@ -200,6 +135,126 @@ void OptimizerIterationData::swap(OptimizerIterationData & other) {
     residuals.swap(other.residuals);
 }
 
+// ----------------- OptimizerHistoryRecorder ---------------------------------------------------------------
+
+OptimizerHistoryRecorder::OptimizerHistoryRecorder(
+    afw::table::Schema & schema,
+    PTR(Model) model,
+    bool doSaveDerivatives
+) :
+    _outer(
+        schema.addField(afw::table::Field<int>("outer", "current outer iteration count"), true)
+    ),
+    _inner(
+        schema.addField(afw::table::Field<int>("outer", "current outer iteration count"), true)
+    ),
+    _state(
+        schema.addField(
+            afw::table::Field<int>(
+                "state", "state bitflags after this step; see Optimizer::StateFlags"
+            ),
+            true
+        )
+    ),
+    _objective(
+        schema.addField(
+            afw::table::Field<Scalar>(
+                "objective", "value of objective function (-ln P) at parameters"
+            ),
+            true
+        )
+    ),
+    _prior(
+        schema.addField(afw::table::Field<Scalar>("prior", "prior probability at parameters"), true)
+    ),
+    _trust(
+        schema.addField(afw::table::Field<Scalar>("trust", "size of trust region after this step"), true)
+    ),
+    _parameters(
+        schema.addField(
+            afw::table::Field<afw::table::Array<Scalar> >(
+                "parameter",
+                "parameter vector",
+                model->getNonlinearDim() + model->getAmplitudeDim()
+            ),
+            true
+        )
+    )
+{
+    if (doSaveDerivatives) {
+        int const n = model->getNonlinearDim() + model->getAmplitudeDim();
+        _derivatives = schema.addField(
+            afw::table::Field<afw::table::Array<Scalar> >(
+                "derivatives",
+                "objective function derivatives; use unpackDerivatives() to unpack",
+                n + n*(n+1)/2
+            ),
+            true
+        );
+    }
+}
+
+void OptimizerHistoryRecorder::apply(
+    int outerIterCount,
+    int innerIterCount,
+    afw::table::BaseCatalog & history,
+    Optimizer const & optimizer
+) const {
+    PTR(afw::table::BaseRecord) record = history.addNew();
+    record->set(_outer, outerIterCount);
+    record->set(_inner, innerIterCount);
+    record->set(_state, optimizer.getState());
+    record->set(_trust, optimizer._trustRadius);
+    OptimizerIterationData const * data;
+    if (optimizer.getState() & Optimizer::STATUS_STEP_ACCEPTED) {
+        data = &optimizer._current;
+        if (_derivatives.isValid()) {
+            int const n = _parameters.getSize();
+            ndarray::Array<Scalar,1,1> packed = (*record)[_derivatives];
+            for (int i = 0, k = n; i < n; ++i) {
+                packed[i] = optimizer._gradient[i];
+                for (int j = 0; j <= i; ++j, ++k) {
+                    packed[k] = optimizer._hessian(i, j);
+                }
+            }
+        }
+    } else {
+        data = &optimizer._next;
+    }
+    record->set(_parameters, data->parameters);
+    record->set(_objective, data->objectiveValue);
+    record->set(_prior, data->priorValue);
+}
+
+void OptimizerHistoryRecorder::unpackDerivatives(
+    ndarray::Array<Scalar const,1,1> const & packed,
+    Vector & gradient,
+    Matrix & hessian
+) const {
+    int const n = _parameters.getSize();
+    for (int i = 0, k = n; i < n; ++i) {
+        gradient[i] = packed[i];
+        for (int j = 0; j <= i; ++j, ++k) {
+            hessian(i, j) = hessian(j, i) = packed[k];
+        }
+    }
+}
+
+void OptimizerHistoryRecorder::unpackDerivatives(
+    afw::table::BaseRecord const & record,
+    Vector & gradient,
+    Matrix & hessian
+) const {
+    if (!_derivatives.isValid()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "HistoryRecorder was not configured to save derivatives"
+        );
+    }
+    return unpackDerivatives(record[_derivatives], gradient, hessian);
+}
+
+// ----------------- Optimizer ------------------------------------------------------------------------------
 
 Optimizer::Optimizer(
     PTR(Objective const) objective,
@@ -270,7 +325,11 @@ void Optimizer::_computeDerivatives() {
     _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(_jacobian.adjoint(), 1.0);
 }
 
-bool Optimizer::step() {
+bool Optimizer::_stepImpl(
+    int outerIterCount,
+    HistoryRecorder const * recorder,
+    afw::table::BaseCatalog * history
+) {
     pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
     _state &= ~int(STATUS);
     if (_gradient.asEigen().lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
@@ -279,8 +338,8 @@ bool Optimizer::step() {
         _state |= CONVERGED_GRADZERO;
         return false;
     }
-    for (int iterCount = 0; iterCount < _ctrl.maxInnerIterations; ++iterCount) {
-        log.debug<6>("Starting inner iteration %d", iterCount);
+    for (int innerIterCount = 0; innerIterCount < _ctrl.maxInnerIterations; ++innerIterCount) {
+        log.debug<6>("Starting inner iteration %d", innerIterCount);
         _state &= ~int(STATUS);
         _next.objectiveValue = 0.0;
         _next.priorValue = 1.0;
@@ -291,8 +350,6 @@ bool Optimizer::step() {
         double stepLength = _step.asEigen().norm();
         if (utils::isnan(stepLength)) {
             log.debug<6>("NaN encountered in step length");
-            std::cerr << "gradient:\n" << _gradient << std::endl;
-            std::cerr << "hessian:\n" << _hessian << std::endl;
             _state |= FAILED_NAN;
             return false;
         }
@@ -300,6 +357,7 @@ bool Optimizer::step() {
         if (_objective->hasPrior()) {
             _next.priorValue = _objective->computePrior(_next.parameters);
             if (_next.priorValue <= 0.0) {
+                _next.objectiveValue = std::numeric_limits<Scalar>::infinity();
                 log.debug<6>("Rejecting step due to zero prior");
                 _trustRadius *= _ctrl.trustRegionShrinkFactor;
                 log.debug<6>("Decreasing trust radius to %g", _trustRadius);
@@ -310,6 +368,7 @@ bool Optimizer::step() {
                     _state |= CONVERGED_TR_SMALL;
                     return false;
                 }
+                if (recorder) recorder->apply(outerIterCount, innerIterCount, *history, *this);
                 continue;
             }
             _next.objectiveValue = -std::log(_next.priorValue);
@@ -355,8 +414,10 @@ bool Optimizer::step() {
                 log.debug<6>("Leaving trust radius unchanged at %g", _trustRadius);
                 _state |= STATUS_TR_UNCHANGED;
             }
+            if (recorder) recorder->apply(outerIterCount, innerIterCount, *history, *this);
             return true;
         }
+        _state |= STATUS_STEP_REJECTED;
         log.debug<6>("Step rejected");
         if (rho < _ctrl.trustRegionShrinkReductionRatio) {
             _state |= STATUS_TR_DECREASED;
@@ -372,27 +433,100 @@ bool Optimizer::step() {
             log.debug<6>("Leaving trust radius unchanged at %g", _trustRadius);
             _state |= STATUS_TR_UNCHANGED;
         }
+        if (recorder) recorder->apply(outerIterCount, innerIterCount, *history, *this);
     }
     log.debug<6>("Max inner iteration number exceeded");
     _state |= FAILED_MAX_INNER_ITERATIONS;
     return false;
 }
 
-int Optimizer::run() {
+int Optimizer::_runImpl(HistoryRecorder const * recorder, afw::table::BaseCatalog * history) {
     pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
-    int iterCount = 0;
+    int outerIterCount = 0;
     try {
-        for (; iterCount < _ctrl.maxOuterIterations; ++iterCount) {
-            log.debug<6>("Starting outer iteration %d", iterCount);
-            if (!step()) return iterCount;
+        for (; outerIterCount < _ctrl.maxOuterIterations; ++outerIterCount) {
+            log.debug<6>("Starting outer iteration %d", outerIterCount);
+            if (!_stepImpl(outerIterCount, recorder, history)) return outerIterCount;
         }
         _state |= FAILED_MAX_OUTER_ITERATIONS;
     } catch (...) {
         _state |= FAILED_EXCEPTION;
     }
-    return iterCount;
+    return outerIterCount;
 }
 
 
+// ----------------- Trust Region solver --------------------------------------------------------------------
+
+void solveTrustRegion(
+    ndarray::Array<Scalar,1,1> const & x,
+    ndarray::Array<Scalar const,2,1> const & F,
+    ndarray::Array<Scalar const,1,1> const & g,
+    double r, double tolerance
+) {
+    static double const ROOT_EPS = std::sqrt(std::numeric_limits<double>::epsilon());
+    static int const ITER_MAX = 10;
+    pex::logging::Debug log("meas.multifit.optimizer.solveTrustRegion");
+    double const r2 = r*r;
+    double const r2min = r2 * (1.0 - tolerance) * (1.0 - tolerance);
+    double const r2max = r2 * (1.0 + tolerance) * (1.0 + tolerance);
+    int const d = g.getSize<0>();
+    Eigen::SelfAdjointEigenSolver<Matrix> eigh(F.asEigen());
+    double const threshold = ROOT_EPS * eigh.eigenvalues()[d - 1];
+    Vector qtg = eigh.eigenvectors().adjoint() * g.asEigen();
+    Vector tmp(d);
+    double mu = 0.0;
+    double xsn = 0.0;
+    if (eigh.eigenvalues()[0] >= threshold) {
+        log.debug<7>("Starting with full-rank matrix");
+        tmp = (eigh.eigenvalues().array().inverse() * qtg.array()).matrix();
+        x.asEigen() = -eigh.eigenvectors() * tmp;
+        xsn = x.asEigen().squaredNorm();
+        if (xsn <= r2max) {
+            log.debug<7>("Ending with unconstrained solution");
+            // unconstrained solution is within the constraint; no more work to do
+            return;
+        }
+    } else {
+        mu = -eigh.eigenvalues()[0] + 2.0*ROOT_EPS*eigh.eigenvalues()[d - 1];
+        tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
+        int n = 0;
+        while (eigh.eigenvalues()[++n] < threshold);
+        log.debug<7>("Starting with %d zero eigenvalue(s) (of %d)", n, d);
+        if ((qtg.head(n).array() < ROOT_EPS * g.asEigen().lpNorm<Eigen::Infinity>()).all()) {
+            x.asEigen() = -eigh.eigenvectors().rightCols(n) * tmp.tail(n);
+            xsn = x.asEigen().squaredNorm();
+            if (xsn < r2min) {
+                // Nocedal and Wright's "Hard Case", which is actually
+                // easier: Q_1^T g is zero (where the columns of Q_1
+                // are the eigenvectors that correspond to the
+                // smallest eigenvalue \lambda_1), so \mu = -\lambda_1
+                // and we can add a multiple of any column of Q_1 to x
+                // to get ||x|| == r.  If ||x|| > r, we can find the
+                // solution with the usual iteration by increasing \mu.
+                double tau = std::sqrt(r*r - x.asEigen().squaredNorm());
+                x.asEigen() += tau * eigh.eigenvectors().col(0);
+                log.debug<7>("Ending; Q_1^T g == 0, and ||x|| < r");
+                return;
+            }
+            log.debug<7>("Continuing; Q_1^T g == 0, but ||x|| > r");
+        } else {
+            x.asEigen() = -eigh.eigenvectors() * tmp;
+            xsn = x.asEigen().squaredNorm();
+            log.debug<7>("Continuing; Q_1^T g != 0");
+        }
+    }
+    int nIter = 0;
+    while ((xsn < r2min || xsn > r2max) && ++nIter < ITER_MAX) {
+        log.debug<7>("Iterating at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
+        mu += xsn*(std::sqrt(xsn) / r - 1.0)
+            / (qtg.array().square() / (eigh.eigenvalues().array() + mu).cube()).sum();
+        tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
+        x.asEigen() = -eigh.eigenvectors() * tmp;
+        xsn = x.asEigen().squaredNorm();
+    }
+    log.debug<7>("Ending at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
+    return;
+}
 
 }}} // namespace lsst::meas::multifit

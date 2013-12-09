@@ -20,6 +20,7 @@
         IterationData = OptimizerIterationData
         Objective = OptimizerObjective
         Control = OptimizerControl
+        HistoryRecorder = OptimizerHistoryRecorder
 
         def getConfig(self):
             config = self.ConfigClass()

@@ -28,37 +28,18 @@
 
 #include "lsst/base.h"
 #include "lsst/pex/config.h"
+#include "lsst/afw/table/Schema.h"
 #include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/models.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 class Likelihood;
 class Prior;
-
-/**
- *  @brief Solve a symmetric quadratic matrix equation with a ball constraint.
- *
- *  This computes a near-exact solution to the "trust region subproblem" necessary
- *  in trust-region-based nonlinear optimizers:
- *  @f[
- *   \min_x{\quad g^T x + \frac{1}{2}x^T F x}\quad\quad\quad \text{s.t.} ||x|| \le r
- *  @f]
- *
- *  The tolerance parameter sets how close to @f$r@f$ we require the norm of the
- *  solution to be when it lies on the constraint, as a fraction of @f$r@f$ itself.
- *
- *  This implementation is based on the algorithm described in Section 4.3 of
- *  "Nonlinear Optimization" by Nocedal and Wright.
- */
-void solveTrustRegion(
-    ndarray::Array<Scalar,1,1> const & x,
-    ndarray::Array<Scalar const,2,1> const & F, ndarray::Array<Scalar const,1,1> const & g,
-    double r, double tolerance
-);
+class Optimizer;
 
 /**
  *  @brief Base class for objective functions for Optimizer
- *
  */
 class OptimizerObjective {
 public:
@@ -232,6 +213,45 @@ struct OptimizerIterationData {
     void swap(OptimizerIterationData & other);
 };
 
+class OptimizerHistoryRecorder {
+public:
+
+    explicit OptimizerHistoryRecorder(
+        afw::table::Schema & schema,
+        PTR(Model) model,
+        bool doSaveDerivatives
+    );
+
+    void apply(
+        int outerIterCount,
+        int innerIterCount,
+        afw::table::BaseCatalog & history,
+        Optimizer const & optimizer
+    ) const;
+
+    void unpackDerivatives(
+        ndarray::Array<Scalar const,1,1> const & nested,
+        Vector & gradient,
+        Matrix & hessian
+    ) const;
+
+    void unpackDerivatives(
+        afw::table::BaseRecord const & record,
+        Vector & gradient,
+        Matrix & hessian
+    ) const;
+
+private:
+    afw::table::Key<int> _outer;
+    afw::table::Key<int> _inner;
+    afw::table::Key<int> _state;
+    ScalarKey _objective;
+    ScalarKey _prior;
+    ScalarKey _trust;
+    ArrayKey _parameters;
+    ArrayKey _derivatives;
+};
+
 /**
  *  @brief A numerical optimizer customized for least-squares problems with Bayesian priors
  *
@@ -280,6 +300,7 @@ public:
 
     typedef OptimizerObjective Objective;
     typedef OptimizerControl Control;
+    typedef OptimizerHistoryRecorder HistoryRecorder;
     typedef OptimizerIterationData IterationData;
     typedef std::vector<IterationData> IterationDataVector;
 
@@ -312,9 +333,17 @@ public:
 
     Control const & getControl() const { return _ctrl; }
 
-    bool step();
+    bool step() { return _stepImpl(0); }
 
-    int run();
+    bool step(HistoryRecorder const & recorder, afw::table::BaseCatalog & history) {
+        return _stepImpl(0, &recorder, &history);
+    }
+
+    int run() { return _runImpl(); }
+
+    int run(HistoryRecorder const & recorder, afw::table::BaseCatalog & history) {
+        return _runImpl(&recorder, &history);
+    }
 
     int getState() const { return _state; }
 
@@ -328,9 +357,17 @@ public:
 
     ndarray::Array<Scalar const,2,2> getHessian() const { return _hessian; }
 
-    IterationDataVector const & getIterations() const { return _iterations; }
-
 private:
+
+    friend class OptimizerHistoryRecorder;
+
+    bool _stepImpl(
+        int outerIterCount,
+        HistoryRecorder const * recorder=NULL,
+        afw::table::BaseCatalog * history=NULL
+    );
+
+    int _runImpl(HistoryRecorder const * recorder=NULL, afw::table::BaseCatalog * history=NULL);
 
     void _computeDerivatives();
 
@@ -347,8 +384,28 @@ private:
     Matrix _sr1b;
     Vector _sr1v;
     Vector _sr1jtr;
-    IterationDataVector _iterations;
 };
+
+/**
+ *  @brief Solve a symmetric quadratic matrix equation with a ball constraint.
+ *
+ *  This computes a near-exact solution to the "trust region subproblem" necessary
+ *  in trust-region-based nonlinear optimizers:
+ *  @f[
+ *   \min_x{\quad g^T x + \frac{1}{2}x^T F x}\quad\quad\quad \text{s.t.} ||x|| \le r
+ *  @f]
+ *
+ *  The tolerance parameter sets how close to @f$r@f$ we require the norm of the
+ *  solution to be when it lies on the constraint, as a fraction of @f$r@f$ itself.
+ *
+ *  This implementation is based on the algorithm described in Section 4.3 of
+ *  "Nonlinear Optimization" by Nocedal and Wright.
+ */
+void solveTrustRegion(
+    ndarray::Array<Scalar,1,1> const & x,
+    ndarray::Array<Scalar const,2,1> const & F, ndarray::Array<Scalar const,1,1> const & g,
+    double r, double tolerance
+);
 
 }}} // namespace lsst::meas::multifit
 
