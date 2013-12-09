@@ -134,10 +134,6 @@ PTR(SamplingObjective) DirectSamplingInterpreter::makeObjective(
     return boost::make_shared<DirectSamplingObjective>(self, likelihood);
 }
 
-PTR(Interpreter) DirectSamplingInterpreter::_clone() const {
-    return boost::make_shared<DirectSamplingInterpreter>(*this);
-}
-
 void DirectSamplingInterpreter::_packParameters(
     ndarray::Array<Scalar const,1,1> const & nonlinear,
     ndarray::Array<Scalar const,1,1> const & amplitudes,

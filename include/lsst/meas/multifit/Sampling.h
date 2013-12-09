@@ -55,10 +55,6 @@ public:
 
     ScalarKey const & getWeightKey() const { return _weightKey; }
 
-    PTR(SamplingInterpreter) clone() const {
-        return boost::static_pointer_cast<SamplingInterpreter>(_clone());
-    }
-
     virtual ndarray::Array<Scalar,1,1> computeParameterQuantiles(
         ModelFitRecord const & record,
         ndarray::Array<Scalar const,1,1> const & fractions,

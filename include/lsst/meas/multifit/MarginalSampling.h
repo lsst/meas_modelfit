@@ -62,10 +62,6 @@ public:
         PTR(Prior) prior=PTR(Prior)()
     );
 
-    PTR(MarginalSamplingInterpreter) clone() const {
-        return boost::static_pointer_cast<MarginalSamplingInterpreter>(_clone());
-    }
-
     ArrayKey getNestedKey() const { return _nestedKey; }
 
     void unpackNested(
@@ -94,8 +90,6 @@ public:
     ) const;
 
 protected:
-
-    virtual PTR(Interpreter) _clone() const;
 
     virtual PTR(SamplingObjective) makeObjective(
         PTR(SamplingInterpreter) self,

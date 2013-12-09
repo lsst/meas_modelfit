@@ -38,8 +38,6 @@ public:
 
     PTR(Prior) getPrior() const { return _prior; }
 
-    void setPrior(PTR(Prior) prior) { _prior = prior; }
-
     int getParameterDim() const { return _parameterNames.size(); }
 
     int getNonlinearDim() const { return _model->getNonlinearDim(); }
@@ -66,8 +64,6 @@ public:
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & nonlinear
     ) const;
-
-    PTR(Interpreter) clone() const { return _clone(); }
 
     //@{
     /**
@@ -172,8 +168,6 @@ public:
 protected:
 
     Interpreter(Model::NameVector parameterNames, PTR(Model) model, PTR(Prior) prior);
-
-    virtual PTR(Interpreter) _clone() const = 0;
 
     virtual void _packParameters(
         ndarray::Array<Scalar const,1,1> const & nonlinear,

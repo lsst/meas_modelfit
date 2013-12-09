@@ -311,7 +311,7 @@ ModelFitTable::ModelFitTable(
 ModelFitTable::ModelFitTable(ModelFitTable const & other) :
     afw::table::SimpleTable(other),
     _sampleTable(other._sampleTable->clone()),
-    _interpreter(other._interpreter ? other._interpreter->clone() : PTR(Interpreter)())
+    _interpreter(other._interpreter)
 {}
 
 PTR(afw::table::io::FitsWriter)

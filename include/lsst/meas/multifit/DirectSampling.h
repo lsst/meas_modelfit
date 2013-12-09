@@ -45,10 +45,6 @@ public:
         PTR(Prior) prior=PTR(Prior)()
     );
 
-    PTR(DirectSamplingInterpreter) clone() const {
-        return boost::static_pointer_cast<DirectSamplingInterpreter>(_clone());
-    }
-
     virtual ndarray::Array<Scalar,1,1> computeAmplitudeQuantiles(
         ModelFitRecord const & record,
         ndarray::Array<Scalar const,1,1> const & fractions,
@@ -65,8 +61,6 @@ public:
     ) const;
 
 protected:
-
-    virtual PTR(Interpreter) _clone() const;
 
     virtual PTR(SamplingObjective) makeObjective(
         PTR(SamplingInterpreter) self,
