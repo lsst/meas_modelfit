@@ -53,8 +53,9 @@ public:
 
     explicit ModelFitTableImpl(
         afw::table::Schema const & schema,
-        PTR(afw::table::BaseTable) sampleTable
-    ) : ModelFitTable(schema, sampleTable) {}
+        PTR(afw::table::BaseTable) sampleTable,
+        PTR(Interpreter) interpreter
+    ) : ModelFitTable(schema, sampleTable, interpreter) {}
 
     ModelFitTableImpl(ModelFitTableImpl const & other) : ModelFitTable(other) {}
 
@@ -285,7 +286,8 @@ void ModelFitRecord::_assign(afw::table::BaseRecord const & other) {
 
 PTR(ModelFitTable) ModelFitTable::make(
     afw::table::Schema const & schema,
-    PTR(afw::table::BaseTable) sampleTable
+    PTR(afw::table::BaseTable) sampleTable,
+    PTR(Interpreter) interpreter
 ) {
     if (!checkSchema(schema)) {
         throw LSST_EXCEPT(
@@ -293,14 +295,24 @@ PTR(ModelFitTable) ModelFitTable::make(
             "Schema for ModelFit must contain at least the keys defined by makeMinimalSchema()."
         );
     }
-    return boost::make_shared<ModelFitTableImpl>(schema, sampleTable);
+    return boost::make_shared<ModelFitTableImpl>(schema, sampleTable, interpreter);
 }
 
-ModelFitTable::ModelFitTable(afw::table::Schema const & schema, PTR(afw::table::BaseTable) sampleTable) :
-    afw::table::SimpleTable(schema, PTR(afw::table::IdFactory)()), _sampleTable(sampleTable) {}
+ModelFitTable::ModelFitTable(
+    afw::table::Schema const & schema,
+    PTR(afw::table::BaseTable) sampleTable,
+    PTR(Interpreter) interpreter
+) :
+    afw::table::SimpleTable(schema, PTR(afw::table::IdFactory)()),
+    _sampleTable(sampleTable),
+    _interpreter(interpreter)
+{}
 
 ModelFitTable::ModelFitTable(ModelFitTable const & other) :
-    afw::table::SimpleTable(other), _sampleTable(other._sampleTable->clone()) {}
+    afw::table::SimpleTable(other),
+    _sampleTable(other._sampleTable->clone()),
+    _interpreter(other._interpreter ? other._interpreter->clone() : PTR(Interpreter)())
+{}
 
 PTR(afw::table::io::FitsWriter)
 ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const {

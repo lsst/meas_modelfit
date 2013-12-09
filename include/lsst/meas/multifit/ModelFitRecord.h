@@ -104,7 +104,8 @@ public:
      */
     static PTR(ModelFitTable) make(
         afw::table::Schema const & schema,
-        PTR(afw::table::BaseTable) sampleTable = PTR(afw::table::BaseTable)()
+        PTR(afw::table::BaseTable) sampleTable = PTR(afw::table::BaseTable)(),
+        PTR(Interpreter) interpreter = PTR(Interpreter)()
     );
 
     /// Return the table object used to allocate records in the related sample catalogs.
@@ -140,7 +141,11 @@ public:
 
 protected:
 
-    ModelFitTable(afw::table::Schema const & schema, PTR(afw::table::BaseTable) sampleTable);
+    ModelFitTable(
+        afw::table::Schema const & schema,
+        PTR(afw::table::BaseTable) sampleTable,
+        PTR(Interpreter) interpreter
+    );
 
     ModelFitTable(ModelFitTable const & other);
 
