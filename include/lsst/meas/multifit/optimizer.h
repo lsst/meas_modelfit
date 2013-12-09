@@ -54,6 +54,9 @@ public:
 
     OptimizerInterpreter(PTR(Model) model, PTR(Prior) prior=PTR(Prior)());
 
+    /// Create a Pdf from the state of the given optimizer and attach it to the given record
+    void attachPdf(ModelFitRecord & record, Optimizer const & optimizer) const;
+
     virtual ndarray::Array<Scalar,1,1> computeParameterQuantiles(
         ModelFitRecord const & record,
         ndarray::Array<Scalar const,1,1> const & fractions,
@@ -289,7 +292,7 @@ public:
     explicit OptimizerHistoryRecorder(
         afw::table::Schema & schema,
         PTR(Model) model,
-        bool doSaveDerivatives
+        bool doRecordDerivatives
     );
 
     void apply(

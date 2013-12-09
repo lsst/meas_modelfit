@@ -83,6 +83,18 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             task = lsst.meas.multifit.MeasureImageTask(config=self.config, name=name)
             results = task.run(self.dataRef)
 
+    def testOptimizer(self):
+        self.config.fitter.retarget(lsst.meas.multifit.OptimizerTask)
+        self.config.fitter.doRecordHistory = True
+        for model in self.models:
+            self.config.model.name = model
+            name = 'testOptimizer/%s' % model
+            task = lsst.meas.multifit.MeasureImageTask(config=self.config, name=name)
+            results = task.run(self.dataRef)
+            for outRecord in results.outCat:
+                self.assertFalse(outRecord.get("fit.flags"))
+                self.assert_(numpy.isfinite(outRecord.get("fit.parameters")).all())
+
     def tearDown(self):
         del self.dataRef
         del self.config

@@ -72,6 +72,27 @@ OptimizerInterpreter::OptimizerInterpreter(PTR(Model) model, PTR(Prior) prior) :
     Interpreter(concatenateNameVectors(model->getNonlinearNames(), model->getAmplitudeNames()), model, prior)
 {}
 
+void OptimizerInterpreter::attachPdf(ModelFitRecord & record, Optimizer const & optimizer) const {
+    static Scalar const THRESHOLD = 1E-8;
+    ndarray::Array<Scalar const,2,2> hessian = optimizer.getHessian();
+    Eigen::SelfAdjointEigenSolver<Matrix> eig(hessian.asEigen().adjoint());
+    Vector s = eig.eigenvalues();
+    // fudge eigenvalues to ensure the matrix is invertible; this transforms fully degenerate directions
+    // in parameter space into nearly-degenerate directions.
+    for (int i = 0, n = s.size()-1; i < n; ++i) {
+        if (s[i] < THRESHOLD*s[n]) {
+            s[i] = THRESHOLD*s[n];
+        }
+    }
+    Matrix sigma = eig.eigenvectors() * s.array().inverse().matrix().asDiagonal()
+        * eig.eigenvectors().adjoint();
+    Mixture::ComponentList components;
+    components.push_back(
+        Mixture::Component(1.0, optimizer.getParameters().asEigen(), sigma)
+    );
+    record.setPdf(boost::make_shared<Mixture>(s.size(), boost::ref(components)));
+}
+
 ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeParameterQuantiles(
     ModelFitRecord const & record,
     ndarray::Array<Scalar const,1,1> const & fractions,
