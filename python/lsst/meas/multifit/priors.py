@@ -37,10 +37,7 @@ priorRegistry = lsst.pex.config.makeRegistry(
     """Registry for Bayesian priors on galaxy parameters
 
     The Configurables (callables that take a Config as their first argument)
-    in the registry should return a subclass of the Prior class, and take two
-    additional keyword arguments:
-        pixelScale (Angle/pixel) -- sets the units for radius and position parameters
-        fluxMag0 -- flux at magnitude zero that sets the units for amplitude parameters
+    in the registry should return a subclass of the Prior class.
     """
 )
 
@@ -62,14 +59,12 @@ class MixturePriorConfig(lsst.pex.config.Config):
         )
 
     @staticmethod
-    def makePrior(config, pixelScale, fluxMag0):
+    def makePrior(config):
         if os.path.isabs(config.filename):
             path = config.filename
         else:
             path = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "data", config.filename)
         mixture = multifitLib.Mixture.readFits(path)
-        # convert from log(r) in arcseconds to log(r) in pixels
-        mixture.shift(2, -numpy.log(pixelScale.asArcseconds()))
         return multifitLib.MixturePrior(mixture, "single-ellipse")
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):

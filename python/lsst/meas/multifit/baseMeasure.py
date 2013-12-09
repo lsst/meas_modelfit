@@ -93,6 +93,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         # that's aligned with celestial coordinates), we can define the model and prior
         # up front, and use them without modification for all Objects
         self.model = self.config.model.apply()
+        self.prior = self.config.prior.apply()
         # now we set up the schema; this will be the same regardless of whether or not
         # we do a warm start (use a previous modelfits catalog for initial values).
         self.schema = multifitLib.ModelFitTable.makeMinimalSchema()
@@ -117,8 +118,25 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
             "snr", type=float,
             doc="signal to noise ratio from source apFlux/apFluxErr"
             )
+        self.keys["sys.position"] = self.schema.addField(
+            "sys.position", type="Coord",
+            doc="nominal position used to construct UnitSystem for parameters"
+            )
+        self.keys["sys.magnitude"] = self.schema.addField(
+            "sys.mag", type=float,
+            doc="nominal magnitude used to construct UnitSystem for parameters"
+            )
         # Create the fitter subtask that does all the non-bookkeeping work
-        self.makeSubtask("fitter", schema=self.schema, keys=self.keys, model=self.model)
+        self.makeSubtask("fitter", schema=self.schema, keys=self.keys, model=self.model, prior=self.prior)
+
+    def makeUnitSystem(self, record, position, magnitude):
+        record.set(self.keys['sys.position'], position)
+        record.set(self.keys['sys.magnitude'], magnitude)
+        return multifitLib.UnitSystem(position, magnitude)
+
+    def getUnitSystem(self, record):
+        return multifitLib.UnitSystem(record.get(self.keys['sys.position']),
+                                      record.get(self.keys['sys.magnitude']))
 
     def makeTable(self):
         """Return a ModelFitTable object based on the measurement schema and the fitter subtask's
