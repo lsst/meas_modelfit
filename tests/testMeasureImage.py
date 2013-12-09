@@ -40,7 +40,9 @@ from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 numpy.random.seed(500)
 
-log = lsst.pex.logging.Debug("meas.multifit.AdaptiveImportanceSampler", 10)
+# Set to 7 for per-object messages, 10 for per-sample
+lsst.pex.logging.Debug("meas.multifit.AdaptiveImportanceSampler", 0)
+lsst.pex.logging.Debug("meas.multifit.TruncatedGaussian", 0)
 
 DO_MAKE_PLOTS = True
 
@@ -68,7 +70,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.config.progressChunk = 1
         self.config.doRaise = True
         self.models = [
-            #'bulge+disk',
+            'bulge+disk',
             'fixed-sersic',
             ]
 
