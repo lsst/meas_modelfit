@@ -30,13 +30,83 @@
 #include "lsst/pex/config.h"
 #include "lsst/afw/table/Schema.h"
 #include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/models.h"
+#include "lsst/meas/multifit/Interpreter.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 class Likelihood;
 class Prior;
 class Optimizer;
+
+/**
+ *  @brief Interpreter class for fitting using a greedy optimizer.
+ *
+ *  This serves as the C++ bridge between the optimizer classes and the Python measure* tasks in
+ *  meas_multifit.
+ *
+ *  As the outputs of the optimizer are simply the best-fit point combined with an estimate of the
+ *  covariance matrix, we store this in the "pdf" attached to the ModelFitRecord, as a Mixture object
+ *  holding a single Gaussian.  The estimates of quantiles, means, and covariances are all derived
+ *  from that distribution.
+ */
+class OptimizerInterpreter : public Interpreter {
+public:
+
+    OptimizerInterpreter(PTR(Model) model, PTR(Prior) prior=PTR(Prior)());
+
+    virtual ndarray::Array<Scalar,1,1> computeParameterQuantiles(
+        ModelFitRecord const & record,
+        ndarray::Array<Scalar const,1,1> const & fractions,
+        int index
+    ) const;
+
+    virtual ndarray::Array<Scalar,1,1> computeNonlinearQuantiles(
+        ModelFitRecord const & record,
+        ndarray::Array<Scalar const,1,1> const & fractions,
+        int index
+    ) const;
+
+    virtual ndarray::Array<Scalar,1,1> computeAmplitudeQuantiles(
+        ModelFitRecord const & record,
+        ndarray::Array<Scalar const,1,1> const & fractions,
+        int index
+    ) const;
+
+    virtual ndarray::Array<Scalar,1,1> computeParameterMean(ModelFitRecord const & record) const;
+
+    virtual ndarray::Array<Scalar,1,1> computeNonlinearMean(ModelFitRecord const & record) const;
+
+    virtual ndarray::Array<Scalar,1,1> computeAmplitudeMean(ModelFitRecord const & record) const;
+
+    virtual ndarray::Array<Scalar,2,2> computeParameterCovariance(
+        ModelFitRecord const & record,
+        ndarray::Array<Scalar const,1,1> const & mean
+    ) const;
+
+    virtual ndarray::Array<Scalar,2,2> computeNonlinearCovariance(
+        ModelFitRecord const & record,
+        ndarray::Array<Scalar const,1,1> const & mean
+    ) const;
+
+    virtual ndarray::Array<Scalar,2,2> computeAmplitudeCovariance(
+        ModelFitRecord const & record,
+        ndarray::Array<Scalar const,1,1> const & mean
+    ) const;
+
+protected:
+
+    virtual void _packParameters(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & parameters
+    ) const;
+
+    virtual void _unpackNonlinear(
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & nonlinear
+    ) const;
+
+};
 
 /**
  *  @brief Base class for objective functions for Optimizer

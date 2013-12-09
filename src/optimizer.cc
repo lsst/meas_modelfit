@@ -21,7 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include <Eigen/Eigenvalues>
+#include "Eigen/Eigenvalues"
+#include "boost/math/special_functions/erf.hpp"
 
 #include "ndarray/eigen.h"
 
@@ -34,8 +35,132 @@
 #include "lsst/meas/multifit/optimizer.h"
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/ModelFitRecord.h"
 
 namespace lsst { namespace meas { namespace multifit {
+
+// ----------------- OptimizerInterpreter -------------------------------------------------------------------
+
+namespace {
+
+Model::NameVector concatenateNameVectors(Model::NameVector const & a, Model::NameVector const & b) {
+    Model::NameVector r;
+    r.reserve(a.size() + b.size());
+    r.insert(r.end(), a.begin(), a.end());
+    r.insert(r.end(), b.begin(), b.end());
+    return r;
+}
+
+ndarray::Array<Scalar,1,1> computeGaussianQuantile(
+    Mixture const & pdf, int dim, ndarray::Array<Scalar const,1,1> const & fractions
+) {
+    MixtureComponent const & component = *pdf.begin();
+    // TODO: this could be more efficient if we made changes to MixtureComponent;
+    // we don't need to get the full vector+matrix just to get an element of each.
+    Scalar mu = component.getMu()[dim];
+    Scalar sigma = component.getSigma()(dim, dim);
+    ndarray::Array<Scalar,1,1> output = ndarray::allocate(fractions.getSize<0>());
+    for (int i = 0, n = fractions.getSize<0>(); i < n; ++i) {
+        output[i] = mu + M_SQRT2*sigma*boost::math::erf_inv(2.0*fractions[i] - 1.0);
+    }
+    return output;
+}
+
+} // anonymous
+
+OptimizerInterpreter::OptimizerInterpreter(PTR(Model) model, PTR(Prior) prior) :
+    Interpreter(concatenateNameVectors(model->getNonlinearNames(), model->getAmplitudeNames()), model, prior)
+{}
+
+ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeParameterQuantiles(
+    ModelFitRecord const & record,
+    ndarray::Array<Scalar const,1,1> const & fractions,
+    int index
+) const {
+    // TODO: bounds checking
+    return computeGaussianQuantile(*record.getPdf(), index, fractions);
+}
+
+ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeNonlinearQuantiles(
+    ModelFitRecord const & record,
+    ndarray::Array<Scalar const,1,1> const & fractions,
+    int index
+) const {
+    // TODO: bounds checking
+    return computeGaussianQuantile(*record.getPdf(), index, fractions);
+}
+
+ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeAmplitudeQuantiles(
+    ModelFitRecord const & record,
+    ndarray::Array<Scalar const,1,1> const & fractions,
+    int index
+) const {
+    // TODO: bounds checking
+    return computeGaussianQuantile(*record.getPdf(), index + getModel()->getNonlinearDim(), fractions);
+}
+
+ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeParameterMean(ModelFitRecord const & record) const {
+    ndarray::Array<Scalar,1,1> output = ndarray::allocate(getParameterDim());
+    output.asEigen() = record.getPdf()->begin()->getMu();
+    return output;
+}
+
+ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeNonlinearMean(ModelFitRecord const & record) const {
+    ndarray::Array<Scalar,1,1> output = ndarray::allocate(getNonlinearDim());
+    output.asEigen() = record.getPdf()->begin()->getMu().head(getNonlinearDim());
+    return output;
+}
+
+ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeAmplitudeMean(ModelFitRecord const & record) const {
+    ndarray::Array<Scalar,1,1> output = ndarray::allocate(getAmplitudeDim());
+    output.asEigen() = record.getPdf()->begin()->getMu().tail(getAmplitudeDim());
+    return output;
+}
+
+ndarray::Array<Scalar,2,2> OptimizerInterpreter::computeParameterCovariance(
+    ModelFitRecord const & record,
+    ndarray::Array<Scalar const,1,1> const & mean
+) const {
+    ndarray::Array<Scalar,2,2> output = ndarray::allocate(getParameterDim(), getParameterDim());
+    output.asEigen() = record.getPdf()->begin()->getSigma().adjoint();
+    return output;
+}
+
+ndarray::Array<Scalar,2,2> OptimizerInterpreter::computeNonlinearCovariance(
+    ModelFitRecord const & record,
+    ndarray::Array<Scalar const,1,1> const & mean
+) const {
+    int const n = getNonlinearDim();
+    ndarray::Array<Scalar,2,2> output = ndarray::allocate(n, n);
+    output.asEigen() = record.getPdf()->begin()->getSigma().topLeftCorner(n, n).adjoint();
+    return output;
+}
+
+ndarray::Array<Scalar,2,2> OptimizerInterpreter::computeAmplitudeCovariance(
+     ModelFitRecord const & record,
+     ndarray::Array<Scalar const,1,1> const & mean
+) const {
+    int const n = getAmplitudeDim();
+    ndarray::Array<Scalar,2,2> output = ndarray::allocate(n, n);
+    output.asEigen() = record.getPdf()->begin()->getSigma().bottomRightCorner(n, n).adjoint();
+    return output;
+}
+
+void OptimizerInterpreter::_packParameters(
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    ndarray::Array<Scalar const,1,1> const & amplitudes,
+    ndarray::Array<Scalar,1,1> const & parameters
+) const {
+    parameters[ndarray::view(0, getNonlinearDim())] = nonlinear;
+    parameters[ndarray::view(getNonlinearDim(), getParameterDim())] = amplitudes;
+}
+
+void OptimizerInterpreter::_unpackNonlinear(
+    ndarray::Array<Scalar const,1,1> const & parameters,
+    ndarray::Array<Scalar,1,1> const & nonlinear
+) const {
+    nonlinear.deep() = parameters[ndarray::view(0, getNonlinearDim())];
+}
 
 // ----------------- OptimizerObjective ---------------------------------------------------------------------
 
