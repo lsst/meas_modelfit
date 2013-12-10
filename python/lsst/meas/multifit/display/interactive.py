@@ -120,9 +120,9 @@ class Interactive(object):
         """
         data = ModelFitDataAdapter(record)
         figure = matplotlib.pyplot.figure(record.getId(), figsize=(10, 10))
-        p = DensityPlot(figure, data)
-        p.layers["samples"] = HistogramLayer()
-        p.layers["proposal"] = SurfaceLayer()
+        p = DensityPlot(figure, sampler=data)
+        p.layers["samples"] = HistogramLayer("sampler")
+        p.layers["proposal"] = SurfaceLayer("sampler")
         p.draw()
         return p
 

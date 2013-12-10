@@ -38,7 +38,9 @@ class ModelFitDataAdapter(object):
 
     def setRangesFromQuantiles(self, lower, upper):
         fractions = numpy.array([lower, upper], dtype=float)
-        self.ranges = self.record.getInterpreter().computeParameterQuantiles(self.record, fractions)
+        ranges = self.record.getInterpreter().computeParameterQuantiles(self.record, fractions)
+        self.lower = {dim: ranges[i,0] for i, dim in enumerate(self.dimensions)}
+        self.upper = {dim: ranges[i,1] for i, dim in enumerate(self.dimensions)}
 
     def eval1d(self, dim, x):
         i = self.dimensions.index(dim)

@@ -72,7 +72,8 @@ class HistogramLayer(object):
     defaults1d=dict(facecolor='b', alpha=0.5)
     defaults2d=dict(cmap=matplotlib.cm.Blues, vmin=0.0, interpolation='nearest')
 
-    def __init__(self, bins1d=20, bins2d=(20,20), kwds1d=None, kwds2d=None):
+    def __init__(self, tag, bins1d=20, bins2d=(20,20), kwds1d=None, kwds2d=None):
+        self.tag = tag
         self.bins1d = bins1d
         self.bins2d = bins2d
         self.kwds1d = mergeDefaults(kwds1d, self.defaults1d)
@@ -140,7 +141,8 @@ class ScatterLayer(object):
 
     defaults = dict(linewidth=0, alpha=0.2)
 
-    def __init__(self, **kwds):
+    def __init__(self, tag, **kwds):
+        self.tag = tag
         self.kwds = mergeDefaults(kwds, self.defaults)
 
     def plotX(self, axes, data, dim):
@@ -170,7 +172,8 @@ class SurfaceLayer(object):
     defaults1d=dict(linewidth=2, color='r')
     defaults2d=dict(linewidths=2, cmap=matplotlib.cm.Reds)
 
-    def __init__(self, steps1d=200, steps2d=200, filled=False, kwds1d=None, kwds2d=None):
+    def __init__(self, tag, steps1d=200, steps2d=200, filled=False, kwds1d=None, kwds2d=None):
+        self.tag = tag
         self.steps1d = int(steps1d)
         self.steps2d = int(steps2d)
         self.filled = bool(filled)
@@ -252,15 +255,26 @@ class DensityPlot(object):
             self._parent._dropLayer(name, layer)
             self._parent._plotLayer(name, layer)
 
-    def __init__(self, figure, data):
+    def __init__(self, figure, **kwds):
         self.figure = figure
-        self.data = data
-        self._active = tuple(self.data.dimensions)
+        self.data = dict(kwds)
+        active = []
+        self._lower = dict()
+        self._upper = dict()
+        # We merge the dimension name lists manually rather than using sets to preserve the order.
+        # Most of the time we expect all data objects to have the same dimensions anyway.
+        for v in self.data.itervalues():
+            for dim in v.dimensions:
+                if dim not in active:
+                    active.append(dim)
+                    self._lower[dim] = v.lower[dim]
+                    self._upper[dim] = v.upper[dim]
+                else:
+                    self._lower[dim] = min(v.lower[dim], self._lower[dim])
+                    self._upper[dim] = max(v.upper[dim], self._upper[dim])
+        self._active = tuple(active)
         self._all_dims = frozenset(self._active)
-        if len(self._all_dims) != len(self._active):
-            raise ValueError("Dimensions list contains duplicates")
         self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.01, wspace=0.01)
-        self._ranges = numpy.array(data.ranges)
         self._build_axes()
         self.layers = self.LayerDict(self)
 
@@ -284,11 +298,15 @@ class DensityPlot(object):
 
     def _plotLayer(self, name, layer):
         for i, yDim in enumerate(self._active):
-            self._objs[None,i,name] = layer.plotX(self._axes[None,i], self.data, yDim)
-            self._objs[i,None,name] = layer.plotY(self._axes[i,None], self.data, yDim)
+            if yDim not in self.data[layer.tag].dimensions:
+                continue
+            self._objs[None,i,name] = layer.plotX(self._axes[None,i], self.data[layer.tag], yDim)
+            self._objs[i,None,name] = layer.plotY(self._axes[i,None], self.data[layer.tag], yDim)
             for j, xDim in enumerate(self._active):
+                if xDim not in self.data[layer.tag].dimensions:
+                    continue
                 if i == j: continue
-                self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data, xDim, yDim)
+                self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data[layer.tag], xDim, yDim)
             self._axes[None,i].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
             self._axes[i,None].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
             self._axes[None,i].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
@@ -306,7 +324,8 @@ class DensityPlot(object):
     active = property(_get_active, _set_active, doc="sequence of active dimensions to plot (sequence of str)")
 
     def replot(self):
-        self._ranges = numpy.array([self.data.ranges[self.data.dimensions.index(k)] for k in self._active])
+        self._lower = {dim: min(self.data[k].lower[dim] for k in self.data) for dim in self._active}
+        self._upper = {dim: max(self.data[k].upper[dim] for k in self.data) for dim in self._active}
         self._build_axes()
         for name, layer in self.layers.iteritems():
             self._plotLayer(name, layer)
@@ -325,7 +344,7 @@ class DensityPlot(object):
             axesX = self._axes[None,j] = self.figure.add_subplot(n+1, n+1, jStart+j*jStride)
             axesX.autoscale(False, axis='x')
             axesX.xaxis.tick_top()
-            axesX.set_xlim(self._ranges[j,0], self._ranges[j,1])
+            axesX.set_xlim(self._lower[self._active[j]], self._upper[self._active[j]])
             hide_yticklabels(axesX)
             bbox = axesX.get_position()
             bbox.y1 -= 0.035
@@ -333,7 +352,7 @@ class DensityPlot(object):
             axesY = self._axes[i,None] = self.figure.add_subplot(n+1, n+1, iStart + iStart+i*iStride)
             axesY.autoscale(False, axis='y')
             axesY.yaxis.tick_right()
-            axesY.set_ylim(self._ranges[i,0], self._ranges[i,1])
+            axesY.set_ylim(self._lower[self._active[i]], self._upper[self._active[i]])
             hide_xticklabels(axesY)
             bbox = axesY.get_position()
             bbox.x1 -= 0.035
@@ -369,8 +388,9 @@ class ExampleData(object):
 
        dimensions ------ a sequence of strings that provide names for the dimensions
 
-       ranges ---------- an array with shape (N,2) giving the minimum (first column) and
-                         maximum (second column) values for each dimension.
+       lower ----------- a dictionary of {dimension-name: lower-bound}
+
+       upper ----------- a dictionary of {dimension-name: upper-bound}
 
     The second level of requirements are those of the Layer objects provided here.  These
     may be absent if the associated Layer is not used or is subclassed to reimplement the
@@ -390,8 +410,8 @@ class ExampleData(object):
         self.dimensions = ["a", "b", "c"]
         self.mu = numpy.array([-10.0, 0.0, 10.0])
         self.sigma = numpy.array([3.0, 2.0, 1.0])
-        self.ranges = numpy.array([[-3*sigma, 3*sigma] for sigma in self.sigma], dtype=float)
-        self.ranges += self.mu[:,numpy.newaxis]
+        self.lower = {dim: -3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
+        self.upper = {dim: 3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
         self.values = numpy.random.randn(2000, 3) * self.sigma[numpy.newaxis,:] + self.mu[numpy.newaxis,:]
 
     def eval1d(self, dim, x):
@@ -413,8 +433,8 @@ class ExampleData(object):
 def demo():
     """Create and return a DensityPlot with example data."""
     fig = matplotlib.pyplot.figure()
-    p = DensityPlot(fig, ExampleData())
-    p.layers['histogram'] = HistogramLayer()
-    p.layers['surface'] = SurfaceLayer()
+    p = DensityPlot(fig, primary=ExampleData())
+    p.layers['histogram'] = HistogramLayer('primary')
+    p.layers['surface'] = SurfaceLayer('primary')
     p.draw()
     return p
