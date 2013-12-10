@@ -261,7 +261,7 @@ public:
         trustRegionGrowReductionRatio(0.75),
         trustRegionGrowStepFraction(0.8),
         trustRegionGrowFactor(2.0),
-        trustRegionShrinkReductionRatio(0.75),
+        trustRegionShrinkReductionRatio(0.25),
         trustRegionShrinkFactor(1.0/3.0),
         trustRegionSolverTolerance(1E-8),
         maxInnerIterations(20),

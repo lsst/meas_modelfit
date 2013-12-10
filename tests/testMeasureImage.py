@@ -43,6 +43,7 @@ numpy.random.seed(500)
 # Set to 7 for per-object messages, 10 for per-sample
 lsst.pex.logging.Debug("meas.multifit.AdaptiveImportanceSampler", 0)
 lsst.pex.logging.Debug("meas.multifit.TruncatedGaussian", 0)
+lsst.pex.logging.Debug("meas.multifit.optimizer", 10)
 
 DO_MAKE_PLOTS = True
 

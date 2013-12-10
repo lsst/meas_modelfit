@@ -32,7 +32,7 @@ import lsst.meas.multifit
 
 numpy.random.seed(500)
 
-log = lsst.pex.logging.Debug("meas.multifit.optimizer.solveTrustRegion", 10)
+log = lsst.pex.logging.Debug("meas.multifit.optimizer", 10)
 
 class OptimizerTestCase(lsst.utils.tests.TestCase):
 
