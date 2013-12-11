@@ -278,9 +278,16 @@ ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) :
 void ModelFitRecord::_assign(afw::table::BaseRecord const & other) {
     try {
         ModelFitRecord const & s = dynamic_cast<ModelFitRecord const &>(other);
-        _samples.assign(s.getSamples().begin(), s.getSamples().end(), true);
         _footprint = s._footprint;
         _pdf = s._pdf;
+        if (s.getSamples().getSchema() == _samples.getSchema()) {
+            // We should probably provide the user explicit control over whether to copy the samples
+            // (and the pdf and footprint, for that matter), rather than relying on whether it's possible
+            // given the schemas.  But that would involve changes to afw::table APIs (probably something
+            // like the I/O flags that control how to read/write SourceRecord Footprints), and this works
+            // well-enough for now.
+            _samples.assign(s.getSamples().begin(), s.getSamples().end(), true);
+        }
     } catch (std::bad_cast&) {}
 }
 

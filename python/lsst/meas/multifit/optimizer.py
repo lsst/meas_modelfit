@@ -48,20 +48,12 @@ class OptimizerTask(lsst.pipe.base.Task):
 
     ConfigClass = OptimizerConfig
 
-    def __init__(self, schema, keys, model, prior, **kwds):
+    def __init__(self, schema, keys, model, prior, previous=None, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
         # n.b. schema argument is for modelfits catalog; self.sampleSchema is for sample catalog
         self.sampleSchema = lsst.afw.table.Schema()
         self.interpreter = multifitLib.OptimizerInterpreter(model, prior)
         self.keys = keys
-        self.keys["ref.parameters"] = schema.addField(
-            "ref.parameters", type="ArrayD", size=self.interpreter.getParameterDim(),
-            doc="sampler parameters from reference catalog"
-            )
-        self.keys["fit.parameters"] = schema.addField(
-            "fit.parameters", type="ArrayD", size=self.interpreter.getParameterDim(),
-            doc="best-fit sampler parameters"
-            )
         self.keys["fit.flags"] = schema.addField("fit.flags", type="Flag", doc="whether the fit converged")
         # TODO: should use true Flag fields in production, but that's a lot of boilerplate - we should have
         # a class for bitflags that we can convert to table Flags in bulk
@@ -75,8 +67,10 @@ class OptimizerTask(lsst.pipe.base.Task):
                 )
         else:
             self.recorder = None
+        if previous is not None:
+            raise NotImplementedError("Warm-starting optimizer runs is current not supported")
 
-    def makeTable(self):
+    def makeSampleTable(self):
         """Return a Table object that can be used to construct sample records.
         """
         return lsst.afw.table.BaseTable.make(self.sampleSchema)
@@ -87,17 +81,22 @@ class OptimizerTask(lsst.pipe.base.Task):
 
         This method is not called when using a "warm start" from a previous fit.
         """
-        parameters = record[self.keys["ref.parameters"]]
-        self.interpreter.packParameters(record[self.keys["ref.nonlinear"]],
-                                        record[self.keys["ref.amplitudes"]],
-                                        parameters)
-        record[self.keys["fit.parameters"]] = parameters
+        pass
+
+    def adaptPrevious(self, prevRecord, outRecord):
+        """Adapt a previous record (fit using self.previous as the fitter task), filling in the
+        fields and attributes of outRecord to put it in a state ready for run().
+        """
+        pass
 
     def run(self, likelihood, record):
         """Do the actual fitting, using the given likelihood, update the 'pdf' and 'samples' attributes,
         and save best-fit values in the 'fit.parameters' field.
         """
-        parameters = record[self.keys["fit.parameters"]]
+        parameters = numpy.zeros(self.interpreter.getParameterDim(), dtype=multifitLib.Scalar)
+        self.interpreter.packParameters(record[self.keys["ref.nonlinear"]],
+                                        record[self.keys["ref.amplitudes"]],
+                                        parameters)
         objective = multifitLib.OptimizerObjective.makeFromLikelihood(likelihood, self.interpreter.getPrior())
         optimizer = multifitLib.Optimizer(objective, parameters, self.config.makeControl())
         if self.recorder:
@@ -105,7 +104,6 @@ class OptimizerTask(lsst.pipe.base.Task):
         else:
             optimizer.run()
         self.interpreter.attachPdf(record, optimizer)
-        parameters[:] = self.interpreter.computeParameterMean(record)
         record.set(self.keys['fit.flags'], bool(optimizer.getState() & multifitLib.Optimizer.FAILED))
         record.set(self.keys['fit.state'], optimizer.getState())
         record.set(self.keys['fit.objective'], optimizer.getObjectiveValue())

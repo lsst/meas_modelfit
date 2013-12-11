@@ -66,3 +66,6 @@ class MeasureCcdTask(MeasureImageTask):
         parser = lsst.pipe.base.ArgumentParser(name=cls._DefaultName)
         parser.add_id_argument("--id", "calexp", help="data ID, e.g. --id visit=1 raft=2,2 sensor=1,1")
         return parser
+
+    def getPreviousTaskClass(self):
+        return MeasureCcdTask

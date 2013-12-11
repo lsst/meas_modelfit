@@ -126,6 +126,9 @@ public:
 
     /**
      *  @brief Construct from existing schemas and interpreters
+     *
+     *  If the multiplier is <= 0, it will be set to the ratio of the number of direct parameters
+     *  to marginal parameters (i.e. (nonlinearDim + amplitudeDim) / nonlinearDim).
      */
     UnnestMarginalSamples(
         afw::table::Schema const & marginalSchema,
@@ -133,7 +136,7 @@ public:
         PTR(MarginalSamplingInterpreter) marginalInterpreter,
         PTR(DirectSamplingInterpreter) directInterpreter,
         PTR(afw::math::Random) rng,
-        double multiplier
+        double multiplier=-1.0
     );
 
     /// Create a new sample catalog and proposal pdf from marginalRecord, and add them to directRecord.

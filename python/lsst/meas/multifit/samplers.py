@@ -96,7 +96,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
 
     ConfigClass = AdaptiveImportanceSamplerConfig
 
-    def __init__(self, schema, keys, model, prior, **kwds):
+    def __init__(self, schema, keys, model, prior, previous=None, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
         # n.b. schema argument is for modelfits catalog; self.sampleSchema is for sample catalog
         self.sampleSchema = lsst.afw.table.Schema()
@@ -109,20 +109,30 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
             self.sampleSchema, self.rng, self.config.getIterationMap(), self.config.doSaveIterations
             )
         self.keys = keys
-        self.keys["ref.parameters"] = schema.addField(
-            "ref.parameters", type="ArrayD", size=self.interpreter.getParameterDim(),
-            doc="sampler parameters from reference catalog"
-            )
-        self.keys["fit.parameters"] = schema.addField(
-            "fit.parameters", type="ArrayD", size=self.interpreter.getParameterDim(),
-            doc="best-fit sampler parameters"
-            )
         self.keys["rngstate"] = schema.addField(
             "rngstate", type=str, size=self.rng.getStateSize(),
             doc="Random number generator state (blob)"
             )
+        self.previous = previous
+        if self.previous is None: return
+        if not isinstance(self.previous, AdaptiveImportanceSamplerTask):
+            raise NotImplementedError("Cannot use previous catalog with"
+                                      " non-AdaptiveImportanceSampler fitter")
+        if not self.previous.config.doMarginalizeAmplitudes and self.config.doMarginalizeAmplitudes:
+            raise NotImplementedError("Cannot use previous catalog with direct sampling to warm-start"
+                                      " marginal sampling")
+        if self.previous.config.doMarginalizeAmplitudes and not self.config.doMarginalizeAmplitudes:
+            self.unnest = multifitLib.UnnestMarginalSamples(
+                self.previous.sampleSchema,
+                self.sampleSchema,
+                self.previous.interpreter,
+                self.interpreter,
+                self.rng
+                )
+        else:
+            self.unnest = None
 
-    def makeTable(self):
+    def makeSampleTable(self):
         """Return a Table object that can be used to construct sample records.
         """
         return lsst.afw.table.BaseTable.make(self.sampleSchema)
@@ -145,15 +155,15 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         # easy
         return design
 
-    def initialize(self, record):
+    def initialize(self, outRecord):
         """Initialize an output record, setting any derived fields and record
         attributes (i.e. samples or pdf) needed before calling run().
 
         This method is not called when using a "warm start" from a previous fit.
         """
-        parameters = record[self.keys["ref.parameters"]]
-        self.interpreter.packParameters(record[self.keys["ref.nonlinear"]],
-                                        record[self.keys["ref.amplitudes"]],
+        parameters = numpy.zeros(self.interpreter.getParameterDim(), dtype=multifitLib.Scalar)
+        self.interpreter.packParameters(outRecord[self.keys['ref.nonlinear']],
+                                        outRecord[self.keys['ref.amplitudes']],
                                         parameters)
         components = multifitLib.Mixture.ComponentList()
         sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2
@@ -164,9 +174,16 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
             components.append(multifitLib.Mixture.Component(1.0, mu, sigma))
         df = self.config.degreesOfFreedom or float("inf")
         proposal = multifitLib.Mixture(parameters.size, components, df)
-        record.setPdf(proposal)
+        outRecord.setPdf(proposal)
 
-    def run(self, likelihood, record):
+    def adaptPrevious(self, prevRecord, outRecord):
+        """Adapt a previous record (fit using self.previous as the fitter task), filling in the
+        fields and attributes of outRecord to put it in a state ready for run().
+        """
+        if self.unnest is not None:
+            self.unnest.apply(prevRecord, outRecord)
+
+    def run(self, likelihood, outRecord):
         """Do the actual fitting, using the given likelihood, update the 'pdf' and 'samples' attributes,
         and save best-fit values in the 'fit.parameters' field.
         """
@@ -174,13 +191,12 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         nRetries = 0
         while True:
             try:
-                record.setString(self.keys["rngstate"], self.rng.getState())
-                self.sampler.run(objective, record.getPdf(), record.getSamples())
+                outRecord.setString(self.keys["rngstate"], self.rng.getState())
+                self.sampler.run(objective, outRecord.getPdf(), outRecord.getSamples())
                 break
             except Exception as err:
                 if nRetries >= self.config.maxRetries:
                     raise
-                self.log.warn("Failure fitting object %s; retrying with new RNG state" % record.getId())
-                self.initialize(record)
+                self.log.warn("Failure fitting object %s; retrying with new RNG state" % outRecord.getId())
+                self.initialize(outRecord)
                 nRetries += 1
-        record[self.keys["fit.parameters"]] = self.interpreter.computeParameterMean(record)

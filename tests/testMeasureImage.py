@@ -26,6 +26,7 @@ import os
 import unittest
 import numpy
 import matplotlib
+import copy
 
 import lsst.pex.logging
 import lsst.utils.tests
@@ -43,7 +44,7 @@ numpy.random.seed(500)
 # Set to 7 for per-object messages, 10 for per-sample
 lsst.pex.logging.Debug("meas.multifit.AdaptiveImportanceSampler", 0)
 lsst.pex.logging.Debug("meas.multifit.TruncatedGaussian", 0)
-lsst.pex.logging.Debug("meas.multifit.optimizer", 10)
+lsst.pex.logging.Debug("meas.multifit.optimizer", 0)
 
 DO_MAKE_PLOTS = True
 
@@ -51,23 +52,44 @@ DATA_DIR = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "tests", "data")
 
 class FakeDataRef(object):
 
-    def __init__(self):
+    def __init__(self, tag=None):
         self.data = dict()
         self.data['refcat'] = lsst.afw.table.SimpleCatalog.readFits(os.path.join(DATA_DIR, 'refcat.fits'))
         self.data['src'] = lsst.afw.table.SourceCatalog.readFits(os.path.join(DATA_DIR, 'src.fits'))
         self.data['calexp'] = lsst.afw.image.ExposureF(os.path.join(DATA_DIR, 'calexp.fits'))
+        self.tag = tag
 
-    def get(self, name, immediate=True):
-        return self.data[name]
+    def get(self, name, tag=None, immediate=True):
+        tag = tag if tag is not None else self.tag
+        if tag is None:
+            return self.data[name]
+        else:
+            return self.data[name, tag]
 
-    def put(self, obj, name):
-        self.data[name] = obj
+    def put(self, obj, name, tag=None):
+        tag = tag if tag is not None else self.tag
+        if tag is None:
+            self.data[name] = obj
+        else:
+            self.data[name, tag] = obj
+
+    def datasetExists(self, name, tag=None):
+        tag = tag if tag is not None else self.tag
+        if tag is None:
+            return name in self.data
+        else:
+            return (name, tag) in self.data
+
+    def dataRef(self, name, tag=None):
+        r = FakeDataRef(tag=tag)
+        r.data = self.data
+        return r
 
 class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
 
     def setUp(self):
         self.dataRef = FakeDataRef()
-        self.config = lsst.meas.multifit.MeasureImageTask.ConfigClass()
+        self.config = lsst.meas.multifit.MeasureCcdTask.ConfigClass()
         self.config.progressChunk = 1
         self.config.doRaise = True
         self.models = [
@@ -75,14 +97,29 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             'fixed-sersic',
             ]
 
-    def testMarginalSampler(self):
+    def testSampler(self):
         self.config.fitter.retarget(lsst.meas.multifit.AdaptiveImportanceSamplerTask)
-        self.config.fitter.doMarginalizeAmplitudes = True
         for model in self.models:
             self.config.model.name = model
-            name = 'testMarginalSampler/%s' % model
-            task = lsst.meas.multifit.MeasureImageTask(config=self.config, name=name)
-            results = task.run(self.dataRef)
+            config1 = lsst.meas.multifit.MeasureCcdTask.ConfigClass(self.config)
+            config1.tag = "marginal"
+            config1.fitter.doMarginalizeAmplitudes = True
+            config1.freeze()
+            task1 = lsst.meas.multifit.MeasureCcdTask(config=config1, butler=self.dataRef,
+                                                      name=('testMarginalSampler/%s' % model))
+            task1.writeSchemas(butler=self.dataRef)
+            task1.writeConfig(butler=self.dataRef)
+            config2 = lsst.meas.multifit.MeasureCcdTask.ConfigClass(self.config)
+            config2.fitter.doMarginalizeAmplitudes = False
+            config2.previous = "marginal"
+            config2.tag = "direct"
+            config2.freeze()
+            task2 = lsst.meas.multifit.MeasureCcdTask(config=config2, butler=self.dataRef,
+                                                      name=('testDirectSampler/%s' % model))
+            task2.writeSchemas(butler=self.dataRef)
+            task2.writeConfig(butler=self.dataRef)
+            results1 = task1.run(self.dataRef)
+            results2 = task2.run(self.dataRef)
 
     def testOptimizer(self):
         self.config.fitter.retarget(lsst.meas.multifit.OptimizerTask)
@@ -90,11 +127,10 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         for model in self.models:
             self.config.model.name = model
             name = 'testOptimizer/%s' % model
-            task = lsst.meas.multifit.MeasureImageTask(config=self.config, name=name)
+            task = lsst.meas.multifit.MeasureCcdTask(config=self.config, name=name)
             results = task.run(self.dataRef)
             for outRecord in results.outCat:
                 self.assertFalse(outRecord.get("fit.flags"))
-                self.assert_(numpy.isfinite(outRecord.get("fit.parameters")).all())
 
     def tearDown(self):
         del self.dataRef

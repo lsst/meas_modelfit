@@ -39,14 +39,7 @@ class MeasureImageConfig(BaseMeasureConfig):
         dtype=multifitLib.ProjectedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
-    doWarmStart = lsst.pex.config.Field(
-        dtype=bool,
-        default=False,
-        doc=("If True, load a previous modelfits catalog and use its attached proposal distributions "
-             "as the initial proposal distributions, instead of starting from a match of the source "
-             "and reference catalogs.  NOTE: Also causes fit region footprints to be based on the previous "
-             "modelfits footprints, instead of the original detection footprints")
-    )
+
 
 class MeasureImageTask(BaseMeasureTask):
     """Driver class for S13-specific galaxy modeling work
@@ -63,15 +56,18 @@ class MeasureImageTask(BaseMeasureTask):
     def __init__(self, **kwds):
         BaseMeasureTask.__init__(self, **kwds)
 
+    def getPreviousConfig(self, butler):
+        return butler.get(self._getConfigName(), tag=self.config.previous, immediate=True)
+
     def readInputs(self, dataRef):
         """Return a lsst.pipe.base.Struct containing the Exposure to fit and either a previous modelfits
         catalog (if config.doWarmStart) or the reference and source catalogs.
         """
         exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True)
-        if self.config.doWarmStart:
-            # TODO: load previous config, makes sure it's compatible (in particular, has same unit system)
+        dataset = self.dataPrefix + "modelfits"
+        if self.config.previous is not None:
             return lsst.pipe.base.Struct(
-                prevCat=dataRef.get(self.dataPrefix + "modelfits", immediate=True),
+                prevCat=dataRef.get(self.dataPrefix + "modelfits", tag=self.config.previous, immediate=True),
                 exposure=exposure
                 )
         else:
@@ -89,17 +85,7 @@ class MeasureImageTask(BaseMeasureTask):
         and reference catalogs, transforming their fields to the fit coordinate system and
         amplitude units.
         """
-        interpreter = self.fitter.interpreter
-
-        if self.config.doWarmStart:
-            # Interpreters aren't persisted with the ModelFitCatalog, since they can be
-            # reconstructed entirely from Config, so we reattach one here.
-            inputs.prevCat.table.setInterpreter(interpreter)
-            return inputs.prevCat
-
-        table = self.makeTable()
-        table.setInterpreter(interpreter)
-        outCat = multifitLib.ModelFitCatalog(table)
+        outCat = multifitLib.ModelFitCatalog(self.makeTable())
         refCat = inputs.refCat
         srcCat = inputs.srcCat
 
@@ -151,11 +137,8 @@ class MeasureImageTask(BaseMeasureTask):
             # We now transform this ellipse and the refCat fluxes into the parameters defined by the model.
             ellipses = lsst.meas.multifit.Model.EllipseVector()
             ellipses.append(ellipse2)
-            self.model.readEllipses(
-                ellipses,
-                outRecord[self.keys["ref.nonlinear"]],
-                outRecord[self.keys["ref.fixed"]]
-                )
+            nonlinear = outRecord[self.keys["ref.nonlinear"]]
+            self.model.readEllipses(ellipses, nonlinear, outRecord[self.keys["ref.fixed"]])
 
             # this flux->amplitudes conversion assumes the ref catalog is single-component, and that the
             # first component of the model is what that corresponds to; we may need to generalize this
@@ -163,10 +146,8 @@ class MeasureImageTask(BaseMeasureTask):
             amplitudes[:] = 0.0
             amplitudes[0] = 1.0
 
-            # Finally, we tell the fitter to initialize the record, which includes setting "ref.parameters",
-            # as only the fitter knows what parameters it will actually fit and how those map to
-            # "ref.nonlinear" and "ref.amplitudes".  Depending on the fitter, it will probably attach
-            # an initial PDF too.
+            # Finally, we tell the fitter to initialize the record, allowing it to do any fitter-specific
+            # bootstrapping of the record.
             self.fitter.initialize(outRecord)
         return outCat
 
@@ -190,7 +171,7 @@ class MeasureImageTask(BaseMeasureTask):
             )
 
     def writeOutputs(self, dataRef, outCat):
-        dataRef.put(outCat, self.dataPrefix + "modelfits")
+        dataRef.put(outCat, self.dataPrefix + "modelfits", tag=self.config.tag)
 
     def getSchemaCatalogs(self):
         """Return a dict of empty catalogs for each catalog dataset produced by this task."""

@@ -216,6 +216,10 @@ UnnestMarginalSamples::UnnestMarginalSamples(
     _directInterpreter(directInterpreter),
     _prior(_marginalInterpreter->getPrior())
 {
+    if (_multiplier <= 0.0) {
+        _multiplier = static_cast<double>(_directInterpreter->getParameterDim())
+            / _marginalInterpreter->getParameterDim();
+    }
     if (!_prior) {
         throw LSST_EXCEPT(
             pex::exceptions::LogicErrorException,
