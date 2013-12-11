@@ -22,9 +22,9 @@
 
 import numpy
 
-__all__ = ("ModelFitDataAdapter",)
+__all__ = ("SamplingDataAdapter",)
 
-class ModelFitDataAdapter(object):
+class SamplingDataAdapter(object):
 
     def __init__(self, record):
         self.record = record

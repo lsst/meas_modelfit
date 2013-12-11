@@ -115,14 +115,18 @@ class Interactive(object):
         self.task.fitter.run(likelihood, record)
         return record
 
-    def plotSamples(self, record):
-        """Plot the samples and proposal distribution from a ModelFitRecord.
+    def plotDistribution(self, record):
+        """Plot a representation of the posterior distribution from a ModelFitRecord.
         """
-        data = ModelFitDataAdapter(record)
         figure = matplotlib.pyplot.figure(record.getId(), figsize=(10, 10))
-        p = DensityPlot(figure, sampler=data)
-        p.layers["samples"] = HistogramLayer("sampler")
-        p.layers["proposal"] = SurfaceLayer("sampler")
+        data = {}
+        layers = {}
+        if multifitLib.SamplingInterpreter.cast(record.getInterpreter()):
+            data["sampling"] = SamplingDataAdapter(record)
+            layers["sampling.samples"] = HistogramLayer("sampling")
+            layers["sampling.proposal"] = SurfaceLayer("sampling")
+        p = DensityPlot(figure, **data)
+        p.layers.update(layers)
         p.draw()
         return p
 
