@@ -121,29 +121,26 @@ ndarray::Array<Scalar,1,1> MarginalSamplingInterpreter::computeAmplitudeQuantile
     ndarray::Array<Scalar const,1,1> const & fractions,
     int index
 ) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "Amplitude quantiles not implemented for marginalized samples"
-    );
+    ndarray::Array<Scalar,1,1> result = ndarray::allocate(getAmplitudeDim());
+    result.deep() = std::numeric_limits<Scalar>::quiet_NaN();
+    return result;
 }
 
 ndarray::Array<Scalar,1,1> MarginalSamplingInterpreter::computeAmplitudeMean(
     ModelFitRecord const & record
 ) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "Amplitude means not implemented for marginalized samples"
-    );
+    ndarray::Array<Scalar,1,1> result = ndarray::allocate(getAmplitudeDim());
+    result.deep() = std::numeric_limits<Scalar>::quiet_NaN();
+    return result;
 }
 
 ndarray::Array<Scalar,2,2> MarginalSamplingInterpreter::computeAmplitudeCovariance(
     ModelFitRecord const & record,
     ndarray::Array<Scalar const,1,1> const & mean
 ) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "Amplitude covariances not implemented for marginalized samples"
-    );
+    ndarray::Array<Scalar,2,2> result = ndarray::allocate(getAmplitudeDim(), getAmplitudeDim());
+    result.deep() = std::numeric_limits<Scalar>::quiet_NaN();
+    return result;
 }
 
 PTR(SamplingObjective) MarginalSamplingInterpreter::makeObjective(

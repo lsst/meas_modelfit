@@ -49,7 +49,7 @@ class DirectSamplingInterpreter;
  *  @endcode
  *  That is, after the gradient, the symmetric Hessian is stored packed in what LAPACK calls UPLO='U' order.
  *
- *  Right now, the nested information isn't used, and we just throw exceptions when someone tries to get
+ *  Right now, the nested information isn't used, and we just return NaNs when someone tries to get
  *  amplitude information out of a marginalized distribution.  Note that the difficulty isn't unpacking
  *  the (Gaussian) likelihood, but rather combining that with the (non-Gaussian) prior.
  */
