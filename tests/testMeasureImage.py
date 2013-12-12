@@ -101,25 +101,37 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.config.fitter.retarget(lsst.meas.multifit.AdaptiveImportanceSamplerTask)
         for model in self.models:
             self.config.model.name = model
-            config1 = lsst.meas.multifit.MeasureCcdTask.ConfigClass(self.config)
-            config1.tag = "marginal"
+            config1 = copy.deepcopy(self.config)
+            config1.tag = "marginal+%s" % model
             config1.fitter.doMarginalizeAmplitudes = True
             config1.freeze()
             task1 = lsst.meas.multifit.MeasureCcdTask(config=config1, butler=self.dataRef,
                                                       name=('testMarginalSampler/%s' % model))
             task1.writeSchemas(butler=self.dataRef)
             task1.writeConfig(butler=self.dataRef)
-            config2 = lsst.meas.multifit.MeasureCcdTask.ConfigClass(self.config)
+            results1 = task1.run(self.dataRef)
+            for outRecord in results1.outCat:
+                self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
+                if False:  # not yet implemented, but we should enable this test someday
+                    self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
+
+            if task1.model.getAmplitudeDim() > 1:
+                # Direct sampling doesn't yet handle the degeneracies that can arise with
+                # multi-component models very well.
+                continue
+            config2 = copy.deepcopy(self.config)
             config2.fitter.doMarginalizeAmplitudes = False
-            config2.previous = "marginal"
-            config2.tag = "direct"
+            config2.previous = config1.tag
+            config2.tag = "direct+%s" % model
             config2.freeze()
             task2 = lsst.meas.multifit.MeasureCcdTask(config=config2, butler=self.dataRef,
                                                       name=('testDirectSampler/%s' % model))
             task2.writeSchemas(butler=self.dataRef)
             task2.writeConfig(butler=self.dataRef)
-            results1 = task1.run(self.dataRef)
             results2 = task2.run(self.dataRef)
+            for outRecord in results2.outCat:
+                self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
+                self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
 
     def testOptimizer(self):
         self.config.fitter.retarget(lsst.meas.multifit.OptimizerTask)
@@ -131,6 +143,8 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             results = task.run(self.dataRef)
             for outRecord in results.outCat:
                 self.assertFalse(outRecord.get("fit.flags"))
+                self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
+                self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
 
     def tearDown(self):
         del self.dataRef
