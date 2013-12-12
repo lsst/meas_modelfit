@@ -12,23 +12,28 @@ namespace lsst { namespace meas { namespace multifit {
  *  Except where otherwise noted, we'll assume 2 dimensions here, as 1-d is trivial and higher
  *  dimensions are not supported.
  *
+ *  We will denote by @f$\Omega@f$ the region in @f$\mathbb{R}^2@f$ such that all dimensions are
+ *  positive, and use @f$\Gamma@f$ for its boundary, which consists of the coordinate axes and
+ *  an arbitrary path joining them at infinity (which we will regularly ignore since all the
+ *  functions were are concerned with are zero at infinity).
+ *
  *  @section multifitTruncatedGaussianStandardIntegral Standard-Parameter Integrals
  *
  *  In the standard parameters form, we are modeling the function
  *  @f[
- *    f(\alpha) = \frac{1_{\alpha \ge 0}(\alpha)}{k\left|2\pi\Sigma\right|^{1/2}}
+ *    f(\alpha) = \frac{1_{\Omega}(\alpha)}{k\left|2\pi\Sigma\right|^{1/2}}
  *      e^{-\frac{1}{2}(\alpha-\mu)^T \Sigma^{-1} (\alpha-\mu)}
  *  @f]
- *  Where @f$1_{\alpha \ge 0}(\alpha)@f$ is the indicator function
+ *  Where @f$1_{\Omega}(\alpha)@f$ is the indicator function
  *  @f[
- *    1_{\alpha \ge 0}(\alpha) \equiv \begin{cases}
- *       1 & \text{if $\alpha \ge 0$}\\
- *       0 & \text{if $\alpha \lt 0$}
+ *    1_{\Omega}(\alpha) \equiv \begin{cases}
+ *       1 & \text{if $\alpha \in \Omega$}\\
+ *       0 & \text{if $\alpha$ otherwise}
  *    \end{cases}
  *  @f]
  *  and @f$k@f$ is the normalization constant that ensures that @f$f(\alpha)@f$ integrates to unity:
  *  @f[
- *    k \equiv \int_0^{\infty}\!\!d\alpha\;
+ *    k \equiv \int_\!\!d\Omega\;
  *       \frac{1}{\left|2\pi\Sigma\right|^{1/2}}\;
  *       e^{-\frac{1}{2}(\alpha-\mu)^T \Sigma^{-1} (\alpha-\mu)}
  *  @f]
@@ -66,8 +71,8 @@ namespace lsst { namespace meas { namespace multifit {
  *
  *  In the series form, we are modeling the function
  *  @f[
- *    f(\alpha) = 1_{\alpha \ge 0}(\alpha) \; e^{-q(0) -g^T \alpha -\frac{1}{2}\alpha^T H \alpha}
- *              = 1_{\alpha \ge 0}(\alpha) \; e^{-q(\alpha)}
+ *    f(\alpha) = 1_{\Omega}(\alpha) \; e^{-q(0) -g^T \alpha -\frac{1}{2}\alpha^T H \alpha}
+ *              = 1_{\Omega}(\alpha) \; e^{-q(\alpha)}
  *  @f]
  *
  *  There are two distinct cases, depending on whether @f$H@f$ is singular.  In both cases,
@@ -145,8 +150,8 @@ namespace lsst { namespace meas { namespace multifit {
  *  singularity arises because the least-squares problem represented by the series expansion
  *  has many degenerate solutions).
  *
- *  The region of integration defined by the indicator function, in the rotated @f$\beta@f$ frame,
- *  lies between the lines that represent the rotates @f$\alpha_1-@f$ and @f$\alpha_1-@f$ axes,
+ *  The region of integration defined by @f$\Omega@f$, in the rotated @f$\beta@f$ frame,
+ *  lies between the lines that represent the rotated @f$\alpha_1@f$- and @f$\alpha_2@f$-axes,
  *  which are
  *  @f[
  *    \beta_1 = -\frac{V_{1,2}}{V_{1,1}}\beta_2
@@ -217,7 +222,7 @@ namespace lsst { namespace meas { namespace multifit {
  *
  *  Our importance function is thus
  *  @f[
- *    p(\alpha) = 1_{\alpha\ge 0}\;\frac{1}{2\pi|D|^{1/2}}\;
+ *    p(\alpha) = 1_{\Omega}(\alpha)\;\frac{1}{2\pi|D|^{1/2}}\;
  *                   e^{-\frac{1}{2}\left(\alpha-\mu\right)^T\,D\,\left(\alpha-\mu\right)}
  *        = \prod_i p(\alpha_i)
  *  @f]
@@ -251,5 +256,47 @@ namespace lsst { namespace meas { namespace multifit {
  *  @f[
  *   w = \frac{A_p\;f(\alpha)}{A_f\;f(\alpha)}
  *  @f]
+ *
+ *  @section multifitTruncatedGaussianMoments Moments
+ *
+ *  To derive the formulae for higher-order moments, we will use the same hybrid functional form
+ *  as in the sampling section:
+ *  @f[
+ *     f(\alpha) = e^{-\frac{1}{2}(\alpha-\mu)^T H (\alpha-\mu)}
+ *  @f]
+ *  as we are interested in normalized moments, we will not include an additional arbitrary scaling, and
+ *  we will include the truncation in the region of integration; the moments we are interested
+ *  in are:
+ *  @f[
+ *     m_0 = \int\!\!d\Omega\;f(\alpha)
+ *  @f]
+ *  @f[
+ *     m_1 = \frac{1}{m_0}\int\!\!d\Omega\;\alpha\;f(\alpha)
+ *  @f]
+ *  @f[
+ *     M_2 = \frac{1}{m_0}\int\!\!d\Omega\;(\alpha - m_1)(\alpha - m_1)^T\;f(\alpha)
+ *  @f]
+ *
+ *  Clearly, @f$m_0@f$ is trivially related to the integrals discussed above, so we will start on
+ *  @f$m_1@f$ by noting that
+ *  @f[
+ *     m_0 H (m_1-\mu) = \int\!\!d\Omega\;(H\alpha-\mu)\;f(\alpha) = -\int\!\!d\Omega\;\nabla f(\alpha)
+ *     \equiv \hat{m}_1
+ *  @f]
+ *  This surface integral is equivalent to the lower-dimensional integral
+ *  @f[
+ *     \hat{m}_1 = \int\!\!d\Gamma\;\hat{n}\;f(\alpha)
+ *  @f]
+ *  where @f$\hat{n}@f$ is a unit vector normal to @f$\Gamma@f$, pointing outwards from the center of
+ *  @f$\Omega@f$.  In 2-d, this line integral can be split into three components:
+ *   - an integral along @f$\alpha_1=0@f$ from @f$\alpha_2=0@f$ to @f$\alpha_2=\infty@f$, with
+ *     @f$\hat{n}_1=-1@f$ and @f$\hat{n}_2=0@f$.
+ *   - an integral along @f$\alpha_2=0@f$ from @f$\alpha_1=0@f$ to @f$\alpha_1=\infty@f$, with
+ *     @f$\hat{n}_1=0@f$ and @f$\hat{n}_2=-1@f$.
+ *   - an integral along a connecting path at infinity we can ignore because the integrand is zero there.
+ *  Thus, for component @f$i@f$ (and @f$j \ne i@f$), we have
+ *  @f$[
+ *    \left[\hat{m}_1\right]_i = \int\!\!d\alpha_j\;f(\alpha)|_{\alpha_i=0}
+ *  @f$]
  */
 }}}
