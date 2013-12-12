@@ -143,9 +143,17 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
             "sys.mag", type=float,
             doc="nominal magnitude used to construct UnitSystem for parameters"
             )
+        self.keys["fit.nonlinear"] = self.schema.addField(
+            "fit.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),
+            doc="best-fit nonlinear parameters"
+            )
+        self.keys["fit.amplitudes"] = self.schema.addField(
+            "fit.amplitudes", type="ArrayD", size=self.model.getAmplitudeDim(),
+            doc="best-fit linear amplitudes"
+            )
         # If we're doing a warm start from a previous run with a different tag, check that things
-        # are compatible, and add a BaseMeasure subtask that matches what was used to run the previous.
-        # (we don't need any of the stuff provided by derived classes).  This can be recursive.
+        # are compatible, and add a subtask that matches what was used to run the previous.
+        # This can be recursive.
         if self.config.previous is not None:
             butler = kwds.get("butler", None)
             if butler is None:
@@ -217,6 +225,10 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
                 likelihood = self.makeLikelihood(inputs, outRecord)
                 try:
                     self.fitter.run(likelihood, outRecord)
+                    nonlinear = outRecord[self.keys['fit.nonlinear']]
+                    nonlinear[:] = self.fitter.interpreter.computeNonlinearMean(outRecord)
+                    amplitudes = outRecord[self.keys['fit.amplitudes']]
+                    amplitudes[:] = self.fitter.interpreter.computeAmplitudeMean(outRecord)
                 except Exception as err:
                     if self.config.doRaise:
                         raise
