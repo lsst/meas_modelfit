@@ -392,6 +392,7 @@ public:
         _rootD(mu.size())
         {
             static Scalar const LOG_2PI = std::log(2.0*M_PI);
+            static Scalar const MAX_NEGATIVE_SIGMA = 6.0;
             pex::logging::Debug debugLog("meas.multifit.TruncatedGaussian");
             // We start with the inverse of the diagonal of H; we'd prefer the diagonal of the inverse,
             // but H may not be invertible.  The inverse of the diagonal at H represents the width in
@@ -400,7 +401,14 @@ public:
             _rootD = (v * s.asDiagonal() * v.adjoint()).diagonal().array().inverse().sqrt().matrix() * 2;
             debugLog.debug<8>("AAW Sampler: rootD=[%g, %g]", _rootD[0], _rootD[1]);
             for (int j = 0; j < _Ap.size(); ++j) {
-                _Ap[j] = 0.5*boost::math::erfc(-_mu[j]/(M_SQRT2*_rootD[j]));
+                Scalar x = _mu[j]/_rootD[j];
+                if (x < -MAX_NEGATIVE_SIGMA) {
+                    // if mu is more than MAX_NEGATIVE SIGMA away from the feasible region, we increase
+                    // _rootD so that it's exactly MAX_NEGATIVE_SIGMA away (just for numerical reasons)
+                    x = -MAX_NEGATIVE_SIGMA;
+                    _rootD[j] = _mu[j] / x;
+                }
+                _Ap[j] = 0.5*boost::math::erfc(-x / M_SQRT2);
                 _pNorm += 0.5*LOG_2PI + std::log(_rootD[j]*_Ap[j]);
             }
         }
