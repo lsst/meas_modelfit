@@ -319,7 +319,7 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
     _parameters(
         schema.addField(
             afw::table::Field<afw::table::Array<Scalar> >(
-                "parameter",
+                "parameters",
                 "parameter vector",
                 model->getNonlinearDim() + model->getAmplitudeDim()
             ),
@@ -607,6 +607,7 @@ bool Optimizer::_stepImpl(
 
 int Optimizer::_runImpl(HistoryRecorder const * recorder, afw::table::BaseCatalog * history) {
     pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
+    if (recorder) recorder->apply(-1, -1, *history, *this);
     int outerIterCount = 0;
     try {
         for (; outerIterCount < _ctrl.maxOuterIterations; ++outerIterCount) {
