@@ -68,7 +68,7 @@ class OptimizerTask(lsst.pipe.base.Task):
         else:
             self.recorder = None
         if previous is not None:
-            raise NotImplementedError("Warm-starting optimizer runs is current not supported")
+            self.log.warn("Warm-starting optimizer runs is current not supported; starting from ref values")
 
     def makeSampleTable(self):
         """Return a Table object that can be used to construct sample records.
