@@ -70,6 +70,7 @@ class BaseMeasureConfig(lsst.pex.config.Config):
     maxObjects = lsst.pex.config.Field(
         dtype=int,
         default=None,
+        optional=True,
         doc="If not None, clip the catalog and process only this many objects (for fast-debug purposes)"
     )
     doRaise = lsst.pex.config.Field(
