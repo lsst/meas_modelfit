@@ -102,17 +102,12 @@ class Interactive(object):
             config.tag = "intermediate"
         self.task = TaskClass(config=config, butler=self.butler)
         self.inputs = self.task.readInputs(self.dataRef)
-        self.outCat = self.task.adaptPrevious(self.inputs.prevCat)
 
-    def fit(self, index=0, id=None):
+    def fit(self, outRecord):
         """Re-fit the object indicated by the given record sequential index or source ID,
         returning the record.
         """
-        if id is not None:
-            record = self.outCat.find(id)
-        else:
-            record = self.outCat[index]
-        likelihood = self.task.makeLikelihood(self.inputs, record)
+        likelihood = self.task.makeLikelihood(self.inputs, outRecord)
         self.task.fitter.run(likelihood, record)
         return record
 

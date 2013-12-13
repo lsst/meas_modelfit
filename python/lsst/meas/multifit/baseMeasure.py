@@ -196,7 +196,6 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
 
     def adaptPrevious(self, prevCat):
         """Adapt a previous catalog to create a new output catalog."""
-        prevCat.setInterpreter(self.previous.fitter.interpreter)
         outCat = multifitLib.ModelFitCatalog(self.makeTable())
         outCat.extend(prevCat, mapper=self.prevCatMapper)
         for n, (prevRecord, outRecord) in enumerate(zip(prevCat, outCat)):

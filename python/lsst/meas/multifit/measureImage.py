@@ -66,8 +66,10 @@ class MeasureImageTask(BaseMeasureTask):
         exposure = dataRef.get(self.dataPrefix + "calexp", immediate=True)
         dataset = self.dataPrefix + "modelfits"
         if self.config.previous is not None:
+            prevCat = dataRef.get(self.dataPrefix + "modelfits", tag=self.config.previous, immediate=True)
+            prevCat.setInterpreter(self.previous.fitter.interpreter)
             return lsst.pipe.base.Struct(
-                prevCat=dataRef.get(self.dataPrefix + "modelfits", tag=self.config.previous, immediate=True),
+                prevCat=prevCat,
                 exposure=exposure
                 )
         else:
