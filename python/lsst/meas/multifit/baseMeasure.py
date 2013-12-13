@@ -100,9 +100,10 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
     Different fitting/sampling algorithms can be plugged in via the fitter subtask.
     """
 
+    RunnerClass = lsst.pipe.base.ButlerInitializedTaskRunner
     ConfigClass = BaseMeasureConfig
 
-    def __init__(self, **kwds):
+    def __init__(self, butler=None, **kwds):
         """Initialize the measurement task, including the modelfits catalog schema,
         the model, prior, and calib objects, and the fitter subtask.
         """
@@ -156,7 +157,6 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         # are compatible, and add a subtask that matches what was used to run the previous.
         # This can be recursive.
         if self.config.previous is not None:
-            butler = kwds.get("butler", None)
             if butler is None:
                 raise lsst.pipe.base.TaskError("Cannot use previous outputs for warm start without butler;"
                                                " make sure you have have pipe_base #3085 if running from"
