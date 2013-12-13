@@ -196,9 +196,13 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
 
     def adaptPrevious(self, prevCat):
         """Adapt a previous catalog to create a new output catalog."""
+        prevCat.setInterpreter(self.previous.fitter.interpreter)
         outCat = multifitLib.ModelFitCatalog(self.makeTable())
         outCat.extend(prevCat, mapper=self.prevCatMapper)
-        for prevRecord, outRecord in zip(prevCat, outCat):
+        for n, (prevRecord, outRecord) in enumerate(zip(prevCat, outCat)):
+            if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
+                self.log.info("Adapting objects %d-%d of %d (currently %3.2f%%)"
+                              % (n+1, n+self.config.progressChunk, len(outCat), (100.0*n)/len(outCat)))
             self.fitter.adaptPrevious(prevRecord, outRecord)
         return outCat
 
@@ -221,7 +225,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         if not self.config.prepOnly:
             for n, outRecord in enumerate(outCat):
                 if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
-                    self.log.info("Processing objects %d-%d of %d (currently %3.2f%%)"
+                    self.log.info("Fitting objects %d-%d of %d (currently %3.2f%%)"
                                   % (n+1, n+self.config.progressChunk, len(outCat), (100.0*n)/len(outCat)))
                 likelihood = self.makeLikelihood(inputs, outRecord)
                 try:
