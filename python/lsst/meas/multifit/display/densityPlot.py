@@ -37,7 +37,8 @@ import collections
 import numpy
 import matplotlib
 
-__all__ = ("HistogramLayer", "SurfaceLayer", "ScatterLayer", "DensityPlot", "ExampleData", "demo")
+__all__ = ("HistogramLayer", "SurfaceLayer", "ScatterLayer", "CrossPointsLayer",
+           "DensityPlot", "ExampleData", "demo")
 
 def hide_xticklabels(axes):
     for label in axes.get_xticklabels():
@@ -193,14 +194,14 @@ class SurfaceLayer(object):
         x = numpy.linspace(xMin, xMax, self.steps1d)
         z = self.eval1d(data, dim, x)
         if z is None: return
-        axes.plot(x, z, **self.kwds1d)
+        return axes.plot(x, z, **self.kwds1d)
 
     def plotY(self, axes, data, dim):
         yMin, yMax = axes.get_ylim()
         y = numpy.linspace(yMin, yMax, self.steps1d)
         z = self.eval1d(data, dim, y)
         if z is None: return
-        axes.plot(z, y, **self.kwds1d)
+        return axes.plot(z, y, **self.kwds1d)
 
     def plotXY(self, axes, data, xDim, yDim):
         xMin, xMax = axes.get_xlim()
@@ -215,40 +216,41 @@ class SurfaceLayer(object):
         else:
             return axes.contour(xg, yg, z, 6, **self.kwds2d)
 
-class PathLayer(object):
-    """A Layer class that plots a sequence of points as a path or Polygon in 2-d, and does nothing in 1-d.
+class CrossPointsLayer(object):
+    """A layer that marks a few points with axis-length vertical and horizontal lines.
 
-    Relies on two data object attributes:
-
-       verts ------ a (M,N) array of point vertices, where N is the dimension of the dataset and M is the
-                    number of data points
-
-       codes ------ an (N,) array of matplotlib.paths.PATH codes (one of MOVETO, LINETO, or CURVETO)
-                    that defines how to connect the vertices
-
+    This relies on a "points" data object attribute.
     """
 
-    defaults = dict()
+    defaults = dict(alpha=0.8)
 
-    def __init__(self, tag, **kwds):
+    def __init__(self, tag, colors=("y", "m", "c", "r", "g", "b"), **kwds):
         self.tag = tag
+        self.colors = colors
         self.kwds = mergeDefaults(kwds, self.defaults)
 
     def plotX(self, axes, data, dim):
-        pass
+        i = data.dimensions.index(dim)
+        artists = []
+        for n, point in enumerate(data.points):
+            artists.append(axes.axvline(point[i], color=self.colors[n % len(self.colors)], **self.kwds))
+        return artists
 
     def plotY(self, axes, data, dim):
-        pass
+        i = data.dimensions.index(dim)
+        artists = []
+        for n, point in enumerate(data.points):
+            artists.append(axes.axhline(point[i], color=self.colors[n % len(self.colors)], **self.kwds))
+        return artists
 
     def plotXY(self, axes, data, xDim, yDim):
         i = data.dimensions.index(yDim)
         j = data.dimensions.index(xDim)
-        verts = data.verts[:,(i,j)]
-        path = matplotlib.path.Path(verts, data.codes)
-        patch = matplotlib.patches.PathPatch(path, **self.kwds)
-        axes.add_patch(patch)
-        print axes.
-        return patch
+        artists = []
+        for n, point in enumerate(data.points):
+            artists.append(axes.axvline(point[j], color=self.colors[n % len(self.colors)], **self.kwds))
+            artists.append(axes.axhline(point[i], color=self.colors[n % len(self.colors)], **self.kwds))
+        return artists
 
 class DensityPlot(object):
     """An object that manages a matrix of matplotlib.axes.Axes objects that represent a set of 1-d and 2-d
@@ -433,8 +435,6 @@ class ExampleData(object):
 
        eval1d, eval2d -- methods used by the SurfaceLayer class; see their docs for more info
 
-       verts, codes ---- attributes used by the PathLayer class; see PathLayer docs for more info
-
        values ---------- attribute used by the HistogramLayer and ScatterLayer classes, an array
                          with shape (M,N), where N is the number of dimension and M is the number
                          of data points
@@ -450,19 +450,6 @@ class ExampleData(object):
         self.lower = {dim: -3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
         self.upper = {dim: 3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
         self.values = numpy.random.randn(2000, 3) * self.sigma[numpy.newaxis,:] + self.mu[numpy.newaxis,:]
-        self.verts = numpy.array([self.mu,
-                                  self.mu - self.sigma,
-                                  self.mu + self.sigma,
-                                  self.mu,
-                                  [0.0, 0.0, 0.0],
-                                  ])
-        self.codes = numpy.array([matplotlib.path.Path.MOVETO,
-                                  matplotlib.path.Path.LINETO,
-                                  matplotlib.path.Path.MOVETO,
-                                  matplotlib.path.Path.LINETO,
-                                  matplotlib.path.Path.CLOSEPOLY,
-                                  ])
-
 
     def eval1d(self, dim, x):
         """Evaluate the 1-d analytic function for the given dim at points x (a 1-d numpy array;
@@ -484,8 +471,7 @@ def demo():
     """Create and return a DensityPlot with example data."""
     fig = matplotlib.pyplot.figure()
     p = DensityPlot(fig, primary=ExampleData())
-    #p.layers['histogram'] = HistogramLayer('primary')
-    #p.layers['surface'] = SurfaceLayer('primary')
-    p.layers['path'] = PathLayer('primary', facecolor='g', linewidth=2)
+    p.layers['histogram'] = HistogramLayer('primary')
+    p.layers['surface'] = SurfaceLayer('primary')
     p.draw()
     return p
