@@ -22,7 +22,7 @@
 
 import numpy
 
-__all__ = ("SamplingDataAdapter",)
+__all__ = ("SamplingDataAdapter", "OptimizerDataAdapter")
 
 class SamplingDataAdapter(object):
 
@@ -63,3 +63,30 @@ class SamplingDataAdapter(object):
         xy[:,1] = y.flatten()
         projection.evaluate(xy, z)
         return z.reshape(x.shape)
+
+
+class OptimizerDataAdapter(object):
+
+    def __init__(self, record):
+        self.record = record
+        self.pdf = record.getPdf()
+        self.samples = record.getSamples().copy(deep=True)
+        self.parameters = self.samples["parameters"]
+        self.state = self.samples["state"]
+        self.verts = [self.parameters[0,:]]
+        self.codes = [matplotlib.path.Path.MOVETO]
+        current = self.parameters[0,:]
+        for parameters, state in zip(self.parameters[1:,:], self.state[1:,:]):
+            self.verts.append(parameters)
+            self.codes.append(matplotlib.path.Path.LINETO)
+            if state | multifitLib.Optimizer.STEP_REJECTED:
+                self.verts.append(current)
+                self.codes.append(matplotlib.path.Path.MOVETO)
+            else:
+                current = parameters
+        self.accepted = self.parameters[self.state | multifitLib.Optimizer.STEP_ACCEPTED]
+        self.rejected = self.parameters[self.state | multifitLib.Optimizer.STEP_REJECTED]
+        self.dimensions = list(record.getInterpreter().getParameterNames())
+        self.lower = {dim: v for dim, v in zip(self.dimensions, self.parameters.min(axis=0))}
+        self.upper = {dim: v for dim, v in zip(self.dimensions, self.parameters.max(axis=0))}
+

@@ -215,6 +215,41 @@ class SurfaceLayer(object):
         else:
             return axes.contour(xg, yg, z, 6, **self.kwds2d)
 
+class PathLayer(object):
+    """A Layer class that plots a sequence of points as a path or Polygon in 2-d, and does nothing in 1-d.
+
+    Relies on two data object attributes:
+
+       verts ------ a (M,N) array of point vertices, where N is the dimension of the dataset and M is the
+                    number of data points
+
+       codes ------ an (N,) array of matplotlib.paths.PATH codes (one of MOVETO, LINETO, or CURVETO)
+                    that defines how to connect the vertices
+
+    """
+
+    defaults = dict()
+
+    def __init__(self, tag, **kwds):
+        self.tag = tag
+        self.kwds = mergeDefaults(kwds, self.defaults)
+
+    def plotX(self, axes, data, dim):
+        pass
+
+    def plotY(self, axes, data, dim):
+        pass
+
+    def plotXY(self, axes, data, xDim, yDim):
+        i = data.dimensions.index(yDim)
+        j = data.dimensions.index(xDim)
+        verts = data.verts[:,(i,j)]
+        path = matplotlib.path.Path(verts, data.codes)
+        patch = matplotlib.patches.PathPatch(path, **self.kwds)
+        axes.add_patch(patch)
+        print axes.
+        return patch
+
 class DensityPlot(object):
     """An object that manages a matrix of matplotlib.axes.Axes objects that represent a set of 1-d and 2-d
     slices through an N-d density.
@@ -398,6 +433,8 @@ class ExampleData(object):
 
        eval1d, eval2d -- methods used by the SurfaceLayer class; see their docs for more info
 
+       verts, codes ---- attributes used by the PathLayer class; see PathLayer docs for more info
+
        values ---------- attribute used by the HistogramLayer and ScatterLayer classes, an array
                          with shape (M,N), where N is the number of dimension and M is the number
                          of data points
@@ -413,6 +450,19 @@ class ExampleData(object):
         self.lower = {dim: -3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
         self.upper = {dim: 3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
         self.values = numpy.random.randn(2000, 3) * self.sigma[numpy.newaxis,:] + self.mu[numpy.newaxis,:]
+        self.verts = numpy.array([self.mu,
+                                  self.mu - self.sigma,
+                                  self.mu + self.sigma,
+                                  self.mu,
+                                  [0.0, 0.0, 0.0],
+                                  ])
+        self.codes = numpy.array([matplotlib.path.Path.MOVETO,
+                                  matplotlib.path.Path.LINETO,
+                                  matplotlib.path.Path.MOVETO,
+                                  matplotlib.path.Path.LINETO,
+                                  matplotlib.path.Path.CLOSEPOLY,
+                                  ])
+
 
     def eval1d(self, dim, x):
         """Evaluate the 1-d analytic function for the given dim at points x (a 1-d numpy array;
@@ -434,7 +484,8 @@ def demo():
     """Create and return a DensityPlot with example data."""
     fig = matplotlib.pyplot.figure()
     p = DensityPlot(fig, primary=ExampleData())
-    p.layers['histogram'] = HistogramLayer('primary')
-    p.layers['surface'] = SurfaceLayer('primary')
+    #p.layers['histogram'] = HistogramLayer('primary')
+    #p.layers['surface'] = SurfaceLayer('primary')
+    p.layers['path'] = PathLayer('primary', facecolor='g', linewidth=2)
     p.draw()
     return p
