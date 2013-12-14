@@ -292,7 +292,7 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
         schema.addField(afw::table::Field<int>("outer", "current outer iteration count"), true)
     ),
     _inner(
-        schema.addField(afw::table::Field<int>("outer", "current outer iteration count"), true)
+        schema.addField(afw::table::Field<int>("inner", "current inner iteration count"), true)
     ),
     _state(
         schema.addField(
@@ -338,6 +338,20 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
             true
         );
     }
+}
+
+OptimizerHistoryRecorder::OptimizerHistoryRecorder(afw::table::Schema const & schema) :
+    _outer(schema["outer"]),
+    _inner(schema["inner"]),
+    _state(schema["state"]),
+    _objective(schema["objective"]),
+    _prior(schema["prior"]),
+    _trust(schema["trust"]),
+    _parameters(schema["parameters"])
+{
+    try {
+        _derivatives = schema["derivatives"];
+    } catch (pex::exceptions::NotFoundException &) {}
 }
 
 void OptimizerHistoryRecorder::apply(

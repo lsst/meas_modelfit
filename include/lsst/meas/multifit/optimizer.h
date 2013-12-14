@@ -289,11 +289,13 @@ struct OptimizerIterationData {
 class OptimizerHistoryRecorder {
 public:
 
-    explicit OptimizerHistoryRecorder(
+    OptimizerHistoryRecorder(
         afw::table::Schema & schema,
         PTR(Model) model,
         bool doRecordDerivatives
     );
+
+    explicit OptimizerHistoryRecorder(afw::table::Schema const & schema);
 
     void apply(
         int outerIterCount,
