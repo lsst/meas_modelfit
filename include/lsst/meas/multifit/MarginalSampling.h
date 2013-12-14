@@ -64,12 +64,30 @@ public:
 
     ArrayKey getNestedKey() const { return _nestedKey; }
 
+#ifndef SWIG // can't use Eigen references as Python output arguments
+
     void unpackNested(
         ndarray::Array<Scalar const,1,1> const & nested, Vector & gradient, Matrix & hessian
     ) const;
 
     void unpackNested(
         afw::table::BaseRecord const & sample, Vector & gradient, Matrix & hessian
+    ) const {
+        unpackNested(sample.get(_nestedKey), gradient, hessian);
+    }
+
+#endif
+
+    void unpackNested(
+        ndarray::Array<Scalar const,1,1> const & nested,
+        ndarray::Array<Scalar,1,1> const & gradient,
+        ndarray::Array<Scalar,2,2> const & hessian
+    ) const;
+
+    void unpackNested(
+        afw::table::BaseRecord const & sample,
+        ndarray::Array<Scalar,1,1> const & gradient,
+        ndarray::Array<Scalar,2,2> const & hessian
     ) const {
         unpackNested(sample.get(_nestedKey), gradient, hessian);
     }

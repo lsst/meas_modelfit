@@ -116,6 +116,20 @@ void MarginalSamplingInterpreter::unpackNested(
     }
 }
 
+void MarginalSamplingInterpreter::unpackNested(
+    ndarray::Array<Scalar const,1,1> const & nested,
+    ndarray::Array<Scalar,1,1> const & gradient,
+    ndarray::Array<Scalar,2,2> const & hessian
+) const {
+    int const n = getAmplitudeDim();
+    for (int i = 0, k = n; i < n; ++i) {
+        gradient[i] = nested[i];
+        for (int j = 0; j <= i; ++j, ++k) {
+            hessian[i][j] = hessian[j][i] = nested[k];
+        }
+    }
+}
+
 ndarray::Array<Scalar,1,1> MarginalSamplingInterpreter::computeAmplitudeQuantiles(
     ModelFitRecord const & record,
     ndarray::Array<Scalar const,1,1> const & fractions,

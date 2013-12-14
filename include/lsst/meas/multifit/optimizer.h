@@ -302,6 +302,8 @@ public:
         Optimizer const & optimizer
     ) const;
 
+#ifndef SWIG // can't use Eigen references as output arguments in Python
+
     void unpackDerivatives(
         ndarray::Array<Scalar const,1,1> const & nested,
         Vector & gradient,
@@ -312,6 +314,20 @@ public:
         afw::table::BaseRecord const & record,
         Vector & gradient,
         Matrix & hessian
+    ) const;
+
+#endif
+
+    void unpackDerivatives(
+        ndarray::Array<Scalar const,1,1> const & nested,
+        ndarray::Array<Scalar,1,1> const & gradient,
+        ndarray::Array<Scalar,2,2> const & hessian
+    ) const;
+
+    void unpackDerivatives(
+        afw::table::BaseRecord const & record,
+        ndarray::Array<Scalar,1,1> const & gradient,
+        ndarray::Array<Scalar,2,2> const & hessian
     ) const;
 
 private:

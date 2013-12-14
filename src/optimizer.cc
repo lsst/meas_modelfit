@@ -388,6 +388,34 @@ void OptimizerHistoryRecorder::unpackDerivatives(
 
 void OptimizerHistoryRecorder::unpackDerivatives(
     afw::table::BaseRecord const & record,
+    ndarray::Array<Scalar,1,1> const & gradient,
+    ndarray::Array<Scalar,2,2> const & hessian
+) const {
+    if (!_derivatives.isValid()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "HistoryRecorder was not configured to save derivatives"
+        );
+    }
+    return unpackDerivatives(record[_derivatives], gradient, hessian);
+}
+
+void OptimizerHistoryRecorder::unpackDerivatives(
+    ndarray::Array<Scalar const,1,1> const & packed,
+    ndarray::Array<Scalar,1,1> const & gradient,
+    ndarray::Array<Scalar,2,2> const & hessian
+) const {
+    int const n = _parameters.getSize();
+    for (int i = 0, k = n; i < n; ++i) {
+        gradient[i] = packed[i];
+        for (int j = 0; j <= i; ++j, ++k) {
+            hessian[i][j] = hessian[j][i] = packed[k];
+        }
+    }
+}
+
+void OptimizerHistoryRecorder::unpackDerivatives(
+    afw::table::BaseRecord const & record,
     Vector & gradient,
     Matrix & hessian
 ) const {
