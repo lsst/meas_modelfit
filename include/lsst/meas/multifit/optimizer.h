@@ -332,15 +332,14 @@ public:
         ndarray::Array<Scalar,2,2> const & hessian
     ) const;
 
-private:
-    afw::table::Key<int> _outer;
-    afw::table::Key<int> _inner;
-    afw::table::Key<int> _state;
-    ScalarKey _objective;
-    ScalarKey _prior;
-    ScalarKey _trust;
-    ArrayKey _parameters;
-    ArrayKey _derivatives;
+    afw::table::Key<int> outer;
+    afw::table::Key<int> inner;
+    afw::table::Key<int> state;
+    ScalarKey objective;
+    ScalarKey prior;
+    ScalarKey trust;
+    ArrayKey parameters;
+    ArrayKey derivatives;
 };
 
 /**

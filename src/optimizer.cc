@@ -288,13 +288,13 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
     PTR(Model) model,
     bool doSaveDerivatives
 ) :
-    _outer(
+    outer(
         schema.addField(afw::table::Field<int>("outer", "current outer iteration count"), true)
     ),
-    _inner(
+    inner(
         schema.addField(afw::table::Field<int>("inner", "current inner iteration count"), true)
     ),
-    _state(
+    state(
         schema.addField(
             afw::table::Field<int>(
                 "state", "state bitflags after this step; see Optimizer::StateFlags"
@@ -302,7 +302,7 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
             true
         )
     ),
-    _objective(
+    objective(
         schema.addField(
             afw::table::Field<Scalar>(
                 "objective", "value of objective function (-ln P) at parameters"
@@ -310,13 +310,13 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
             true
         )
     ),
-    _prior(
+    prior(
         schema.addField(afw::table::Field<Scalar>("prior", "prior probability at parameters"), true)
     ),
-    _trust(
+    trust(
         schema.addField(afw::table::Field<Scalar>("trust", "size of trust region after this step"), true)
     ),
-    _parameters(
+    parameters(
         schema.addField(
             afw::table::Field<afw::table::Array<Scalar> >(
                 "parameters",
@@ -329,7 +329,7 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
 {
     if (doSaveDerivatives) {
         int const n = model->getNonlinearDim() + model->getAmplitudeDim();
-        _derivatives = schema.addField(
+        derivatives = schema.addField(
             afw::table::Field<afw::table::Array<Scalar> >(
                 "derivatives",
                 "objective function derivatives; use unpackDerivatives() to unpack",
@@ -341,16 +341,16 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(
 }
 
 OptimizerHistoryRecorder::OptimizerHistoryRecorder(afw::table::Schema const & schema) :
-    _outer(schema["outer"]),
-    _inner(schema["inner"]),
-    _state(schema["state"]),
-    _objective(schema["objective"]),
-    _prior(schema["prior"]),
-    _trust(schema["trust"]),
-    _parameters(schema["parameters"])
+    outer(schema["outer"]),
+    inner(schema["inner"]),
+    state(schema["state"]),
+    objective(schema["objective"]),
+    prior(schema["prior"]),
+    trust(schema["trust"]),
+    parameters(schema["parameters"])
 {
     try {
-        _derivatives = schema["derivatives"];
+        derivatives = schema["derivatives"];
     } catch (pex::exceptions::NotFoundException &) {}
 }
 
@@ -361,16 +361,16 @@ void OptimizerHistoryRecorder::apply(
     Optimizer const & optimizer
 ) const {
     PTR(afw::table::BaseRecord) record = history.addNew();
-    record->set(_outer, outerIterCount);
-    record->set(_inner, innerIterCount);
-    record->set(_state, optimizer.getState());
-    record->set(_trust, optimizer._trustRadius);
+    record->set(outer, outerIterCount);
+    record->set(inner, innerIterCount);
+    record->set(state, optimizer.getState());
+    record->set(trust, optimizer._trustRadius);
     OptimizerIterationData const * data;
     if (optimizer.getState() & Optimizer::STATUS_STEP_ACCEPTED) {
         data = &optimizer._current;
-        if (_derivatives.isValid()) {
-            int const n = _parameters.getSize();
-            ndarray::Array<Scalar,1,1> packed = (*record)[_derivatives];
+        if (derivatives.isValid()) {
+            int const n = parameters.getSize();
+            ndarray::Array<Scalar,1,1> packed = (*record)[derivatives];
             for (int i = 0, k = n; i < n; ++i) {
                 packed[i] = optimizer._gradient[i];
                 for (int j = 0; j <= i; ++j, ++k) {
@@ -381,9 +381,9 @@ void OptimizerHistoryRecorder::apply(
     } else {
         data = &optimizer._next;
     }
-    record->set(_parameters, data->parameters);
-    record->set(_objective, data->objectiveValue);
-    record->set(_prior, data->priorValue);
+    record->set(parameters, data->parameters);
+    record->set(objective, data->objectiveValue);
+    record->set(prior, data->priorValue);
 }
 
 void OptimizerHistoryRecorder::unpackDerivatives(
@@ -391,7 +391,7 @@ void OptimizerHistoryRecorder::unpackDerivatives(
     Vector & gradient,
     Matrix & hessian
 ) const {
-    int const n = _parameters.getSize();
+    int const n = parameters.getSize();
     for (int i = 0, k = n; i < n; ++i) {
         gradient[i] = packed[i];
         for (int j = 0; j <= i; ++j, ++k) {
@@ -405,13 +405,13 @@ void OptimizerHistoryRecorder::unpackDerivatives(
     ndarray::Array<Scalar,1,1> const & gradient,
     ndarray::Array<Scalar,2,2> const & hessian
 ) const {
-    if (!_derivatives.isValid()) {
+    if (!derivatives.isValid()) {
         throw LSST_EXCEPT(
             pex::exceptions::LogicErrorException,
             "HistoryRecorder was not configured to save derivatives"
         );
     }
-    return unpackDerivatives(record[_derivatives], gradient, hessian);
+    return unpackDerivatives(record[derivatives], gradient, hessian);
 }
 
 void OptimizerHistoryRecorder::unpackDerivatives(
@@ -419,7 +419,7 @@ void OptimizerHistoryRecorder::unpackDerivatives(
     ndarray::Array<Scalar,1,1> const & gradient,
     ndarray::Array<Scalar,2,2> const & hessian
 ) const {
-    int const n = _parameters.getSize();
+    int const n = parameters.getSize();
     for (int i = 0, k = n; i < n; ++i) {
         gradient[i] = packed[i];
         for (int j = 0; j <= i; ++j, ++k) {
@@ -433,13 +433,13 @@ void OptimizerHistoryRecorder::unpackDerivatives(
     Vector & gradient,
     Matrix & hessian
 ) const {
-    if (!_derivatives.isValid()) {
+    if (!derivatives.isValid()) {
         throw LSST_EXCEPT(
             pex::exceptions::LogicErrorException,
             "HistoryRecorder was not configured to save derivatives"
         );
     }
-    return unpackDerivatives(record[_derivatives], gradient, hessian);
+    return unpackDerivatives(record[derivatives], gradient, hessian);
 }
 
 // ----------------- Optimizer ------------------------------------------------------------------------------
