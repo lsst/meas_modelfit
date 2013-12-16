@@ -44,6 +44,7 @@ from .. import multifitLib
 
 from .densityPlot import *
 from .modelFitAdapters import *
+from .optimizerDisplay import *
 
 __all__ = ("Interactive", )
 
@@ -141,6 +142,11 @@ class Interactive(object):
         p.layers.update(layers)
         p.draw()
         return p
+
+    def displayOptimizer(self, record, **kwds):
+        likelihood = self.task.makeLikelihood(self.inputs, record)
+        objective = multifitLib.OptimizerObjective.makeFromLikelihood(likelihood, self.task.prior)
+        return OptimizerDisplay(record, objective)
 
     def displayResiduals(self, record, nonlinear="ref", amplitudes="ref"):
         """Display the data postage stamp along with the model image and residuals in ds9.
