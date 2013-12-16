@@ -100,9 +100,9 @@ class OptimizerDisplayFigure(object):
         self.yDim = yDim
         self.j = self.parent.dimensions.index(self.xDim)
         self.i = self.parent.dimensions.index(self.yDim)
-        self.iKey = self.parent.recorder.parameters[self.i]
-        self.jKey = self.parent.recorder.parameters[self.j]
-        self.objKey = self.parent.recorder.objective
+        self.yKey = self.parent.recorder.parameters[self.i]
+        self.xKey = self.parent.recorder.parameters[self.j]
+        self.zKey = self.parent.recorder.objective
         # grid slice indices corresponding to the dimensions we're plotting
         self.slice2d = [s//2 for s in self.parent.unitGrid.shape[:-1]]
         self.slice2d[self.i] = slice(None)
@@ -115,9 +115,9 @@ class OptimizerDisplayFigure(object):
         self.sliceY[self.i] = slice(None)
         self.sliceY = tuple(self.sliceY)
         self.track = dict(
-            x = numpy.array([iteration.sample.get(self.jKey) for iteration in self.parent.track]),
-            y = numpy.array([iteration.sample.get(self.iKey) for iteration in self.parent.track]),
-            z = numpy.array([iteration.sample.get(self.objKey) for iteration in self.parent.track]),
+            x = numpy.array([iteration.sample.get(self.xKey) for iteration in self.parent.track]),
+            y = numpy.array([iteration.sample.get(self.yKey) for iteration in self.parent.track]),
+            z = numpy.array([iteration.sample.get(self.zKey) for iteration in self.parent.track]),
             )
         self.n = n
         self.figure = matplotlib.pyplot.figure("%s vs %s" % (xDim, yDim), figsize=(16, 8))
@@ -140,6 +140,7 @@ class OptimizerDisplayFigure(object):
         self.artists = []
         self.guessExtent()
         self.plotTrack()
+        self.plotRejected()
         self.plotSurfaces()
 
     @property
@@ -153,8 +154,8 @@ class OptimizerDisplayFigure(object):
 
     def guessExtent(self):
         current = self.parent.track[self.n]
-        x = current.sample.get(self.jKey)
-        y = current.sample.get(self.iKey)
+        x = current.sample.get(self.xKey)
+        y = current.sample.get(self.yKey)
         zMin1 = current.objectiveValues[self.slice2d].min()
         zMax1 = current.objectiveValues[self.slice2d].max()
         zMin2 = current.objectiveModel[self.slice2d].min()
@@ -201,6 +202,21 @@ class OptimizerDisplayFigure(object):
         self.axes2d.plot(self.track['x'], self.track['y'], **kwds)
         self.axesX.plot(self.track['x'], self.track['z'], **kwds)
         self.axesY.plot(self.track['z'], self.track['y'], **kwds)
+
+    def plotRejected(self):
+        kwds = dict(markeredgewidth=0, markerfacecolor='r', color='r', marker='v')
+        current = self.parent.track[self.n]
+        cx = current.sample.get(self.xKey)
+        cy = current.sample.get(self.yKey)
+        cz = current.sample.get(self.zKey)
+        for r in current.rejected:
+            x = [cx, r.get(self.xKey)]
+            y = [cy, r.get(self.yKey)]
+            z = [cz, r.get(self.zKey)]
+            self.artists.extend(self.axes3d.plot(x, y, z, **kwds))
+            self.artists.extend(self.axes2d.plot(x, y, **kwds))
+            self.artists.extend(self.axesX.plot(x, z, **kwds))
+            self.artists.extend(self.axesY.plot(z, y, **kwds))
 
     def plotSurfaces(self):
         current = self.parent.track[self.n]
@@ -249,4 +265,5 @@ class OptimizerDisplayFigure(object):
                 pass
         self.artists = []
         self.plotSurfaces()
+        self.plotRejected()
         self.figure.canvas.draw()
