@@ -129,6 +129,11 @@ public:
         dataSize(dataSize_), parameterSize(parameterSize_)
     {}
 
+    void fillObjectiveValueGrid(
+        ndarray::Array<Scalar const,2,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & output
+    ) const;
+
     virtual void computeResiduals(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & residuals
@@ -330,6 +335,12 @@ public:
         afw::table::BaseRecord const & record,
         ndarray::Array<Scalar,1,1> const & gradient,
         ndarray::Array<Scalar,2,2> const & hessian
+    ) const;
+
+    void fillObjectiveModelGrid(
+        afw::table::BaseRecord const & record,
+        ndarray::Array<Scalar const,2,1> const & parameters,
+        ndarray::Array<Scalar,1,1> const & output
     ) const;
 
     afw::table::Key<int> outer;

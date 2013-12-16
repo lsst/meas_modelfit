@@ -185,6 +185,17 @@ void OptimizerInterpreter::_unpackNonlinear(
 
 // ----------------- OptimizerObjective ---------------------------------------------------------------------
 
+void OptimizerObjective::fillObjectiveValueGrid(
+    ndarray::Array<Scalar const,2,1> const & grid,
+    ndarray::Array<Scalar,1,1> const & output
+) const {
+    ndarray::Array<Scalar,1,1> residuals = ndarray::allocate(dataSize);
+    for (int i = 0, n = output.getSize<0>(); i < n; ++i) {
+        computeResiduals(grid[i], residuals);
+        output[i] = 0.5* residuals.asEigen().squaredNorm();
+    }
+}
+
 namespace {
 
 class LikelihoodOptimizerObjective : public OptimizerObjective {
@@ -440,6 +451,23 @@ void OptimizerHistoryRecorder::unpackDerivatives(
         );
     }
     return unpackDerivatives(record[derivatives], gradient, hessian);
+}
+
+void OptimizerHistoryRecorder::fillObjectiveModelGrid(
+    afw::table::BaseRecord const & record,
+    ndarray::Array<Scalar const,2,1> const & grid,
+    ndarray::Array<Scalar,1,1> const & output
+) const {
+    Scalar q = record.get(objective);
+    Vector gradient(parameters.getSize());
+    Matrix hessian(parameters.getSize(), parameters.getSize());
+    Vector s(parameters.getSize());
+    Vector current = record.get(parameters).asEigen();
+    unpackDerivatives(record, gradient, hessian);
+    for (int i = 0, n = output.getSize<0>(); i < n; ++i) {
+        s = grid[i].asEigen() - current;
+        output[i] = q + s.dot(gradient + 0.5*hessian*s);
+    }
 }
 
 // ----------------- Optimizer ------------------------------------------------------------------------------
