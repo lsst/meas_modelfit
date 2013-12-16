@@ -192,7 +192,15 @@ void OptimizerObjective::fillObjectiveValueGrid(
     ndarray::Array<Scalar,1,1> residuals = ndarray::allocate(dataSize);
     for (int i = 0, n = output.getSize<0>(); i < n; ++i) {
         computeResiduals(grid[i], residuals);
-        output[i] = 0.5* residuals.asEigen().squaredNorm();
+        output[i] = 0.5*residuals.asEigen().squaredNorm();
+        if (hasPrior()) {
+            Scalar prior = computePrior(grid[i]);
+            if (prior <= 0.0) {
+                output[i] = std::numeric_limits<Scalar>::infinity();
+            } else {
+                output[i] -= std::log(prior);
+            }
+        }
     }
 }
 
@@ -750,7 +758,7 @@ void solveTrustRegion(
         } else {
             x.asEigen() = -eigh.eigenvectors() * tmp;
             xsn = x.asEigen().squaredNorm();
-            log.debug<10>("Continuing; Q_1^T g != 0");
+            log.debug<10>("Continuing; Q_1^T g != 0, ||x||=%f");
         }
     }
     int nIter = 0;
