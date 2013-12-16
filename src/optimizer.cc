@@ -377,7 +377,7 @@ void OptimizerHistoryRecorder::apply(
     record->set(state, optimizer.getState());
     record->set(trust, optimizer._trustRadius);
     OptimizerIterationData const * data;
-    if (optimizer.getState() & Optimizer::STATUS_STEP_ACCEPTED) {
+    if (!(optimizer.getState() & Optimizer::STATUS_STEP_REJECTED)) {
         data = &optimizer._current;
         if (derivatives.isValid()) {
             int const n = parameters.getSize();
