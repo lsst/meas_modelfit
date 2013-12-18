@@ -45,18 +45,24 @@ if False:
 class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
 
     def check1d(self, mu, hessian, tg):
-        evaluator = tg.evaluateLog()
+        evaluator = tg.evaluate()
+        logEvaluator = tg.evaluateLog()
         dist = scipy.stats.norm(loc=mu[0], scale=hessian[0,0]**-0.5)
         self.assertClose(1.0 - dist.cdf(0.0), tg.getUntruncatedFraction())
+        eps = 1E-7
         if numpy.all(mu >= 0.0):
-            self.assertClose(evaluator(mu), tg.getLogPeakAmplitude())
-            self.assertGreater(evaluator(mu+1E-6), tg.getLogPeakAmplitude())
-            self.assertGreater(evaluator(mu-1E-6), tg.getLogPeakAmplitude())
+            self.assertClose(logEvaluator(mu), tg.getLogPeakAmplitude())
+            self.assertGreater(logEvaluator(mu+eps), tg.getLogPeakAmplitude())
+            self.assertGreater(logEvaluator(mu-eps), tg.getLogPeakAmplitude())
+        peak = numpy.array([tg.maximize()]) # workaround NumPy automatic-scalarification
+        self.assertGreater(evaluator(peak), 0.0)
+        self.assertLess(evaluator(peak+eps), evaluator(peak))
+        self.assertLess(evaluator(peak-eps), evaluator(peak))
         def altLogEval(x):
             if numpy.any(x < 0): return float("inf")
             return tg.getLogPeakAmplitude() + 0.5*hessian[0,0]*(x-mu[0])**2
         for alpha in (numpy.random.randn(10, 1) * hessian[0,0]**-0.5 + mu[0]):
-            x1 = evaluator(alpha)
+            x1 = logEvaluator(alpha)
             x2 = altLogEval(alpha[0])
             if numpy.isfinite(x1) and numpy.isfinite(x2):
                 self.assertClose(x1, x2, rtol=1E-14)
@@ -66,17 +72,29 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
         self.assertLess(check, 1E-7)
         self.assertClose(integral, numpy.exp(-tg.getLogIntegral()), atol=check)
 
-    def check2d(self, mu, hessian, tg):
-        evaluator = tg.evaluateLog()
+    def check2d(self, mu, hessian, tg, isDegenerate=False):
+        evaluator = tg.evaluate()
+        logEvaluator = tg.evaluateLog()
+        unit1 = numpy.array([1.0, 0.0])
+        unit2 = numpy.array([0.0, 1.0])
+        eps = 1E-7
         if numpy.all(mu >= 0.0):
-            self.assertClose(evaluator(mu), tg.getLogPeakAmplitude())
-            self.assertGreater(evaluator(mu+1E-6), tg.getLogPeakAmplitude())
-            self.assertGreater(evaluator(mu-1E-6), tg.getLogPeakAmplitude())
+            self.assertClose(logEvaluator(mu), tg.getLogPeakAmplitude())
+            self.assertGreater(logEvaluator(mu + unit1*eps), tg.getLogPeakAmplitude())
+            self.assertGreater(logEvaluator(mu - unit1*eps), tg.getLogPeakAmplitude())
+            self.assertGreater(logEvaluator(mu + unit2*eps), tg.getLogPeakAmplitude())
+            self.assertGreater(logEvaluator(mu - unit2*eps), tg.getLogPeakAmplitude())
+        peak = tg.maximize()
+        self.assertGreater(evaluator(peak), 0.0)
+        self.assertLess(evaluator(peak + unit1*eps) / evaluator(peak), 1.0)
+        self.assertLess(evaluator(peak - unit1*eps) / evaluator(peak), 1.0)
+        self.assertLess(evaluator(peak + unit2*eps) / evaluator(peak), 1.0)
+        self.assertLess(evaluator(peak - unit2*eps) / evaluator(peak), 1.0)
         def altLogEval(a):
             if numpy.any(a < 0): return float("inf")
             return tg.getLogPeakAmplitude() + 0.5*numpy.dot(numpy.dot(hessian, a - mu).transpose(), a - mu)
         for alpha in (numpy.random.randn(10, 2) * hessian.diagonal()**-0.5 + mu):
-            x1 = evaluator(alpha)
+            x1 = logEvaluator(alpha)
             x2 = altLogEval(alpha)
             if numpy.isfinite(x1) and numpy.isfinite(x2):
                 self.assertClose(x1, x2, rtol=1E-14)
@@ -137,16 +155,16 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             self.assertClose(numpy.linalg.inv(sigma), hessian)
             mu = -numpy.dot(sigma, gradient)
             tg1 = lsst.meas.multifit.TruncatedGaussian.fromStandardParameters(mu, sigma)
-            tg2 = lsst.meas.multifit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertClose(tg1.getLogPeakAmplitude(),
                              (numpy.log(tg1.getUntruncatedFraction())
                               + 0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))),
                              rtol=1E-13)
             self.assertEqual(tg1.getLogIntegral(), 0.0)
+            self.check2d(mu, hessian, tg1)
+            tg2 = lsst.meas.multifit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertClose(tg2.getLogPeakAmplitude(),
                              q0+0.5*numpy.dot(mu, gradient),
                              rtol=1E-13)
-            self.check2d(mu, hessian, tg1)
             self.check2d(mu, hessian, tg2)
 
     def testDegenerate(self):
@@ -166,7 +184,7 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             self.assertClose(tg.getLogPeakAmplitude(),
                              q0+0.5*numpy.dot(mu, gradient),
                              rtol=1E-13)
-            self.check2d(mu, hessian, tg)
+            self.check2d(mu, hessian, tg, isDegenerate=True)
 
 def suite():
     """Returns a suite containing all the test cases in this module."""

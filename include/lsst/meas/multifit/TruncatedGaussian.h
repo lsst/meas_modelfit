@@ -182,6 +182,15 @@ public:
     int getDim() const;
 
     /**
+     *  @brief Return the location of the maximum of the truncated Gaussian.
+     *
+     *  This is simply the untruncated location parameter mu if all of its elements are positive;
+     *  otherwise, one or more elements will be negative (and the rest may not be same as the elements
+     *  of mu).
+     */
+    Vector maximize() const;
+
+    /**
      *  @brief Return the fraction of the Gaussian integral that was truncated by the bounds
      *
      *  In series form (see fromSeriesParameters), this is

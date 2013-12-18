@@ -34,6 +34,7 @@
 #include "boost/math/special_functions/erf.hpp"
 #include "boost/make_shared.hpp"
 #include "Eigen/Eigenvalues"
+#include "Eigen/LU"
 
 #include "ndarray/eigen.h"
 #define LSST_MAX_DEBUG 10
@@ -235,6 +236,39 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
 
 int TruncatedGaussian::getDim() const {
     return _impl->mu.size();
+}
+
+Vector TruncatedGaussian::maximize() const {
+    Vector result(_impl->mu);
+    int const n = _impl->mu.size();
+    int k = 0;
+    for (int i = 0; i < n; ++i) {
+        if (result[i] < 0.0) {
+            ++k;
+        }
+    }
+    if (k > 0) {
+        Eigen::VectorXi indices(n);
+        for (int i = 0, j1 = 0, j2 = n - k; i < n; ++i) {
+            if (result[i] < 0.0) {
+                indices[i] = j2;
+                ++j2;
+            } else {
+                indices[i] = j1;
+                ++j1;
+            }
+        }
+        Eigen::PermutationMatrix<Eigen::Dynamic> p(indices);
+        // beta, G, nu: permuted versions of alpha, H, mu
+        Matrix pv = p * _impl->v;
+        Matrix G = pv * _impl->s.asDiagonal() * pv.adjoint();
+        Vector nu = p * _impl->mu;
+        Vector beta = Vector::Zero(n);
+        Eigen::FullPivLU<Matrix> solver(G.topLeftCorner(n - k, n - k));
+        beta.head(n - k) = solver.solve(G.topRightCorner(n - k, k) * nu.tail(k)) + nu.head(n - k);
+        result = p.transpose() * beta;
+    }
+    return result;
 }
 
 Scalar TruncatedGaussian::getUntruncatedFraction() const {

@@ -257,6 +257,81 @@ namespace lsst { namespace meas { namespace multifit {
  *   w = \frac{A_p\;f(\alpha)}{A_f\;f(\alpha)}
  *  @f]
  *
+ *  @section multifitTruncatedGaussianMaximization Maximization
+ *
+ *  To derive the formulae for higher-order moments, we will use the same hybrid functional form
+ *  as in the sampling section:
+ *  @f[
+ *     f(\alpha) = e^{-\frac{1}{2}(\alpha-\mu)^T H (\alpha-\mu)}
+ *  @f]
+ *  Our goal is to solve the quadratic programming problem
+ *  @f[
+ *   \max_\alpha f(\alpha) = \min_\alpha (\alpha-\mu)^T H (\alpha-\mu)
+ *  @f]
+ *  subject to
+ *  @f[
+ *   \alpha \ge 0
+ *  @f]
+ *  In general quadratic programming, the difficulty is in knowing which of the inequality constraints
+ *  will be active at the solution, and "active set" methods work by adding and removing constraints
+ *  as they explore the problem.  In our case, the constraints are sufficiently simple (and the objective
+ *  function is known to be convex), so we can simply identify the active set at the solution as the
+ *  dimensions for which the untruncated maximum point (i.e. @f$\mu@f$) has a negative value.
+ *
+ *  We begin simply by iterating over the vector @f$\mu@f$, identifying an elements that are less than
+ *  zero.  For each such element @f$\mu_i@f$, we add a unit vector row to a permutation matrix @f$A@f$
+ *  such that @f$A^T\mu@f$ selects the components of @f$\mu@f$ that are less than zero.  We can now
+ *  solve the equality-constrained quadratic problem
+ *  @f[
+ *   \min_\alpha (\alpha-\mu)^T H (\alpha-\mu)
+ *  @f]
+ *  subject to
+ *  @f[
+ *   A^T\alpha = 0
+ *  @f]
+ *
+ *  We start by computing the QR decomposition of @f$A@f$:
+ *  @f[
+ *   A = Q R = \left[\begin{array}{c c}
+ *                 Q_1 & Q_2
+ *             \end{array}\right]
+ *             \left[\begin{array}{c}
+ *                 R_1 \\
+ *                 0
+ *             \end{array}\right]
+ *  @f]
+ *  We then perform the change of variables
+ *  @f[
+ *   \tau = Q^T \alpha = \left[\begin{array}{c}
+ *                           Q_1^T \alpha \\
+ *                           Q_2^T \alpha
+ *                         \end{array}\right]
+ *                       = \left[\begin{array}{c}
+ *                           \tau_1 \\
+ *                           \tau_2
+ *                         \end{array}\right]
+ *  @f]
+ *  with inverse
+ *  @f[
+ *    \alpha = Q\tau = Q_1\tau_1 + Q_2\tau_2
+ *  @f]
+ *  The constraint system reduces to @f$\tau_1=0@f$, which we can then plug into the objective function:
+ *  @f[
+ *    \min_{\tau_1} (Q_1\tau_1 - \mu)^T H (Q_1\tau_1 - \mu)
+ *  @f]
+ *  Differentiating by @f$\tau_1@f$ and setting the result to zero, we have:
+ *  @f[
+ *   2 H (Q_1\tau_1 - \mu) = 0
+ *  @f]
+ *  or simply (because @f$Q_1^T Q_1 = I@f$)
+ *  @f[
+ *   \tau_1 = Q_1^T\mu
+ *  @f]
+ *  The corresponding value of @f$\alpha@f$ is then
+ *  @f[
+ *   \hat{\alpha} = Q_1 \tau_1 = Q_1 Q_1^T \mu
+ *  @f]
+ *
  *  @section multifitTruncatedGaussianMoments Moments
  *
  *  To derive the formulae for higher-order moments, we will use the same hybrid functional form
@@ -264,7 +339,7 @@ namespace lsst { namespace meas { namespace multifit {
  *  @f[
  *     f(\alpha) = e^{-\frac{1}{2}(\alpha-\mu)^T H (\alpha-\mu)}
  *  @f]
- *  as we are interested in normalized moments, we will not include an additional arbitrary scaling, and
+ *  As we are interested in normalized moments, we will not include an additional arbitrary scaling, and
  *  we will include the truncation in the region of integration; the moments we are interested
  *  in are:
  *  @f[
