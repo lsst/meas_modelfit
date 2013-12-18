@@ -525,7 +525,9 @@ void Optimizer::_computeDerivatives() {
     _jacobian.setZero();
     _next.parameters.deep() = _current.parameters;
     for (int n = 0; n < _objective->parameterSize; ++n) {
-        double numDiffStep = _ctrl.numDiffRelStep * _next.parameters[n] + _ctrl.numDiffAbsStep;
+        double numDiffStep = _ctrl.numDiffRelStep * _next.parameters[n]
+            + _ctrl.numDiffTrustRadiusStep * _trustRadius
+            + _ctrl.numDiffAbsStep;
         _next.parameters[n] += numDiffStep;
         _objective->computeResiduals(_next.parameters, _next.residuals);
         _jacobian.col(n) = (_next.residuals.asEigen() - _current.residuals.asEigen()) / numDiffStep;

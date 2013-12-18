@@ -193,12 +193,17 @@ public:
 
     LSST_CONTROL_FIELD(
         numDiffRelStep, double,
-        "relative step size used for numerical derivatives (added to absolute step)"
+        "relative step size used for numerical derivatives (added to other steps)"
     );
 
     LSST_CONTROL_FIELD(
         numDiffAbsStep, double,
-        "absolute step size used for numerical derivatives (added to relative step)"
+        "absolute step size used for numerical derivatives (added to other steps)"
+    );
+
+    LSST_CONTROL_FIELD(
+        numDiffTrustRadiusStep, double,
+        "step size (in units of trust radius) used for numerical derivatives (added to relative step)"
     );
 
     LSST_CONTROL_FIELD(
@@ -258,9 +263,9 @@ public:
 
     OptimizerControl() :
         noSR1Term(false), skipSR1UpdateThreshold(1E-8),
-        minTrustRadiusThreshold(1E-8),
-        gradientThreshold(1E-8),
-        numDiffRelStep(1E-6), numDiffAbsStep(1E-6),
+        minTrustRadiusThreshold(1E-5),
+        gradientThreshold(1E-5),
+        numDiffRelStep(0.0), numDiffAbsStep(0.0), numDiffTrustRadiusStep(0.1),
         stepAcceptThreshold(0.0),
         trustRegionInitialSize(1.0),
         trustRegionGrowReductionRatio(0.75),
