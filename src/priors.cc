@@ -50,6 +50,16 @@ Scalar MixturePrior::marginalize(
         - std::log(_mixture->evaluate(parameters.asEigen()));
 }
 
+Scalar MixturePrior::maximize(
+    Vector const & gradient, Matrix const & hessian,
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    ndarray::Array<Scalar,1,1> const & amplitudes
+) const {
+    TruncatedGaussian tg = TruncatedGaussian::fromSeriesParameters(0.0, gradient, hessian);
+    amplitudes.asEigen() = tg.maximize();
+    return tg.evaluateLog()(amplitudes.asEigen());
+}
+
 Scalar MixturePrior::evaluate(
     ndarray::Array<Scalar const,1,1> const & parameters,
     ndarray::Array<Scalar const,1,1> const & amplitudes

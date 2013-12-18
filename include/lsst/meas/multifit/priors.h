@@ -119,6 +119,24 @@ public:
     ) const = 0;
 
     /**
+     *  @brief Compute the amplitude vector that maximizes the prior x likelihood product.
+     *
+     *  @param[in]  gradient     Gradient of the -log likelihood in @f$\alpha@f$ at fixed @f$\theta@f$;
+     *                           the vector @f$g@f$ in the equation above.
+     *  @param[in]  hessian      Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
+     *                           @f$\theta@f$; the matrix @f$H@f$ in the equation above.
+     *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$.
+     *  @param[out] amplitude    The posterior-maximum amplitude parameters @f$\alpha@f$.
+     *
+     *  @return The -log(posterior) at the computed amplitude point.
+     */
+    virtual Scalar maximize(
+        Vector const & gradient, Matrix const & hessian,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar,1,1> const & amplitudes
+    ) const = 0;
+
+    /**
      *  @brief Draw a set of Monte Carlo amplitude vectors
      *
      *  This provides a Monte Carlo approach to extracting the conditional amplitude distribution that
@@ -190,6 +208,13 @@ public:
     virtual Scalar marginalize(
         Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear
+    ) const;
+
+    /// @copydoc Prior::maximize
+    virtual Scalar maximize(
+        Vector const & gradient, Matrix const & hessian,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar,1,1> const & amplitudes
     ) const;
 
     /// @copydoc Prior::drawAmplitudes
