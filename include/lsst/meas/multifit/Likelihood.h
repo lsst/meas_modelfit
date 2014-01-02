@@ -60,7 +60,7 @@ namespace lsst { namespace meas { namespace multifit {
  *  @f]
  *  resulting in the equivalent formula:
  *  @f[
- *    L(\beta,\theta) = \frac{1}{2}\left(z-B(\theta)\alpha\right)^T\,\left(z-B(\theta)\alpha\right)
+ *    L(\alpha,\theta) = \frac{1}{2}\left(z-B(\theta)\alpha\right)^T\,\left(z-B(\theta)\alpha\right)
  *  @f]
  *  The @f$w_i@f$ are the weights, which are applied to both the data vector and the model matrix
  *  to account for the noise in the data.  In some cases, we may choose to use a constant weight
@@ -102,7 +102,7 @@ public:
      *
      *  @param[out] modelMatrix  The dataDim x amplitudeDim matrix @f$B@f$ that expresses the model
      *                           projected in such a way that it can be compared to the data
-     *                           when multiplied by an amplitude vector @f$\beta@f$.
+     *                           when multiplied by an amplitude vector @f$\alpha@f$.
      *                           It should be weighted if the data vector is.  The caller
      *                           is responsible for guaranteeing that the shape of the matrix
      *                           correct, but implementations should not assume anything about

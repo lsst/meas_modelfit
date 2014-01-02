@@ -34,6 +34,8 @@ namespace lsst { namespace meas { namespace multifit {
 
 /**
  *  @brief Control object for one iteration of adaptive importance sampling
+ *
+ *  @sa AdaptiveImportanceSampler, AdaptiveImportanceSamplerTask
  */
 class ImportanceSamplerControl {
 public:
