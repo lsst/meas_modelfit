@@ -114,13 +114,13 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
                 self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
                 if False:  # not yet implemented, but we should enable this test someday
                     self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
-
             if task1.model.getAmplitudeDim() > 1:
                 # Direct sampling doesn't yet handle the degeneracies that can arise with
                 # multi-component models very well.
                 continue
             config2 = copy.deepcopy(self.config)
             config2.fitter.doMarginalizeAmplitudes = False
+            config2.fitter.maxRetries = 2  # TODO: investigate why this fails with maxRetries=0
             config2.previous = config1.tag
             config2.tag = "direct+%s" % model
             config2.freeze()

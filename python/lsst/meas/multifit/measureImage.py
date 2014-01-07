@@ -39,7 +39,11 @@ class MeasureImageConfig(BaseMeasureConfig):
         dtype=multifitLib.ProjectedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
-
+    minInitialRadius = lsst.pex.config.Field(
+        dtype=float,
+        default=0.1,
+        doc="Minimum deconvolved initial radius in pixels"
+    )
 
 class MeasureImageTask(BaseMeasureTask):
     """Driver class for S13-specific galaxy modeling work
@@ -75,7 +79,6 @@ class MeasureImageTask(BaseMeasureTask):
         else:
             return lsst.pipe.base.Struct(
                 srcCat=dataRef.get(self.dataPrefix + "src", immediate=True),
-                refCat=dataRef.get("refcat", immediate=True),
                 exposure=exposure
                 )
 
@@ -88,55 +91,48 @@ class MeasureImageTask(BaseMeasureTask):
         amplitude units.
         """
         outCat = multifitLib.ModelFitCatalog(self.makeTable())
-        refCat = inputs.refCat
         srcCat = inputs.srcCat
 
-        exposureWcs = inputs.exposure.getWcs()
+        exposureUnits = multifitLib.UnitSystem(inputs.exposure)
+        exposurePsf = inputs.exposure.getPsf()
+        exposureCalib = inputs.exposure.getCalib()
 
         # SchemaMapper will transfer ID, Coord, Footprint (we'll overwrite the Coord with that from RefCat)
         mapper = lsst.afw.table.SchemaMapper(lsst.afw.table.SourceTable.makeMinimalSchema())
         mapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
 
-        # extract some keys from ref catalog for later use
-        keyA = refCat.getSchema().find("ellipse.a").key
-        keyB = refCat.getSchema().find("ellipse.b").key
-        keyTheta = refCat.getSchema().find("ellipse.theta").key
-        keyMag = refCat.getSchema().find("mag.%s" % inputs.exposure.getFilter().getName()).key
-        keySIndex = refCat.getSchema().find("sindex").key
-
-        # Do a spatial match between srcCat and refCat to determine what to fit: we use
-        # the refCat (which has only galaxies) to avoid fitting stars.
-        matches = lsst.afw.table.matchRaDec(refCat, srcCat, 1.0*lsst.afw.geom.arcseconds)
-        for match in matches:
-            srcRecord = match.second
-            refRecord = match.first
+        for srcRecord in srcCat:
             outRecord = outCat.addNew()
 
             # Start by setting some miscellaneous calculated fields
             outRecord.assign(srcRecord, mapper)
             outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
-            outRecord.setCoord(refRecord.getCoord())
-            outRecord.setPointD(self.keys["center"], exposureWcs.skyToPixel(refRecord.getCoord()))
+            outRecord.setCoord(srcRecord.getCoord())
+            outRecord.setPointD(self.keys["center"], srcRecord.getCentroid())
 
             # Next we determine the pixel region we want to fit.
             outRecord.setFootprint(setupFitRegion(self.config.fitRegion, inputs.exposure, srcRecord))
 
-            # Setup the coordinate and photometric systems to use for the parameters
-            units = self.makeUnitSystem(outRecord, outRecord.getCoord(), refRecord.get(keyMag))
+            # Setup the coordinate and photometric systems to use for the parameters, and the transform
+            # from the exposure to the parameter unit system
+            nominalMag = exposureCalib.getMagnitude(srcRecord.getPsfFlux())
+            units = self.makeUnitSystem(outRecord, outRecord.getCoord(), nominalMag)
+            transform = multifitLib.LocalUnitTransform(outRecord.getCoord(), exposureUnits, units)
 
-            # Now we'll transform the refCat ellipse to the parameter coordinate system.
-            ellipse1 = lsst.afw.geom.ellipses.Ellipse(
-                lsst.afw.geom.ellipses.Axes(
-                    (refRecord.getD(keyA)*lsst.afw.geom.arcseconds).asDegrees(),
-                    (refRecord.getD(keyB)*lsst.afw.geom.arcseconds).asDegrees(),
-                    (refRecord.getD(keyTheta)*lsst.afw.geom.degrees).asRadians() - 0.5*numpy.pi
-                    ),
-                refRecord.getCoord().getPosition(lsst.afw.geom.degrees)
+            # Start with the ellipse from the Shape and Centroid src slots (should refine this),
+            # subtract the PSF moments (truncate radius as specified by config), and transform
+            # to the parameter unit system
+            fullShape = srcRecord.getShape()
+            psfShape = exposurePsf.computeShape(srcRecord.getCentroid())
+            deconvolvedShape = lsst.afw.geom.ellipses.Quadrupole(
+                max(fullShape.getIxx() - psfShape.getIxx(), self.config.minInitialRadius**2),
+                max(fullShape.getIyy() - psfShape.getIyy(), self.config.minInitialRadius**2),
+                fullShape.getIxy() - psfShape.getIxy()
                 )
-            transform = units.wcs.linearizeSkyToPixel(refRecord.getCoord())
-            ellipse2 = ellipse1.transform(transform)
+            ellipse1 = lsst.afw.geom.ellipses.Ellipse(deconvolvedShape, srcRecord.getCentroid())
+            ellipse2 = ellipse1.transform(transform.geometric)
 
-            # We now transform this ellipse and the refCat fluxes into the parameters defined by the model.
+            # Fill the initial.nonlinear and fixed parameter arrays from the initial ellipse
             ellipses = lsst.meas.multifit.Model.EllipseVector()
             ellipses.append(ellipse2)
             nonlinear = outRecord[self.keys["initial.nonlinear"]]
