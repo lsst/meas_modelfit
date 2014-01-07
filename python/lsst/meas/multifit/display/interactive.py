@@ -109,8 +109,8 @@ class Interactive(object):
         returning the record.
         """
         likelihood = self.task.makeLikelihood(self.inputs, outRecord)
-        self.task.fitter.run(likelihood, record)
-        return record
+        self.task.fitter.run(likelihood, outRecord)
+        return outRecord
 
     def plotDistribution(self, *records):
         """Plot a representation of the posterior distribution from a ModelFitRecord.
