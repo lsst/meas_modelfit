@@ -117,21 +117,21 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         # we do a warm start (use a previous modelfits catalog for initial values).
         self.schema = multifitLib.ModelFitTable.makeMinimalSchema()
         self.keys = {}
-        self.keys["ref.center"] = self.schema.addField(
-            "ref.center", type="PointD",
-            doc="position in image coordinates from reference catalog"
+        self.keys["center"] = self.schema.addField(
+            "center", type="PointD",
+            doc="input centroid of the object in image coordinates"
             )
-        self.keys["ref.nonlinear"] = self.schema.addField(
-            "ref.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),
-            doc="nonlinear parameters from reference catalog"
+        self.keys["initial.nonlinear"] = self.schema.addField(
+            "initial.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),
+            doc="initial (pre-fit) nonlinear parameters"
             )
-        self.keys["ref.amplitudes"] = self.schema.addField(
-            "ref.amplitudes", type="ArrayD", size=self.model.getAmplitudeDim(),
-            doc="linear amplitudes from reference catalog"
+        self.keys["initial.amplitudes"] = self.schema.addField(
+            "initial.amplitudes", type="ArrayD", size=self.model.getAmplitudeDim(),
+            doc="initial (pre-fit) linear amplitudes"
             )
-        self.keys["ref.fixed"] = self.schema.addField(
-            "ref.fixed", type="ArrayD", size=self.model.getFixedDim(),
-            doc="fixed nonlinear parameters from reference catalog"
+        self.keys["fixed"] = self.schema.addField(
+            "fixed", type="ArrayD", size=self.model.getFixedDim(),
+            doc="fixed nonlinear parameters"
             )
         self.keys["snr"] = self.schema.addField(
             "snr", type=float,

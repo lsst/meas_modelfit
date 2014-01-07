@@ -138,7 +138,7 @@ class OptimizerDataAdapter(ModelFitDataAdapter):
         # Now we setup some special points for a CrossPointsLayer
         self.points = numpy.zeros((2, self.parameters.shape[1]), dtype=float)
         record.getInterpreter().packParameters(
-            self.record['ref.nonlinear'], self.record['ref.amplitudes'],
+            self.record['initial.nonlinear'], self.record['initial.amplitudes'],
             self.points[0,:]
             )
         record.getInterpreter().packParameters(

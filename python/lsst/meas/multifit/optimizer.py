@@ -94,8 +94,8 @@ class OptimizerTask(lsst.pipe.base.Task):
         and save best-fit values in the 'fit.parameters' field.
         """
         parameters = numpy.zeros(self.interpreter.getParameterDim(), dtype=multifitLib.Scalar)
-        self.interpreter.packParameters(record[self.keys["ref.nonlinear"]],
-                                        record[self.keys["ref.amplitudes"]],
+        self.interpreter.packParameters(record[self.keys["initial.nonlinear"]],
+                                        record[self.keys["initial.amplitudes"]],
                                         parameters)
         objective = multifitLib.OptimizerObjective.makeFromLikelihood(likelihood, self.interpreter.getPrior())
         optimizer = multifitLib.Optimizer(objective, parameters, self.config.makeControl())

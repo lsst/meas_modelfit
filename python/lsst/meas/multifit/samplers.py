@@ -162,8 +162,8 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         This method is not called when using a "warm start" from a previous fit.
         """
         parameters = numpy.zeros(self.interpreter.getParameterDim(), dtype=multifitLib.Scalar)
-        self.interpreter.packParameters(outRecord[self.keys['ref.nonlinear']],
-                                        outRecord[self.keys['ref.amplitudes']],
+        self.interpreter.packParameters(outRecord[self.keys['initial.nonlinear']],
+                                        outRecord[self.keys['initial.amplitudes']],
                                         parameters)
         components = multifitLib.Mixture.ComponentList()
         sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2

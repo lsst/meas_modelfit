@@ -116,7 +116,7 @@ class MeasureImageTask(BaseMeasureTask):
             outRecord.assign(srcRecord, mapper)
             outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
             outRecord.setCoord(refRecord.getCoord())
-            outRecord.setPointD(self.keys["ref.center"], exposureWcs.skyToPixel(refRecord.getCoord()))
+            outRecord.setPointD(self.keys["center"], exposureWcs.skyToPixel(refRecord.getCoord()))
 
             # Next we determine the pixel region we want to fit.
             outRecord.setFootprint(setupFitRegion(self.config.fitRegion, inputs.exposure, srcRecord))
@@ -139,12 +139,12 @@ class MeasureImageTask(BaseMeasureTask):
             # We now transform this ellipse and the refCat fluxes into the parameters defined by the model.
             ellipses = lsst.meas.multifit.Model.EllipseVector()
             ellipses.append(ellipse2)
-            nonlinear = outRecord[self.keys["ref.nonlinear"]]
-            self.model.readEllipses(ellipses, nonlinear, outRecord[self.keys["ref.fixed"]])
+            nonlinear = outRecord[self.keys["initial.nonlinear"]]
+            self.model.readEllipses(ellipses, nonlinear, outRecord[self.keys["fixed"]])
 
             # this flux->amplitudes conversion assumes the ref catalog is single-component, and that the
             # first component of the model is what that corresponds to; we may need to generalize this
-            amplitudes = outRecord[self.keys["ref.amplitudes"]]
+            amplitudes = outRecord[self.keys["initial.amplitudes"]]
             amplitudes[:] = 0.0
             amplitudes[0] = 1.0
 
@@ -160,10 +160,10 @@ class MeasureImageTask(BaseMeasureTask):
         exposure.
         """
         psfModel = FitPsfAlgorithm.apply(self.config.psf.makeControl(), inputs.exposure.getPsf(),
-                                         record.get(self.keys["ref.center"]))
+                                         record.get(self.keys["center"]))
         psf = psfModel.asMultiShapelet()
         return multifitLib.ProjectedLikelihood(
-            self.model, record[self.keys["ref.fixed"]],
+            self.model, record[self.keys["fixed"]],
             self.getUnitSystem(record),
             record.getCoord(),
             inputs.exposure,
