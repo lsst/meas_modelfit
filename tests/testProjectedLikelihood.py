@@ -84,7 +84,8 @@ class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.amplitudes = numpy.zeros(self.model.getAmplitudeDim(), dtype=lsst.meas.multifit.Scalar)
         self.amplitudes[:] = self.flux
         # setup ideal exposure0: uses fit Wcs and Calib, has delta function PSF
-        wcs0 = lsst.afw.image.makeLocalWcs(self.position, 0.2*lsst.afw.geom.arcseconds)
+        cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
+        wcs0 = lsst.afw.image.makeWcs(self.position, lsst.afw.geom.Point2D(), cdelt, 0.0, 0.0, cdelt)
         calib0 = lsst.afw.image.Calib()
         calib0.setFluxMag0(10000)
         self.psf0 = makeGaussianFunction(0.0)
@@ -97,7 +98,8 @@ class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
         addGaussian(self.exposure0, self.ellipse, self.flux, psf=self.psf0)
         self.exposure0.getMaskedImage().getVariance().set(1.0)
         # setup secondary exposure: 2x pixel scale, 3x gain, Gaussian PSF with sigma=2.5pix
-        wcs1 = lsst.afw.image.makeLocalWcs(self.position, 0.4*lsst.afw.geom.arcseconds)
+        cdelt = (0.4*lsst.afw.geom.arcseconds).asDegrees()
+        wcs1 = lsst.afw.image.makeWcs(self.position, lsst.afw.geom.Point2D(), cdelt, 0.0, 0.0, cdelt)
         calib1 = lsst.afw.image.Calib()
         calib1.setFluxMag0(30000)
         self.sys1 = lsst.meas.multifit.UnitSystem(wcs1, calib1)

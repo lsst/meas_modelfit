@@ -28,10 +28,9 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-UnitSystem::UnitSystem(afw::coord::Coord const & position, Scalar mag) :
-    wcs(afw::image::makeLocalWcs(position, 1.0*lsst::afw::geom::arcseconds)),
-    calib()
-{
+UnitSystem::UnitSystem(afw::coord::Coord const & position, Scalar mag) {
+    double cdelt = (1.0*lsst::afw::geom::arcseconds).asDegrees();
+    wcs = afw::image::makeWcs(position, afw::geom::Point2D(0.0, 0.0), cdelt, 0.0, 0.0, cdelt);
     PTR(afw::image::Calib) calib_ = boost::make_shared<afw::image::Calib>();
     calib_->setFluxMag0(std::pow(10.0, mag/2.5));
     calib = calib_;
