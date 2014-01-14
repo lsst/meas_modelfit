@@ -31,7 +31,7 @@
 namespace lsst { namespace meas { namespace multifit {
 
 PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders) {
-    double radius = std::pow(2.0, -(orders.size() - 1) / 2);
+    double radius = std::pow(2.0, -static_cast<double>((orders.size() - 1) / 2));
     Model::NameVector prefixes;
     Model::BasisVector basisVector;
     for (std::size_t i = 0; i != orders.size(); ++i, radius *= 2) {
