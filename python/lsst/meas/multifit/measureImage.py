@@ -102,6 +102,10 @@ class MeasureImageTask(BaseMeasureTask):
         mapper.addMinimalSchema(lsst.meas.multifit.ModelFitTable.makeMinimalSchema())
 
         for srcRecord in srcCat:
+            if (srcRecord.getShapeFlag() or srcRecord.getCentroidFlag()
+                or srcRecord.getApFluxFlag() or srcRecord.getPsfFluxFlag()):
+                continue
+
             outRecord = outCat.addNew()
 
             # Start by setting some miscellaneous calculated fields
