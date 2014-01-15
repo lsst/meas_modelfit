@@ -31,14 +31,14 @@ import lsst.meas.extensions.multiShapelet
 from . import multifitLib
 from .models import modelRegistry
 from .priors import priorRegistry
-from .samplers import AdaptiveImportanceSamplerTask
+from .optimizer import OptimizerTask
 from .fitRegion import setupFitRegion
 
 __all__ = ("BaseMeasureConfig", "BaseMeasureTask")
 
 class BaseMeasureConfig(lsst.pex.config.Config):
     fitter = lsst.pex.config.ConfigurableField(
-        target=AdaptiveImportanceSamplerTask,
+        target=OptimizerTask,
         doc="Subtask that actually does the fitting"
     )
     model = modelRegistry.makeField(
