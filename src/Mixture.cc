@@ -66,25 +66,25 @@ MixtureComponent::MixtureComponent(int dim) :
 MixtureComponent::MixtureComponent(Scalar weight_, Vector const & mu, Matrix const & sigma) :
     weight(weight_), _mu(mu), _sigmaLLT(mu.size())
 {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         sigma.rows(), _mu.size(),
-        "Number of rows of sigma matrix (%d) does not match size of mu vector (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Number of rows of sigma matrix (%d) does not match size of mu vector (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         sigma.cols(), _mu.size(),
-        "Number of columns of sigma matrix (%d) does not match size of mu vector (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Number of columns of sigma matrix (%d) does not match size of mu vector (%d)"
     );
     _sigmaLLT.compute(sigma);
     _sqrtDet = _sigmaLLT.matrixLLT().diagonal().prod();
 }
 
 MixtureComponent & MixtureComponent::operator=(MixtureComponent const & other) {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         other.getDimension(), getDimension(),
-        "Cannot assign MixtureComponent with dim=%d to one with dim=%d",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Cannot assign MixtureComponent with dim=%d to one with dim=%d"
     );
     if (&other != this) {
         _sqrtDet = other._sqrtDet;
@@ -167,15 +167,15 @@ void Mixture::evaluate(
     ndarray::Array<Scalar const,2,1> const & x,
     ndarray::Array<Scalar,1,0> const & p
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         x.getSize<0>(), p.getSize<0>(),
-        "First dimension of x array (%d) does not match size of p array (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "First dimension of x array (%d) does not match size of p array (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         x.getSize<1>(), _dim,
-        "Second dimension of x array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Second dimension of x array (%d) does not dimension of mixture (%d)"
     );
     ndarray::Array<Scalar const,2,1>::Iterator ix = x.begin(), xEnd = x.end();
     ndarray::Array<Scalar,1,0>::Iterator ip = p.begin();
@@ -188,20 +188,20 @@ void Mixture::evaluateComponents(
     ndarray::Array<Scalar const,2,1> const & x,
     ndarray::Array<Scalar,2,1> const & p
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         x.getSize<0>(), p.getSize<0>(),
-        "First dimension of x array (%d) does not match first dimension of p array (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "First dimension of x array (%d) does not match first dimension of p array (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         x.getSize<1>(), _dim,
-        "Second dimension of x array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Second dimension of x array (%d) does not dimension of mixture (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         p.getSize<1>(), static_cast<int>(_components.size()),
-        "Second dimension of p array (%d) does not match number of components (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Second dimension of p array (%d) does not match number of components (%d)"
     );
     ndarray::Array<Scalar const,2,1>::Iterator ix = x.begin(), xEnd = x.end();
     ndarray::Array<Scalar,2,1>::Iterator ip = p.begin();
@@ -218,25 +218,25 @@ void Mixture::evaluateDerivatives(
     ndarray::Array<Scalar,1,1> const & gradient,
     ndarray::Array<Scalar,2,1> const & hessian
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         x.getSize<0>(), _dim,
-        "Size of x array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of x array (%d) does not dimension of mixture (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         gradient.getSize<0>(), _dim,
-        "Size of gradient array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of gradient array (%d) does not dimension of mixture (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         hessian.getSize<0>(), _dim,
-        "Number of rows of hessian array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Number of rows of hessian array (%d) does not dimension of mixture (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         hessian.getSize<1>(), _dim,
-        "Number of columns of hessian array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Number of columns of hessian array (%d) does not dimension of mixture (%d)"
     );
     gradient.deep() = 0.0;
     hessian.deep() = 0.0;
@@ -296,15 +296,15 @@ void Mixture::updateEM(
     UpdateRestriction const & restriction,
     Scalar tau1, Scalar tau2
 ) {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         x.getSize<0>(), w.getSize<0>(),
-        "First dimension of x array (%d) does not match size of w array (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "First dimension of x array (%d) does not match size of w array (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         x.getSize<1>(), _dim,
-        "Second dimension of x array (%d) does not dimension of mixture (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Second dimension of x array (%d) does not dimension of mixture (%d)"
     );
     int const nSamples = w.getSize<0>();
     int const nComponents = _components.size();

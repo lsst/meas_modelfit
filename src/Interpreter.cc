@@ -34,20 +34,21 @@ void Interpreter::packParameters(
     ndarray::Array<Scalar const,1,1> const & amplitudes,
     ndarray::Array<Scalar,1,1> const & parameters
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         parameters.getSize<0>(), getParameterDim(),
-        "Size of parameter array (%d) does not match expected size (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of parameter array (%d) does not match expected size (%d)"
+        
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        "Size of nonlinear array (%d) does not match expected size (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of nonlinear array (%d) does not match expected size (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         amplitudes.getSize<0>(), getAmplitudeDim(),
-        "Size of ampiltude array (%d) does not match expected size (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of ampiltude array (%d) does not match expected size (%d)"
     );
     _packParameters(nonlinear, amplitudes, parameters);
 }
@@ -56,15 +57,15 @@ void Interpreter::unpackNonlinear(
     ndarray::Array<Scalar const,1,1> const & parameters,
     ndarray::Array<Scalar,1,1> const & nonlinear
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         parameters.getSize<0>(), getParameterDim(),
-        "Size of parameter array (%d) does not match expected size (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of parameter array (%d) does not match expected size (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        "Size of nonlinear array (%d) does not match expected size (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of nonlinear array (%d) does not match expected size (%d)"
     );
     _unpackNonlinear(parameters, nonlinear);
 }

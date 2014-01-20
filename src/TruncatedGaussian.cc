@@ -300,10 +300,10 @@ void TruncatedGaussianLogEvaluator::operator()(
     ndarray::Array<Scalar const,2,1> const & alpha,
     ndarray::Array<Scalar,1,1> const & output
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         alpha.getSize<0>(), output.getSize<0>(),
-        "Size of inputs (%d) does not match size of outputs (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of inputs (%d) does not match size of outputs (%d)"
     );
     for (int i = 0, n = alpha.getSize<0>(); i < n; ++i) {
         output[i] = (*this)(alpha[i].asEigen());
@@ -320,10 +320,10 @@ void TruncatedGaussianEvaluator::operator()(
     ndarray::Array<Scalar const,2,1> const & alpha,
     ndarray::Array<Scalar,1,1> const & output
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         alpha.getSize<0>(), output.getSize<0>(),
-        "Size of inputs (%d) does not match size of outputs (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of inputs (%d) does not match size of outputs (%d)"
     );
     for (int i = 0, n = alpha.getSize<0>(); i < n; ++i) {
         output[i] = (*this)(alpha[i].asEigen());
@@ -527,10 +527,10 @@ void TruncatedGaussianSampler::operator()(
     ndarray::Array<Scalar,1,1> const & weights,
     bool multiplyWeights
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         alpha.getSize<0>(), weights.getSize<0>(),
-        "First dimension of alpha array (%d) does not match size of weights array (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "First dimension of alpha array (%d) does not match size of weights array (%d)"
     );
     if (multiplyWeights) {
         for (int i = 0, n = alpha.getSize<0>(); i < n; ++i) {

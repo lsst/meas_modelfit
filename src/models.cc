@@ -305,10 +305,10 @@ Model::Model(
             amplitudeDim += (**i).getSize();
         }
     }
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         amplitudeDim, getAmplitudeDim(),
-        "Number of amplitudes in basis vectors (%d) does not match number of amplitude names (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Number of amplitudes in basis vectors (%d) does not match number of amplitude names (%d)"
     );
 }
 
@@ -316,15 +316,15 @@ Model::EllipseVector Model::writeEllipses(
     ndarray::Array<Scalar const,1,1> const & nonlinear,
     ndarray::Array<Scalar const,1,1> const & fixed
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        "Size of nonlinear array (%d) does not match dimension of model (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of nonlinear array (%d) does not match dimension of model (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         fixed.getSize<0>(), getFixedDim(),
-        "Size of fixed array (%d) does not match dimension of model (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of fixed array (%d) does not match dimension of model (%d)"
     );
     EllipseVector r = makeEllipseVector();
     writeEllipses(nonlinear.begin(), fixed.begin(), r.begin());
@@ -336,29 +336,29 @@ void Model::readEllipses(
     ndarray::Array<Scalar,1,1> const & nonlinear,
     ndarray::Array<Scalar,1,1> const & fixed
 ) const {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        "Size of nonlinear array (%d) does not match dimension of model (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of nonlinear array (%d) does not match dimension of model (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         fixed.getSize<0>(), getFixedDim(),
-        "Size of fixed array (%d) does not match dimension of model (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of fixed array (%d) does not match dimension of model (%d)"
     );
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         int(ellipses.size()), getBasisCount(),
-        "Size of ellipse vector (%d) does not match basis count (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of ellipse vector (%d) does not match basis count (%d)"
     );
     readEllipses(ellipses.begin(), nonlinear.begin(), fixed.begin());
 }
 
 PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center) {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         basisVector.size(), prefixes.size(),
-        "Size of basis vector (%d) does not match number of prefixes (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Size of basis vector (%d) does not match number of prefixes (%d)"
     );
     NameVector nonlinearNames;
     NameVector amplitudeNames;
@@ -455,10 +455,10 @@ typedef Model::NameVector const & (Model::*ModelNameGetter)() const;
 static Model::NameVector concatenateNameVectors(
     ModelVector const & components, Model::NameVector const & prefixes, ModelNameGetter getter
 ) {
-    LSST_ASSERT_EQUAL(
+    LSST_THROW_IF_NE(
         components.size(), prefixes.size(),
-        "Number of model components (%d) does not match number of prefixes (%d)",
-        pex::exceptions::LengthErrorException
+        pex::exceptions::LengthErrorException,
+        "Number of model components (%d) does not match number of prefixes (%d)"
     );
     Model::NameVector r;
     for (ModelVector::const_iterator i = components.begin(); i != components.end(); ++i) {

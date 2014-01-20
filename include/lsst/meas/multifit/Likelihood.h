@@ -120,10 +120,10 @@ protected:
 
     Likelihood(PTR(Model) model, ndarray::Array<Scalar const,1,1> const & fixed) :
         _model(model), _fixed(fixed) {
-        LSST_ASSERT_EQUAL(
+        LSST_THROW_IF_NE(
             fixed.getSize<0>(), model->getFixedDim(),
-            "Fixed parameter vector size (%d) does not match Model fixed parameter dimensionality (%d)",
-            pex::exceptions::LengthErrorException
+            pex::exceptions::LengthErrorException,
+            "Fixed parameter vector size (%d) does not match Model fixed parameter dimensionality (%d)"
         );
     }
 
