@@ -173,7 +173,7 @@ class Interactive(object):
         likelihood.computeModelMatrix(matrix, nonlinear)
 
         if amplitudes == "mean":
-            amplitudes = record.getInterpreter().computeAmplitudeMean()
+            amplitudes = record.getInterpreter().computeAmplitudeMean(record)
         elif amplitudes == "ref":
             amplitudes = record.get("ref.amplitudes")
         elif amplitudes == "lstsq":
