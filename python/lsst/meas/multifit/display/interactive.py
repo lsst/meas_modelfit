@@ -55,7 +55,7 @@ class Interactive(object):
     of a Measure*Task, allowing individual objects to be re-fit and plotted.
     """
 
-    def __init__(self, rerun, tag=None, config=None, dataId=None, mode="ccd"):
+    def __init__(self, root, tag=None, config=None, dataId=None, mode="ccd"):
         """Construct an interactive analysis object.
 
         @param[in]  rerun    Output directory, relative to $S13_DATA_DIR/output.
@@ -70,8 +70,7 @@ class Interactive(object):
                              to use MeasureCcdTask, MeasureCoaddTask, or MeasureMultiTask.
         """
         self.mode = mode.lower()
-        root = os.environ["S13_DATA_DIR"]
-        self.butler = lsst.daf.persistence.Butler(os.path.join(root, "output", rerun))
+        self.butler = lsst.daf.persistence.Butler(root)
         TaskClass = None
         configName = None
         if self.mode == "ccd":
