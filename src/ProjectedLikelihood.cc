@@ -99,8 +99,7 @@ void setupArrays(
         // We want a single number for the weights, so we use the geometric mean, as that
         // preserves the determinant of the (diagonal) pixel covariance matrix.
         weights.asEigen<Eigen::ArrayXpr>().setConstant(
-            std::pow(static_cast<double>(weights.asEigen<Eigen::ArrayXpr>().prod()),
-                     1.0 / footprint.getArea())
+            std::exp(static_cast<double>(weights.asEigen<Eigen::ArrayXpr>().log().mean()))
             // static_cast == workaround for ambiguous resolution on clang
         );
     }
