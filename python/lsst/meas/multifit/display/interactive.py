@@ -147,68 +147,64 @@ class Interactive(object):
         objective = multifitLib.OptimizerObjective.makeFromLikelihood(likelihood, self.task.prior)
         return OptimizerDisplay(record, objective)
 
-    def displayResiduals(self, record, nonlinear="ref", amplitudes="ref"):
+    def displayResiduals(self, record, nonlinear="fit", amplitudes="fit", doApplyWeights=False):
         """Display the data postage stamp along with the model image and residuals in ds9.
 
         @param[in] record       ModelFitRecord defining the object to display
-        @param[in] nonlinear    Vector of nonlinear parameters, or a string tag (see below)
-        @param[in] amplitudes   Vector of linear parameters, or a string tag (see below)
+        @param[in] nonlinear    Vector of nonlinear parameters, or a string prefix (see below)
+        @param[in] amplitudes   Vector of linear parameters, or a string prefix (see below)
+        @param[in] doApplyWeights  Whether to show the weighted images used directly in the fit
+                                   or the original unweighted data.
 
-        String tags for the parameter arguments may be:
-          mean -- use record.getIntepreter().compute*Mean()
-          ref --- use record.get("ref.*")
-          lstsq - solve the (unweighted) linear least-squares problem and use the solution
+        String prefixes are used to extract the parameters from the record.  Usually the following
+        are available:
+          fit ------- use record.get("fit.*"); the best-fit parameters
+          initial --- use record.get("initial.*"); the initial parameters
         """
         likelihood = self.task.makeLikelihood(self.inputs, record)
 
-        if nonlinear == "mean":
-            nonlinear = record.getInterpreter().computeNonlinearMean(record)
-        elif nonlinear == "ref":
-            nonlinear = record.get("ref.nonlinear")
+        if isinstance(nonlinear, basestring):
+            nonlinear = record.get(nonlinear + ".nonlinear")
         else:
             assert nonlinear.shape == (likelihood.getNonlinearDim(),)
 
         matrix = numpy.zeros((likelihood.getAmplitudeDim(), likelihood.getDataDim()),
                              dtype=multifitLib.Pixel).transpose()
-        likelihood.computeModelMatrix(matrix, nonlinear)
+        likelihood.computeModelMatrix(matrix, nonlinear, doApplyWeights)
 
-        if amplitudes == "mean":
-            amplitudes = record.getInterpreter().computeAmplitudeMean(record)
-        elif amplitudes == "ref":
-            amplitudes = record.get("ref.amplitudes")
-        elif amplitudes == "lstsq":
-            amplitudes, chisq, rank, sv = numpy.linalg.lstsq(matrix, likelihood.getData())
+        if isinstance(amplitudes, basestring):
+            amplitudes = record.get(amplitudes + ".amplitudes")
         else:
             assert amplitudes.shape == (likelihood.getAmplitudeDim(),)
 
         bbox = record.getFootprint().getBBox()
         bbox.grow(2)
-        flatModelW = numpy.zeros(likelihood.getDataDim(), dtype=multifitLib.Pixel)
-        flatModelW[:] = numpy.dot(matrix, amplitudes)
-        flatDataW = likelihood.getData()
+        flatModel = numpy.zeros(likelihood.getDataDim(), dtype=multifitLib.Pixel)
+        flatModel[:] = numpy.dot(matrix, amplitudes)
 
-        imgDataU = lsst.afw.image.MaskedImageF(self.inputs.exposure.getMaskedImage(), bbox,
-                                               lsst.afw.image.PARENT, True)
-        bitmask = imgDataU.getMask().addMaskPlane("FIT_REGION")
+        imgData = lsst.afw.image.MaskedImageF(self.inputs.exposure.getMaskedImage(), bbox,
+                                              lsst.afw.image.PARENT, True)
+        bitmask = imgData.getMask().addMaskPlane("FIT_REGION")
         regionMask = lsst.afw.image.MaskU(bbox)
         lsst.afw.detection.setMaskFromFootprint(regionMask, record.getFootprint(), bitmask)
-        dataMask = imgDataU.getMask()
+        dataMask = imgData.getMask()
         dataMask |= regionMask
-        imgDataW = imgDataU.clone()
-        imgDataW.getImage().set(0.0)
-        imgDataW.getVariance().set(0.0)
-        lsst.afw.detection.expandArray(record.getFootprint(), flatDataW, imgDataW.getImage().getArray(),
-                                       imgDataW.getXY0())
-        imgModelW = lsst.afw.image.MaskedImageF(lsst.afw.image.ImageF(bbox), regionMask)
-        lsst.afw.detection.expandArray(record.getFootprint(), flatModelW, imgModelW.getImage().getArray(),
-                                       imgModelW.getXY0())
-        imgResidualsW = lsst.afw.image.MaskedImageF(imgDataW, True)
-        imgResidualsW -= imgModelW
+        if doApplyWeights:
+            imgData.getImage().set(0.0)
+            imgData.getVariance().set(0.0)
+            flatData = likelihood.getData()
+            lsst.afw.detection.expandArray(record.getFootprint(), flatData, imgData.getImage().getArray(),
+                                           imgData.getXY0())
+        imgModel = lsst.afw.image.MaskedImageF(lsst.afw.image.ImageF(bbox), regionMask)
+        lsst.afw.detection.expandArray(record.getFootprint(), flatModel, imgModel.getImage().getArray(),
+                                       imgModel.getXY0())
+        imgResiduals = lsst.afw.image.MaskedImageF(imgData, True)
+        imgResiduals -= imgModel
         mosaic = lsst.afw.display.utils.Mosaic()
         mosaic.setMode("x")
-        mosaic.append(imgDataW, "data")
-        mosaic.append(imgModelW, "model")
-        mosaic.append(imgResidualsW, "data-model")
+        mosaic.append(imgData, "data")
+        mosaic.append(imgModel, "model")
+        mosaic.append(imgResiduals, "data-model")
         grid = mosaic.makeMosaic()
         lsst.afw.display.ds9.mtv(grid)
         lsst.afw.display.ds9.setMaskTransparency(85)

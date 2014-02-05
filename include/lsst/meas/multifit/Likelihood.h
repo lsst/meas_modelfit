@@ -108,10 +108,13 @@ public:
      *                           correct, but implementations should not assume anything about
      *                           the initial values of the matrix elements.
      *  @param[in] nonlinear     Vector of nonlinear parameters at which to evaluate the model.
+     *  @param[in] doApplyWeights   If False, do not apply the weights to the modelMatrix (intended
+     *                              for debugging purposes only).
      */
     virtual void computeModelMatrix(
         ndarray::Array<Pixel,2,-1> const & modelMatrix,
-        ndarray::Array<Scalar const,1,1> const & nonlinear
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        bool doApplyWeights=true
     ) const = 0;
 
     virtual ~Likelihood() {}

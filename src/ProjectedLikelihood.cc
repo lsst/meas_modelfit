@@ -205,7 +205,8 @@ ProjectedLikelihood::~ProjectedLikelihood() {}
 
 void ProjectedLikelihood::computeModelMatrix(
     ndarray::Array<Pixel,2,-1> const & modelMatrix,
-    ndarray::Array<Scalar const,1,1> const & nonlinear
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    bool doApplyWeights
 ) const {
     getModel()->writeEllipses(nonlinear.begin(), _fixed.begin(), _impl->ellipses.begin());
     int dataOffset = 0;
@@ -228,7 +229,9 @@ void ProjectedLikelihood::computeModelMatrix(
         modelMatrix[ndarray::view(dataOffset, dataEnd)()] *= i->transform.flux;
         dataOffset = dataEnd;
     }
-    modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
+    if (doApplyWeights) {
+        modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
+    }
 }
 
 }}} // namespace lsst::meas::multifit
