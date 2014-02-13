@@ -123,11 +123,14 @@ MultiShapeletPsfLikelihood::MultiShapeletPsfLikelihood(
     _impl.reset(new Impl(x, y, model->makeEllipseVector(), model->getBasisVector(), sigma));
     _data = ndarray::copy(ndarray::flatten<1>(image));
     _data.deep() /= sigma;
+    _weights = ndarray::allocate(_data.getShape());
+    _weights.deep() = 1.0;
 }
 
 void MultiShapeletPsfLikelihood::computeModelMatrix(
     ndarray::Array<Pixel,2,-1> const & modelMatrix,
-    ndarray::Array<Scalar const,1,1> const & nonlinear
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    bool doApplyWeights
 ) const {
     return _impl->computeModelMatrix(modelMatrix, nonlinear, _fixed, *getModel());
 }
