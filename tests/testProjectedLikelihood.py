@@ -203,7 +203,7 @@ class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.checkLikelihood(l0b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
-        data = self.exposure0.getMaskedImage().getImage().getArray() / numpy.prod(var)**(0.5/var.size)
+        data = self.exposure0.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
         l0c = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0c, data)
@@ -236,7 +236,7 @@ class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.checkLikelihood(l1b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
-        data = exposure1.getMaskedImage().getImage().getArray() / numpy.prod(var)**(0.5/var.size)
+        data = exposure1.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
         l1c = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1c, data)
