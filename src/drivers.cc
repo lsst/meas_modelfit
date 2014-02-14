@@ -27,77 +27,161 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-OptimizerFitter::OptimizerFitter(PTR(Model) model, PTR(Prior) prior, Control const & ctrl) :
-    _model(model),
-    _prior(prior),
-    _parameters(ndarray::allocate(_model->getNonlinearDim() + _model->getAmplitudeDim())),
+OptimizerFit::OptimizerFit(
+    PTR(Model) model, PTR(Prior) prior,
+    PTR(afw::coord::Coord) position,
+    UnitSystem const & fitSys, UnitSystem const & measSys,
+    ndarray::Array<Scalar const,1,1> const & nonlinear,
+    ndarray::Array<Scalar const,1,1> const & amplitudes,
+    ndarray::Array<Scalar const,1,1> const & fixed,
+    Control const & ctrl
+) :
+    _model(model), _prior(prior), _position(position), _hasMeasQuantities(false),
+    _objectiveValue(std::numeric_limits<Scalar>::quiet_NaN()),
+    _flux(std::numeric_limits<Scalar>::quiet_NaN()),
+    _fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
+    _fitSys(fitSys), _measSys(measSys), _fitSysToMeasSys(*position, _fitSys, _measSys),
+    _ellipses(_model->makeEllipseVector()),
+    _parameters(ndarray::allocate(_model->getNonlinearDim() + model->getAmplitudeDim())),
+    _nonlinear(_parameters[ndarray::view(0, _model->getNonlinearDim())]),
+    _amplitudes(_parameters[ndarray::view(_model->getNonlinearDim(), _parameters.getSize<0>())]),
+    _fixed(ndarray::copy(fixed)),
+    _hessian(ndarray::allocate(_parameters.getSize<0>(), _parameters.getSize<0>())),
     _ctrl(ctrl)
 {
-    if (_ctrl.doRecordHistory) {
-        _historyRecorder.reset(new OptimizerHistoryRecorder(_historySchema, _model, true));
-    }
+    LSST_THROW_IF_NE(
+        model->getNonlinearDim(), nonlinear.getSize<0>(),
+        pex::exceptions::LengthErrorException,
+        "Model nonlinear dimension (%d) and nonlinear array size (%d) do not match."
+    );
+    LSST_THROW_IF_NE(
+        model->getAmplitudeDim(), amplitudes.getSize<0>(),
+        pex::exceptions::LengthErrorException,
+        "Model amplitude dimension (%d) and amplitude array size (%d) do not match."
+    );
+    LSST_THROW_IF_NE(
+        model->getFixedDim(), fixed.getSize<0>(),
+        pex::exceptions::LengthErrorException,
+        "Model fixed dimension (%d) and fixed array size (%d) do not match."
+    );
+    _nonlinear.deep() = nonlinear;
+    _amplitudes.deep() = amplitudes;
 }
 
-ndarray::Array<Scalar const,1,1> OptimizerFitter::getDefaultInitialAmplitudes() const {
-    ndarray::Array<Scalar,1,1> r(ndarray::allocate(_model->getAmplitudeDim()));
-    r.deep() = 0.0;
-    r[0] = 1.0;
-    return r;
-}
-
-OptimizerFitter::Result OptimizerFitter::apply(
+void OptimizerFit::run(
     afw::image::Exposure<Pixel> const & exposure,
     afw::detection::Footprint const & footprint,
-    afw::coord::Coord const & position,
-    UnitSystem const & measSys,
-    UnitSystem const & fitSys,
-    ndarray::Array<Scalar const,1,1> const & initialNonlinear,
-    ndarray::Array<Scalar const,1,1> const & initialAmplitudes,
-    ndarray::Array<Scalar const,1,1> const & fixed,
-    shapelet::MultiShapeletFunction const & psf
-) const {
-    int const nonlinearDim = _model->getNonlinearDim();
-    int const amplitudeDim = _model->getAmplitudeDim();
-    int const parameterDim = nonlinearDim + amplitudeDim;
-    Result result(_model, position, measSys, fitSys);
-    result._model = _model;
-    result._fixed = fixed;
+    shapelet::MultiShapeletFunction const & psf,
+    bool doRecordHistory
+) {
+    if (doRecordHistory && !_historyRecorder) {
+        afw::table::Schema historySchema;
+        _historyRecorder.reset(new OptimizerHistoryRecorder(boost::ref(historySchema), _model, true));
+        _history = afw::table::BaseCatalog(historySchema);
+    }
     PTR(ProjectedLikelihood) likelihood = boost::make_shared<ProjectedLikelihood>(
-        _model, fixed, fitSys, position, exposure, footprint, psf,
+        _model, _fixed, _fitSys, *_position, exposure, footprint, psf,
         _ctrl.likelihood
     );
     PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, _prior);
-    _parameters[ndarray::view(0, nonlinearDim)] = initialNonlinear;
-    _parameters[ndarray::view(nonlinearDim, parameterDim)] = initialAmplitudes;
     Optimizer optimizer(objective, _parameters, _ctrl.optimizer);
-    int state = 0;
-    if (_ctrl.doRecordHistory) {
-        result._history = afw::table::BaseCatalog(_historySchema);
-        state = optimizer.run(*_historyRecorder, result._history);
+    _optimizerState = 0;
+    if (doRecordHistory) {
+        _optimizerState = optimizer.run(*_historyRecorder, _history);
     } else {
-        state = optimizer.run();
+        _optimizerState = optimizer.run();
+        _history.clear();
     }
-    if (state & Optimizer::CONVERGED_TR_SMALL) {
-        result._flags.set(Result::TR_SMALL);
-    } else if ((state & Optimizer::FAILED_MAX_INNER_ITERATIONS)
-               || (state & Optimizer::FAILED_MAX_OUTER_ITERATIONS)) {
-        result._flags.set(Result::MAX_ITERATIONS);
-    }
-    result._nonlinear = optimizer.getParameters()[ndarray::view(0, nonlinearDim)];
-    result._amplitudes = optimizer.getParameters()[ndarray::view(nonlinearDim, parameterDim)];
-    result._hessian = optimizer.getHessian();
-    result._objectiveValue = optimizer.getObjectiveValue();
-    result._ellipses = _model->writeEllipses(result._nonlinear, fixed);
-    for (
-        Model::EllipseVector::iterator iter = result._ellipses.begin();
-        iter != result._ellipses.end();
-        ++iter
+    _parameters.deep() = optimizer.getParameters();
+    _hessian.deep() = optimizer.getHessian();
+    _objectiveValue = optimizer.getObjectiveValue();
+    _hasMeasQuantities = false;
+}
+
+void OptimizerFit::setModel(PTR(Model) model, bool doForceEllipseConversion) {
+    LSST_THROW_IF_NE(
+        model->getAmplitudeDim(), _model->getAmplitudeDim(),
+        pex::exceptions::LengthErrorException,
+        "New model amplitude dimension (%d) does not match old amplitude dimension (%d)"
+    );
+    if (doForceEllipseConversion
+        || model->getNonlinearDim() != _model->getNonlinearDim()
+        || model->getFixedDim() != _model->getFixedDim()
     ) {
-        iter->transform(result._fitSysToMeasSys.geometric).inPlace();
+        if (model->getBasisCount() != _model->getBasisCount()) {
+            throw LSST_EXCEPT(
+                pex::exceptions::LengthErrorException,
+                "The new model must have either the same number of nonlinear and fixed parameters or the"
+                " same number of ellipses"
+            );
+        }
+        _model->writeEllipses(_nonlinear.begin(), _fixed.begin(), _ellipses.begin());
+        // When we convert parameters via ellipses, we have to make a new EllipseVector for the new Model,
+        // because it may assume a different ellipse parametrization than the old one even though it has
+        // the same number of ellipses.  When we call std::copy, that invokes assignment operators, which
+        // don't change the ellipse type, just its value.
+        Model::EllipseVector newEllipses = model->makeEllipseVector();
+        _hasMeasQuantities = false;
+        std::copy(_ellipses.begin(), _ellipses.end(), newEllipses.begin());
+        // Because we allocate the nonlinear and amplitude parameters in one block, if we have to reallocate
+        // the former we have to reallocate the latter.
+        if (model->getNonlinearDim() != _model->getNonlinearDim()) {
+            _parameters = ndarray::allocate(model->getNonlinearDim() + model->getAmplitudeDim());
+            _nonlinear = _parameters[ndarray::view(0, model->getNonlinearDim())];
+            ndarray::Array<Scalar,1,1> oldAmplitudes = _amplitudes;
+            _amplitudes = _parameters[ndarray::view(model->getNonlinearDim(), _parameters.getSize<0>())];
+            _amplitudes.deep() = oldAmplitudes;
+        }
+        if (model->getFixedDim() != _model->getFixedDim()) {
+            _fixed = ndarray::allocate(model->getFixedDim());
+        }
+        model->readEllipses(_ellipses.begin(), _nonlinear.begin(), _fixed.begin());
+        _ellipses.swap(newEllipses);
     }
-    result._flux = result._amplitudes.asEigen().sum() * result._fitSysToMeasSys.flux;
-    result._fluxSigma = std::numeric_limits<Scalar>::quiet_NaN(); // tricky; will do later
-    return result;
+    if (_prior) {
+        _prior = model->adaptPrior(_prior);
+    }
+    _model = model;
+}
+
+void OptimizerFit::setPrior(PTR(Prior) prior) {
+    if (prior) {
+        _prior = _model->adaptPrior(prior);
+    } else {
+        _prior.reset();
+    }
+}
+
+void OptimizerFit::setPosition(PTR(afw::coord::Coord) position) {
+    _fitSysToMeasSys = LocalUnitTransform(*position, _fitSys, _measSys);
+    _position = position;
+}
+
+Scalar OptimizerFit::getFlux() const {
+    _ensureMeasQuantities();
+    return _flux;
+}
+
+Scalar OptimizerFit::getFluxSigma() const {
+    _ensureMeasQuantities();
+    return _fluxSigma;
+}
+
+afw::geom::ellipses::Ellipse OptimizerFit::getEllipse(int n) const {
+    _ensureMeasQuantities();
+    return _ellipses[n];
+}
+
+void OptimizerFit::_ensureMeasQuantities() const {
+    if (!_hasMeasQuantities) {
+        _model->writeEllipses(_nonlinear.begin(), _fixed.begin(), _ellipses.begin());
+        for (Model::EllipseVector::iterator iter = _ellipses.begin(); iter != _ellipses.end(); ++iter) {
+            iter->transform(_fitSysToMeasSys.geometric).inPlace();
+        }
+        _flux = _amplitudes.asEigen().sum() * _fitSysToMeasSys.flux;
+        _fluxSigma = std::numeric_limits<Scalar>::quiet_NaN(); // tricky; will do later
+        _hasMeasQuantities = true;
+    }
 }
 
 }}} // namespace lsst::meas::multifit
