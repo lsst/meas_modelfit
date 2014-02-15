@@ -65,12 +65,34 @@ public:
         Control const & ctrl
     );
 
+    /**
+     *  @brief Copy constructor
+     *
+     *  We need explicit copy/assign implementations because ndarray::Array data members
+     *  have shallow copy semantics, which is undesirable here.
+     */
     OptimizerFit(OptimizerFit const & other);
 
+    /**
+     *  @brief Assignment operator
+     *
+     *  We need explicit copy/assign implementations because ndarray::Array data members
+     *  have shallow copy semantics, which is undesirable here.
+     */
     OptimizerFit & operator=(OptimizerFit const & other);
 
+    /// Relatively-lightweight swap
     void swap(OptimizerFit & other);
 
+    /**
+     *  @brief Fit the model to the data and update the parameters
+     *
+     *  @param[in] exposure       Image containing data to fit.  Must have a Wcs and Calib.
+     *  @param[in] footprint      Sets the pixel region in the exposure to use for the fit.
+     *  @param[in] psf            Shapelet representation of the model PSF at the position of
+     *                            the object being fit.
+     *  @param[in] doRecordHistory  If true, the steps taken by the optimizer will be recorded.
+     */
     void run(
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,

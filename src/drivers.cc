@@ -68,6 +68,59 @@ OptimizerFit::OptimizerFit(
     _amplitudes.deep() = amplitudes;
 }
 
+OptimizerFit::OptimizerFit(OptimizerFit const & other) :
+    _model(other._model),
+    _prior(other._prior),
+    _position(other._position->clone()),
+    _hasMeasQuantities(other._hasMeasQuantities),
+    _optimizerState(other._optimizerState),
+    _objectiveValue(other._objectiveValue),
+    _flux(other._flux),
+    _fluxSigma(other._fluxSigma),
+    _fitSys(other._fitSys),
+    _measSys(other._measSys),
+    _fitSysToMeasSys(other._fitSysToMeasSys),
+    _ellipses(other._ellipses),
+    _parameters(ndarray::copy(other._parameters)),
+    _nonlinear(_parameters[ndarray::view(0, _model->getNonlinearDim())]),
+    _amplitudes(_parameters[ndarray::view(_model->getNonlinearDim(), _parameters.getSize<0>())]),
+    _fixed(ndarray::copy(other._fixed)),
+    _hessian(ndarray::copy(other._hessian)),
+    _historyRecorder(other._historyRecorder),
+    _history(other._history),
+    _ctrl(other._ctrl)
+{}
+
+void OptimizerFit::swap(OptimizerFit & other) {
+    _model.swap(other._model);
+    _prior.swap(other._prior);
+    _position.swap(other._position);
+    std::swap(_hasMeasQuantities, other._hasMeasQuantities);
+    std::swap(_optimizerState, other._optimizerState);
+    std::swap(_flux, other._flux);
+    std::swap(_fluxSigma, other._fluxSigma);
+    std::swap(_fitSys, other._fitSys);
+    std::swap(_measSys, other._measSys);
+    std::swap(_fitSysToMeasSys, other._fitSysToMeasSys);
+    _ellipses.swap(other._ellipses);
+    _parameters.swap(other._parameters);
+    _nonlinear.swap(other._nonlinear);
+    _amplitudes.swap(other._amplitudes);
+    _fixed.swap(other._fixed);
+    _hessian.swap(other._hessian);
+    _historyRecorder.swap(other._historyRecorder);
+    _history.swap(other._history);
+    std::swap(_ctrl, other._ctrl);
+}
+
+OptimizerFit & OptimizerFit::operator=(OptimizerFit const & other) {
+    if (&other != this) {
+        OptimizerFit tmp(other);
+        tmp.swap(*this);
+    }
+    return *this;
+}
+
 void OptimizerFit::run(
     afw::image::Exposure<Pixel> const & exposure,
     afw::detection::Footprint const & footprint,
