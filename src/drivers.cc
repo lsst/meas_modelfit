@@ -62,6 +62,9 @@ OptimizerFit OptimizerFit::fit(
     model->readEllipses(r._ellipses.begin(), r._nonlinear.begin(), r._fixed.begin());
     r._amplitudes.deep() = 0.0;
     r._amplitudes[0] = 1.0;
+    if (!doSetupOnly) {
+        r.run(exposure, footprint, psf, doRecordHistory);
+    }
     return r;
 }
 
@@ -190,11 +193,12 @@ void OptimizerFit::run(
     Optimizer optimizer(objective, _parameters, _ctrl.optimizer);
     _optimizerState = 0;
     if (doRecordHistory) {
-        _optimizerState = optimizer.run(*_historyRecorder, _history);
+        optimizer.run(*_historyRecorder, _history);
     } else {
-        _optimizerState = optimizer.run();
+        optimizer.run();
         _history.clear();
     }
+    _optimizerState = optimizer.getState();
     _parameters.deep() = optimizer.getParameters();
     _hessian.deep() = optimizer.getHessian();
     _objectiveValue = optimizer.getObjectiveValue();
