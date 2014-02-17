@@ -48,6 +48,13 @@ struct OptimizerFitControl {
         "configuration for how the objective surface is explored"
     );
 
+    LSST_CONTROL_FIELD(
+        minInitialRadius, double,
+        "Minimum initial radius in pixels (only used if initial paramters are not set directly)"
+    );
+
+    OptimizerFitControl() : minInitialRadius(0.1) {}
+
 };
 
 class OptimizerFit {
@@ -55,14 +62,52 @@ public:
 
     typedef OptimizerFitControl Control;
 
-    OptimizerFit(
+    /**
+     *  @brief Initialize the fit by guessing initial parameters from external measurements and
+     *         run the optimizer.
+     *
+     *  This procedure guesses initial parameter vectors by doing a crude deconvolution
+     *  of image and PSF moments, sets up the "MeasSys" UnitSystem to be the same as the
+     *  "DataSys" (i.e. ellipses will be reporetd in the Exposure's image coordinate system,
+     *  and the flux will be reported in the Exposure's DN units.  After the setup, the
+     *  optimizer is run and the parameters are updated accordingly.
+     *
+     *  @param[in]  model      Definition of the model to be fit.
+     *  @param[in]  prior      Bayesian prior on the model parameters.
+     *  @param[in]  position   Position of the object being fit.
+     *  @param[in]  magnitude  An approximate estimate of the apparent magnitude of the object
+     *                         being fit.  Will be used to construct the "FitSys" UnitSystem
+     *                         such that unit amplitude corresponds to this magnitude.
+     *  @param[in]  moments    Direct image moments of the object being fit.  These should not
+     *                         be PSF-deconvolved.
+     *  @param[in]  exposure   Image containing the data to be fit.  Must have a Wcs and Calib.
+     *  @param[in]  footprint  Footprint that defines the pixel region to fit.
+     *  @param[in]  psf        Shapelet representation of the PSF model at the position of the
+     *                         object beeing fit.
+     *  @param[in]  ctrl       Control object containing additional configuration parameters.
+     *  @param[in]  doSetupOnly      If true, only initialize the parameters from the initial
+     *                               measurements, and don't run the optimizer.
+     *  @param[in] doRecordHistory   If true, the steps taken by the optimizer will be recorded.
+     */
+    static OptimizerFit fit(
+        PTR(Model) model, PTR(Prior) prior, PTR(afw::coord::Coord) position,
+        Scalar magnitude, afw::geom::ellipses::Quadrupole const & moments,
+        afw::image::Exposure<Pixel> const & exposure,
+        afw::detection::Footprint const & footprint,
+        shapelet::MultiShapeletFunction const & psf,
+        Control const & ctrl=Control(),
+        bool doSetupOnly=false,
+        bool doRecordHistory=true
+    );
+
+    static OptimizerFit initialize(
         PTR(Model) model, PTR(Prior) prior,
         PTR(afw::coord::Coord) position,
         UnitSystem const & fitSys, UnitSystem const & measSys,
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes,
         ndarray::Array<Scalar const,1,1> const & fixed,
-        Control const & ctrl
+        Control const & ctrl=Control()
     );
 
     /**
@@ -179,6 +224,13 @@ public:
     afw::table::BaseCatalog getHistory() const { return _history; }
 
 private:
+
+    OptimizerFit(
+        PTR(Model) model, PTR(Prior) prior,
+        PTR(afw::coord::Coord) position,
+        UnitSystem const & fitSys, UnitSystem const & measSys,
+        Control const & ctrl=Control()
+    );
 
     void _ensureMeasQuantities() const;
 

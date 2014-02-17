@@ -27,7 +27,45 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-OptimizerFit::OptimizerFit(
+OptimizerFit OptimizerFit::fit(
+    PTR(Model) model, PTR(Prior) prior, PTR(afw::coord::Coord) position,
+    Scalar magnitude, afw::geom::ellipses::Quadrupole const & moments,
+    afw::image::Exposure<Pixel> const & exposure,
+    afw::detection::Footprint const & footprint,
+    shapelet::MultiShapeletFunction const & psf,
+    Control const & ctrl,
+    bool doSetupOnly,
+    bool doRecordHistory
+) {
+    UnitSystem fitSys(*position, magnitude);
+    UnitSystem measSys(exposure);
+    OptimizerFit r(model, prior, position, fitSys, measSys, ctrl);
+    afw::geom::ellipses::Ellipse psfEllipse = psf.evaluate().computeMoments();
+    afw::geom::ellipses::Quadrupole psfMoments(psfEllipse.getCore());
+    afw::geom::ellipses::Quadrupole deconvolvedMoments(
+        std::max(moments.getIxx() - psfMoments.getIxx(), ctrl.minInitialRadius),
+        std::max(moments.getIyy() - psfMoments.getIyy(), ctrl.minInitialRadius),
+        moments.getIxy() - psfMoments.getIxy(),
+        true // throw if ellipse is invalid
+    );
+    afw::geom::ellipses::Ellipse deconvolvedEllipse(
+        deconvolvedMoments,
+        afw::geom::Point2D(measSys.wcs->skyToPixel(*position) - psfEllipse.getCenter())
+    );
+    LocalUnitTransform measSysToFitSys(*position, measSys, fitSys);
+    for (Model::EllipseVector::iterator iter = r._ellipses.begin(); iter != r._ellipses.end(); ++iter) {
+        // TODO: we should scale the radii to turn them into half-light radii instead of
+        // moments radii, as we use half-light radii for the model parameters.  But to do
+        // that we need to make it so a Model knows what the ratio of those radii is.
+        *iter = deconvolvedEllipse.transform(measSysToFitSys.geometric);
+    }
+    model->readEllipses(r._ellipses.begin(), r._nonlinear.begin(), r._fixed.begin());
+    r._amplitudes.deep() = 0.0;
+    r._amplitudes[0] = 1.0;
+    return r;
+}
+
+OptimizerFit OptimizerFit::initialize(
     PTR(Model) model, PTR(Prior) prior,
     PTR(afw::coord::Coord) position,
     UnitSystem const & fitSys, UnitSystem const & measSys,
@@ -35,20 +73,8 @@ OptimizerFit::OptimizerFit(
     ndarray::Array<Scalar const,1,1> const & amplitudes,
     ndarray::Array<Scalar const,1,1> const & fixed,
     Control const & ctrl
-) :
-    _model(model), _prior(prior), _position(position), _hasMeasQuantities(false),
-    _objectiveValue(std::numeric_limits<Scalar>::quiet_NaN()),
-    _flux(std::numeric_limits<Scalar>::quiet_NaN()),
-    _fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
-    _fitSys(fitSys), _measSys(measSys), _fitSysToMeasSys(*position, _fitSys, _measSys),
-    _ellipses(_model->makeEllipseVector()),
-    _parameters(ndarray::allocate(_model->getNonlinearDim() + model->getAmplitudeDim())),
-    _nonlinear(_parameters[ndarray::view(0, _model->getNonlinearDim())]),
-    _amplitudes(_parameters[ndarray::view(_model->getNonlinearDim(), _parameters.getSize<0>())]),
-    _fixed(ndarray::copy(fixed)),
-    _hessian(ndarray::allocate(_parameters.getSize<0>(), _parameters.getSize<0>())),
-    _ctrl(ctrl)
-{
+) {
+    OptimizerFit r(model, prior, position, fitSys, measSys, ctrl);
     LSST_THROW_IF_NE(
         model->getNonlinearDim(), nonlinear.getSize<0>(),
         pex::exceptions::LengthErrorException,
@@ -64,8 +90,32 @@ OptimizerFit::OptimizerFit(
         pex::exceptions::LengthErrorException,
         "Model fixed dimension (%d) and fixed array size (%d) do not match."
     );
-    _nonlinear.deep() = nonlinear;
-    _amplitudes.deep() = amplitudes;
+    r._nonlinear.deep() = nonlinear;
+    r._amplitudes.deep() = amplitudes;
+    r._fixed.deep() = fixed;
+    return r;
+}
+
+OptimizerFit::OptimizerFit(
+    PTR(Model) model, PTR(Prior) prior,
+    PTR(afw::coord::Coord) position,
+    UnitSystem const & fitSys, UnitSystem const & measSys,
+    Control const & ctrl
+) :
+    _model(model), _prior(prior), _position(position), _hasMeasQuantities(false),
+    _objectiveValue(std::numeric_limits<Scalar>::quiet_NaN()),
+    _flux(std::numeric_limits<Scalar>::quiet_NaN()),
+    _fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
+    _fitSys(fitSys), _measSys(measSys), _fitSysToMeasSys(*position, _fitSys, _measSys),
+    _ellipses(_model->makeEllipseVector()),
+    _parameters(ndarray::allocate(_model->getNonlinearDim() + model->getAmplitudeDim())),
+    _nonlinear(_parameters[ndarray::view(0, _model->getNonlinearDim())]),
+    _amplitudes(_parameters[ndarray::view(_model->getNonlinearDim(), _parameters.getSize<0>())]),
+    _fixed(ndarray::allocate(_model->getFixedDim())),
+    _hessian(ndarray::allocate(_parameters.getSize<0>(), _parameters.getSize<0>())),
+    _ctrl(ctrl)
+{
+    _hessian.deep() = std::numeric_limits<Scalar>::quiet_NaN();
 }
 
 OptimizerFit::OptimizerFit(OptimizerFit const & other) :
