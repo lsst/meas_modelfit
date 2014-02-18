@@ -27,5 +27,6 @@ from .measureImage import *
 from .measureMulti import *
 from .fitRegion import *
 from .samplers import *
+from .optimizer import *
 from .models import *
 from .priors import *

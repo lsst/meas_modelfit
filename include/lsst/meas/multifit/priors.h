@@ -25,133 +25,228 @@
 #define LSST_MEAS_MULTIFIT_priors_h_INCLUDED
 
 #include "lsst/base.h"
+#include "lsst/afw/table/io/Persistable.h"
+#include "lsst/afw/math/Random.h"
 #include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/LogGaussian.h"
+#include "lsst/meas/multifit/Mixture.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 /**
- *  @brief Base class for Bayesian priors.
- *
- *  If @f$\alpha@f$ are the amplitudes, @f$\theta@f$ are the nonlinear parameters, and @f$D@f$ is
- *  the data, then this class represents @f$P(\alpha,\theta)@f$, by providing a function to evaluate
- *  @f[
- *    P(\theta|D)\,P(D) = \int\!P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
- *  @f]
- *  at fixed @f$\theta@f$.  Because @f$\alpha@f$ are linear parameters, @f$P(D|\alpha,\theta)@f$
- *  is Gaussian in @f$\alpha@f$, and because @f$\theta@f$ is fixed, it's usually convenient to
- *  think of the integral as:
- *  @f[
- *    P(\theta|D)\,P(D) = P(\theta)\int\!P(D|\alpha,\theta)\,P(\alpha|\theta)\,d\alpha
- *      = P(\theta)\,P(D|\theta)\,P(D)
- *  @f]
- *  Thus, we marginalize the likelihood in @f$\alpha@f$ at fixed @f$\theta@f$, and then multiply
- *  by the prior on @f$\theta@f$.
+ *  @brief Base class for Bayesian priors
  */
-class Prior {
+class Prior :
+    public afw::table::io::PersistableFacade<Prior>,
+    public afw::table::io::Persistable,
+    private boost::noncopyable
+{
 public:
 
-    /**
-     *  @brief Marginalize over the amplitude likelihood at the given point in nonlinear parameter space,
-     *         and multiply the result by the prior on the nonlinear paramters.
-     *
-     *  @param[in]  likelihood     The likelihood @f$P(D|\alpha,\theta)@f$ as a (nonnormalized)
-     *                             Gaussian in @f$\alpha@f$ at fixed @f$\theta@f$.
-     *  @param[in]  parameters     The nonlinear parameters @f$\theta@f$, considered fixed for
-     *                             this calculation.
-     *
-     *  @return The marginal negative log likelihood multiplied by the prior on @f$\theta@f$
-     *          (i.e. a nonnormalized log posterior):
-     *  @f[
-     *    P(D|\theta)P(\theta) =
-     *       P(\theta)\int\!P(D|\alpha,\theta)\,P(\alpha|\theta)\,d\alpha
-     *  @f]
-     *
-     *  Note that both the joint likelihood passed in and the marginal likelihood returned
-     *  are the negative natural log of the probability densities.
-     */
-    virtual samples::Scalar apply(LogGaussian const & likelihood,
-                                  samples::Vector const & parameters) const = 0;
+    std::string const & getTag() const { return _tag; }
 
     /**
-     *  @brief Compute the nonnormalized negative log expectation value of the flux at a
-     *         nonlinear parameter point.
+     *  @brief Evaluate the prior at the given point in nonlinear and amplitude space.
      *
-     *  This is the integral
-     *  @f[
-     *     \int\!\text{flux}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
-     *  @f]
-     *  For models in which each amplitude is the flux in a component, then
-     *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
+     *  @param[in]   nonlinear        Vector of nonlinear parameters
+     *  @param[in]   amplitudes       Vector of linear parameters
      */
-    virtual samples::Scalar computeFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
+    virtual Scalar evaluate(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes
     ) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized negative log expectation value of the squared flux at a
-     *         nonlinear parameter point.
+     *  @brief Evaluate the derivatives of the prior at the given point in nonlinear and amplitude space.
      *
-     *  This is the integral
-     *  @f[
-     *     -\ln\int\!\left[\text{flux}(\alpha,\theta)\right]^2\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
-     *  @f]
-     *  For models in which each amplitude is the flux in a component, then
-     *  @f$\text{flux}(\alpha,\theta)=|\alpha|_1@f$
+     *  Note that while the model is linear in the amplitudes, the prior is not necessarily
+     *  linear in the amplitudes, so we do care about second derivatives w.r.t. amplitudes.
+     *
+     *  @param[in]   nonlinear           Vector of nonlinear parameters
+     *  @param[in]   amplitudes          Vector of linear parameters
+     *  @param[in]   nonlinearGradient   First derivative w.r.t. nonlinear parameters
+     *  @param[in]   amplitudeGradient   First derivative w.r.t. linear parameters parameters
+     *  @param[in]   nonlinearHessian    Second derivative w.r.t. nonlinear parameters
+     *  @param[in]   amplitudeHessian    Second derivative w.r.t. linear parameters parameters
+     *  @param[in]   crossHessian        Second derivative cross term of d(nonlinear)d(amplitudes);
+     *                                   shape is [nonlinearDim, amplitudeDim].
      */
-    virtual samples::Scalar computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
+    virtual void evaluateDerivatives(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & nonlinearGradient,
+        ndarray::Array<Scalar,1,1> const & amplitudeGradient,
+        ndarray::Array<Scalar,2,1> const & nonlinearHessian,
+        ndarray::Array<Scalar,2,1> const & amplitudeHessian,
+        ndarray::Array<Scalar,2,1> const & crossHessian
     ) const = 0;
 
     /**
-     *  @brief Compute the nonnormalized negative log expectation value of the fraction of flux
-     *         in each component at a nonlinear parameter point.
+     *  @brief Return the -log amplitude integral of the prior*likelihood product.
      *
-     *  This is the integral
+     *  If @f$\alpha@f$ are the amplitudes, @f$\theta@f$ are the nonlinear parameters, and @f$D@f$ is
+     *  the data, then this method represents @f$P(\alpha,\theta)@f$ by computing
      *  @f[
-     *     -\ln\int\!\text{fraction}(\alpha,\theta)\,P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha
+     *    -\ln\left[\int\!P(D|\alpha,\theta)\,P(\alpha,\theta)\,d\alpha\right]
      *  @f]
-     *  For models in which each amplitude is the flux in a component, then
-     *  @f$\text{fraction}(\alpha,\theta)=\frac{\alpha}{|\alpha|_1}@f$
+     *  at fixed @f$\theta@f$.  Because @f$\alpha@f$ are linear parameters, @f$P(D|\alpha,\theta)@f$
+     *  is Gaussian in @f$\alpha@f$, and because @f$\theta@f$ is fixed, it's usually convenient to
+     *  think of the integral as:
+     *  @f[
+     *    -ln\left[P(\theta)\int\!P(D|\alpha,\theta)\,P(\alpha|\theta)\,d\alpha\right]
+     *  @f]
+     *  Thus, we marginalize the likelihood in @f$\alpha@f$ at fixed @f$\theta@f$, and then multiply
+     *  by the prior on @f$\theta@f$.
+     *
+     *  We also assume the likelihood @f$P(D|\alpha,\theta)@f$ is Gaussian in @f$\alpha@f$, which is
+     *  generally true because @f$\alpha@f$ defined such that the model is linear in them, and the
+     *  noise on the data is generally Gaussian.  In detail, we represent the likelihood at fixed
+     *  @f$\theta@f$ as
+     *  @f[
+     *     P(D|\alpha,\theta) = A e^{-g^T\alpha - \frac{1}{2}\alpha^T H \alpha}
+     *  @f]
+     *  The normalization @f$A@f$ can be brought outside the integral as a constant to be added
+     *  to the return value, so it is not passed as an argument to this function.
+     *
+     *  @param[in]  gradient     Gradient of the -log likelihood in @f$\alpha@f$ at fixed @f$\theta@f$;
+     *                           the vector @f$g@f$ in the equation above.
+     *  @param[in]  hessian      Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
+     *                           @f$\theta@f$; the matrix @f$H@f$ in the equation above.
+     *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$.
      */
-    virtual samples::Vector computeFractionExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
+    virtual Scalar marginalize(
+        Vector const & gradient, Matrix const & hessian,
+        ndarray::Array<Scalar const,1,1> const & nonlinear
+    ) const = 0;
+
+    /**
+     *  @brief Compute the amplitude vector that maximizes the prior x likelihood product.
+     *
+     *  @param[in]  gradient     Gradient of the -log likelihood in @f$\alpha@f$ at fixed @f$\theta@f$;
+     *                           the vector @f$g@f$ in the equation above.
+     *  @param[in]  hessian      Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
+     *                           @f$\theta@f$; the matrix @f$H@f$ in the equation above.
+     *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$.
+     *  @param[out] amplitude    The posterior-maximum amplitude parameters @f$\alpha@f$.
+     *
+     *  @return The -log(posterior) at the computed amplitude point.
+     */
+    virtual Scalar maximize(
+        Vector const & gradient, Matrix const & hessian,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar,1,1> const & amplitudes
+    ) const = 0;
+
+    /**
+     *  @brief Draw a set of Monte Carlo amplitude vectors
+     *
+     *  This provides a Monte Carlo approach to extracting the conditional amplitude distribution that
+     *  is integrated by the marginalize() method.
+     *
+     *  @param[in]  gradient     Gradient of the -log likelihood in @f$\alpha@f$ at fixed @f$\theta@f$.
+     *  @param[in]  fisher       Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
+     *                           @f$\theta@f$.
+     *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$ at which we are evaluating
+     *                           the conditional distribution @f$P(\alpha|\theta)@f$.
+     *  @param[in,out]  rng      Random number generator.
+     *  @param[out] amplitudes   The Monte Carlo sample of amplitude parameters @f$\alpha@f$.  The
+     *                           number of rows sets the number of samples, while the number of
+     *                           columns must match the dimensionality of @f$\alpha@f$.
+     *  @param[out] weights      The weights of the Monte Carlo samples; should asymptotically average
+     *                           to one.
+     *  @param[in]  multiplyWeights  If true, multiply weight vector instead of overwriting it.
+     */
+    virtual void drawAmplitudes(
+        Vector const & gradient, Matrix const & fisher,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        afw::math::Random & rng,
+        ndarray::Array<Scalar,2,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & weights,
+        bool multiplyWeights=false
     ) const = 0;
 
     virtual ~Prior() {}
 
+protected:
+
+    explicit Prior(std::string const & tag="") : _tag(tag) {}
+
+    virtual std::string getPythonModule() const { return "lsst.meas.multifit"; }
+
+private:
+    std::string _tag;
 };
 
 /**
- *  @brief A nonnormalized flat prior.
- *
- *  FlatPrior should only be used for single-component fits or test cases with no
- *  degeneracies; a more informative prior is necessary to regularize fitting even
- *  high S/N data with more than one component at radius=0.
- *
- *  @note FlatPrior is a singleton, accessed only via the get() static member function.
+ *  @brief A prior that's flat in amplitude parameters, and uses a Mixture for nonlinear parameters.
  */
-class FlatPrior : public Prior, private boost::noncopyable {
+class MixturePrior :
+    public afw::table::io::PersistableFacade<MixturePrior>,
+    public Prior
+{
 public:
 
-    static PTR(FlatPrior) get();
+    explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
 
-    virtual samples::Scalar apply(LogGaussian const & likelihood, samples::Vector const & parameters) const;
-
-    virtual samples::Scalar computeFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
+    /// @copydoc Prior::evaluate
+    virtual Scalar evaluate(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes
     ) const;
 
-    virtual samples::Scalar computeSquaredFluxExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
+    /// @copydoc Prior::evaluateDerivatives
+    virtual void evaluateDerivatives(
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar const,1,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & nonlinearGradient,
+        ndarray::Array<Scalar,1,1> const & amplitudeGradient,
+        ndarray::Array<Scalar,2,1> const & nonlinearHessian,
+        ndarray::Array<Scalar,2,1> const & amplitudeHessian,
+        ndarray::Array<Scalar,2,1> const & crossHessian
     ) const;
 
-    virtual samples::Vector computeFractionExpectation(
-        LogGaussian const & likelihood, samples::Vector const & parameters
+    /// @copydoc Prior::evaluate
+    virtual Scalar marginalize(
+        Vector const & gradient, Matrix const & hessian,
+        ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const;
+
+    /// @copydoc Prior::maximize
+    virtual Scalar maximize(
+        Vector const & gradient, Matrix const & hessian,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        ndarray::Array<Scalar,1,1> const & amplitudes
+    ) const;
+
+    /// @copydoc Prior::drawAmplitudes
+    virtual void drawAmplitudes(
+        Vector const & gradient, Matrix const & fisher,
+        ndarray::Array<Scalar const,1,1> const & nonlinear,
+        afw::math::Random & rng,
+        ndarray::Array<Scalar,2,1> const & amplitudes,
+        ndarray::Array<Scalar,1,1> const & weights,
+        bool multiplyWeights=false
+    ) const;
+
+    /**
+     *  @brief Return a MixtureUpdateRestriction appropriate for (e1,e2,r) data.
+     *
+     *  This restriction object can be used with Mixture<3>::updateEM() to create
+     *  a mixture with a strictly isotropic ellipticity distribution.
+     */
+    static MixtureUpdateRestriction const & getUpdateRestriction();
+
+    PTR(Mixture const) getMixture() const { return _mixture; }
+
+    virtual bool isPersistable() const { return true; }
+
+protected:
+
+    virtual std::string getPersistenceName() const;
+
+    virtual void write(OutputArchiveHandle & handle) const;
 
 private:
-    FlatPrior() {}
+    PTR(Mixture const) _mixture;
 };
 
 }}} // namespace lsst::meas::multifit

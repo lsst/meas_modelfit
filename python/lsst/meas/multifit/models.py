@@ -29,26 +29,32 @@ import numpy
 import lsst.pex.config
 import lsst.shapelet.tractor
 
+from . import multifitLib
+
 __all__ = ("modelRegistry", "registerModel")
 
 modelRegistry = lsst.pex.config.makeRegistry(
     """Registry for galaxy model definitions
 
-    A galaxy definition is a Configurable (a callable that takes a Config object
-    as its first and, in this case, only argument) that returns a
-    shapelet.MultiShapeletBasis.
+    A galaxy model definition is a Configurable (a callable that takes a Config object
+    as its first argument) that returns a lsst.meas.multifit.Model.  It also takes
+    the center position of the source as a second argument.
     """
 )
 
 def registerModel(name):
-    """Decorator to add a Config class with a makeBasis static method to the
+    """Decorator to add a Config class with a makeModel static method to the
     model registry.
     """
     def decorate(cls):
-        cls.makeBasis.ConfigClass = cls
-        modelRegistry.register(name, cls.makeBasis)
+        cls.makeModel.ConfigClass = cls
+        modelRegistry.register(name, cls.makeModel)
         return cls
     return decorate
+
+def getCenterEnum(config):
+    """Helper function to turn config boolean option into enum value"""
+    return multifitLib.Model.FIXED_CENTER if config.fixCenter else multifitLib.Model.SINGLE_CENTER
 
 @registerModel("gaussian")
 class GaussianModelConfig(lsst.pex.config.Config):
@@ -58,18 +64,19 @@ class GaussianModelConfig(lsst.pex.config.Config):
         "Radius parameter to use for the model, in units of the RMS size (sigma)",
         dtype=float, default=1.0,
         )
+    fixCenter = lsst.pex.config.Field(
+        "Fix the center to the position derived from a previous centeroider?",
+        dtype=bool, default=True
+        )
 
     @staticmethod
-    def makeBasis(config):
-        """Create and return a MultiShapeletBasis corresponding to the config."""
-        basis = lsst.shapelet.MultiShapeletBasis(1)
-        basis.addComponent(config.radius, 0, numpy.array([[1.0]], dtypef=float))
-        return basis
+    def makeModel(config):
+        return multifitLib.Model.makeGaussian(getCenterEnum(config), self.config.radius)
 
-@registerModel("tractor")
-class TractorModelConfig(lsst.pex.config.Config):
+class FixedSersicConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
-    as optimized by Hogg and Lang's The Tractor.
+    as optimized by Hogg and Lang's The Tractor.  Intended for use as a subclass or nested config only,
+    not a top-level model config.
 
     See the lsst.shapelet.tractor module for more information.
     """
@@ -87,31 +94,51 @@ class TractorModelConfig(lsst.pex.config.Config):
         dtype=int, optional=True,
         )
 
-    @staticmethod
-    def makeBasis(config):
+    def makeBasis(self):
         """Load and return a MultiShapeletBasis corresponding to the config."""
         return lsst.shapelet.tractor.loadBasis(
-            profile=config.profile,
-            nComponents=config.nComponents,
-            maxRadius=config.maxRadius
+            profile=self.profile,
+            nComponents=self.nComponents,
+            maxRadius=self.maxRadius
             )
+
+@registerModel("fixed-sersic")
+class FixedSersicModelConfig(FixedSersicConfig):
+    """A single-component fixed-index Sersic model, using a multi-Gaussian approximation to
+    the profile (see FixedSersicConfig).
+    """
+    fixCenter = lsst.pex.config.Field(
+        "Fix the center to the position derived from a previous centeroider?",
+        dtype=bool, default=True
+        )
+
+    @staticmethod
+    def makeModel(config):
+        return multifitLib.Model.make(config.makeBasis(), getCenterEnum(config))
 
 @registerModel("bulge+disk")
 class BulgeDiskModelConfig(lsst.pex.config.Config):
     """Config that defines the model used in two-component galaxy model fits.
     """
-    disk = lsst.pex.config.ConfigurableField(
+    disk = lsst.pex.config.ConfigField(
         "multi-Gaussian approximation to be used for the disk component of the model",
-        target=TractorModelConfig.makeBasis,
+        dtype=FixedSersicConfig
         )
-    bulge = lsst.pex.config.ConfigurableField(
+    bulge = lsst.pex.config.ConfigField(
         "multi-Gaussian approximation to be used for the bulge component of the model",
-        target=TractorModelConfig.makeBasis,
+        dtype=FixedSersicConfig
         )
     bulgeRadius = lsst.pex.config.Field(
-        "half-light radius of bulge in units of half-light radius of disk",
+        ("Half-light radius of bulge in units of half-light radius of disk. "
+         "If None, the two components will have completely independent radii "
+         "and ellipticities."),
         dtype=float,
         default=0.6,
+        optional=True
+        )
+    fixCenter = lsst.pex.config.Field(
+        "Fix the center to the position derived from a previous centeroider?",
+        dtype=bool, default=True
         )
 
     def setDefaults(self):
@@ -119,11 +146,19 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
         self.bulge.profile = "luv"
 
     @staticmethod
-    def makeBasis(config):
-        """Return a MultiShapeletBasis with both disk and bulge components.
-        """
-        bulge = config.bulge.apply()
-        bulge.scale(config.bulgeRadius)
-        disk = config.disk.apply()
-        disk.merge(bulge)
-        return disk
+    def makeModel(config):
+        bulge = config.bulge.makeBasis()
+        disk = config.disk.makeBasis()
+        if config.bulgeRadius is None:
+            basisVector = multifitLib.Model.BasisVector()
+            basisVector.append(disk)
+            basisVector.append(bulge)
+            prefixes = multifitLib.Model.NameVector()
+            prefixes.append("exp.")
+            prefixes.append("dev.")
+            return multifitLib.Model.make(basisVector, prefixes, getCenterEnum(config))
+        else:
+            basis = disk
+            bulge.scale(config.bulgeRadius)
+            basis.merge(bulge)
+            return multifitLib.Model.make(basis, getCenterEnum(config))

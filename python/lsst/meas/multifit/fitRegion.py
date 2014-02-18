@@ -33,7 +33,7 @@ class FitRegionConfig(lsst.pex.config.Config):
     """
     nGrow = lsst.pex.config.Field(
         dtype=int,
-        default=5,
+        default=0,
         doc="How many pixels to grow detection footprints by"
     )
     growIsotropic = lsst.pex.config.Field(

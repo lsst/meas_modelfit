@@ -24,6 +24,7 @@
 Config classes and registry for Bayesian priors
 """
 
+import os
 import numpy
 
 import lsst.pex.config
@@ -35,7 +36,7 @@ __all__ = ("priorRegistry", "registerPrior")
 priorRegistry = lsst.pex.config.makeRegistry(
     """Registry for Bayesian priors on galaxy parameters
 
-    The Configurables (callables that take a Config as their first and, in this case, only argument)
+    The Configurables (callables that take a Config as their first argument)
     in the registry should return a subclass of the Prior class.
     """
 )
@@ -50,9 +51,49 @@ def registerPrior(name):
         return cls
     return decorate
 
-@registerPrior("flat")
-class FlatPriorConfig(lsst.pex.config.Config):
+@registerPrior("mixture")
+class MixturePriorConfig(lsst.pex.config.Config):
+    filename = lsst.pex.config.Field(
+        dtype=str, default="s13-v2-disk-08.fits",
+        doc="Filename for mixture data file to load; relative to $MEAS_MULTIFIT_DIR/data unless absolute"
+        )
 
     @staticmethod
     def makePrior(config):
-        return multifitLib.FlatPrior.get()
+        if os.path.isabs(config.filename):
+            path = config.filename
+        else:
+            path = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "data", config.filename)
+        mixture = multifitLib.Mixture.readFits(path)
+        return multifitLib.MixturePrior(mixture, "single-ellipse")
+
+def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):
+    """Fit a Mixture distribution to a set of (e1, e2, r) data points
+
+    @param[in] data           array of data points to fit; shape=(N,3)
+    @param[in] nComponents    number of components in the mixture distribution
+    @param[in] minFactor      ellipticity variance of the smallest component in the initial mixture,
+                              relative to the measured variance
+    @param[in] maxFactor      ellipticity variance of the largest component in the initial mixture,
+                              relative to the measured variance
+    @param[in] nIterations    number of expectation-maximization update iterations
+    @param[in] df             number of degrees of freedom for component Student's T distributions
+                              (inf=Gaussian).
+    """
+    components = lsst.meas.multifit.Mixture.ComponentList()
+    rMu = data[:,2].mean()
+    rSigma = data[:,2].var()
+    eSigma = 0.5*(data[:,0].var() + data[:,1].var())
+    mu = numpy.array([0.0, 0.0, rMu], dtype=float)
+    baseSigma = numpy.array([[eSigma, 0.0, 0.0],
+                             [0.0, eSigma, 0.0],
+                             [0.0, 0.0, rSigma]])
+    for factor in numpy.linspace(minFactor, maxFactor, nComponents):
+        sigma = baseSigma.copy()
+        sigma[:2,:2] *= factor
+        components.append(lsst.meas.multifit.Mixture.Component(1.0, mu, sigma))
+    mixture = lsst.meas.multifit.Mixture(3, components, df)
+    restriction = lsst.meas.multifit.MixturePrior.getUpdateRestriction()
+    for i in range(nIterations):
+        mixture.updateEM(data, restriction)
+    return mixture

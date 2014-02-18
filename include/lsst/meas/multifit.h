@@ -24,16 +24,22 @@
 #ifndef LSST_MEAS_MULTIFIT_H
 #define LSST_MEAS_MULTIFIT_H
 
+#include "lsst/meas/multifit/MarginalSampling.h"
+#include "lsst/meas/multifit/DirectSampling.h"
 #include "lsst/meas/multifit/ModelFitRecord.h"
-#include "lsst/meas/multifit/NaiveGridSampler.h"
-#include "lsst/meas/multifit/BaseSampler.h"
-#include "lsst/meas/multifit/ExpectationFunctor.h"
-#include "lsst/meas/multifit/KernelDensityEstimator.h"
-#include "lsst/meas/multifit/SampleSet.h"
-#include "lsst/meas/multifit/Objective.h"
-#include "lsst/meas/multifit/MultiEpochObjective.h"
+#include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
+#include "lsst/meas/multifit/Sampling.h"
+#include "lsst/meas/multifit/TruncatedGaussian.h"
+#include "lsst/meas/multifit/Likelihood.h"
+#include "lsst/meas/multifit/ProjectedLikelihood.h"
+#include "lsst/meas/multifit/UnitSystem.h"
+#include "lsst/meas/multifit/Interpreter.h"
 #include "lsst/meas/multifit/priors.h"
-#include "lsst/meas/multifit/LogGaussian.h"
 #include "lsst/meas/multifit/integrals.h"
+#include "lsst/meas/multifit/models.h"
+#include "lsst/meas/multifit/Mixture.h"
+#include "lsst/meas/multifit/optimizer.h"
+#include "lsst/meas/multifit/psf.h"
+#include "lsst/meas/multifit/drivers.h"
 
 #endif // !LSST_MEAS_MULTIFIT_H
