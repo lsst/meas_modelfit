@@ -95,12 +95,9 @@ class FixedSersicConfig(lsst.pex.config.Config):
         )
 
     def makeBasis(self):
-        """Load and return a MultiShapeletBasis corresponding to the config."""
-        return lsst.shapelet.tractor.loadBasis(
-            profile=self.profile,
-            nComponents=self.nComponents,
-            maxRadius=self.maxRadius
-            )
+        """Return a MultiShapeletBasis corresponding to the config."""
+        maxRadius = self.maxRadius if self.maxRadius is not None else 0
+        return lsst.shapelet.RadialProfile.get(self.profile).getBasis(self.nComponents, maxRadius)
 
 @registerModel("fixed-sersic")
 class FixedSersicModelConfig(FixedSersicConfig):
