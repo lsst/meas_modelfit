@@ -23,7 +23,7 @@
 
 import lsst.pipe.base
 import lsst.pex.config
-from lsst.pipe.tasks.coaddBase import CoaddDataIdContainer
+from lsst.coadd.utils import CoaddDataIdContainer
 
 from .measureImage import MeasureImageTask
 
