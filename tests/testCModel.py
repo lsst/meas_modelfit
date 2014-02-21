@@ -44,14 +44,12 @@ def makeMultiShapeletCircularGaussian(sigma):
     return m
 
 
-class OptimizerFitTestCase(lsst.utils.tests.TestCase):
+class CModelTestCase(lsst.utils.tests.TestCase):
 
-    def testFit(self):
-        """Test the main convenience driver, fit()"""
-        modelConfig = lsst.meas.multifit.models.FixedSersicModelConfig()
-        model = modelConfig.makeModel(config=modelConfig) # see #3151 for why this syntax is what it is
-        priorConfig = lsst.meas.multifit.priors.MixturePriorConfig()
-        prior = priorConfig.makePrior(config=priorConfig)
+    def testPointSource(self):
+        """Test that CModelAlgorithm.apply() works when applied to a postage-stamp
+        containing only a point source
+        """
         crval = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
         crpix = lsst.afw.geom.Point2D(0.0, 0.0)
         cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
@@ -69,7 +67,6 @@ class OptimizerFitTestCase(lsst.utils.tests.TestCase):
 
         # Start by creating a point source and fitting it with an extended model
         trueFlux = 65.0
-        initialMagnitude = dataCalib.getMagnitude(trueFlux) + 0.01
         exposure.getMaskedImage().getImage().getArray()[:,:] \
             = numpy.random.randn(bbox.getHeight(), bbox.getWidth()) * noiseSigma
         psfSigma = 2.0
@@ -80,14 +77,24 @@ class OptimizerFitTestCase(lsst.utils.tests.TestCase):
         subImage = lsst.afw.image.ImageF(exposure.getMaskedImage().getImage(), psfBBox, lsst.afw.image.PARENT)
         subImage.getArray()[:,:] = psfImage.getArray()
 
-        result = lsst.meas.multifit.OptimizerFit.fit(
-            model, prior, position, initialMagnitude, psf.computeShape(),
+        algorithm = lsst.meas.multifit.CModelAlgorithm(lsst.meas.multifit.CModelControl())
+        result = algorithm.apply(
             exposure, lsst.afw.detection.Footprint(psfBBox),
             makeMultiShapeletCircularGaussian(psfSigma),
-            lsst.meas.multifit.OptimizerFitControl()
+            xyPosition, psf.computeShape()
             )
-        self.assertClose(result.getFlux(), trueFlux, rtol=0.01)
-        self.assertLess(result.getEllipse().getCore().getDeterminantRadius(), 0.2)
+        self.assertFalse(result.initial.getFlag(result.FAILED))
+        self.assertClose(result.initial.flux, trueFlux, rtol=0.01)
+        self.assertLess(result.initial.ellipse.getDeterminantRadius(), 0.2)
+        self.assertFalse(result.exp.getFlag(result.FAILED))
+        self.assertClose(result.exp.flux, trueFlux, rtol=0.01)
+        self.assertLess(result.exp.ellipse.getDeterminantRadius(), 0.2)
+        self.assertFalse(result.dev.getFlag(result.FAILED))
+        self.assertClose(result.dev.flux, trueFlux, rtol=0.01)
+        self.assertLess(result.dev.ellipse.getDeterminantRadius(), 0.2)
+        self.assertFalse(result.getFlag(result.FAILED))
+        self.assertClose(result.flux, trueFlux, rtol=0.01)
+
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
@@ -95,7 +102,7 @@ def suite():
     lsst.utils.tests.init()
 
     suites = []
-    suites += unittest.makeSuite(OptimizerFitTestCase)
+    suites += unittest.makeSuite(CModelTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
 

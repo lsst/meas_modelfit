@@ -39,6 +39,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/afw/cameraGeom.h"
 #include "lsst/afw/image.h"
 #include "lsst/shapelet.h"
+#include "lsst/meas/algorithms.h"
 #include "lsst/meas/multifit.h"
 #include "ndarray/eigen.h"
 #include "Eigen/Core"
@@ -68,6 +69,7 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/afw/table/tableLib.i"
 %import "lsst/afw/image/imageLib.i"
 %import "lsst/afw/math/random.i"
+%import "lsst/meas/algorithms/algorithmsLib.i"
 %import "lsst/shapelet/shapeletLib.i"
 %import "lsst/pex/config.h"
 
@@ -278,4 +280,20 @@ typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
 
 %include "lsst/meas/multifit/integrals.h"
 %include "lsst/meas/multifit/optimizer.i"
-%include "lsst/meas/multifit/drivers.h"
+
+%shared_ptr(lsst::meas::multifit::CModelControl)
+%shared_ptr(lsst::meas::multifit::CModelAlgorithm)
+%include "lsst/meas/multifit/CModel.h"
+
+%pythoncode %{
+import lsst.pex.config
+import lsst.meas.algorithms
+
+CModelStageConfig = lsst.pex.config.makeConfigClass(CModelStageControl)
+
+CModelRegionConfig = lsst.pex.config.makeConfigClass(CModelRegionControl)
+
+lsst.meas.algorithms.AlgorithmRegistry.register("cmodel", CModelControl)
+
+CModelAlgorithm.Result = CModelResult
+%}
