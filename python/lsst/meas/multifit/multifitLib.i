@@ -73,15 +73,6 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/shapelet/shapeletLib.i"
 %import "lsst/pex/config.h"
 
-// We should have something like this macro in p_lsstSwig.i
-%define %downcastPtr(BASE, DERIVED)
-%extend DERIVED {
-    static PTR(DERIVED) cast(PTR(BASE) base) {
-        return boost::dynamic_pointer_cast< DERIVED >(base);
-    }
-}
-%enddef
-
 %template(EpochFootprintVector) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,0>);
@@ -208,10 +199,11 @@ Pixel = numpy.float32
     %template(UnitSystem) UnitSystem<double>;
 }
 
-%downcastPtr(lsst::meas::multifit::Model, lsst::meas::multifit::MultiModel)
-%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::SamplingInterpreter)
-%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::DirectSamplingInterpreter)
-%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::MarginalSamplingInterpreter)
+%castShared(lsst::meas::multifit::MixturePrior, lsst::meas::multifit::Prior)
+%castShared(lsst::meas::multifit::MultiModel, lsst::meas::multifit::Model)
+%castShared(lsst::meas::multifit::SamplingInterpreter, lsst::meas::multifit::Interpreter)
+%castShared(lsst::meas::multifit::DirectSamplingInterpreter, lsst::meas::multifit::Interpreter)
+%castShared(lsst::meas::multifit::MarginalSamplingInterpreter, lsst::meas::multifit::Interpreter)
 
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
