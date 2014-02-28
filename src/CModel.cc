@@ -614,6 +614,9 @@ public:
         // asymmetric, so we'll leave that as a potential project for the future.
         result.fluxSigma = expData.fitSysToMeasSys.flux / std::sqrt(p_hessian_pt(1,1));
         result.setFlag(CModelResult::FAILED, false);
+
+        result.fracDev = amplitudes[1] / amplitudes.sum();
+        result.objective = tg.evaluateLog()(amplitudes);
     }
 
     void guessParametersFromMoments(
@@ -796,7 +799,7 @@ CModelAlgorithm::Result CModelAlgorithm::apply(
 ) const {
 
     // Initialize the result object with NaNs and general failure flags set.
-    Result result;
+    Result result = _impl->makeResult();
 
     // Grow the footprint, clip bad pixels and the exposure bbox
     PTR(afw::detection::Footprint) initialFitRegion = determineInitialFitRegion(
@@ -873,7 +876,7 @@ CModelAlgorithm::Result CModelAlgorithm::applyForced(
     }
 
     // Initialize the result object with NaNs and general failure flags set.
-    Result result;
+    Result result = _impl->makeResult();
 
     // Set up coordinate systems and empty parameter vectors
     CModelStageData initialData(exposure, approxFlux, center, psf, *_impl->initial.model);
