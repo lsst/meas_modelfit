@@ -219,6 +219,12 @@ void ProjectedLikelihood::computeModelMatrix(
         int amplitudeOffset = 0;
         for (std::size_t j = 0; j < _impl->ellipses.size(); ++j) {
             _impl->scratch = _impl->ellipses[j].transform(i->transform.geometric);
+            if (!(_impl->scratch.getCore().getDeterminantRadius() > 0.0)) {
+                throw LSST_EXCEPT(
+                    pex::exceptions::RuntimeErrorException,
+                    "Invalid ellipse encountered in model evaluation"
+                );
+            }
             int amplitudeEnd = amplitudeOffset + i->matrixBuilders[j].getBasisSize();
             i->matrixBuilders[j].build(
                 modelMatrix[ndarray::view(dataOffset, dataEnd)(amplitudeOffset, amplitudeEnd)],

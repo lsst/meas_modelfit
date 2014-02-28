@@ -84,6 +84,9 @@ PTR(Model) CModelStageControl::getModel() const {
 }
 
 PTR(Prior) CModelStageControl::getPrior() const {
+    if (priorName == "") {
+        return PTR(Prior)();
+    }
     char const * pkgDir = std::getenv("MEAS_MULTIFIT_DIR");
     if (!pkgDir) {
         throw LSST_EXCEPT(
@@ -628,10 +631,15 @@ public:
         // having moments <= 0
         afw::geom::ellipses::Ellipse psfEllipse = data.psf.evaluate().computeMoments();
         afw::geom::ellipses::Quadrupole psfMoments(psfEllipse.getCore());
+        Scalar mir2 = ctrl.minInitialRadius * ctrl.minInitialRadius;
+        Scalar ixx = std::max(moments.getIxx() - psfMoments.getIxx(), mir2);
+        Scalar iyy = std::max(moments.getIyy() - psfMoments.getIyy(), mir2);
+        Scalar ixy = moments.getIxy() - psfMoments.getIxy();
+        if (ixx*iyy < ixy*ixy) {
+            ixy = (ixy / std::abs(ixy)) * std::sqrt(ixx*iyy) * (1.0 - mir2);
+        }
         afw::geom::ellipses::Quadrupole deconvolvedMoments(
-            std::max(moments.getIxx() - psfMoments.getIxx(), ctrl.minInitialRadius),
-            std::max(moments.getIyy() - psfMoments.getIyy(), ctrl.minInitialRadius),
-            moments.getIxy() - psfMoments.getIxy(),
+            ixx, iyy, ixy,
             true // throw if ellipse is invalid
         );
         afw::geom::ellipses::Ellipse deconvolvedEllipse(
