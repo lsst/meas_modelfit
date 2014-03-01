@@ -272,20 +272,4 @@ typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
 
 %include "lsst/meas/multifit/integrals.h"
 %include "lsst/meas/multifit/optimizer.i"
-
-%shared_ptr(lsst::meas::multifit::CModelControl)
-%shared_ptr(lsst::meas::multifit::CModelAlgorithm)
-%include "lsst/meas/multifit/CModel.h"
-
-%pythoncode %{
-import lsst.pex.config
-import lsst.meas.algorithms
-
-CModelStageConfig = lsst.pex.config.makeConfigClass(CModelStageControl)
-
-CModelRegionConfig = lsst.pex.config.makeConfigClass(CModelRegionControl)
-
-lsst.meas.algorithms.AlgorithmRegistry.register("cmodel", CModelControl)
-
-CModelAlgorithm.Result = CModelResult
-%}
+%include "lsst/meas/multifit/CModel.i"
