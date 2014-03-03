@@ -43,7 +43,7 @@ struct CModelStageControl {
 
     CModelStageControl() :
         profileName("lux"),
-        priorName("s13-v2-disk-06"),
+        priorName("broad-02_02-08_08"),
         nComponents(8),
         maxRadius(0),
         doRecordHistory(true)
@@ -163,7 +163,6 @@ struct CModelControl : public algorithms::AlgorithmControl {
         initial.optimizer.gradientThreshold = 1E-2; // with coarse convergence criteria
         initial.optimizer.minTrustRadiusThreshold = 1E-2;
         dev.profileName = "luv";
-        dev.priorName = "s13-v2-bulge-06";
     }
 
     PTR(CModelControl) clone() const {

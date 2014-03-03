@@ -77,7 +77,8 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         subImage = lsst.afw.image.ImageF(exposure.getMaskedImage().getImage(), psfBBox, lsst.afw.image.PARENT)
         subImage.getArray()[:,:] = psfImage.getArray()
 
-        algorithm = lsst.meas.multifit.CModelAlgorithm(lsst.meas.multifit.CModelControl())
+        ctrl = lsst.meas.multifit.CModelControl()
+        algorithm = lsst.meas.multifit.CModelAlgorithm(ctrl)
         result = algorithm.apply(
             exposure, lsst.afw.detection.Footprint(psfBBox),
             makeMultiShapeletCircularGaussian(psfSigma),
