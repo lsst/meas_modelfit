@@ -343,8 +343,21 @@ private:
 
     friend class CModelAlgorithmControl;
 
+    // Actual implementations go here, so we can get partial results to the plugin
+    // version when we throw.
+    void _applyImpl(
+        Result & result,
+        afw::image::Exposure<Pixel> const & exposure,
+        afw::detection::Footprint const & footprint,
+        shapelet::MultiShapeletFunction const & psf,
+        afw::geom::Point2D const & center,
+        afw::geom::ellipses::Quadrupole const & moments,
+        Scalar approxFlux
+    ) const;
+
     // this method just throws an exception; it's present to resolve dispatches from _apply()
-    Result apply(
+    void _applyImpl(
+        Result & result,
         afw::image::Exposure<double> const & exposure,
         afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,
@@ -358,8 +371,21 @@ private:
         );
     }
 
+    // Actual implementations go here, so we can get partial results to the plugin
+    // version when we throw.
+    void _applyForcedImpl(
+        Result & result,
+        afw::image::Exposure<Pixel> const & exposure,
+        afw::detection::Footprint const & footprint,
+        shapelet::MultiShapeletFunction const & psf,
+        afw::geom::Point2D const & center,
+        Result const & reference,
+        Scalar approxFlux
+    ) const;
+
     // this method just throws an exception; it's present to resolve dispatches from _applyForced()
-    Result applyForced(
+    void _applyForcedImpl(
+        Result & result,
         afw::image::Exposure<double> const & exposure,
         afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,

@@ -805,9 +805,21 @@ CModelAlgorithm::Result CModelAlgorithm::apply(
     afw::geom::ellipses::Quadrupole const & moments,
     Scalar approxFlux
 ) const {
-
-    // Initialize the result object with NaNs and general failure flags set.
     Result result = _impl->makeResult();
+    _applyImpl(result, exposure, footprint, psf, center, moments, approxFlux);
+    return result;
+}
+
+
+void CModelAlgorithm::_applyImpl(
+    Result & result,
+    afw::image::Exposure<Pixel> const & exposure,
+    afw::detection::Footprint const & footprint,
+    shapelet::MultiShapeletFunction const & psf,
+    afw::geom::Point2D const & center,
+    afw::geom::ellipses::Quadrupole const & moments,
+    Scalar approxFlux
+) const {
 
     // Grow the footprint, clip bad pixels and the exposure bbox
     PTR(afw::detection::Footprint) initialFitRegion = determineInitialFitRegion(
@@ -816,11 +828,11 @@ CModelAlgorithm::Result CModelAlgorithm::apply(
     );
     if (!initialFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
-        return result;
+        return;
     }
     if (initialFitRegion->getArea() > getControl().region.maxArea) {
         result.setFlag(CModelResult::MAX_AREA, true);
-        return result;
+        return;
     }
 
     // Negative approxFlux means we should come up with an estimate ourselves.
@@ -848,11 +860,11 @@ CModelAlgorithm::Result CModelAlgorithm::apply(
     );
     if (!finalFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
-        return result;
+        return;
     }
     if (finalFitRegion->getArea() > getControl().region.maxArea) {
         result.setFlag(CModelResult::MAX_AREA, true);
-        return result;
+        return;
     }
 
     // Do the exponential fit
@@ -865,10 +877,23 @@ CModelAlgorithm::Result CModelAlgorithm::apply(
 
     // Do the linear combination fit
     _impl->fitLinear(getControl(), result, expData, devData, exposure, *finalFitRegion);
-    return result;
 }
 
 CModelAlgorithm::Result CModelAlgorithm::applyForced(
+    afw::image::Exposure<Pixel> const & exposure,
+    afw::detection::Footprint const & footprint,
+    shapelet::MultiShapeletFunction const & psf,
+    afw::geom::Point2D const & center,
+    CModelResult const & reference,
+    Scalar approxFlux
+) const {
+    Result result = _impl->makeResult();
+    _applyForcedImpl(result, exposure, footprint, psf, center, reference, approxFlux);
+    return result;
+}
+
+void CModelAlgorithm::_applyForcedImpl(
+    Result & result,
     afw::image::Exposure<Pixel> const & exposure,
     afw::detection::Footprint const & footprint,
     shapelet::MultiShapeletFunction const & psf,
@@ -882,9 +907,6 @@ CModelAlgorithm::Result CModelAlgorithm::applyForced(
     if (approxFlux < 0.0) {
         approxFlux = computeFluxInFootprint(*exposure.getMaskedImage().getImage(), footprint);
     }
-
-    // Initialize the result object with NaNs and general failure flags set.
-    Result result = _impl->makeResult();
 
     // Set up coordinate systems and empty parameter vectors
     CModelStageData initialData(exposure, approxFlux, center, psf, *_impl->initial.model);
@@ -909,11 +931,11 @@ CModelAlgorithm::Result CModelAlgorithm::applyForced(
     );
     if (!finalFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
-        return result;
+        return;
     }
     if (finalFitRegion->getArea() > getControl().region.maxArea) {
         result.setFlag(CModelResult::MAX_AREA, true);
-        return result;
+        return;
     }
 
     // Do the initial fit (amplitudes only)
@@ -934,7 +956,6 @@ CModelAlgorithm::Result CModelAlgorithm::applyForced(
 
     // Do the linear combination fit
     _impl->fitLinear(getControl(), result, expData, devData, exposure, *finalFitRegion);
-    return result;
 }
 
 template <typename PixelT>
@@ -984,6 +1005,7 @@ void CModelAlgorithm::_apply(
     afw::image::Exposure<PixelT> const & exposure,
     afw::geom::Point2D const & center
 ) const {
+    Result result = _impl->makeResult();
     shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
     if (!source.getTable()->getShapeKey().isValid() ||
         (source.getTable()->getShapeFlagKey().isValid() && source.getShapeFlag())) {
@@ -998,7 +1020,7 @@ void CModelAlgorithm::_apply(
     if (source.getTable()->getPsfFluxKey().isValid() && !source.getPsfFluxFlag()) {
         approxFlux = source.getPsfFlux();
     }
-    Result result = apply(exposure, *source.getFootprint(), psf, center, source.getShape(), approxFlux);
+    _applyImpl(result, exposure, *source.getFootprint(), psf, center, source.getShape(), approxFlux);
     _impl->keys->copyResultToRecord(result, source);
 }
 
@@ -1010,6 +1032,7 @@ void CModelAlgorithm::_applyForced(
     afw::table::SourceRecord const & reference,
     afw::geom::AffineTransform const & refToMeas
 ) const {
+    Result result = _impl->makeResult();
     shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
     if (!_impl->refKeys) { // ideally we'd do this in the ctor, but we can't so we do it on first use
         _impl->refKeys.reset(
@@ -1025,7 +1048,7 @@ void CModelAlgorithm::_applyForced(
         approxFlux = source.getPsfFlux();
     }
     Result refResult = _impl->refKeys->copyRecordToResult(source);
-    Result result = applyForced(exposure, *source.getFootprint(), psf, center, refResult, approxFlux);
+    _applyForcedImpl(result, exposure, *source.getFootprint(), psf, center, refResult, approxFlux);
     _impl->keys->copyResultToRecord(result, source);
 }
 
