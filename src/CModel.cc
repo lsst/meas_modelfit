@@ -918,6 +918,7 @@ void CModelAlgorithm::_applyImpl(
     // Do the initial fit
     // TODO: use only 0th-order terms in psf
     _impl->initial.fit(getControl().initial, result.initial, initialData, exposure, *initialFitRegion);
+    if (result.initial.getFlag(CModelStageResult::FAILED)) return;
 
     // Include a multiple of the initial-fit ellipse in the footprint, re-do clipping
     PTR(afw::detection::Footprint) finalFitRegion = determineFinalFitRegion(
@@ -943,6 +944,9 @@ void CModelAlgorithm::_applyImpl(
     // Do the de Vaucouleur fit
     CModelStageData devData = initialData.changeModel(*_impl->dev.model);
     _impl->dev.fit(getControl().dev, result.dev, devData, exposure, *finalFitRegion);
+
+    if (result.exp.getFlag(CModelStageResult::FAILED) ||result.dev.getFlag(CModelStageResult::FAILED))
+        return;
 
     // Do the linear combination fit
     _impl->fitLinear(getControl(), result, expData, devData, exposure, *finalFitRegion);
