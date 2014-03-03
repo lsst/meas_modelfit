@@ -20,7 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
 #include <cstdlib>
 
 #include "boost/filesystem/path.hpp"
@@ -560,6 +559,10 @@ public:
         prefixes[0] = "exp";
         prefixes[1] = "dev";
         model = boost::make_shared<MultiModel>(components, prefixes);
+        // create set of diagnostic IDs for fast lookup
+        if (ctrl.diagnostics.enabled) {
+            diagnosticIds.insert(ctrl.diagnostics.ids.begin(), ctrl.diagnostics.ids.end());
+        }
     }
 
     CModelStageImpl initial;
@@ -570,6 +573,7 @@ public:
     PTR(CModelKeys) refKeys;
     PTR(extensions::multiShapelet::FitPsfControl const) fitPsfCtrl;
     afw::image::MaskPixel badPixelMask;
+    std::set<boost::int64_t> diagnosticIds;
 
     CModelResult makeResult() const {
         CModelResult result;
@@ -673,6 +677,45 @@ public:
         // Set the initial amplitude (a.k.a. flux) to 1: recall that in FitSys, this is approximately correct
         assert(data.amplitudes.getSize<0>() == 1); // should be true of all Models from RadialProfiles
         data.amplitudes[0] = 1.0;
+    }
+
+    template <typename T>
+    void writeDiagnostics(
+        CModelControl const & ctrl,
+        boost::int64_t id,
+        CModelResult const & result,
+        afw::image::Exposure<T> const & exposure
+    ) const {
+        if (!result.initialFitRegion) {
+            return; // cannot write diagnostics if we didn't at least get this far.
+        }
+        std::string path = (boost::format("%s/%d.fits") % ctrl.diagnostics.root % id).str();
+        afw::fits::Fits fits(path, "w", afw::fits::Fits::AUTO_CLOSE | afw::fits::Fits::AUTO_CHECK);
+        afw::geom::Box2I bbox = result.initialFitRegion->getBBox();
+        if (result.finalFitRegion) {
+            bbox.include(result.finalFitRegion->getBBox());
+        }
+        afw::image::Image<T> subImage(*exposure.getMaskedImage().getImage(), bbox, afw::image::PARENT);
+        subImage.writeFits(fits);
+        assert(fits.countHdus() == 1);
+        if (ctrl.initial.doRecordHistory && result.initial.history.getTable()) {
+            result.initial.history.writeFits(fits);
+        } else {
+            fits.createEmpty();
+        }
+        assert(fits.countHdus() == 2);
+        if (ctrl.exp.doRecordHistory && result.exp.history.getTable()) {
+            result.exp.history.writeFits(fits);
+        } else {
+            fits.createEmpty();
+        }
+        assert(fits.countHdus() == 3);
+        if (ctrl.dev.doRecordHistory && result.dev.history.getTable()) {
+            result.dev.history.writeFits(fits);
+        } else {
+            fits.createEmpty();
+        }
+        assert(fits.countHdus() == 4);
     }
 
 };
@@ -843,6 +886,7 @@ void CModelAlgorithm::_applyImpl(
         result.setFlag(CModelResult::MAX_AREA, true);
         return;
     }
+    result.initialFitRegion = initialFitRegion;
 
     // Negative approxFlux means we should come up with an estimate ourselves.
     // This is only used to avoid scaling problems in the optimizer, so it doesn't have to be very good.
@@ -875,6 +919,7 @@ void CModelAlgorithm::_applyImpl(
         result.setFlag(CModelResult::MAX_AREA, true);
         return;
     }
+    result.finalFitRegion = finalFitRegion;
 
     // Do the exponential fit
     CModelStageData expData = initialData.changeModel(*_impl->exp.model);
@@ -946,6 +991,7 @@ void CModelAlgorithm::_applyForcedImpl(
         result.setFlag(CModelResult::MAX_AREA, true);
         return;
     }
+    result.finalFitRegion = finalFitRegion;
 
     // Do the initial fit (amplitudes only)
     _impl->initial.fitLinear(getControl().initial, result.initial, initialData, exposure, *finalFitRegion);
@@ -1032,8 +1078,19 @@ void CModelAlgorithm::_apply(
     if (source.getTable()->getPsfFluxKey().isValid() && !source.getPsfFluxFlag()) {
         approxFlux = source.getPsfFlux();
     }
-    _applyImpl(result, exposure, *source.getFootprint(), psf, center, source.getShape(), approxFlux);
+    try {
+        _applyImpl(result, exposure, *source.getFootprint(), psf, center, source.getShape(), approxFlux);
+    } catch (...) {
+        _impl->keys->copyResultToRecord(result, source);
+        if (_impl->diagnosticIds.find(source.getId()) != _impl->diagnosticIds.end()) {
+            _impl->writeDiagnostics(getControl(), source.getId(), result, exposure);
+        }
+        throw;
+    }
     _impl->keys->copyResultToRecord(result, source);
+    if (_impl->diagnosticIds.find(source.getId()) != _impl->diagnosticIds.end()) {
+        _impl->writeDiagnostics(getControl(), source.getId(), result, exposure);
+    }
 }
 
 template <typename PixelT>
@@ -1062,8 +1119,13 @@ void CModelAlgorithm::_applyForced(
     if (source.getTable()->getPsfFluxKey().isValid() && !source.getPsfFluxFlag()) {
         approxFlux = source.getPsfFlux();
     }
-    Result refResult = _impl->refKeys->copyRecordToResult(source);
+    try {
+        Result refResult = _impl->refKeys->copyRecordToResult(source);
     _applyForcedImpl(result, exposure, *source.getFootprint(), psf, center, refResult, approxFlux);
+    } catch (...) {
+        _impl->keys->copyResultToRecord(result, source);
+        throw;
+    }
     _impl->keys->copyResultToRecord(result, source);
 }
 
