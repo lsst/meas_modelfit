@@ -232,6 +232,7 @@ struct CModelStageResult {
         FAILED=0,
         TR_SMALL,
         MAX_ITERATIONS,
+        NUMERIC_ERROR,
         N_FLAGS
     };
 

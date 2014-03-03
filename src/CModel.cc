@@ -177,6 +177,11 @@ struct CModelStageKeys {
                 prefix + ".flags.maxIter",
                 "the optimizer hit the maximum number of iterations and did not converge"
             );
+            flags[CModelStageResult::NUMERIC_ERROR] = schema.addField<afw::table::Flag>(
+                prefix + ".flags.numericError",
+                "numerical underflow or overflow in model evaluation; usually this means the prior was "
+                "insufficient to regularize the fit"
+            );
         }
         flags[CModelStageResult::FAILED] = flux.flag; // these flags refer to the same underlying field
     }
@@ -468,11 +473,21 @@ public:
         );
         PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, prior);
         Optimizer optimizer(objective, data.parameters, ctrl.optimizer);
-        if (ctrl.doRecordHistory) {
-            result.history = afw::table::BaseCatalog(historyTable);
-            optimizer.run(*historyRecorder, result.history);
-        } else {
-            optimizer.run();
+        try {
+            if (ctrl.doRecordHistory) {
+                result.history = afw::table::BaseCatalog(historyTable);
+                optimizer.run(*historyRecorder, result.history);
+            } else {
+                optimizer.run();
+            }
+        } catch (std::overflow_error &) {
+            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+        } catch (std::underflow_error &) {
+            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+        } catch (pex::exceptions::UnderflowErrorException &) {
+            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+        } catch (pex::exceptions::OverflowErrorException &) {
+            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
         }
 
         // Use the optimizer state to set flags.  There's more information in the state than we
