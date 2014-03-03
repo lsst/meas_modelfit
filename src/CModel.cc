@@ -256,6 +256,13 @@ struct CModelKeys {
         initial(initialModel, schema, prefix + ".initial", "initial", isForced),
         exp(expModel, schema, prefix + ".exp", "exponential", isForced),
         dev(devModel, schema, prefix + ".dev", "de Vaucouleur", isForced),
+        center(schema.addField<afw::table::Point<Scalar> >(
+                   // The fact that the center passed to all the algorithms isn't saved by the measurement
+                   // framework is a bug that will be addressed in the next version of the framework.
+                   // For now, we save it ourselves so we can reproduce the conditions in the framework
+                   // exactly.
+                   prefix + ".center", "center position used in CModel fit", "pixels"
+               )),
         flux(afw::table::addFluxFields(schema, prefix + ".flux", "flux from the final cmodel fit")),
         fluxCorrection(prefix, schema),
         fracDev(schema.addField<Scalar>(prefix + ".fracDev", "fraction of flux in de Vaucouleur component")),
@@ -296,7 +303,8 @@ struct CModelKeys {
     ) :
         initial(initialModel, schema, prefix + ".initial"),
         exp(expModel, schema, prefix + ".exp"),
-        dev(devModel, schema, prefix + ".dev")
+        dev(devModel, schema, prefix + ".dev"),
+        center(schema[prefix + ".center"])
     {}
 
     void copyResultToRecord(CModelResult const & result, afw::table::BaseRecord & record) {
@@ -326,6 +334,7 @@ struct CModelKeys {
     CModelStageKeys initial;
     CModelStageKeys exp;
     CModelStageKeys dev;
+    afw::table::Key<afw::table::Point<Scalar> > center;
     afw::table::KeyTuple<afw::table::Flux> flux;
     algorithms::ScaledFlux::KeyTuple fluxCorrection;
     afw::table::Key<Scalar> fracDev;
@@ -1006,6 +1015,9 @@ void CModelAlgorithm::_apply(
     afw::geom::Point2D const & center
 ) const {
     Result result = _impl->makeResult();
+    // Record the center we used in the fit
+    source.set(_impl->keys->center, center);
+    // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
     shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
     if (!source.getTable()->getShapeKey().isValid() ||
         (source.getTable()->getShapeFlagKey().isValid() && source.getShapeFlag())) {
@@ -1033,6 +1045,9 @@ void CModelAlgorithm::_applyForced(
     afw::geom::AffineTransform const & refToMeas
 ) const {
     Result result = _impl->makeResult();
+    // Record the center we used in the fit
+    source.set(_impl->keys->center, center);
+    // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
     shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
     if (!_impl->refKeys) { // ideally we'd do this in the ctor, but we can't so we do it on first use
         _impl->refKeys.reset(
