@@ -114,8 +114,8 @@ Scalar = numpy.float64
 Pixel = numpy.float32
 %}
 
-%declareTablePersistable(Prior, lsst::meas::multifit::Prior);
-%declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
+%shared_ptr(lsst::meas::multifit::Prior);
+%shared_ptr(lsst::meas::multifit::MixturePrior);
 
 %shared_ptr(lsst::meas::multifit::ModelFitTable);
 %shared_ptr(lsst::meas::multifit::ModelFitRecord);

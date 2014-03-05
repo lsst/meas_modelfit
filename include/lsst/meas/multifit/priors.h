@@ -25,7 +25,6 @@
 #define LSST_MEAS_MULTIFIT_priors_h_INCLUDED
 
 #include "lsst/base.h"
-#include "lsst/afw/table/io/Persistable.h"
 #include "lsst/afw/math/Random.h"
 #include "lsst/meas/multifit/constants.h"
 #include "lsst/meas/multifit/Mixture.h"
@@ -35,10 +34,7 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief Base class for Bayesian priors
  */
-class Prior :
-    public afw::table::io::PersistableFacade<Prior>,
-    public afw::table::io::Persistable,
-    private boost::noncopyable
+class Prior : private boost::noncopyable
 {
 public:
 
@@ -170,8 +166,6 @@ protected:
 
     explicit Prior(std::string const & tag="") : _tag(tag) {}
 
-    virtual std::string getPythonModule() const { return "lsst.meas.multifit"; }
-
 private:
     std::string _tag;
 };
@@ -179,10 +173,7 @@ private:
 /**
  *  @brief A prior that's flat in amplitude parameters, and uses a Mixture for nonlinear parameters.
  */
-class MixturePrior :
-    public afw::table::io::PersistableFacade<MixturePrior>,
-    public Prior
-{
+class MixturePrior : public Prior {
 public:
 
     explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
@@ -236,14 +227,6 @@ public:
     static MixtureUpdateRestriction const & getUpdateRestriction();
 
     PTR(Mixture const) getMixture() const { return _mixture; }
-
-    virtual bool isPersistable() const { return true; }
-
-protected:
-
-    virtual std::string getPersistenceName() const;
-
-    virtual void write(OutputArchiveHandle & handle) const;
 
 private:
     PTR(Mixture const) _mixture;
