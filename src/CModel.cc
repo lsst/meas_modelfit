@@ -83,22 +83,30 @@ PTR(Model) CModelStageControl::getModel() const {
 }
 
 PTR(Prior) CModelStageControl::getPrior() const {
-    if (priorName == "") {
+    if (priorSource == "NONE") {
         return PTR(Prior)();
-    }
-    char const * pkgDir = std::getenv("MEAS_MULTIFIT_DIR");
-    if (!pkgDir) {
+    } else if (priorSource == "FILE") {
+        char const * pkgDir = std::getenv("MEAS_MULTIFIT_DIR");
+        if (!pkgDir) {
+            throw LSST_EXCEPT(
+                pex::exceptions::IoErrorException,
+                "MEAS_MULTIFIT_DIR environment variable not defined; cannot find persisted Priors"
+            );
+        }
+        boost::filesystem::path priorPath
+            = boost::filesystem::path(pkgDir)
+            / boost::filesystem::path("data")
+            / boost::filesystem::path(priorName + ".fits");
+        PTR(Mixture) mixture = Mixture::readFits(priorPath.string());
+        return boost::make_shared<MixturePrior>(mixture, "single-ellipse");
+    } else if (priorSource == "CONFIG") {
+        return boost::make_shared<SoftenedLinearPrior>(priorConfig);
+    } else {
         throw LSST_EXCEPT(
-            pex::exceptions::IoErrorException,
-            "MEAS_MULTIFIT_DIR environment variable not defined; cannot find persisted Priors"
+            pex::exceptions::InvalidParameterException,
+            "priorSource must be one of 'NONE', 'FILE', or 'CONFIG'"
         );
     }
-    boost::filesystem::path priorPath
-        = boost::filesystem::path(pkgDir)
-        / boost::filesystem::path("data")
-        / boost::filesystem::path(priorName + ".fits");
-    PTR(Mixture) mixture = Mixture::readFits(priorPath.string());
-    return boost::make_shared<MixturePrior>(mixture, "single-ellipse");
 }
 
 PTR(algorithms::AlgorithmControl) CModelControl::_clone() const {

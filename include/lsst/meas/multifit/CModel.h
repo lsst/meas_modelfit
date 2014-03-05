@@ -32,6 +32,7 @@
 #include "lsst/meas/algorithms/ScaledFlux.h"
 #include "lsst/shapelet/RadialProfile.h"
 #include "lsst/meas/multifit/models.h"
+#include "lsst/meas/multifit/priors.h"
 #include "lsst/meas/multifit/ProjectedLikelihood.h"
 #include "lsst/meas/multifit/optimizer.h"
 
@@ -43,7 +44,8 @@ struct CModelStageControl {
 
     CModelStageControl() :
         profileName("lux"),
-        priorName("broad-02_02-08_08"),
+        priorSource("CONFIG"),
+        priorName(),
         nComponents(8),
         maxRadius(0),
         doRecordHistory(true)
@@ -63,9 +65,20 @@ struct CModelStageControl {
     );
 
     LSST_CONTROL_FIELD(
+        priorSource, std::string,
+        "One of 'FILE', 'CONFIG', or 'NONE', indicating whether the prior should be loaded from disk "
+        "created from the nested prior config/control object, or None"
+    );
+
+    LSST_CONTROL_FIELD(
         priorName, std::string,
         "Name of the Prior that defines the model to fit (a filename in $MEAS_MULTIFIT_DIR/data, "
-        "with no extension).  Ignored for forced fitting"
+        "with no extension), if priorSource='FILE'.  Ignored for forced fitting."
+    );
+
+    LSST_NESTED_CONTROL_FIELD(
+        priorConfig, lsst.meas.multifit.multifitLib, SoftenedLinearPriorControl,
+        "Configuration for the prior, used if priorSource='CONFIG'."
     );
 
     LSST_CONTROL_FIELD(nComponents, int, "Number of Gaussian used to approximate the profile");
