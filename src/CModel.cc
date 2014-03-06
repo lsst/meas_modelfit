@@ -700,6 +700,18 @@ public:
         // Set the initial amplitude (a.k.a. flux) to 1: recall that in FitSys, this is approximately correct
         assert(data.amplitudes.getSize<0>() == 1); // should be true of all Models from RadialProfiles
         data.amplitudes[0] = 1.0;
+
+        // Ensure the initial parameters are compatible with the prior
+        if (initial.prior && initial.prior->evaluate(data.nonlinear, data.amplitudes) == 0.0) {
+            initial.ellipses.front().setCore(afw::geom::ellipses::Quadrupole(mir2, mir2, 0.0));
+            initial.model->readEllipses(initial.ellipses.begin(), data.nonlinear.begin(), data.fixed.begin());
+            if (initial.prior->evaluate(data.nonlinear, data.amplitudes) == 0.0) {
+                throw LSST_EXCEPT(
+                    pex::exceptions::LogicErrorException,
+                    "minInitialRadius is incompatible with prior"
+                );
+            }
+        }
     }
 
     template <typename T>
