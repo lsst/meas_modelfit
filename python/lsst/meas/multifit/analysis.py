@@ -46,8 +46,31 @@ class CModelLogRadius(CalculatedFieldSet):
         self.logFactor = 1.0 / numpy.log(10.0)
 
     def fillCatalog(self, catalog, dataRef, calexp):
-        catalog[self.outKey] = (catalog[self.rExpKey] * (1.0 - catalog[self.fracDevKey])
-                                + catalog[self.rDevKey] * catalog[self.fracDevKey]) * self.logFactor
+        catalog[self.outKey][:] = (catalog[self.rExpKey] * (1.0 - catalog[self.fracDevKey])
+                                   + catalog[self.rDevKey] * catalog[self.fracDevKey]) * self.logFactor
+
+    def fillRecord(self, record, dataRef, calexp):
+        pass
+
+class CModelEllipticity(CalculatedFieldSet):
+    """A CalculatedFieldSet that computes the log10 of the effective radius in arcseconds
+    for the CModel algorithm, using the fracDev to weigh the exponential and de Vaucouleur
+    radii."""
+
+    def __init__(self, schema):
+        self.outKey = schema.addField("cmodel.ellipticity", doc="logarithm of half-light radius",
+                                      units="log(arcsec)", type=float)
+        self.e1ExpKey = schema.find("cmodel.exp.nonlinear").key[0]
+        self.e1DevKey = schema.find("cmodel.dev.nonlinear").key[0]
+        self.e2ExpKey = schema.find("cmodel.exp.nonlinear").key[1]
+        self.e2DevKey = schema.find("cmodel.dev.nonlinear").key[1]
+        self.fracDevKey = schema.find("cmodel.fracDev").key
+
+    def fillCatalog(self, catalog, dataRef, calexp):
+        eExp = (catalog[self.e1ExpKey]**2 + catalog[self.e2ExpKey]**2)**0.5
+        eDev = (catalog[self.e1DevKey]**2 + catalog[self.e2DevKey]**2)**0.5
+        catalog[self.outKey][:] = (eExp * (1.0 - catalog[self.fracDevKey])
+                                   + eDev * catalog[self.fracDevKey])
 
     def fillRecord(self, record, dataRef, calexp):
         pass
@@ -72,6 +95,24 @@ class Magnitudes(CalculatedFieldSet):
         for keys in self.keyDicts:
             catalog[keys["mag"]][:], catalog[keys["mag.err"]][:] = \
                 calib.getMagnitude(catalog[keys["flux"]], catalog[keys["flux.err"]])
+
+class ForcedMagnitudes(object):
+    """An object that computes magnitudes from associated forced catalogs
+    for all fluxes in the module-scope variable FLUXES."""
+
+    def __init__(self, outputSchema, forcedSchema, forcedFilter):
+        self.keyDicts = []
+        prefix = forcedFilter + "."
+        for flux in FLUXES:
+            mag = flux.replace("flux", "mag")
+            keys = {"flux": forcedSchema.find(flux).key, "flux.err": forcedSchema.find(flux + ".err").key}
+            keys["mag"] = outputSchema.addField(prefix + mag,
+                                                doc="magnitude for %s" % flux,
+                                                units="mag", type=float)
+            keys["mag.err"] = outputSchema.addField(prefix + mag + ".err",
+                                                    doc="magnitude error for %s" % flux,
+                                                    units="mag", type=float)
+            self.keyDicts.append(keys)
 
 class SubaruDataIdSchemaManager(CalculatedFieldSet):
     """A CalculatedFieldSet appropriate for managing Data ID fields for non-coadd Subaru data"""
@@ -116,11 +157,23 @@ def makeDataIdSchemaManager(schema, butler, prefix):
     else:
         raise ValueError("Unknown mapper")
 
-CALCULATED = (Magnitudes, CModelLogRadius)
+CALCULATED = (Magnitudes, CModelLogRadius, CModelEllipticity)
+
+FORCED_FILTERS = ('HSC-G', 'HSC-I', 'HSC-Z')
+
+def printMissing(dataSet, root=None, rerun=None, butler=None, dataIds=[]):
+    if butler is None:
+        if root is None:
+            root = os.path.join(os.environ["SUPRIME_DATA_DIR"], "rerun", rerun)
+        butler = lsst.daf.persistence.Butler(root)
+    for dataId in dataIds:
+        if not butler.datasetExists(dataSet, dataId):
+            print dataId
 
 def buildCatalog(
     root=None, rerun=None, butler=None, noCache=False, dataIds=[],
-    doPrintStatus=False, doPrintMissing=False, prefix="",
+    doPrintStatus=False, doPrintMissing=False, prefix="", forced=False,
+    doReadForcedCoadd=False, forcedFilters=FORCED_FILTERS,
     calculated=CALCULATED,
     ):
 
@@ -128,18 +181,30 @@ def buildCatalog(
         if root is None:
             root = os.path.join(os.environ["SUPRIME_DATA_DIR"], "rerun", rerun)
         butler = lsst.daf.persistence.Butler(root)
-    schemaDataSet = prefix + "src_schema"
+    if forced:
+        schemaDataSet = prefix + "forced_src_schema"
+    else:
+        schemaDataSet = prefix + "src_schema"
     inputSchema = butler.get(schemaDataSet, immediate=True).schema
     mapper = lsst.afw.table.SchemaMapper(inputSchema)
     mapper.addMinimalSchema(inputSchema)
 
     # Setup calculated fields, including Data ID fields
-    calculated = list(calculated)
+    calculated = [cls(mapper.editOutputSchema()) for cls in calculated]
     calculated.append(makeDataIdSchemaManager(mapper.editOutputSchema(), butler, prefix))
-    for cls in calculated:
-        calculated = cls(mapper.editOutputSchema())
 
-    srcDataSet = prefix + "src"
+    forcedManagers = {}
+    if doReadForcedCoadd:
+        forcedDataSet = prefix + "forced_src"
+        outputSchema = mapper.editOutputSchema()
+        for forcedFilter in forcedFilters:
+            forcedSchema = butler.get(prefix + "forced_src_schema", immediate=True)
+            forcedManagers[forcedFilter] = ForcedMagnitudes(outputSchema, forcedSchema, forcedFilter)
+
+    if forced:
+        srcDataSet = prefix + "forced_src"
+    else:
+        srcDataSet = prefix + "src"
     calexpDataSet = prefix + "calexp"
     srcCache = {}
     fullSize = 0
@@ -155,7 +220,7 @@ def buildCatalog(
         if doPrintStatus:
             print "Loading catalog for %s" % dataId
 
-        src = dataRef.get(srcDataSet, immediate=True)
+        src = dataRef.get(srcDataSet, flags=lsst.afw.table.SOURCE_IO_NO_FOOTPRINTS, immediate=True)
         if not noCache:
             srcCache[tuple(dataId.itervalues())] = src
 
@@ -169,7 +234,7 @@ def buildCatalog(
         if noCache:
             if not dataRef.datasetExists(srcDataSet):
                 continue
-            src = dataRef.get(srcDataSet, immediate=True)
+            src = dataRef.get(srcDataSet, flags=lsst.afw.table.SOURCE_IO_NO_FOOTPRINTS, immediate=True)
         else:
             src = srcCache.pop(tuple(dataId.itervalues()), None)
             if src is None:
@@ -197,10 +262,10 @@ def buildCatalog(
 def getFlagMask(catalog, *flags, **kwds):
     bad = [catalog[flag] for flag in flags]
     if kwds.get("isolated", False):
-        bad.append(catalog["parent"] == 0)
-        bad.append(catalog["deblend.nchild"] == 0)
+        bad.append(catalog["parent"] != 0)
+        bad.append(catalog["deblend.nchild"] != 0)
     elif kwds.get("deblended", False):
-        bad.append(catalog["deblend.nchild"] == 0)
+        bad.append(catalog["deblend.nchild"] != 0)
     return numpy.logical_not(numpy.logical_or.reduce(bad))
 
 def plotDelta(catalog, x, y, c=None, **kwds):
