@@ -107,6 +107,7 @@ struct CModelStageControl {
 struct CModelRegionControl {
 
     CModelRegionControl() :
+        includePsfBBox(true),
         nGrowFootprint(5),
         nInitialRadii(3),
         maxArea(100000),
@@ -115,6 +116,11 @@ struct CModelRegionControl {
         badMaskPlanes.push_back("EDGE");
         badMaskPlanes.push_back("SAT");
     }
+
+    LSST_CONTROL_FIELD(
+        includePsfBBox, bool,
+        "If True, always make the fit region at least the size of the PSF model realization's bounding box"
+    );
 
     LSST_CONTROL_FIELD(
         nGrowFootprint, int,
@@ -344,7 +350,8 @@ public:
      */
     PTR(afw::detection::Footprint) determineInitialFitRegion(
         afw::image::Mask<> const & mask,
-        afw::detection::Footprint const & footprint
+        afw::detection::Footprint const & footprint,
+        afw::geom::Box2I const & psfBBox
     ) const;
 
     /**
@@ -359,6 +366,7 @@ public:
     PTR(afw::detection::Footprint) determineFinalFitRegion(
         afw::image::Mask<> const & mask,
         afw::detection::Footprint const & footprint,
+        afw::geom::Box2I const & psfBBox,
         afw::geom::ellipses::Quadrupole const & ellipse,
         afw::geom::Point2D const & center
     ) const;

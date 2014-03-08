@@ -71,6 +71,7 @@ class CModelTestCase(lsst.utils.tests.TestCase):
             = numpy.random.randn(bbox.getHeight(), bbox.getWidth()) * noiseSigma
         psfSigma = 2.0
         psf = lsst.afw.detection.GaussianPsf(25, 25, psfSigma)
+        exposure.setPsf(psf)
         psfImage = psf.computeImage(xyPosition)
         psfImage.getArray()[:,:] *= trueFlux
         psfBBox = psfImage.getBBox(lsst.afw.image.PARENT)

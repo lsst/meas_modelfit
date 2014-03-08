@@ -845,13 +845,17 @@ algorithms::ScaledFlux::KeyTuple CModelAlgorithm::getFluxCorrectionKeys(int n) c
 
 PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     afw::image::Mask<> const & mask,
-    afw::detection::Footprint const & footprint
+    afw::detection::Footprint const & footprint,
+    afw::geom::Box2I const & psfBBox
 ) const {
     PTR(afw::detection::Footprint) region = afw::detection::growFootprint(
         footprint,
         getControl().region.nGrowFootprint,
         true
     );
+    if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
+        region = mergeFootprints(*region, afw::detection::Footprint(psfBBox));
+    }
     double originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
     region->intersectMask(mask, _impl->badPixelMask);
@@ -864,6 +868,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
 PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     afw::image::Mask<> const & mask,
     afw::detection::Footprint const & footprint,
+    afw::geom::Box2I const & psfBBox,
     afw::geom::ellipses::Quadrupole const & ellipse,
     afw::geom::Point2D const & center
 ) const {
@@ -875,6 +880,9 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     afw::geom::ellipses::Ellipse fullEllipse(ellipse, center);
     fullEllipse.getCore().scale(getControl().region.nInitialRadii);
     region = mergeFootprints(*region, afw::detection::Footprint(fullEllipse));
+    if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
+        region = mergeFootprints(*region, afw::detection::Footprint(psfBBox));
+    }
     double originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
     region->intersectMask(mask, _impl->badPixelMask);
@@ -908,10 +916,13 @@ void CModelAlgorithm::_applyImpl(
     Scalar approxFlux
 ) const {
 
+    afw::geom::Box2I psfBBox = exposure.getPsf()->computeImage(center)->getBBox(afw::image::PARENT);
+
     // Grow the footprint, clip bad pixels and the exposure bbox
     PTR(afw::detection::Footprint) initialFitRegion = determineInitialFitRegion(
         *exposure.getMaskedImage().getMask(),
-        footprint
+        footprint,
+        psfBBox
     );
     if (!initialFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
@@ -944,6 +955,7 @@ void CModelAlgorithm::_applyImpl(
     PTR(afw::detection::Footprint) finalFitRegion = determineFinalFitRegion(
         *exposure.getMaskedImage().getMask(),
         footprint,
+        psfBBox,
         result.initial.ellipse,
         center
     );
@@ -995,6 +1007,8 @@ void CModelAlgorithm::_applyForcedImpl(
     Scalar approxFlux
 ) const {
 
+    afw::geom::Box2I psfBBox = exposure.getPsf()->computeImage(center)->getBBox(afw::image::PARENT);
+
     // Negative approxFlux means we should come up with an estimate ourselves.
     // This is only used to avoid scaling problems in the optimizer, so it doesn't have to be very good.
     if (approxFlux < 0.0) {
@@ -1019,6 +1033,7 @@ void CModelAlgorithm::_applyForcedImpl(
     PTR(afw::detection::Footprint) finalFitRegion = determineFinalFitRegion(
         *exposure.getMaskedImage().getMask(),
         footprint,
+        psfBBox,
         _impl->initial.ellipses.front().getCore(),
         center
     );
@@ -1080,6 +1095,13 @@ shapelet::MultiShapeletFunction CModelAlgorithm::_processInputs(
         throw LSST_EXCEPT(
             pex::exceptions::RuntimeErrorException,
             "Exposure has no Calib"
+        );
+    }
+    if (!exposure.getPsf()) {
+        source.set(_impl->keys->flags[Result::NO_PSF], true);
+        throw LSST_EXCEPT(
+            pex::exceptions::RuntimeErrorException,
+            "Exposure has no Psf"
         );
     }
     extensions::multiShapelet::FitPsfModel psfModel(*_impl->fitPsfCtrl, source);
