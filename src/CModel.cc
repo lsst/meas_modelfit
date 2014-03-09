@@ -200,7 +200,7 @@ struct CModelStageKeys {
         afw::table::Schema const & schema,
         std::string const & prefix
     ) :
-        flux(schema[prefix + ".flux"], schema[prefix + ".flux.err"], schema[prefix + ".flags"]),
+        flux(schema[prefix + ".flux"], schema[prefix + ".flux.err"], schema[prefix + ".flux.flags"]),
         nonlinear(schema[prefix + ".nonlinear"]),
         fixed(schema[prefix + ".fixed"])
     {
@@ -234,7 +234,9 @@ struct CModelStageKeys {
             record.set(fixed, result.fixed);
         }
         for (int b = 0; b < CModelStageResult::N_FLAGS; ++b) {
-            record.set(flags[b], result.flags[b]);
+            if (flags[b].isValid()) {
+                record.set(flags[b], result.flags[b]);
+            }
         }
     }
 
@@ -329,8 +331,10 @@ struct CModelKeys {
         record.set(fluxCorrection.psfFactorFlag, false); // TODO
         record.set(fracDev, result.fracDev);
         record.set(objective, result.objective);
-        for (int b = 0; b < CModelStageResult::N_FLAGS; ++b) {
-            record.set(flags[b], result.flags[b]);
+        for (int b = 0; b < CModelResult::N_FLAGS; ++b) {
+            if (flags[b].isValid()) {
+                record.set(flags[b], result.flags[b]);
+            }
         }
     }
 
