@@ -367,8 +367,7 @@ public:
         afw::image::Mask<> const & mask,
         afw::detection::Footprint const & footprint,
         afw::geom::Box2I const & psfBBox,
-        afw::geom::ellipses::Quadrupole const & ellipse,
-        afw::geom::Point2D const & center
+        afw::geom::ellipses::Ellipse const & ellipse
     ) const;
 
     Result apply(

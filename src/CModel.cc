@@ -61,7 +61,8 @@ PTR(afw::detection::Footprint) mergeFootprints(
     if (fpSet.getFootprints()->size() > 1u) {
         throw LSST_EXCEPT(
             pex::exceptions::RuntimeErrorException,
-            "Footprints to be merged do not overlap"
+            (boost::format("Footprints to be merged do not overlap: %s vs. %s")
+             % a.getBBox() % b.getBBox()).str()
         );
     }
     return fpSet.getFootprints()->front();
@@ -223,7 +224,9 @@ struct CModelStageKeys {
         record.set(flux.flag, result.getFlag(CModelStageResult::FAILED));
         record.set(fluxCorrection.psfFactor, 1.0); // TODO
         record.set(fluxCorrection.psfFactorFlag, false); // TODO
-        record.set(objective, result.objective);
+        if (objective.isValid()) {
+            record.set(objective, result.objective);
+        }
         if (ellipse.isValid()) {
             record.set(ellipse, result.ellipse);
         }
@@ -873,17 +876,19 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     afw::image::Mask<> const & mask,
     afw::detection::Footprint const & footprint,
     afw::geom::Box2I const & psfBBox,
-    afw::geom::ellipses::Quadrupole const & ellipse,
-    afw::geom::Point2D const & center
+    afw::geom::ellipses::Ellipse const & ellipse
 ) const {
     PTR(afw::detection::Footprint) region = afw::detection::growFootprint(
         footprint,
         getControl().region.nGrowFootprint,
         true
     );
-    afw::geom::ellipses::Ellipse fullEllipse(ellipse, center);
+    afw::geom::ellipses::Ellipse fullEllipse(ellipse);
     fullEllipse.getCore().scale(getControl().region.nInitialRadii);
-    region = mergeFootprints(*region, afw::detection::Footprint(fullEllipse));
+    afw::detection::Footprint ellipseFootprint(fullEllipse);
+    if (ellipseFootprint.getArea() > 0) {
+        region = mergeFootprints(*region, ellipseFootprint);
+    }
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
         region = mergeFootprints(*region, afw::detection::Footprint(psfBBox));
     }
@@ -956,12 +961,14 @@ void CModelAlgorithm::_applyImpl(
     if (result.initial.getFlag(CModelStageResult::FAILED)) return;
 
     // Include a multiple of the initial-fit ellipse in the footprint, re-do clipping
+    result.initial.model->writeEllipses(initialData.nonlinear.begin(), initialData.fixed.begin(),
+                                        _impl->initial.ellipses.begin());
+    _impl->initial.ellipses.front().transform(initialData.fitSysToMeasSys.geometric).inPlace();
     PTR(afw::detection::Footprint) finalFitRegion = determineFinalFitRegion(
         *exposure.getMaskedImage().getMask(),
         footprint,
         psfBBox,
-        result.initial.ellipse,
-        center
+        _impl->initial.ellipses.front()
     );
     if (!finalFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
@@ -1030,6 +1037,8 @@ void CModelAlgorithm::_applyForcedImpl(
     // Read those parameters into the ellipses.
     _impl->initial.model->writeEllipses(initialData.nonlinear.begin(), initialData.fixed.begin(),
                                         _impl->initial.ellipses.begin());
+    // Transform the ellipses to the exposure coordinate system
+    _impl->initial.ellipses.front().transform(initialData.fitSysToMeasSys.geometric).inPlace();
 
     // Grow the footprint and include the initial ellipse, clip bad pixels and the exposure bbox;
     // in forced mode we can just use the final fit region immediately since we won't be changing
@@ -1038,8 +1047,7 @@ void CModelAlgorithm::_applyForcedImpl(
         *exposure.getMaskedImage().getMask(),
         footprint,
         psfBBox,
-        _impl->initial.ellipses.front().getCore(),
-        center
+        _impl->initial.ellipses.front()
     );
     if (!finalFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
@@ -1052,20 +1060,29 @@ void CModelAlgorithm::_applyForcedImpl(
     result.finalFitRegion = finalFitRegion;
 
     // Do the initial fit (amplitudes only)
-    _impl->initial.fitLinear(getControl().initial, result.initial, initialData, exposure, *finalFitRegion);
-    result.initial.setFlag(CModelStageResult::FAILED, false);
+    if (!reference.initial.getFlag(CModelStageResult::FAILED)) {
+        _impl->initial.fitLinear(getControl().initial, result.initial, initialData,
+                                 exposure, *finalFitRegion);
+    }
 
     // Do the exponential fit (amplitudes only)
     CModelStageData expData = initialData.changeModel(*_impl->exp.model);
-    expData.nonlinear.deep() = reference.exp.nonlinear;
-    expData.fixed.deep() = reference.exp.fixed;
-    _impl->exp.fitLinear(getControl().exp, result.exp, expData, exposure, *finalFitRegion);
+    if (!reference.exp.getFlag(CModelStageResult::FAILED)) {
+        expData.nonlinear.deep() = reference.exp.nonlinear;
+        expData.fixed.deep() = reference.exp.fixed;
+        _impl->exp.fitLinear(getControl().exp, result.exp, expData, exposure, *finalFitRegion);
+    }
 
     // Do the de Vaucouleur fit (amplitudes only)
     CModelStageData devData = initialData.changeModel(*_impl->dev.model);
-    devData.nonlinear.deep() = reference.dev.nonlinear;
-    devData.fixed.deep() = reference.dev.fixed;
-    _impl->dev.fitLinear(getControl().dev, result.dev, devData, exposure, *finalFitRegion);
+    if (!reference.dev.getFlag(CModelStageResult::FAILED)) {
+        devData.nonlinear.deep() = reference.dev.nonlinear;
+        devData.fixed.deep() = reference.dev.fixed;
+        _impl->dev.fitLinear(getControl().dev, result.dev, devData, exposure, *finalFitRegion);
+    }
+
+    if (result.exp.getFlag(CModelStageResult::FAILED) ||result.dev.getFlag(CModelStageResult::FAILED))
+        return;
 
     // Do the linear combination fit
     _impl->fitLinear(getControl(), result, expData, devData, exposure, *finalFitRegion);
@@ -1167,6 +1184,7 @@ void CModelAlgorithm::_applyForced(
     afw::geom::AffineTransform const & refToMeas
 ) const {
     Result result = _impl->makeResult();
+    assert(source.getFootprint()->getArea());
     // Record the center we used in the fit
     source.set(_impl->keys->center, center);
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
@@ -1185,8 +1203,8 @@ void CModelAlgorithm::_applyForced(
         approxFlux = source.getPsfFlux();
     }
     try {
-        Result refResult = _impl->refKeys->copyRecordToResult(source);
-    _applyForcedImpl(result, exposure, *source.getFootprint(), psf, center, refResult, approxFlux);
+        Result refResult = _impl->refKeys->copyRecordToResult(reference);
+        _applyForcedImpl(result, exposure, *source.getFootprint(), psf, center, refResult, approxFlux);
     } catch (...) {
         _impl->keys->copyResultToRecord(result, source);
         throw;
