@@ -96,23 +96,68 @@ class Magnitudes(CalculatedFieldSet):
             catalog[keys["mag"]][:], catalog[keys["mag.err"]][:] = \
                 calib.getMagnitude(catalog[keys["flux"]], catalog[keys["flux.err"]])
 
+FORCED_FILTERS = {'HSC-G': 'g', 'HSC-I': 'i', 'HSC-Z': 'z'}
+
 class ForcedMagnitudes(object):
     """An object that computes magnitudes from associated forced catalogs
     for all fluxes in the module-scope variable FLUXES."""
 
-    def __init__(self, outputSchema, forcedSchema, forcedFilter):
-        self.keyDicts = []
-        prefix = forcedFilter + "."
-        for flux in FLUXES:
-            mag = flux.replace("flux", "mag")
-            keys = {"flux": forcedSchema.find(flux).key, "flux.err": forcedSchema.find(flux + ".err").key}
-            keys["mag"] = outputSchema.addField(prefix + mag,
-                                                doc="magnitude for %s" % flux,
-                                                units="mag", type=float)
-            keys["mag.err"] = outputSchema.addField(prefix + mag + ".err",
-                                                    doc="magnitude error for %s" % flux,
-                                                    units="mag", type=float)
-            self.keyDicts.append(keys)
+    def __init__(self, outputSchema, forcedSchema):
+        self.keys = {}
+        self.objectIdKey = forcedSchema.find("object.id").key
+        for dataIdFilter, fieldNameFilter in FORCED_FILTERS.iteritems():
+            prefix = fieldNameFilter + "."
+            self.keys[dataIdFilter] = []
+            for flux in FLUXES:
+                mag = flux.replace("flux", "mag")
+                algKeys = {"flux": forcedSchema.find(flux).key,
+                             "flux.err": forcedSchema.find(flux + ".err").key}
+                algKeys["mag"] = outputSchema.addField(prefix + mag,
+                                                       doc="magnitude for %s" % flux,
+                                                       units="mag", type=float)
+                algKeys["mag.err"] = outputSchema.addField(prefix + mag + ".err",
+                                                           doc="magnitude error for %s" % flux,
+                                                           units="mag", type=float)
+                algKeys["flag"] = outputSchema.addField(prefix + mag + ".flags", type="Flag",
+                                                       doc="flag for forced photometry")
+                self.keys[dataIdFilter].append(algKeys)
+
+    def fillCatalog(self, catalog, dataRef, calexp):
+        for dataIdFilter, filterKeys in self.keys.iteritems():
+            dataId = dataRef.dataId.copy()
+            dataId["filter"] = dataIdFilter
+            forcedDataRef = dataRef.butlerSubset.butler.dataRef("deepCoadd_forced_src", **dataId)
+            try:
+                forcedSrc = forcedDataRef.get("deepCoadd_forced_src", immediate=True)
+            except Exception:
+                for record in catalog:
+                    for algKeys in filterKeys:
+                        record.set(algKeys["flag"], True)
+                continue
+            forcedCalib = forcedDataRef.get("deepCoadd_calexp", immediate=True).getCalib()
+            forcedCalib.setThrowOnNegativeFlux(False)
+            forcedSrc.sort(self.objectIdKey)
+            forcedSrcIter = iter(forcedSrc)
+            for record in catalog:
+                try:
+                    forcedSrcRecord = forcedSrcIter.next()
+                except StopIteration:
+                    pass
+                if forcedSrcRecord.get(self.objectIdKey) == record.getId():
+                    for algKeys in filterKeys:
+                        mag, magErr = forcedCalib.getMagnitude(forcedSrcRecord.get(algKeys["flux"]),
+                                                               forcedSrcRecord.get(algKeys["flux.err"]))
+                        record.set(algKeys["mag"], mag)
+                        record.set(algKeys["mag.err"], magErr)
+                elif forcedSrcRecord.get(self.objectIdKey) > record.getId():
+                    for algKeys in filterKeys:
+                        record.set(algKeys["flag"], True)
+                else:
+                    while forcedSrcRecord.get(self.objectIdKey) < record.getId():
+                        try:
+                            forcedSrcRecord = forcedSrcIter.next()
+                        except StopIteration:
+                            pass
 
 class SubaruDataIdSchemaManager(CalculatedFieldSet):
     """A CalculatedFieldSet appropriate for managing Data ID fields for non-coadd Subaru data"""
@@ -157,9 +202,7 @@ def makeDataIdSchemaManager(schema, butler, prefix):
     else:
         raise ValueError("Unknown mapper")
 
-CALCULATED = (Magnitudes, CModelLogRadius, CModelEllipticity)
-
-FORCED_FILTERS = ('HSC-G', 'HSC-I', 'HSC-Z')
+CALCULATED = (CModelLogRadius, CModelEllipticity)
 
 def printMissing(dataSet, root=None, rerun=None, butler=None, dataIds=[]):
     if butler is None:
@@ -172,39 +215,31 @@ def printMissing(dataSet, root=None, rerun=None, butler=None, dataIds=[]):
 
 def buildCatalog(
     root=None, rerun=None, butler=None, noCache=False, dataIds=[],
-    doPrintStatus=False, doPrintMissing=False, prefix="", forced=False,
-    doReadForcedCoadd=False, forcedFilters=FORCED_FILTERS,
-    calculated=CALCULATED,
+    doPrintStatus=False, doPrintMissing=False, prefix="",
+    doReadForcedCoadd=False, calculated=CALCULATED
     ):
 
     if butler is None:
         if root is None:
             root = os.path.join(os.environ["SUPRIME_DATA_DIR"], "rerun", rerun)
         butler = lsst.daf.persistence.Butler(root)
-    if forced:
-        schemaDataSet = prefix + "forced_src_schema"
-    else:
-        schemaDataSet = prefix + "src_schema"
+    schemaDataSet = prefix + "src_schema"
     inputSchema = butler.get(schemaDataSet, immediate=True).schema
     mapper = lsst.afw.table.SchemaMapper(inputSchema)
     mapper.addMinimalSchema(inputSchema)
 
     # Setup calculated fields, including Data ID fields
     calculated = [cls(mapper.editOutputSchema()) for cls in calculated]
+    calculated.append(Magnitudes(mapper.editOutputSchema()))
     calculated.append(makeDataIdSchemaManager(mapper.editOutputSchema(), butler, prefix))
 
-    forcedManagers = {}
     if doReadForcedCoadd:
         forcedDataSet = prefix + "forced_src"
         outputSchema = mapper.editOutputSchema()
-        for forcedFilter in forcedFilters:
-            forcedSchema = butler.get(prefix + "forced_src_schema", immediate=True)
-            forcedManagers[forcedFilter] = ForcedMagnitudes(outputSchema, forcedSchema, forcedFilter)
+        forcedSchema = butler.get(prefix + "forced_src_schema", immediate=True).schema
+        calculated.append(ForcedMagnitudes(outputSchema, forcedSchema))
 
-    if forced:
-        srcDataSet = prefix + "forced_src"
-    else:
-        srcDataSet = prefix + "src"
+    srcDataSet = prefix + "src"
     calexpDataSet = prefix + "calexp"
     srcCache = {}
     fullSize = 0
@@ -212,6 +247,7 @@ def buildCatalog(
     for dataId in dataIds:
         dataRef = butler.dataRef(srcDataSet, **dataId)
         dataId = dataRef.dataId
+
         if not dataRef.datasetExists(srcDataSet):
             if doPrintMissing:
                 print "%s missing for data id %s" % (srcDataSet, dataId)
