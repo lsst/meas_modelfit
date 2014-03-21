@@ -679,7 +679,7 @@ public:
         Scalar iyy = std::max(moments.getIyy() - psfMoments.getIyy(), mir2);
         Scalar ixy = moments.getIxy() - psfMoments.getIxy();
         if (ixx*iyy < ixy*ixy) {
-            ixy = (ixy / std::abs(ixy)) * std::sqrt(ixx*iyy) * (1.0 - mir2);
+            ixy = 0.0;
         }
         afw::geom::ellipses::Quadrupole deconvolvedMoments(
             ixx, iyy, ixy,
