@@ -39,6 +39,8 @@
         return boost::make_shared<lsst::afw::geom::ellipses::Quadrupole>($self->ellipse);
     }
 
+}
+
 %pythoncode %{
 
 def displayHistory(self, *kwds):
