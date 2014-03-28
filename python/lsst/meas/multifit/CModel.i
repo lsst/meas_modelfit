@@ -25,6 +25,20 @@
 %shared_ptr(lsst::meas::multifit::CModelAlgorithm)
 %include "lsst/meas/multifit/CModel.h"
 
+%extend lsst::meas::multifit::CModelStageResult {
+%pythoncode %{
+
+def displayHistory(self, *kwds):
+    """Return a display.xOptimizerDisplay object that shows the track of the optimizer
+    in this fit.  Additional keyword arguments are forwarded to the OptimizerDisplay
+    constructor.
+    """
+    from .display import OptimizerDisplay
+    return OptimizerDisplay(self.history, self.model, self.objfunc, *kwds)
+
+%}
+}
+
 %pythoncode %{
 import lsst.pex.config
 import lsst.meas.algorithms
@@ -38,4 +52,5 @@ CModelDiagnosticsConfig = lsst.pex.config.makeConfigClass(CModelDiagnosticsContr
 lsst.meas.algorithms.AlgorithmRegistry.register("cmodel", CModelControl)
 
 CModelAlgorithm.Result = CModelResult
+
 %}

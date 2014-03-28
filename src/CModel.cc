@@ -487,6 +487,7 @@ public:
             exposure, footprint, data.psf, ctrl.likelihood
         );
         PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, prior);
+        result.objfunc = objective;
         Optimizer optimizer(objective, data.parameters, ctrl.optimizer);
         try {
             if (ctrl.doRecordHistory) {

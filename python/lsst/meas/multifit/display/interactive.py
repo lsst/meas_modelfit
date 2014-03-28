@@ -145,7 +145,7 @@ class Interactive(object):
     def displayOptimizer(self, record, **kwds):
         likelihood = self.task.makeLikelihood(self.inputs, record)
         objective = multifitLib.OptimizerObjective.makeFromLikelihood(likelihood, self.task.prior)
-        return OptimizerDisplay(record, objective)
+        return OptimizerDisplay(record.getSamples(), self.task.model, objective)
 
     def displayResiduals(self, record, nonlinear="fit", amplitudes="fit", doApplyWeights=False):
         """Display the data postage stamp along with the model image and residuals in ds9.
