@@ -157,7 +157,8 @@ struct CModelStageKeys {
         afw::table::Schema & schema,
         std::string const & prefix,
         std::string const & stage,
-        bool isForced
+        bool isForced,
+        CModelStageControl const & ctrl
     ) :
         flux(afw::table::addFluxFields(schema, prefix + ".flux", "flux from the " + stage + " fit")),
         fluxCorrection(prefix, schema)
@@ -191,6 +192,12 @@ struct CModelStageKeys {
                 "numerical underflow or overflow in model evaluation; usually this means the prior was "
                 "insufficient to regularize the fit"
             );
+            if (ctrl.doRecordHistory) {
+                nIter = schema.addField<int>(prefix + ".nIter", "Number of total iterations in stage");
+            }
+            if (ctrl.doRecordTime) {
+                time = schema.addField<Scalar>(prefix + ".time", "Time spent in stage", "seconds");
+            }
         }
         flags[CModelStageResult::FAILED] = flux.flag; // these flags refer to the same underlying field
     }
@@ -236,6 +243,12 @@ struct CModelStageKeys {
         if (fixed.isValid() && !result.fixed.isEmpty()) {
             record.set(fixed, result.fixed);
         }
+        if (nIter.isValid()) {
+            record.set(nIter, result.history.size());
+        }
+        if (time.isValid()) {
+            record.set(time, result.history.size());
+        }
         for (int b = 0; b < CModelStageResult::N_FLAGS; ++b) {
             if (flags[b].isValid()) {
                 record.set(flags[b], result.flags[b]);
@@ -259,6 +272,8 @@ struct CModelStageKeys {
     afw::table::Key<afw::table::Flag> flags[CModelStageResult::N_FLAGS];
     afw::table::Key<afw::table::Array<Scalar> > nonlinear;
     afw::table::Key<afw::table::Array<Scalar> > fixed;
+    afw::table::Key<Scalar> time;
+    afw::table::Key<int> nIter;
 };
 
 struct CModelKeys {
@@ -268,11 +283,12 @@ struct CModelKeys {
         Model const & initialModel, Model const & expModel, Model const & devModel,
         afw::table::Schema & schema,
         std::string const & prefix,
-        bool isForced
+        bool isForced,
+        CModelControl const & ctrl
     ) :
-        initial(initialModel, schema, prefix + ".initial", "initial", isForced),
-        exp(expModel, schema, prefix + ".exp", "exponential", isForced),
-        dev(devModel, schema, prefix + ".dev", "de Vaucouleur", isForced),
+        initial(initialModel, schema, prefix + ".initial", "initial", isForced, ctrl.initial),
+        exp(expModel, schema, prefix + ".exp", "exponential", isForced, ctrl.exp),
+        dev(devModel, schema, prefix + ".dev", "de Vaucouleur", isForced, ctrl.dev),
         center(schema.addField<afw::table::Point<Scalar> >(
                    // The fact that the center passed to all the algorithms isn't saved by the measurement
                    // framework is a bug that will be addressed in the next version of the framework.
@@ -482,6 +498,10 @@ public:
         CModelStageControl const & ctrl, CModelStageResult & result, CModelStageData const & data,
         afw::image::Exposure<Pixel> const & exposure, afw::detection::Footprint const & footprint
     ) const {
+        long long startTime = 0;
+        if (ctrl.doRecordTime) {
+            startTime = daf::base::DateTime::now().nsecs();
+        }
         PTR(ProjectedLikelihood) likelihood = boost::make_shared<ProjectedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
             exposure, footprint, data.psf, ctrl.likelihood
@@ -535,6 +555,10 @@ public:
 
         // Set parameter vectors, flux values, ellipse on result.
         fillResult(result, data, amplitudeVariance);
+
+        if (ctrl.doRecordTime) {
+            result.time = (daf::base::DateTime::now().nsecs() - startTime) * 1E9;
+        }
     }
 
     void fitLinear(
@@ -773,7 +797,8 @@ CModelAlgorithm::CModelAlgorithm(
 ) : algorithms::Algorithm(ctrl), _impl(new Impl(ctrl))
 {
     _impl->keys = boost::make_shared<CModelKeys>(
-        *_impl->initial.model, *_impl->exp.model, *_impl->dev.model, boost::ref(schema), ctrl.name, isForced
+        *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
+        boost::ref(schema), ctrl.name, isForced, ctrl
     );
     // Ideally we'd like to initalize refKeys here too when isForced==true, but we aren't passed the
     // refSchema here, so instead we'll construct that on first use.  This will be fixed in the next

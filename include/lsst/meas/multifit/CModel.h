@@ -48,7 +48,8 @@ struct CModelStageControl {
         priorName(),
         nComponents(8),
         maxRadius(0),
-        doRecordHistory(true)
+        doRecordHistory(true),
+        doRecordTime(true)
     {}
 
     shapelet::RadialProfile const & getProfile() const {
@@ -100,7 +101,15 @@ struct CModelStageControl {
         "stage of the fit"
     );
 
-    LSST_CONTROL_FIELD(doRecordHistory, bool, "Whether to record the steps the optimizer takes");
+    LSST_CONTROL_FIELD(
+        doRecordHistory, bool,
+        "Whether to record the steps the optimizer takes (or just the number, if running as a plugin)"
+    );
+
+    LSST_CONTROL_FIELD(
+        doRecordTime, bool,
+        "Whether to record the time spent in this stage stage"
+    );
 
 };
 
@@ -262,6 +271,7 @@ struct CModelStageResult {
     Scalar flux;
     Scalar fluxSigma;
     Scalar objective;
+    Scalar time;
     afw::geom::ellipses::Quadrupole ellipse;
 
     bool getFlag(FlagBit b) const { return flags[b]; }
