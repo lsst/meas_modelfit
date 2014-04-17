@@ -911,6 +911,12 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     );
     afw::geom::ellipses::Ellipse fullEllipse(ellipse);
     fullEllipse.getCore().scale(getControl().region.nInitialRadii);
+    if (fullEllipse.getCore().getArea() > getControl().region.maxArea) {
+        throw LSST_EXCEPT(
+            pex::exceptions::RuntimeErrorException,
+            "Maximum area exceeded by ellipse component of region"
+        );
+    }
     afw::detection::Footprint ellipseFootprint(fullEllipse);
     if (ellipseFootprint.getArea() > 0) {
         region = mergeFootprints(*region, ellipseFootprint);
@@ -990,12 +996,18 @@ void CModelAlgorithm::_applyImpl(
     result.initial.model->writeEllipses(initialData.nonlinear.begin(), initialData.fixed.begin(),
                                         _impl->initial.ellipses.begin());
     _impl->initial.ellipses.front().transform(initialData.fitSysToMeasSys.geometric).inPlace();
-    PTR(afw::detection::Footprint) finalFitRegion = determineFinalFitRegion(
-        *exposure.getMaskedImage().getMask(),
-        footprint,
-        psfBBox,
-        _impl->initial.ellipses.front()
-    );
+    PTR(afw::detection::Footprint) finalFitRegion;
+    try {
+        finalFitRegion = determineFinalFitRegion(
+            *exposure.getMaskedImage().getMask(),
+            footprint,
+            psfBBox,
+            _impl->initial.ellipses.front()
+        );
+    } catch (pex::exceptions::RuntimeErrorException) {
+        result.setFlag(CModelResult::MAX_AREA, true);
+        return;
+    }
     if (!finalFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
         return;
@@ -1069,12 +1081,18 @@ void CModelAlgorithm::_applyForcedImpl(
     // Grow the footprint and include the initial ellipse, clip bad pixels and the exposure bbox;
     // in forced mode we can just use the final fit region immediately since we won't be changing
     // the initial fit ellipse.
-    PTR(afw::detection::Footprint) finalFitRegion = determineFinalFitRegion(
-        *exposure.getMaskedImage().getMask(),
-        footprint,
-        psfBBox,
-        _impl->initial.ellipses.front()
-    );
+    PTR(afw::detection::Footprint) finalFitRegion;
+    try {
+        finalFitRegion = determineFinalFitRegion(
+            *exposure.getMaskedImage().getMask(),
+            footprint,
+            psfBBox,
+            _impl->initial.ellipses.front()
+        );
+    } catch (pex::exceptions::RuntimeErrorException &) {
+        result.setFlag(CModelResult::MAX_AREA, true);
+        return;
+    }
     if (!finalFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
         return;
