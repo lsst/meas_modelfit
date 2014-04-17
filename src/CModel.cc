@@ -41,7 +41,7 @@ namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
-PTR(afw::detection::Footprint) mergeFootprints(
+PTR(afw::detection::Footprint) _mergeFootprints(
     afw::detection::Footprint const & a,
     afw::detection::Footprint const & b
 ) {
@@ -887,7 +887,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
         true
     );
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
-        region = mergeFootprints(*region, afw::detection::Footprint(psfBBox));
+        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox));
     }
     double originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
@@ -919,10 +919,10 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     }
     afw::detection::Footprint ellipseFootprint(fullEllipse);
     if (ellipseFootprint.getArea() > 0) {
-        region = mergeFootprints(*region, ellipseFootprint);
+        region = _mergeFootprints(*region, ellipseFootprint);
     }
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
-        region = mergeFootprints(*region, afw::detection::Footprint(psfBBox));
+        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox));
     }
     double originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
