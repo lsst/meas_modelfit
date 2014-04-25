@@ -881,18 +881,31 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     afw::detection::Footprint const & footprint,
     afw::geom::Box2I const & psfBBox
 ) const {
-    PTR(afw::detection::Footprint) region = afw::detection::growFootprint(
+    PTR(afw::detection::Footprint) region;
+    if (footprint.getArea() > getControl().region.maxArea) {
+        throw LSST_EXCEPT(
+            pex::exceptions::RuntimeErrorException,
+            "Maximum area exceeded by original footprint"
+        );
+    }
+    region = afw::detection::growFootprint(
         footprint,
         getControl().region.nGrowFootprint,
         true
     );
+    if (region->getArea() > getControl().region.maxArea) {
+        throw LSST_EXCEPT(
+            pex::exceptions::RuntimeErrorException,
+            "Maximum area exceeded by grown footprint"
+        );
+    }
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
         region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox));
     }
-    double originalArea = region->getArea();
+    int originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
     region->intersectMask(mask, _impl->badPixelMask);
-    if ((1.0 - region->getArea() / originalArea) > getControl().region.maxBadPixelFraction) {
+    if (originalArea - region->getArea() > originalArea*getControl().region.maxBadPixelFraction) {
         region.reset();
     }
     return region;
@@ -960,11 +973,17 @@ void CModelAlgorithm::_applyImpl(
     afw::geom::Box2I psfBBox = exposure.getPsf()->computeImage(center)->getBBox(afw::image::PARENT);
 
     // Grow the footprint, clip bad pixels and the exposure bbox
-    PTR(afw::detection::Footprint) initialFitRegion = determineInitialFitRegion(
-        *exposure.getMaskedImage().getMask(),
-        footprint,
-        psfBBox
-    );
+    PTR(afw::detection::Footprint) initialFitRegion;
+    try {
+        initialFitRegion = determineInitialFitRegion(
+            *exposure.getMaskedImage().getMask(),
+            footprint,
+            psfBBox
+        );
+    } catch (pex::exceptions::RuntimeErrorException) {
+        result.setFlag(CModelResult::MAX_AREA, true);
+        return;
+    }
     if (!initialFitRegion) {
         result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
         return;
@@ -990,6 +1009,7 @@ void CModelAlgorithm::_applyImpl(
     // Do the initial fit
     // TODO: use only 0th-order terms in psf
     _impl->initial.fit(getControl().initial, result.initial, initialData, exposure, *initialFitRegion);
+
     if (result.initial.getFlag(CModelStageResult::FAILED)) return;
 
     // Include a multiple of the initial-fit ellipse in the footprint, re-do clipping
@@ -1016,6 +1036,7 @@ void CModelAlgorithm::_applyImpl(
         result.setFlag(CModelResult::MAX_AREA, true);
         return;
     }
+
     result.finalFitRegion = finalFitRegion;
 
     // Do the exponential fit
@@ -1055,7 +1076,6 @@ void CModelAlgorithm::_applyForcedImpl(
     CModelResult const & reference,
     Scalar approxFlux
 ) const {
-
     afw::geom::Box2I psfBBox = exposure.getPsf()->computeImage(center)->getBBox(afw::image::PARENT);
 
     // Negative approxFlux means we should come up with an estimate ourselves.
