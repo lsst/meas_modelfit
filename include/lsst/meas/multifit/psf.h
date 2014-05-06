@@ -26,12 +26,110 @@
 
 #include "boost/scoped_ptr.hpp"
 
+#include "lsst/pex/config.h"
+
 #include "lsst/meas/multifit/Model.h"
+#include "lsst/meas/multifit/Prior.h"
 #include "lsst/meas/multifit/Likelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders);
+class PsfFitterComponentControl {
+public:
+
+    PsfFitterComponentControl(int initialOrder_=0, int finalOrder_=0, double fiducialRadius_=1.0) :
+        initialOrder(initialOrder_), finalOrder(finalOrder_),
+        positionPriorSigma(0.0), ellipticityPriorSigma(0.0),
+        fiducialRadius(fiducialRadius_), radiusPriorSigma(0.0)
+    {}
+
+    LSST_CONTROL_FIELD(
+        initialOrder, int,
+        "shapelet order in initial fit; -1 for none"
+    );
+    LSST_CONTROL_FIELD(
+        finalOrder, int,
+        "shapelet order in final fit; -1 for none"
+    );
+    LSST_CONTROL_FIELD(
+        positionPriorSigma, double,
+        "sigma (in pixels) in an isotropic 2-d Gaussian prior on the center of this shapelet component, "
+        "relative to the center of the PSF image"
+    );
+    LSST_CONTROL_FIELD(
+        ellipticityPriorSigma, double,
+        "sigma in an isotropic 2-d Gaussian prior on the conformal-shear ellipticity eta"
+    );
+    LSST_CONTROL_FIELD(
+        fiducialRadius, double,
+        "fiducial radius of the shapelet expansion, in units of the 2nd moments radius of the image"
+    );
+    LSST_CONTROL_FIELD(
+        radiusPriorSigma, double,
+        "sigma in a Gaussian prior on ln(radius/fiducialRadius)"
+    );
+
+};
+
+class PsfFitterControl {
+public:
+
+    PsfFitterControl() : inner(-1, 0, 0.5), primary(0, 5, 1.0), wings(0, 0, 2.0), outer(-1, 0, 4.0) {}
+
+    LSST_NESTED_CONTROL_FIELD(
+        inner, lsst.meas.multifit.multifitLib, PsfFitterComponentControl,
+        "Innermost shapelet expansion, used to fit PSFs with very sharp cores"
+    );
+
+    LSST_NESTED_CONTROL_FIELD(
+        primary, lsst.meas.multifit.multifitLib, PsfFitterComponentControl,
+        "Primary shapelet expansion, typically used to fit the bulk of the PSF "
+    );
+
+    LSST_NESTED_CONTROL_FIELD(
+        wings, lsst.meas.multifit.multifitLib, PsfFitterComponentControl,
+        "Wing shapelet expansion (between primary and outer), typically used to fit the wings of the PSF"
+    );
+
+    LSST_NESTED_CONTROL_FIELD(
+        outer, lsst.meas.multifit.multifitLib, PsfFitterComponentControl,
+        "Outermost shapelet expansion, used to fit PSFs with very broad wings"
+    );
+
+};
+
+class PsfFitter {
+public:
+
+    PsfFitter(PsfFitterControl const & ctrl);
+
+    PTR(Model) getInitialModel() const;
+
+    PTR(Model) getFinalModel() const;
+
+    PTR(Prior) getInitialPrior() const;
+
+    PTR(Prior) getFinalPrior() const;
+
+    shapelet::MultiShapeletFunction fitInitial(
+        afw::image::Image<Pixel> const & image,
+        Scalar noiseSigma
+    );
+
+    shapelet::MultiShapeletFunction fitFinal(
+        afw::image::Image<Pixel> const & image,
+        Scalar noiseSigma,
+        shapelet::MultiShapeletFunction const & initialResult
+    );
+
+private:
+    PsfFitterControl _ctrl;
+    PTR(Model) _initialModel;
+    PTR(Model) _finalModel;
+    PTR(Prior) _initialPrior;
+    PTR(Prior) _finalPrior;
+};
+
 
 class MultiShapeletPsfLikelihood : public Likelihood {
 public:
