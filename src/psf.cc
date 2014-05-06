@@ -30,20 +30,32 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders) {
-    double radius = std::pow(2.0, -static_cast<double>((orders.size() - 1) / 2));
-    Model::NameVector prefixes;
-    Model::BasisVector basisVector;
-    for (std::size_t i = 0; i != orders.size(); ++i, radius *= 2) {
-        int n = shapelet::computeSize(orders[i]);
-        ndarray::Array<double,2,2> matrix = ndarray::allocate(n, n);
-        matrix.asEigen().setIdentity();
-        PTR(shapelet::MultiShapeletBasis) basis = boost::make_shared<shapelet::MultiShapeletBasis>(n);
-        basis->addComponent(radius, orders[i], matrix);
-        basisVector.push_back(basis);
-        prefixes.push_back((boost::format("%d.") % i).str());
-    }
-    return Model::make(basisVector, prefixes, Model::MULTI_CENTER);
+
+PsfFitter::PsfFitter(PsfFitterControl const & ctrl) : _ctrl(ctrl) {}
+
+PTR(Model) PsfFitter::getInitialModel() const { return _initialModel; }
+
+PTR(Model) PsfFitter::getFinalModel() const { return _finalModel; }
+
+PTR(Prior) PsfFitter::getInitialPrior() const { return _initialPrior; }
+
+PTR(Prior) PsfFitter::getFinalPrior() const { return _finalPrior; }
+
+shapelet::MultiShapeletFunction PsfFitter::fitInitial(
+    afw::image::Image<Pixel> const & image,
+    Scalar noiseSigma
+) {
+    shapelet::MultiShapeletFunction result;
+    return result;
+}
+
+shapelet::MultiShapeletFunction PsfFitter::fitFinal(
+    afw::image::Image<Pixel> const & image,
+    Scalar noiseSigma,
+    shapelet::MultiShapeletFunction const & initialResult
+) {
+    shapelet::MultiShapeletFunction result;
+    return result;
 }
 
 class MultiShapeletPsfLikelihood::Impl {
