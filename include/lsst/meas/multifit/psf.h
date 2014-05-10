@@ -37,19 +37,14 @@ namespace lsst { namespace meas { namespace multifit {
 class PsfFitterComponentControl {
 public:
 
-    PsfFitterComponentControl(int initialOrder_=0, int finalOrder_=0, double fiducialRadius_=1.0) :
-        initialOrder(initialOrder_), finalOrder(finalOrder_),
-        positionPriorSigma(0.0), ellipticityPriorSigma(0.0),
-        fiducialRadius(fiducialRadius_), radiusPriorSigma(0.0)
+    PsfFitterComponentControl(int order_=0, double radiusFactor_=1.0) :
+        order(order_), positionPriorSigma(0.0), ellipticityPriorSigma(0.0),
+        radiusFactor(radiusFactor_), radiusPriorSigma(0.0)
     {}
 
     LSST_CONTROL_FIELD(
-        initialOrder, int,
-        "shapelet order in initial fit; -1 for none"
-    );
-    LSST_CONTROL_FIELD(
-        finalOrder, int,
-        "shapelet order in final fit; -1 for none"
+        order, int,
+        "shapelet order for this component; negative to disable this component completely"
     );
     LSST_CONTROL_FIELD(
         positionPriorSigma, double,
@@ -61,8 +56,11 @@ public:
         "sigma in an isotropic 2-d Gaussian prior on the conformal-shear ellipticity eta"
     );
     LSST_CONTROL_FIELD(
-        fiducialRadius, double,
-        "fiducial radius of the shapelet expansion, in units of the 2nd moments radius of the image"
+        radiusFactor, double,
+        "Sets the fiducial radius of this component relative to the 'primary radius' of the PSF: either "
+        "the second-moments radius of the PSF image (in an initial fit), or the radius of the primary "
+        "component in a previous fit.  Ignored if the previous fit included this component (as then we "
+        "can just use that radius)."
     );
     LSST_CONTROL_FIELD(
         radiusPriorSigma, double,
@@ -74,7 +72,7 @@ public:
 class PsfFitterControl {
 public:
 
-    PsfFitterControl() : inner(-1, 0, 0.5), primary(0, 5, 1.0), wings(0, 0, 2.0), outer(-1, 0, 4.0) {}
+    PsfFitterControl() : inner(-1, 0.5), primary(0, 1.0), wings(0, 2.0), outer(-1, 4.0) {}
 
     LSST_NESTED_CONTROL_FIELD(
         inner, lsst.meas.multifit.multifitLib, PsfFitterComponentControl,
@@ -103,31 +101,31 @@ public:
 
     PsfFitter(PsfFitterControl const & ctrl);
 
-    PTR(Model) getInitialModel() const;
+    PTR(Model) getModel() const { return _model; }
 
-    PTR(Model) getFinalModel() const;
+    PTR(Prior) getPrior() const { return _prior; }
 
-    PTR(Prior) getInitialPrior() const;
+    shapelet::MultiShapeletFunction adapt(
+        shapelet::MultiShapeletFunction const & previousFit,
+        PTR(Model) previousModel
+    ) const;
 
-    PTR(Prior) getFinalPrior() const;
-
-    shapelet::MultiShapeletFunction fitInitial(
-        afw::image::Image<Pixel> const & image,
-        Scalar noiseSigma
-    );
-
-    shapelet::MultiShapeletFunction fitFinal(
+    shapelet::MultiShapeletFunction apply(
         afw::image::Image<Pixel> const & image,
         Scalar noiseSigma,
-        shapelet::MultiShapeletFunction const & initialResult
-    );
+        afw::geom::ellipses::Quadrupole const & moments
+    ) const;
+
+    shapelet::MultiShapeletFunction apply(
+        afw::image::Image<Pixel> const & image,
+        Scalar noiseSigma,
+        shapelet::MultiShapeletFunction const & initial
+    ) const;
 
 private:
     PsfFitterControl _ctrl;
-    PTR(Model) _initialModel;
-    PTR(Model) _finalModel;
-    PTR(Prior) _initialPrior;
-    PTR(Prior) _finalPrior;
+    PTR(Model) _model;
+    PTR(Prior) _prior;
 };
 
 
