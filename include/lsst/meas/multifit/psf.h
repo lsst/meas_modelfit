@@ -31,6 +31,7 @@
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/Prior.h"
 #include "lsst/meas/multifit/Likelihood.h"
+#include "lsst/meas/multifit/optimizer.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -94,6 +95,11 @@ public:
         "Outermost shapelet expansion, used to fit PSFs with very broad wings"
     );
 
+    LSST_NESTED_CONTROL_FIELD(
+        optimizer, lsst.meas.multifit.multifitLib, OptimizerControl,
+        "Configuration of the optimizer used to do the fitting"
+    );
+
 };
 
 class PsfFitter {
@@ -133,7 +139,7 @@ class MultiShapeletPsfLikelihood : public Likelihood {
 public:
 
     MultiShapeletPsfLikelihood(
-        ndarray::Array<Pixel const,2,2> const & image,
+        ndarray::Array<Pixel const,2,1> const & image,
         afw::geom::Point2I const & xy0,
         PTR(Model) model,
         Scalar sigma,
