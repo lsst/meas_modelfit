@@ -197,7 +197,6 @@ Pixel = numpy.float32
 %include "lsst/meas/multifit/Sampling.h"
 %include "lsst/meas/multifit/DirectSampling.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
-%include "lsst/meas/multifit/psf.h"
 %include "lsst/meas/multifit/TruncatedGaussian.h"
 
 %extend lsst::meas::multifit::UnitSystem {
@@ -278,3 +277,4 @@ typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
 %include "lsst/meas/multifit/integrals.h"
 %include "lsst/meas/multifit/optimizer.i"
 %include "lsst/meas/multifit/MarginalSampling.h"
+%include "lsst/meas/multifit/psf.h"
