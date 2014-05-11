@@ -279,7 +279,7 @@ shapelet::MultiShapeletFunction Model::makeShapeletFunction(
             shapelet::MultiShapeletFunction p = _basisVector[i]->makeFunction(
                 ellipses[i], amplitudes[ndarray::view(c,c+k)]
             );
-            r.getElements().splice(r.getElements().end(), p.getElements());
+            r.getElements().insert(r.getElements().end(), p.getElements().begin(), p.getElements().end());
             c += k;
         }
     }
