@@ -277,4 +277,4 @@ typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
 %include "lsst/meas/multifit/integrals.h"
 %include "lsst/meas/multifit/optimizer.i"
 %include "lsst/meas/multifit/MarginalSampling.h"
-%include "lsst/meas/multifit/psf.h"
+%include "lsst/meas/multifit/psf.i"
