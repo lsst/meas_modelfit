@@ -35,6 +35,7 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+/// Control object used to define one piece of multishapelet fit to a PSF model; see PsfFitter.
 class PsfFitterComponentControl {
 public:
 
@@ -70,6 +71,7 @@ public:
 
 };
 
+/// Control object used to configure a multishapelet fit to a PSF model; see PsfFitter.
 class PsfFitterControl {
 public:
 
@@ -102,26 +104,96 @@ public:
 
 };
 
+/**
+ *  @brief Class for fitting multishapelet models to PSF images
+ *
+ *  This class fits up to four shapelet expansions simultaneously to a PSF image, with the relative radii
+ *  and number of shapelet coefficients for each expansion separately configurable.  These expansions are
+ *  also named; this allows us to map different fits with some expansions disabled to each other, in order
+ *  to first fit an approximate model and follow this up with a more complete model, using the approximate
+ *  model as a starting point.
+ *
+ *  The configuration also defines a simple Bayesian prior for the fit, defined using simple independent
+ *  Gaussians for the ellipse parameters of each component.  The priors can be disabled by setting their
+ *  width (xxPriorSigma in the control object) to infinity, and those parameters can be held fixed at
+ *  their input values by setting the prior width to zero.  The priors are always centered at the input
+ *  value, meaning that it may be more appropriate to think of the priors as a form of regularization,
+ *  rather than a rigorous prior.  In fact, it's impossible to use a prior here rigorously without a
+ *  noise model for the PSF image, which is something the LSST Psf class doesn't provide, and here is
+ *  just provided as a constant noise sigma to be provided by the user (who generally just has to chose
+ *  a small number arbitrarily).  Decreasing the noise sigma will of course decrease the effect of the
+ *  priors (and vice versa).  In any case, having some sort of regularization is probably a good idea,
+ *  as this is a very high-dimensional fit.
+ */
 class PsfFitter {
 public:
 
+    /// Initialize the fitter class with the given control object.
     PsfFitter(PsfFitterControl const & ctrl);
 
+    /**
+     *  Return the Model object that corresponds to the configuration.
+     *
+     *  In addition to the shapelet coefficients (stored in the "amplitudes" array), this Model
+     *  stores all the initial ellipse parameters in the "fixed" array, as these are used to
+     *  define the center of the prior; the "nonlinear" parameters are the free-to-vary ellipse
+     *  parameters minus the corresponding initial values.
+     */
     PTR(Model) getModel() const { return _model; }
 
+    /**
+     *  Return the Prior object that corresponds to the configuration.
+     *
+     *  This Prior class only supports evaluate() and evaluateDerivatives(), reflecting the fact
+     *  that we only intend to use it with a Optimizer, not a Sampler.
+     */
     PTR(Prior) getPrior() const { return _prior; }
 
+    /**
+     *  Adapt a differently-configured previous fit to be used as an starting point for this PsfFitter.
+     *
+     *  @param[in] previousFit     The return value of apply() from a differently-configured
+     *                             instance of PsfFitter.
+     *  @param[in] previousModel   The Model associated with the PsfFitter used to create previousFit.
+     *
+     *  @return a new MultiShapelet function that may be passed directly to apply().  When possible,
+     *  the ellipse and shapelet coefficeints will be copied from previousFit; higher-order coefficients
+     *  will be set to zero, and any components used in this but unused in the previous fit will have their
+     *  ellipses set relative to the previous fit's "primary" component.
+     */
     shapelet::MultiShapeletFunction adapt(
         shapelet::MultiShapeletFunction const & previousFit,
         PTR(Model) previousModel
     ) const;
 
+    /**
+     *  Perform an initial fit to a PSF image.
+     *
+     *  @param[in]  image       The image to fit, typically the result of Psf::computeKernelImage().  The
+     *                          image's xy0 should be set such that the center of the PSF is at (0,0).
+     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
+     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
+     *  @param[in]  moments     Second moments of the PSF, typically result of Psf::computeShape() or running
+     *                          some other adaptive moments code on the PSF image.  This will be used to
+     *                          set the initial ellipses of the multishapelet model.
+     */
     shapelet::MultiShapeletFunction apply(
         afw::image::Image<Pixel> const & image,
         Scalar noiseSigma,
         afw::geom::ellipses::Quadrupole const & moments
     ) const;
 
+    /**
+     *  Perform a fit to a PSF image, using a previous fit as a starting point
+     *
+     *  @param[in]  image       The image to fit, typically the result of Psf::computeKernelImage().  The
+     *                          image's xy0 should be set such that the center of the PSF is at (0,0).
+     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
+     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
+     *  @param[in]  initial     The result of a previous call to apply(), using an identically-configured
+     *                          PsfFitter instance.  To use a result from a differently-configured PsfFitter,
+     *                          use adapt().
+     */
     shapelet::MultiShapeletFunction apply(
         afw::image::Image<Pixel> const & image,
         Scalar noiseSigma,
@@ -134,7 +206,10 @@ private:
     PTR(Prior) _prior;
 };
 
-
+/**
+ *  Likelihood object used to fit multishapelet models to PSF model images; mostly for internal use
+ *  by PsfFitter.
+ */
 class MultiShapeletPsfLikelihood : public Likelihood {
 public:
 
