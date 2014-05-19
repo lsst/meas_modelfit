@@ -34,8 +34,8 @@
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/detection/Footprint.h"
 
-#include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/models.h"
+#include "lsst/meas/multifit/common.h"
+#include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/Likelihood.h"
 #include "lsst/meas/multifit/UnitSystem.h"
 

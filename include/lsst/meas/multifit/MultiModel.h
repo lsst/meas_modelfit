@@ -21,33 +21,38 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_constants_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_constants_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_MultiModel_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_MultiModel_h_INCLUDED
 
-#include "Eigen/Core"
-#include "ndarray_fwd.h"
-#include "lsst/afw/table/fwd.h"
+#include "lsst/meas/multifit/Model.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-//@{
-/**
- *  Typedefs to be used for pixel values
- */
-typedef float Pixel;
-//@}
+class MultiModel : public Model {
+public:
 
-//@{
-/**
- *  Typedefs to be used for probability and parameter values
- */
-typedef double Scalar;
-typedef Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> Matrix;
-typedef Eigen::Matrix<Scalar,Eigen::Dynamic,1> Vector;
-typedef afw::table::Key<Scalar> ScalarKey;
-typedef afw::table::Key< afw::table::Array<Scalar> > ArrayKey;
-//@}
+    explicit MultiModel(ModelVector components, NameVector const & prefixes);
+
+    ModelVector const & getComponents() const { return _components; }
+
+    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const;
+
+    virtual EllipseVector makeEllipseVector() const;
+
+    virtual void writeEllipses(
+        Scalar const * nonlinearIter, Scalar const * fixedIter,
+        EllipseIterator ellipseIter
+    ) const;
+
+    virtual void readEllipses(
+        EllipseConstIterator ellipseIter,
+        Scalar * nonlinearIter, Scalar * fixedIter
+    ) const;
+
+private:
+    ModelVector _components;
+};
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_constants_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_MultiModel_h_INCLUDED

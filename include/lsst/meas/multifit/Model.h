@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_models_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_models_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_Model_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_Model_h_INCLUDED
 
 #include <vector>
 
@@ -31,7 +31,7 @@
 #include "lsst/base.h"
 #include "lsst/afw/geom/ellipses/Ellipse.h"
 #include "lsst/shapelet/MultiShapeletBasis.h"
-#include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/common.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -125,31 +125,6 @@ private:
     BasisVector _basisVector;
 };
 
-class MultiModel : public Model {
-public:
-
-    explicit MultiModel(ModelVector components, NameVector const & prefixes);
-
-    ModelVector const & getComponents() const { return _components; }
-
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const;
-
-    virtual EllipseVector makeEllipseVector() const;
-
-    virtual void writeEllipses(
-        Scalar const * nonlinearIter, Scalar const * fixedIter,
-        EllipseIterator ellipseIter
-    ) const;
-
-    virtual void readEllipses(
-        EllipseConstIterator ellipseIter,
-        Scalar * nonlinearIter, Scalar * fixedIter
-    ) const;
-
-private:
-    ModelVector _components;
-};
-
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_models_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_Model_h_INCLUDED

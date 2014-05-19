@@ -21,42 +21,33 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_psf_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_psf_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_common_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_common_h_INCLUDED
 
-#include "boost/scoped_ptr.hpp"
-
-#include "lsst/meas/multifit/Model.h"
-#include "lsst/meas/multifit/Likelihood.h"
+#include "Eigen/Core"
+#include "ndarray_fwd.h"
+#include "lsst/afw/table/fwd.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
-PTR(Model) makeMultiShapeletPsfModel(std::vector<int> const & orders);
+//@{
+/**
+ *  Typedefs to be used for pixel values
+ */
+typedef float Pixel;
+//@}
 
-class MultiShapeletPsfLikelihood : public Likelihood {
-public:
-
-    MultiShapeletPsfLikelihood(
-        ndarray::Array<Pixel const,2,2> const & image,
-        afw::geom::Point2I const & xy0,
-        PTR(Model) model,
-        Scalar sigma,
-        ndarray::Array<Scalar const,1,1> const & fixed
-    );
-
-    virtual void computeModelMatrix(
-        ndarray::Array<Pixel,2,-1> const & modelMatrix,
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        bool doApplyWeights=true
-    ) const;
-
-    virtual ~MultiShapeletPsfLikelihood();
-
-private:
-    class Impl;
-    boost::scoped_ptr<Impl> _impl;
-};
+//@{
+/**
+ *  Typedefs to be used for probability and parameter values
+ */
+typedef double Scalar;
+typedef Eigen::Matrix<Scalar,Eigen::Dynamic,Eigen::Dynamic> Matrix;
+typedef Eigen::Matrix<Scalar,Eigen::Dynamic,1> Vector;
+typedef afw::table::Key<Scalar> ScalarKey;
+typedef afw::table::Key< afw::table::Array<Scalar> > ArrayKey;
+//@}
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_psf_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_common_h_INCLUDED

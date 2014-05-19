@@ -34,7 +34,7 @@
 #include "lsst/base.h"
 #include "lsst/afw/math/Random.h"
 #include "lsst/afw/table/io/Persistable.h"
-#include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/common.h"
 
 namespace lsst { namespace meas { namespace multifit {
 

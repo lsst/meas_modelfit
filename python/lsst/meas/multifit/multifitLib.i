@@ -113,7 +113,7 @@ Basic routines to talk to lsst::meas::multifit classes
 %declareNumPyConverters(ndarray::Array<double,1,1>);
 %declareNumPyConverters(ndarray::Array<double,2,2>);
 
-%include "lsst/meas/multifit/constants.h"
+%include "lsst/meas/multifit/common.h"
 
 %pythoncode %{
 import numpy
@@ -188,13 +188,16 @@ Pixel = numpy.float32
 
 //----------- Miscellaneous ---------------------------------------------------------------------------------
 
-%include "lsst/meas/multifit/models.h"
-%include "lsst/meas/multifit/priors.h"
+%include "lsst/meas/multifit/Model.h"
+%include "lsst/meas/multifit/MultiModel.h"
+%include "lsst/meas/multifit/Prior.h"
+%include "lsst/meas/multifit/MixturePrior.h"
 %include "lsst/meas/multifit/Interpreter.h"
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/UnitSystem.h"
 %include "lsst/meas/multifit/ProjectedLikelihood.h"
 %include "lsst/meas/multifit/Sampling.h"
+%include "lsst/meas/multifit/Sampler.h"
 %include "lsst/meas/multifit/DirectSampling.h"
 %include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
 %include "lsst/meas/multifit/psf.h"
