@@ -34,7 +34,7 @@
 #include "lsst/afw/table/BaseRecord.h"
 #include "lsst/meas/multifit/optimizer.h"
 #include "lsst/meas/multifit/Likelihood.h"
-#include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/Prior.h"
 #include "lsst/meas/multifit/ModelFitRecord.h"
 
 namespace lsst { namespace meas { namespace multifit {

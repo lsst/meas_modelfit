@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_MarginalSampling_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_MarginalSampling_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_MarginalSamplingInterpreter_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_MarginalSamplingInterpreter_h_INCLUDED
 
 #include "ndarray.h"
 #include "lsst/afw/math/Random.h"
@@ -171,4 +171,4 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_MarginalSampling_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_MarginalSamplingInterpreter_h_INCLUDED

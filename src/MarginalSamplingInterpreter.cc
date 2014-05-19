@@ -25,8 +25,8 @@
 
 #include "ndarray/eigen.h"
 
-#include "lsst/meas/multifit/MarginalSampling.h"
-#include "lsst/meas/multifit/DirectSampling.h"
+#include "lsst/meas/multifit/MarginalSamplingInterpreter.h"
+#include "lsst/meas/multifit/DirectSamplingInterpreter.h"
 #include "lsst/meas/multifit/ModelFitRecord.h"
 
 namespace lsst { namespace meas { namespace multifit {

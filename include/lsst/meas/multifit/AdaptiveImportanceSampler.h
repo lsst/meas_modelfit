@@ -27,7 +27,7 @@
 #include <map>
 
 #include "lsst/pex/config.h"
-#include "lsst/meas/multifit/Sampling.h"
+#include "lsst/meas/multifit/Sampler.h"
 #include "lsst/meas/multifit/Mixture.h"
 
 namespace lsst { namespace meas { namespace multifit {

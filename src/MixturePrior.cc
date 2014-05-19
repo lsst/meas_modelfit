@@ -29,7 +29,7 @@
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/afw/table/io/InputArchive.h"
 #include "lsst/afw/table/io/CatalogVector.h"
-#include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/MixturePrior.h"
 #include "lsst/meas/multifit/TruncatedGaussian.h"
 
 namespace tbl = lsst::afw::table;

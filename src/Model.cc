@@ -22,8 +22,8 @@
  */
 
 #include "lsst/pex/exceptions.h"
-#include "lsst/meas/multifit/models.h"
-#include "lsst/meas/multifit/priors.h"
+#include "lsst/meas/multifit/Model.h"
+#include "lsst/meas/multifit/Prior.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -436,90 +436,6 @@ PTR(Model) Model::makeGaussian(CenterEnum center, double radius) {
     basis->addComponent(radius, 0, matrix);
     basis->normalize();
     return make(basis, center);
-}
-
-// ========== MultiModel ====================================================================================
-
-namespace {
-
-static Model::BasisVector concatenateBasisVectors(ModelVector const & components) {
-    Model::BasisVector r;
-    for (ModelVector::const_iterator i = components.begin(); i != components.end(); ++i) {
-        r.insert(r.end(), (**i).getBasisVector().begin(), (**i).getBasisVector().end());
-    }
-    return r;
-}
-
-typedef Model::NameVector const & (Model::*ModelNameGetter)() const;
-
-static Model::NameVector concatenateNameVectors(
-    ModelVector const & components, Model::NameVector const & prefixes, ModelNameGetter getter
-) {
-    LSST_THROW_IF_NE(
-        components.size(), prefixes.size(),
-        pex::exceptions::LengthErrorException,
-        "Number of model components (%d) does not match number of prefixes (%d)"
-    );
-    Model::NameVector r;
-    for (ModelVector::const_iterator i = components.begin(); i != components.end(); ++i) {
-        Model::NameVector const & componentNames = ((**i).*getter)();
-        for (std::size_t j = 0, n = componentNames.size(); j < n; ++j) {
-            r.push_back(prefixes[j] + componentNames[j]);
-        }
-    }
-    return r;
-}
-
-} // anonymous
-
-MultiModel::MultiModel(ModelVector components, NameVector const & prefixes) :
-    Model(
-        concatenateBasisVectors(components),
-        concatenateNameVectors(components, prefixes, &Model::getNonlinearNames),
-        concatenateNameVectors(components, prefixes, &Model::getAmplitudeNames),
-        concatenateNameVectors(components, prefixes, &Model::getFixedNames)
-    ),
-    _components(components)
-{}
-
-PTR(Prior) MultiModel::adaptPrior(PTR(Prior) prior) const {
-    throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
-        "adaptPrior not implemented for MultiModel"
-    );
-}
-
-Model::EllipseVector MultiModel::makeEllipseVector() const {
-    EllipseVector r;
-    for (ModelVector::const_iterator i = _components.begin(); i != _components.end(); ++i) {
-        EllipseVector c = (**i).makeEllipseVector();
-        r.insert(r.end(), c.begin(), c.end());
-    }
-    return r;
-}
-
-void MultiModel::writeEllipses(
-    Scalar const * nonlinearIter, Scalar const * fixedIter,
-    EllipseIterator ellipseIter
-) const {
-    for (ModelVector::const_iterator i = _components.begin(); i != _components.end(); ++i) {
-        (**i).writeEllipses(nonlinearIter, fixedIter, ellipseIter);
-        nonlinearIter += (**i).getNonlinearDim();
-        fixedIter += (**i).getFixedDim();
-        ellipseIter += (**i).getBasisCount();
-    }
-}
-
-void MultiModel::readEllipses(
-    EllipseConstIterator ellipseIter,
-    Scalar * nonlinearIter, Scalar * fixedIter
-) const {
-    for (ModelVector::const_iterator i = _components.begin(); i != _components.end(); ++i) {
-        (**i).readEllipses(ellipseIter, nonlinearIter, fixedIter);
-        nonlinearIter += (**i).getNonlinearDim();
-        fixedIter += (**i).getFixedDim();
-        ellipseIter += (**i).getBasisCount();
-    }
 }
 
 }}} // namespace lsst::meas::multifit

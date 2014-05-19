@@ -30,7 +30,7 @@
 #include "lsst/afw/geom/AffineTransform.h"
 #include "lsst/afw/geom/XYTransform.h"
 
-#include "lsst/meas/multifit/constants.h"
+#include "lsst/meas/multifit/common.h"
 
 namespace lsst { namespace meas { namespace multifit {
 

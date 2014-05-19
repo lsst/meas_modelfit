@@ -167,19 +167,6 @@ inline PTR(SamplingObjective) makeSamplingObjective(
     return interpreter->makeObjective(interpreter, likelihood);
 }
 
-class Sampler {
-public:
-
-    virtual void run(
-        SamplingObjective const & objective,
-        PTR(Mixture) proposal,
-        afw::table::BaseCatalog & samples
-    ) const = 0;
-
-    virtual ~Sampler() {}
-
-};
-
 }}} // namespace lsst::meas::multifit
 
 #endif // !LSST_MEAS_MULTIFIT_Sampling_h_INCLUDED

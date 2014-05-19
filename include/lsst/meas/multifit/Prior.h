@@ -21,14 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_priors_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_priors_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_Prior_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_Prior_h_INCLUDED
 
 #include "lsst/base.h"
 #include "lsst/afw/table/io/Persistable.h"
 #include "lsst/afw/math/Random.h"
-#include "lsst/meas/multifit/constants.h"
-#include "lsst/meas/multifit/Mixture.h"
+#include "lsst/meas/multifit/common.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -176,79 +175,6 @@ private:
     std::string _tag;
 };
 
-/**
- *  @brief A prior that's flat in amplitude parameters, and uses a Mixture for nonlinear parameters.
- */
-class MixturePrior :
-    public afw::table::io::PersistableFacade<MixturePrior>,
-    public Prior
-{
-public:
-
-    explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
-
-    /// @copydoc Prior::evaluate
-    virtual Scalar evaluate(
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        ndarray::Array<Scalar const,1,1> const & amplitudes
-    ) const;
-
-    /// @copydoc Prior::evaluateDerivatives
-    virtual void evaluateDerivatives(
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        ndarray::Array<Scalar const,1,1> const & amplitudes,
-        ndarray::Array<Scalar,1,1> const & nonlinearGradient,
-        ndarray::Array<Scalar,1,1> const & amplitudeGradient,
-        ndarray::Array<Scalar,2,1> const & nonlinearHessian,
-        ndarray::Array<Scalar,2,1> const & amplitudeHessian,
-        ndarray::Array<Scalar,2,1> const & crossHessian
-    ) const;
-
-    /// @copydoc Prior::evaluate
-    virtual Scalar marginalize(
-        Vector const & gradient, Matrix const & hessian,
-        ndarray::Array<Scalar const,1,1> const & nonlinear
-    ) const;
-
-    /// @copydoc Prior::maximize
-    virtual Scalar maximize(
-        Vector const & gradient, Matrix const & hessian,
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        ndarray::Array<Scalar,1,1> const & amplitudes
-    ) const;
-
-    /// @copydoc Prior::drawAmplitudes
-    virtual void drawAmplitudes(
-        Vector const & gradient, Matrix const & fisher,
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        afw::math::Random & rng,
-        ndarray::Array<Scalar,2,1> const & amplitudes,
-        ndarray::Array<Scalar,1,1> const & weights,
-        bool multiplyWeights=false
-    ) const;
-
-    /**
-     *  @brief Return a MixtureUpdateRestriction appropriate for (e1,e2,r) data.
-     *
-     *  This restriction object can be used with Mixture<3>::updateEM() to create
-     *  a mixture with a strictly isotropic ellipticity distribution.
-     */
-    static MixtureUpdateRestriction const & getUpdateRestriction();
-
-    PTR(Mixture const) getMixture() const { return _mixture; }
-
-    virtual bool isPersistable() const { return true; }
-
-protected:
-
-    virtual std::string getPersistenceName() const;
-
-    virtual void write(OutputArchiveHandle & handle) const;
-
-private:
-    PTR(Mixture const) _mixture;
-};
-
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_priors_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_Prior_h_INCLUDED

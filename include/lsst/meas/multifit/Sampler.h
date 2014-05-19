@@ -21,27 +21,28 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_H
-#define LSST_MEAS_MULTIFIT_H
+#ifndef LSST_MEAS_MULTIFIT_Sampler_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_Sampler_h_INCLUDED
 
-#include "lsst/meas/multifit/MarginalSamplingInterpreter.h"
-#include "lsst/meas/multifit/DirectSamplingInterpreter.h"
-#include "lsst/meas/multifit/ModelFitRecord.h"
-#include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
-#include "lsst/meas/multifit/Sampling.h"
-#include "lsst/meas/multifit/Sampler.h"
-#include "lsst/meas/multifit/TruncatedGaussian.h"
-#include "lsst/meas/multifit/Likelihood.h"
-#include "lsst/meas/multifit/ProjectedLikelihood.h"
-#include "lsst/meas/multifit/UnitSystem.h"
-#include "lsst/meas/multifit/Interpreter.h"
-#include "lsst/meas/multifit/Prior.h"
-#include "lsst/meas/multifit/MixturePrior.h"
-#include "lsst/meas/multifit/integrals.h"
-#include "lsst/meas/multifit/Model.h"
-#include "lsst/meas/multifit/MultiModel.h"
+#include "lsst/afw/table/fwd.h"
 #include "lsst/meas/multifit/Mixture.h"
-#include "lsst/meas/multifit/optimizer.h"
-#include "lsst/meas/multifit/psf.h"
+#include "lsst/meas/multifit/Sampling.h"
 
-#endif // !LSST_MEAS_MULTIFIT_H
+namespace lsst { namespace meas { namespace multifit {
+
+class Sampler {
+public:
+
+    virtual void run(
+        SamplingObjective const & objective,
+        PTR(Mixture) proposal,
+        afw::table::BaseCatalog & samples
+    ) const = 0;
+
+    virtual ~Sampler() {}
+
+};
+
+}}} // namespace lsst::meas::multifit
+
+#endif // !LSST_MEAS_MULTIFIT_Sampler_h_INCLUDED
