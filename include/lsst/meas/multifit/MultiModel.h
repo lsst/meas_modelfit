@@ -28,22 +28,37 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+/**
+ *  @brief A concrete Model class that simply concatenates several other Models
+ */
 class MultiModel : public Model {
 public:
 
+    /**
+     *  @brief Construct a new MultiModel
+     *
+     *  @param[in] components       A vector of other Models to combine
+     *  @param[in] prefixes         A vector of name prefixes used to construct parameter names,
+     *                              one for each element in components.
+     */
     explicit MultiModel(ModelVector components, NameVector const & prefixes);
 
+    /// Return the vector of constituent models
     ModelVector const & getComponents() const { return _components; }
 
+    /// @copydoc Model::adaptPrior
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const;
 
+    /// @copydoc Model::makeEllipseVector
     virtual EllipseVector makeEllipseVector() const;
 
+    /// @copydoc Model::writeEllipses
     virtual void writeEllipses(
         Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const;
 
+    /// @copydoc Model::readEllipses
     virtual void readEllipses(
         EllipseConstIterator ellipseIter,
         Scalar * nonlinearIter, Scalar * fixedIter
