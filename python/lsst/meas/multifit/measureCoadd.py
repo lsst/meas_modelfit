@@ -55,6 +55,9 @@ class MeasureCoaddTask(MeasureImageTask):
                                ContainerClass=CoaddDataIdContainer)
         return parser
 
+    def getPreviousTaskClass(self):
+        return MeasureCoaddTask
+
     def _getConfigName(self):
         """Return the name of the config dataset
         """

@@ -38,6 +38,7 @@ Basic routines to talk to lsst::meas::multifit classes
 #include "lsst/afw/table.h"
 #include "lsst/afw/cameraGeom.h"
 #include "lsst/afw/image.h"
+#include "lsst/shapelet.h"
 #include "lsst/meas/multifit.h"
 #include "ndarray/eigen.h"
 #include "Eigen/Core"
@@ -66,57 +67,189 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/afw/table/io/ioLib.i"
 %import "lsst/afw/table/tableLib.i"
 %import "lsst/afw/image/imageLib.i"
+%import "lsst/afw/math/random.i"
+%import "lsst/shapelet/shapeletLib.i"
 %import "lsst/pex/config.h"
 
-namespace lsst { namespace shapelet {
-class MultiShapeletBasis;
-}}
+// We should have something like this macro in p_lsstSwig.i
+%define %downcastPtr(BASE, DERIVED)
+%extend DERIVED {
+    static PTR(DERIVED) cast(PTR(BASE) base) {
+        return boost::dynamic_pointer_cast< DERIVED >(base);
+    }
+}
+%enddef
 
-%template(VectorEpochFootprint) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
+%template(EpochFootprintVector) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
-%declareNumPyConverters(lsst::meas::multifit::samples::Vector);
-%declareNumPyConverters(lsst::meas::multifit::samples::Matrix);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,2,-2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar const,2,-2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,1,0>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,1,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel,2,-2>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,-1>);
+%declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Pixel const,2,-2>);
+%declareNumPyConverters(lsst::meas::multifit::Vector);
+%declareNumPyConverters(lsst::meas::multifit::Matrix);
 %declareNumPyConverters(Eigen::VectorXd);
 %declareNumPyConverters(Eigen::MatrixXd);
 %declareNumPyConverters(ndarray::Array<double,1,1>);
 %declareNumPyConverters(ndarray::Array<double,2,2>);
 
-%declareTablePersistable(SampleSet, lsst::meas::multifit::SampleSet);
+%include "lsst/meas/multifit/common.h"
 
-%shared_ptr(lsst::meas::multifit::Prior);
-%shared_ptr(lsst::meas::multifit::FlatPrior);
-%shared_ptr(lsst::meas::multifit::ExpectationFunctor);
-%shared_ptr(lsst::meas::multifit::Objective);
-%shared_ptr(lsst::meas::multifit::SingleEpochObjective);
+%pythoncode %{
+import numpy
+Scalar = numpy.float64
+Pixel = numpy.float32
+%}
+
+%declareTablePersistable(Prior, lsst::meas::multifit::Prior);
+%declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
+
+%shared_ptr(lsst::meas::multifit::ModelFitTable);
+%shared_ptr(lsst::meas::multifit::ModelFitRecord);
+%shared_ptr(lsst::meas::multifit::Model);
+%shared_ptr(lsst::meas::multifit::MultiModel);
+%shared_ptr(lsst::meas::multifit::Interpreter);
+%shared_ptr(lsst::meas::multifit::Likelihood);
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
-%shared_ptr(lsst::meas::multifit::MultiEpochObjective);
-%shared_ptr(lsst::meas::multifit::BaseSampler);
-%shared_ptr(lsst::meas::multifit::NaiveGridSampler);
+%shared_ptr(lsst::meas::multifit::UnitTransformedLikelihood);
+%shared_ptr(lsst::meas::multifit::Sampler);
+%shared_ptr(lsst::meas::multifit::SamplingObjective);
+%shared_ptr(lsst::meas::multifit::SamplingInterpreter);
+%shared_ptr(lsst::meas::multifit::DirectSamplingInterpreter);
+%shared_ptr(lsst::meas::multifit::MarginalSamplingInterpreter);
+%shared_ptr(lsst::meas::multifit::AdaptiveImportanceSampler);
+%shared_ptr(lsst::meas::multifit::MultiShapeletPsfLikelihood);
 
-%include "lsst/meas/multifit/constants.h"
-%include "lsst/meas/multifit/LogGaussian.h"
-%include "lsst/meas/multifit/priors.h"
-%include "lsst/meas/multifit/Objective.h"
-%include "lsst/meas/multifit/MultiEpochObjective.h"
-%include "lsst/meas/multifit/KernelDensityEstimator.h"
-%include "lsst/meas/multifit/SampleSet.h"
-%include "lsst/meas/multifit/ExpectationFunctor.h"
-%include "lsst/meas/multifit/BaseSampler.h"
-%include "lsst/meas/multifit/NaiveGridSampler.h"
+//----------- Mixtures --------------------------------------------------------------------------------------
+
+%declareTablePersistable(Mixture, lsst::meas::multifit::Mixture);
+%ignore lsst::meas::multifit::Mixture::begin;
+%ignore lsst::meas::multifit::Mixture::end;
+%ignore lsst::meas::multifit::Mixture::operator[];
+%rename(__len__) lsst::meas::multifit::Mixture::size;
+
+%include "lsst/meas/multifit/Mixture.h"
+
+%ignore std::vector<lsst::meas::multifit::MixtureComponent>::vector(size_type);
+%ignore std::vector<lsst::meas::multifit::MixtureComponent>::resize(size_type);
+%template(MixtureComponentList) std::vector<lsst::meas::multifit::MixtureComponent>;
+
+%addStreamRepr(lsst::meas::multifit::MixtureComponent);
+%addStreamRepr(lsst::meas::multifit::Mixture);
+
+%extend lsst::meas::multifit::Mixture {
+    lsst::meas::multifit::MixtureComponent & __getitem__(std::size_t i) {
+        return (*($self))[i];
+    }
+    lsst::meas::multifit::Scalar evaluate(
+        lsst::meas::multifit::MixtureComponent const & component,
+        lsst::meas::multifit::Vector const & x
+    ) const {
+        return $self->evaluate(component, x);
+    }
+    lsst::meas::multifit::Scalar evaluate(
+        lsst::meas::multifit::Vector const & x
+    ) const {
+        return $self->evaluate(x);
+    }
+
+    %pythoncode %{
+        def __iter__(self):
+            for i in xrange(len(self)):
+                yield self[i]
+    %}
+}
+
+%pythoncode %{
+    Mixture.UpdateRestriction = MixtureUpdateRestriction
+    Mixture.Component = MixtureComponent
+    Mixture.ComponentList = MixtureComponentList
+%}
+
+//----------- Miscellaneous ---------------------------------------------------------------------------------
+
+%include "lsst/meas/multifit/Model.h"
+%include "lsst/meas/multifit/MultiModel.h"
+%include "lsst/meas/multifit/Prior.h"
+%include "lsst/meas/multifit/MixturePrior.h"
+%include "lsst/meas/multifit/Interpreter.h"
+%include "lsst/meas/multifit/Likelihood.h"
+%include "lsst/meas/multifit/UnitSystem.h"
+%include "lsst/meas/multifit/UnitTransformedLikelihood.h"
+%include "lsst/meas/multifit/Sampling.h"
+%include "lsst/meas/multifit/Sampler.h"
+%include "lsst/meas/multifit/DirectSamplingInterpreter.h"
+%include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
+%include "lsst/meas/multifit/psf.h"
+%include "lsst/meas/multifit/TruncatedGaussian.h"
+
+%extend lsst::meas::multifit::UnitSystem {
+    %template(UnitSystem) UnitSystem<float>;
+    %template(UnitSystem) UnitSystem<double>;
+}
+
+%downcastPtr(lsst::meas::multifit::Model, lsst::meas::multifit::MultiModel)
+%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::SamplingInterpreter)
+%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::DirectSamplingInterpreter)
+%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::MarginalSamplingInterpreter)
+
+%ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
+%ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
+%template(EllipseVector) std::vector<lsst::afw::geom::ellipses::Ellipse>;
+%template(NameVector) std::vector<std::string>;
+%template(BasisVector) std::vector<PTR(lsst::shapelet::MultiShapeletBasis)>;
+%template(ModelVector) std::vector<PTR(lsst::meas::multifit::Model)>;
+
+%pythoncode %{
+Model.EllipseVector = EllipseVector
+Model.BasisVector = BasisVector
+Model.NameVector = NameVector
+%}
+
+%include "std_map.i"
+%template(ImportanceSamplerControlMap) std::map<int,lsst::meas::multifit::ImportanceSamplerControl>;
+
+%extend lsst::meas::multifit::AdaptiveImportanceSampler {
+%pythoncode %{
+@property
+def iterations(self):
+    d = {}
+    for k, v in self.getIterations().items():
+        for i, s in enumerate(v):
+            d[k,i] = s
+    return d
+%}
+}
 
 %pythoncode %{
 import lsst.pex.config
 import numpy
 
-SingleEpochObjectiveConfig = lsst.pex.config.makeConfigClass(SingleEpochObjectiveControl)
-SingleEpochObjective.ConfigClass = SingleEpochObjectiveConfig
-
-MultiEpochObjectiveConfig = lsst.pex.config.makeConfigClass(MultiEpochObjectiveControl)
-MultiEpochObjective.ConfigClass = MultiEpochObjectiveConfig
+UnitTransformedLikelihoodConfig = lsst.pex.config.makeConfigClass(UnitTransformedLikelihoodControl)
+UnitTransformedLikelihood.ConfigClass = UnitTransformedLikelihoodConfig
 %}
 
-%shared_ptr(lsst::meas::multifit::ModelFitTable);
-%shared_ptr(lsst::meas::multifit::ModelFitRecord);
+//----------- ModelFitRecord/Table/Catalog ------------------------------------------------------------------
 
 %include "lsst/meas/multifit/ModelFitRecord.h"
 
@@ -137,5 +270,14 @@ using meas::multifit::ModelFitTable;
 
 }}} // namespace lsst::afw::table
 
+namespace lsst { namespace meas { namespace multifit {
+
+typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
+
+}}} // namespace lsst::meas::multifit
+
+//----------- More Miscellaneous ----------------------------------------------------------------------------
 
 %include "lsst/meas/multifit/integrals.h"
+%include "lsst/meas/multifit/optimizer.i"
+%include "lsst/meas/multifit/MarginalSamplingInterpreter.h"

@@ -1,0 +1,242 @@
+// -*- lsst-c++ -*-
+
+namespace lsst { namespace meas { namespace multifit {
+
+/**
+@mainpage lsst::meas::multifit; Source Measurement via Model Fitting
+
+@section multifitIntro Introduction
+
+The meas_multifit package contains code for fitting PSF-convolved models of astronomical objects to data.
+This includes both traditional fitting via "greedy" derivative-based optimizers and Monte Carlo exploration
+using adaptive importance sampling.
+
+The galaxy modeling code can be roughly divided into three levels:
+
+ - High-level Python code that provides a set of CmdLineTask drivers for running the galaxy modeling code
+   with diagnostic outputs.
+
+ - Mid-level C++ code that the represents various aspects of the fitting problems: models, fitters,
+   output records, likelihoods, priors, etc.
+
+ - Low-level C++ code (in the shapelet package, not meas_multifit) that convolves and evaluates the galaxy
+   models.  It is assumed that all galaxy models can be represented in terms of one or more shapelet
+   expansions.  In most cases, we will use fixed-index Sersic profiles (or linear combinations of such
+   profiles), approximated using sums of Gaussians.  These are then convolved with PSF models that are
+   expanded as sums of shapelets.
+
+The high- and medium-level code in meas_multifit is discussed in the next few sections, with
+links there to the API documentation for individual classes.  For more information on the low-level
+model evaluation code, see the lsst::shapelet package, and in particular the
+lsst::shapelet::MultiShapeletBasis and lsst::shapelet::MultiShapeletMatrixBuilder classes.
+
+@section multifitParameters Models, Interpreters, and Parameters
+
+The Model and Interpreter classes define a number of different types of parameters, and understanding the
+relationships between these parameters is crucial in understanding how the package works.
+
+The Model class represents a particular parametrized form and defines how it is mapped to shapelet expansions
+for convolution and evaluation.  An instance of Model does not itself contain parameters: we have one Model
+instance for a particular fitting configuration, not one Model instance per fitted object.  Model splits its
+parameters up into three separate arrays:
+ - @c 'nonlinear' are the nonlinear parameters of the model that will be fit for.  These usually define one
+   or more ellipses.  In the mathematical notation used throughout the meas_multifit documentation, the
+   symbol @f$\theta@f$ is used for the nonlinear parameters.
+ - @c 'amplitudes' are linear parameters of the model, in the sense that an evaluation of the model on a
+   pixel grid can be represented by a matrix that is multiplied by the amplitude vector (see Likelihood).
+   The symbol @f$\alpha@f$ is used to represent the amplitudes in mathematical notation.
+ - @c 'fixed' are nonlinear parameters that are not fit for, but are rather held fixed at their initial
+   values.  It's particularly common to fix the position parameters of the model.  Note that we can't just
+   subsume the fixed parameters into the definition of the Model instance itself, as the fixed parameters
+   may change from source to source but the Model instance is defined purely by the configuration.
+
+Like Model, an Interpreter instance is defined only by configuration, but it contains information not only
+about the model (via a Model object attribute), but about the fitter and Prior probabilities used.  A single
+Interpreter instance is attached to the ModelFitCatalog used to store fitting results, and it contains
+methods that can be used to interpret the records of that catalog.  We have different Interpreter classes
+for Monte Carlo sampling (SamplingInterpreter and its subclasses) and greedy optimization
+(OptimizerInterpreter), as well as different classes to account for different ways the fitters can handle the
+amplitude parameters: because the model is linear in the amplitudes, and we assume Gaussian noise on the data,
+we know the likelihood is Gaussian in the amplitude parameters.  This can be used in different ways by
+different fitters to reduce the dimensionality of the fit.  In order to do this without specializing the
+fitters themselves, we introduce one more set of parameters, called simply @c 'parameters'.  These are some
+combination of the amplitude and nonlinear parameters defined by the model, and represent the actual space
+explored by the fitter.  There are generally two options here:
+
+ - In what we call "direct" fitting, the @c 'parameters' vector is simply the concatenation of the
+   @c 'nonlinear' vector with the @c 'amplitudes' vector; we explore the full space at once, and do not
+   take advantage of the special nature of the amplitudes.  This is the approach used by the
+   DirectSamplingInterpreter and the OptimizerInterpreter.
+
+ - In what we call "marginal" or "nested" fitting, the @c 'parameters' vector is just the @c 'nonlinear'
+   vector.  At each point in the nonlinear parameter space we analytically marginalize over or otherwise
+   project out the amplitude dimensions and store information necessary to reconstruct them with each sample.
+   This approach is currently only used by the MarginalSamplingInterpreter, but a variant for greedy
+   optimization may be added in the future.
+
+By using a polymorphic Interpreter class whose instances are shared by all output records, we can avoid
+having polymorphic output objects that must be subclassed for every kind of fitter and objective.  We
+use a single ModelFitRecord class to store the results of any fitter.  ModelFitRecord contains a number of
+normal, Schema-defined fields, as well three "blob" objects:
+ - a "samples" catalog used to store Monte Carlo samples or optimizer steps.  There are multiple
+   Sample records for each ModelFitRecord.
+ - a "pdf" Mixture object used to store an analytic representation of the probability surface being
+   explored.  For the AdaptiveImportanceSampler, this is the proposal distribution used to draw
+   samples, while for the Optimizer, it is a single-component Gaussian Mixture with the
+   covariance matrix estimated from second-derivatives.
+ - an afw::detection::Footprint that defines the pixels region used in the fit.
+
+@section Likelihood, Objective, and Prior
+
+The Likelihood class represents the comparison between data and the evaluation
+of a Model in the coordinate and photometric system of that data.  The data
+can correspond to a single image or multiple images to be fit simultaneously.
+Likelihood also handles the inverse-variance weighting of both model and data,
+so the two can be compared directly.  It does not actually compute the likelihood
+or log likelihood values, however - it simply stores the weighted data and computes
+a pixelized model that can be compared with it.
+
+It is the responsibility of the Objective classes to take the Likelihood and actually
+compare the data and model in a way that is useful for a particular fitter.  We have
+different Objective class hierarchies with different APIs for sampling (SamplingObjective)
+and optimization (OptimizerObjective), reflecting the fact that we need to compute
+slightly different quantities in these cases.  Each Objective class has a corresponding
+Interpreter class that can be used to interpret the outputs of that particular Objective.
+
+In addition to the Likelihood, the Objective classes also include a Bayesian prior,
+represented by the Prior class.  There is currenly only one concrete Prior class,
+MixturePrior, which uses the Mixture class to represent the nonlinear parameters
+along with a flat prior for the amplitudes (though the amplitudes are required to be
+nonnegative).  Using a flat prior for the amplitudes means that the posterior probability
+as well as the likelihood will be Gaussian, but the nonnegative constraint means it will
+be truncated.  As a result, MixturePrior offloads many of its more complex numerical
+calculations to the TruncatedGaussian class.
+
+@section multifitUnits Units and Coordinate Systems
+
+All parameters in meas_multifit are defined in coordinate and photometric
+systems that are unique to each object (or perhaps a small group of neighboring
+objects).
+
+The coordinate system is a local TAN projection centered on the object, with
+arcsecond-size pixels; this allows the model to be defined in a coordinate
+system that can be trivially converted to celestial coordinates with no changes
+in ellipticity, while keeping radius parameters around unity.  It also allows us
+to directly evaluate the prior probability of a set of parameters without having
+to transform the prior to different coordinate systems.
+
+We also define a custom photometric system for each source, using a
+crudely-estimated nominal magnitude (provided as an input to the fitting code;
+usually this will be a simple aperture magnitude).  We set the photometric
+system such that this nominal magnitude corresponds to unit flux, ensuring that
+amplitude parameters also remain of order unity.  This helps avoid numerical
+problems, and (along with the choice of arcseconds for radius units and a
+sensible definition of ellipticity) allows us to avoid rescaling parameters
+within our fitters when using algorithms that must define sensible norms over
+the parameter space.
+
+See the UnitSystem and ProjectedLikelihood classes for more information on
+the unit systems and transforms.
+
+@section multifitHighLevel Command-line Tasks
+
+There are three concrete command-line Tasks in meas_multifit:
+ - MeasureCcdTask
+ - MeasureCoaddTask
+ - MeasureMultiTask
+
+The first two run on CCD images and coadd patch images, respectively, and inherit
+from MeasureImageTask, which provides much of the implementation.
+(this is analogous to lsst.pipe.tasks.ProcessImageTask and its subclasses).
+
+MeasureMultiTask fits to multiple CCD images simultaneously, using the output
+from MeasureCoaddTask as an input (the CCD images included in the fit correspond
+to those that overlap a particular coadd patch).
+
+All of these tasks ultimately inherit from BaseMeasureTask, which constains most
+of the implementation: subclasses of BaseMeasureTask only have to define how
+to create load inputs, write outputs, and create a Likelihood object.
+
+BaseMeasureTask contains two registries that act as factories for Model
+and Prior objects (see models.py and priors.py) and a "fitter" subclass that
+must be one of AdaptiveImportanceSamplerTask or OptimizerTask.  Determination
+of the pixel region to fit is handled by the code in fitRegion.py, and the
+shapelet PSF approximation needed to convolve the galaxy models is currently
+delegated to the meas_extensions_multiShapelet package.
+
+All of these tasks have four distinct stages:
+ 1. We read inputs using the Butler.
+ 2. We "prep" the entire output catalog, creating empty records containing
+    starting parameters and the Footprint that defines the pixels to fit.  We
+    can do this either by bootstrapping from a SourceCatalog produced by running
+    one of the ProcessImageTasks on the data, or by using the outputs of a
+    previous run of one of the meas_multifit tasks as inputs.  Unlike most
+    tasks, multiple meas_multifit Task runs with different configurations may
+    coexist in the same data repository, as long as each run has a unique value
+    for the 'tag' configuration option.  These tags are included in the data ID
+    for the output products, so we can chain multiple runs with different tags,
+    or simply compare independent runs without having to create multiple output
+    repositories and use multiple Butlers in our analysis code.
+ 3. We iterate over the output catalog, and fit each record.  We first create
+    a Likelihood object, then pass it to the 'fitter' subtask, which creates
+    the appropriate Objective object, fits it, and sets the fields of the
+    output record.
+ 4. We write the output catalog using the Butler.
+
+@section multifitFitters Samplers and Optimizers
+
+We currently provide two very different kinds of fitters:
+
+ - Monte Carlo sampling via "adaptive importance sampling".  With this approach, we perform a Monte Carlo
+   exploration of the full posterior probability, using an analytic "proposal" distribution as a guess
+   that helps us draw weighted samples from the true posterior.  We use a mixture of Student's T or
+   Gaussian distributions as the proposal (see the Mixture class), and iteratively improve it based on
+   the weights of the samples we draw.  For a more complete discussion of adaptive importance sampling via
+   mixtures, see Wraith et al 2009 (http://adsabs.harvard.edu/abs/2009PhRvD..80b3507W).
+
+ - Greedy, derivative-based optimization using a trust-region-based Gauss-Newton algorithm.  This is
+   very similar to the popular Levenberg-Marquardt algorithm (which is effectively a trust-region method,
+   as its dampling parameter @f$\mu@f$ at any iteration  corresponds exactly to a trust radius), but
+   we have extended it in two ways.  First, we have adapted it to include a Bayesian prior, simply
+   by including the derivatives of the prior when we compute a quadratic approximation to the log
+   posterior at each point.  In addition, we perform a symmetric rank-1 secant approximation to the
+   residual term in the second derivative that would otherwise be ignored by a Gauss-Newton method
+   such as L-M.  This should allow the method to perform better in problems with large residuals.  This
+   plays the same role as the switch to a full quasi-Newton method such as dogleg BFGS in some popular
+   "hybrid" L-M algorithms, but it does so without sacrificing the second-derivative information provided
+   by the Gauss-Newton approach.
+
+In both cases, we provide a Task that may be used as the "fitter" subtask of BaseMeasureTask.  These tasks
+initialize the sample schema and create an Interpreter upon construction, which will be used by
+BaseMeasureTask when creating the output catalogs.  They also provide two methods (initialize and
+adaptPrevious) that update fitter-specific quantities during the catalog-prep stage.  Their run() methods
+do the actual fitting, using a Likelihood object and an output ModelFitRecord provided by BaseMeasureTask.
+
+@section multifitToDo Future Plans and Known Issues
+
+ - The driver Tasks currently rely on the existence of a special reference catalog generated with
+   the simulations used in the Summer 2013 pre-review development.  In the near future, we plan to modify
+   this to run with only a @c src catalog as an input, so the Tasks can be run on arbitrary data, not
+   just the S13 sims.
+
+ - Currently the driver Tasks are the only way to run the modeling code.  In the future, we'll also provide
+   plugins that work with the more general source measurement frameworks (at the cost of losing diagnostic
+   outputs, at least at first).
+
+ - We have some hooks for supporting point-source models via null MultiShapeletBasis ptrs, but this hasn't
+   been fully implemented.
+
+ - The relationships between Models and Priors need more thought.  Clearly a single Model could
+   have many different Priors, but we can also imagine Priors that could be appropriate for multiple Models,
+   especially if the Models only differ in which parameters are fixed.  Right now we don't really have any
+   way to check whether a Prior is appropriate for a particular model, aside from the number of parameters
+   they have.
+
+ - The MixtureComponent and TruncatedGaussian classes have a lot in common.  If we could find a way to merge
+   them, we could avoid code duplication, and perhaps even have mixtures of truncated distributions, which
+   could be useful in representing more complex amplitude priors and posteriors.
+
+ - MeasureMultiTask has bitrotted and needs to be updated.
+*/
+
+}}} // namespace lsst::meas::multifit

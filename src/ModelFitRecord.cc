@@ -51,7 +51,11 @@ public:
 class ModelFitTableImpl : public ModelFitTable {
 public:
 
-    explicit ModelFitTableImpl(afw::table::Schema const & schema) : ModelFitTable(schema) {}
+    explicit ModelFitTableImpl(
+        afw::table::Schema const & schema,
+        PTR(afw::table::BaseTable) sampleTable,
+        PTR(Interpreter) interpreter
+    ) : ModelFitTable(schema, sampleTable, interpreter) {}
 
     ModelFitTableImpl(ModelFitTableImpl const & other) : ModelFitTable(other) {}
 
@@ -70,15 +74,17 @@ private:
 // Schema prepended when saving a ModelFit table
 struct PersistenceSchema : private boost::noncopyable {
     afw::table::Schema schema;
-    afw::table::Key<int> samples;
+    afw::table::Key<int> samplesBegin;
+    afw::table::Key<int> samplesEnd;
     afw::table::Key<int> footprint;
+    afw::table::Key<int> pdf;
 
     static PersistenceSchema const & get() {
         static PersistenceSchema const instance;
         return instance;
     }
 
-    // Create a SchemaMapper that maps a ModelFitRecord to a BaseRecord with ID for SampleSet
+    // Create a SchemaMapper that maps a ModelFitRecord to a BaseRecord with extra keys for external members
     afw::table::SchemaMapper makeWriteMapper(afw::table::Schema const & inputSchema) const {
         std::vector<afw::table::Schema> inSchemas;
         inSchemas.push_back(PersistenceSchema::get().schema);
@@ -86,36 +92,45 @@ struct PersistenceSchema : private boost::noncopyable {
         return afw::table::SchemaMapper::join(inSchemas).back(); // don't need front; it's an identity mapper
     }
 
-    // Create a SchemaMapper that maps a BaseRecord with ID for SampleSet to a ModelFitRecord
+    // Create a SchemaMapper that maps a BaseRecord with extra keys for external members
     afw::table::SchemaMapper makeReadMapper(afw::table::Schema const & inputSchema) const {
         return afw::table::SchemaMapper::removeMinimalSchema(inputSchema, schema);
     }
 
-    // Convert a ModelFitRecord to a BaseRecord with IDs for Psf and Wcs.
+    // Convert a ModelFitRecord to a BaseRecord with extra keys for external members
     template <typename OutputArchiveIsh>
     void writeRecord(
         ModelFitRecord const & input, afw::table::BaseRecord & output,
-        afw::table::SchemaMapper const & mapper, OutputArchiveIsh & archive
+        afw::table::SchemaMapper const & mapper,
+        afw::table::BaseCatalog & samples, OutputArchiveIsh & archive
     ) const {
         output.assign(input, mapper);
-        output.set(samples, archive.put(input.getSamples()));
         output.set(footprint, archive.put(input.getFootprint()));
+        output.set(pdf, archive.put(input.getPdf()));
+        output.set(samplesBegin, samples.size());
+        samples.insert(samples.end(), input.getSamples().begin(), input.getSamples().end(), false);
+        output.set(samplesEnd, samples.size());
     }
 
     void readRecord(
         afw::table::BaseRecord const & input, ModelFitRecord & output,
-        afw::table::SchemaMapper const & mapper, afw::table::io::InputArchive const & archive
+        afw::table::SchemaMapper const & mapper,
+        afw::table::BaseCatalog const & samples, afw::table::io::InputArchive const & archive
     ) const {
         output.assign(input, mapper);
-        output.setSamples(archive.get<SampleSet>(input.get(samples)));
+        output.getSamples().insert(output.getSamples().end(), samples.begin() + input.get(samplesBegin),
+                                   samples.begin() + input.get(samplesEnd), false);
         output.setFootprint(archive.get<afw::detection::Footprint>(input.get(footprint)));
+        output.setPdf(archive.get<Mixture>(input.get(pdf)));
     }
 
 private:
     PersistenceSchema() :
         schema(),
-        samples(schema.addField<int>("samples", "archive ID for SampleSet object")),
-        footprint(schema.addField<int>("samplesfootpring", "archive ID for Footprint object"))
+        samplesBegin(schema.addField<int>("samples.begin", "index of first associated sample")),
+        samplesEnd(schema.addField<int>("samples.end", "index of one-past-end of associated samples")),
+        footprint(schema.addField<int>("footprint", "archive ID for Footprint object")),
+        pdf(schema.addField<int>("pdf", "archive ID for analytic probability density function"))
     {
         schema.getCitizen().markPersistent();
     }
@@ -143,8 +158,12 @@ protected:
 
     virtual void _writeRecord(afw::table::BaseRecord const & r);
 
-    virtual void _finish() { _archive.writeFits(*_fits); }
+    virtual void _finish() {
+        _samples.writeFits(*_fits);
+        _archive.writeFits(*_fits);
+    }
 
+    afw::table::BaseCatalog _samples;
     afw::table::io::OutputArchive _archive;
     PTR(afw::table::BaseRecord) _record;
     afw::table::SchemaMapper _mapper;
@@ -158,6 +177,7 @@ void ModelFitFitsWriter::_writeTable(CONST_PTR(afw::table::BaseTable) const & t,
             "Cannot use a ModelFitFitsWriter on a non-ModelFit table."
         );
     }
+    _samples = afw::table::BaseCatalog(inTable->getSampleTable());
     _mapper = PersistenceSchema::get().makeWriteMapper(inTable->getSchema());
     PTR(afw::table::BaseTable) outTable = afw::table::BaseTable::make(_mapper.getOutputSchema());
     afw::table::io::FitsWriter::_writeTable(outTable, nRows);
@@ -167,7 +187,7 @@ void ModelFitFitsWriter::_writeTable(CONST_PTR(afw::table::BaseTable) const & t,
 
 void ModelFitFitsWriter::_writeRecord(afw::table::BaseRecord const & r) {
     ModelFitRecord const & record = static_cast<ModelFitRecord const &>(r);
-    PersistenceSchema::get().writeRecord(record, *_record, _mapper, _archive);
+    PersistenceSchema::get().writeRecord(record, *_record, _mapper, _samples, _archive);
     afw::table::io::FitsWriter::_writeRecord(*_record);
 }
 
@@ -191,6 +211,8 @@ public:
         if (!_archive) {
             int oldHdu = _fits->getHdu();
             _fits->setHdu(oldHdu + 1);
+            _samples = afw::table::BaseCatalog::readFits(*_fits);
+            _fits->setHdu(oldHdu + 2);
             _archive.reset(new afw::table::io::InputArchive(afw::table::io::InputArchive::readFits(*_fits)));
             _fits->setHdu(oldHdu);
         }
@@ -204,6 +226,7 @@ protected:
 
     PTR(afw::table::BaseTable) _inTable;
     PTR(afw::table::io::InputArchive) _archive;
+    afw::table::BaseCatalog _samples;
     afw::table::SchemaMapper _mapper;
 };
 
@@ -213,7 +236,7 @@ PTR(afw::table::BaseTable) ModelFitFitsReader::_readTable() {
     afw::table::Schema schema(*metadata, true);
     _inTable = afw::table::BaseTable::make(schema);
     _mapper = PersistenceSchema::get().makeReadMapper(schema);
-    PTR(ModelFitTable) table = ModelFitTable::make(_mapper.getOutputSchema());
+    PTR(ModelFitTable) table = ModelFitTable::make(_mapper.getOutputSchema(), _samples.getTable());
     _startRecords(*table);
     if (metadata->exists("AFW_TYPE")) metadata->remove("AFW_TYPE");
     table->setMetadata(metadata);
@@ -226,7 +249,7 @@ PTR(afw::table::BaseRecord) ModelFitFitsReader::_readRecord(PTR(afw::table::Base
     PTR(afw::table::BaseRecord) inRecord = afw::table::io::FitsReader::_readRecord(_inTable);
     if (inRecord) {
         record = table->makeRecord();
-        PersistenceSchema::get().readRecord(*inRecord, *record, _mapper, *_archive);
+        PersistenceSchema::get().readRecord(*inRecord, *record, _mapper, _samples, *_archive);
     }
     return record;
 }
@@ -240,31 +263,63 @@ static afw::table::io::FitsReader::FactoryT<ModelFitFitsReader> referenceFitsRea
 //----- ModelFitTable/Record member function implementations -----------------------------------------------
 //-----------------------------------------------------------------------------------------------------------
 
-ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) : afw::table::SimpleRecord(table) {}
+ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) :
+    afw::table::SimpleRecord(table), _samples(table->getSampleTable())
+{
+    if (!table->getSampleTable()) {
+        throw LSST_EXCEPT(
+            pex::exceptions::LogicErrorException,
+            "Cannot create ModelFitRecords when the associated SampleTable is not defined "
+            "(please call ModelFitTable::setSampleTable)"
+        );
+    }
+}
 
 void ModelFitRecord::_assign(afw::table::BaseRecord const & other) {
     try {
         ModelFitRecord const & s = dynamic_cast<ModelFitRecord const &>(other);
-        _samples = s._samples;
         _footprint = s._footprint;
+        _pdf = s._pdf;
+        if (s.getSamples().getSchema() == _samples.getSchema()) {
+            // We should probably provide the user explicit control over whether to copy the samples
+            // (and the pdf and footprint, for that matter), rather than relying on whether it's possible
+            // given the schemas.  But that would involve changes to afw::table APIs (probably something
+            // like the I/O flags that control how to read/write SourceRecord Footprints), and this works
+            // well-enough for now.
+            _samples.assign(s.getSamples().begin(), s.getSamples().end(), true);
+        }
     } catch (std::bad_cast&) {}
 }
 
-PTR(ModelFitTable) ModelFitTable::make(afw::table::Schema const & schema) {
+PTR(ModelFitTable) ModelFitTable::make(
+    afw::table::Schema const & schema,
+    PTR(afw::table::BaseTable) sampleTable,
+    PTR(Interpreter) interpreter
+) {
     if (!checkSchema(schema)) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterException,
             "Schema for ModelFit must contain at least the keys defined by makeMinimalSchema()."
         );
     }
-    return boost::make_shared<ModelFitTableImpl>(schema);
+    return boost::make_shared<ModelFitTableImpl>(schema, sampleTable, interpreter);
 }
 
-ModelFitTable::ModelFitTable(afw::table::Schema const & schema) :
-    afw::table::SimpleTable(schema, PTR(afw::table::IdFactory)()) {}
+ModelFitTable::ModelFitTable(
+    afw::table::Schema const & schema,
+    PTR(afw::table::BaseTable) sampleTable,
+    PTR(Interpreter) interpreter
+) :
+    afw::table::SimpleTable(schema, PTR(afw::table::IdFactory)()),
+    _sampleTable(sampleTable),
+    _interpreter(interpreter)
+{}
 
 ModelFitTable::ModelFitTable(ModelFitTable const & other) :
-    afw::table::SimpleTable(other) {}
+    afw::table::SimpleTable(other),
+    _sampleTable(other._sampleTable->clone()),
+    _interpreter(other._interpreter)
+{}
 
 PTR(afw::table::io::FitsWriter)
 ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const {

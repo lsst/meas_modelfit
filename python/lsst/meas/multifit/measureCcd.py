@@ -22,18 +22,42 @@
 #
 
 import lsst.pipe.base
+import lsst.pex.config
 
 from .measureImage import MeasureImageTask
 
+try:
+    from lsst.meas.mosaic import applyMosaicResults
+except ImportError:
+    applyMosaicResults = None
+
 __all__ = ("MeasureCcdConfig", "MeasureCcdTask")
 
-MeasureCcdConfig = MeasureImageTask.ConfigClass
+class MeasureCcdConfig(MeasureImageTask.ConfigClass):
+    doApplyUberCal = lsst.pex.config.Field(
+        dtype = bool,
+        doc = "Apply meas_mosaic ubercal results to input calexps?",
+        default = False
+    )
 
 class MeasureCcdTask(MeasureImageTask):
     """Specialization of MeasureImageTask for running on calexps, after processCcd.py or processEimage.py
     """
 
+    ConfigClass = MeasureCcdConfig
+
     _DefaultName = "measureCcd"
+
+    def readInputs(self, dataRef):
+        inputs = MeasureImageTask.readInputs(self, dataRef)
+        if self.config.doApplyUberCal:
+            if not applyMosaicResults:
+                raise RuntimeError(
+                    "Cannot use improved calibrations for %s because meas_mosaic could not be imported."
+                    % dataRef.dataId
+                    )
+            applyMosaicResults(dataRef, calexp=inputs.exposure)
+        return inputs
 
     @classmethod
     def _makeArgumentParser(cls):
@@ -42,3 +66,6 @@ class MeasureCcdTask(MeasureImageTask):
         parser = lsst.pipe.base.ArgumentParser(name=cls._DefaultName)
         parser.add_id_argument("--id", "calexp", help="data ID, e.g. --id visit=1 raft=2,2 sensor=1,1")
         return parser
+
+    def getPreviousTaskClass(self):
+        return MeasureCcdTask
