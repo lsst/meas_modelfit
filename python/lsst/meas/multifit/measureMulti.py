@@ -45,7 +45,7 @@ class MeasureMultiConfig(BaseMeasureConfig):
         default="deep",
     )
     likelihood = lsst.pex.config.ConfigField(
-        dtype=multifitLib.ProjectedLikelihood.ConfigClass,
+        dtype=multifitLib.UnitTransformedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
     minPixels = lsst.pex.config.Field(

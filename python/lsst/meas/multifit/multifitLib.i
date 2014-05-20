@@ -131,7 +131,7 @@ Pixel = numpy.float32
 %shared_ptr(lsst::meas::multifit::Interpreter);
 %shared_ptr(lsst::meas::multifit::Likelihood);
 %shared_ptr(lsst::meas::multifit::EpochFootprint);
-%shared_ptr(lsst::meas::multifit::ProjectedLikelihood);
+%shared_ptr(lsst::meas::multifit::UnitTransformedLikelihood);
 %shared_ptr(lsst::meas::multifit::Sampler);
 %shared_ptr(lsst::meas::multifit::SamplingObjective);
 %shared_ptr(lsst::meas::multifit::SamplingInterpreter);
@@ -195,7 +195,7 @@ Pixel = numpy.float32
 %include "lsst/meas/multifit/Interpreter.h"
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/UnitSystem.h"
-%include "lsst/meas/multifit/ProjectedLikelihood.h"
+%include "lsst/meas/multifit/UnitTransformedLikelihood.h"
 %include "lsst/meas/multifit/Sampling.h"
 %include "lsst/meas/multifit/Sampler.h"
 %include "lsst/meas/multifit/DirectSamplingInterpreter.h"
@@ -245,8 +245,8 @@ def iterations(self):
 import lsst.pex.config
 import numpy
 
-ProjectedLikelihoodConfig = lsst.pex.config.makeConfigClass(ProjectedLikelihoodControl)
-ProjectedLikelihood.ConfigClass = ProjectedLikelihoodConfig
+UnitTransformedLikelihoodConfig = lsst.pex.config.makeConfigClass(UnitTransformedLikelihoodControl)
+UnitTransformedLikelihood.ConfigClass = UnitTransformedLikelihoodConfig
 %}
 
 //----------- ModelFitRecord/Table/Catalog ------------------------------------------------------------------

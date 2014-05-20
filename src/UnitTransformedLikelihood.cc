@@ -30,7 +30,7 @@
 
 #include "lsst/afw/image/Calib.h"
 #include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
-#include "lsst/meas/multifit/ProjectedLikelihood.h"
+#include "lsst/meas/multifit/UnitTransformedLikelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -118,7 +118,7 @@ EpochFootprint::EpochFootprint(
     psf(psf_)
 {}
 
-class ProjectedLikelihood::Impl {
+class UnitTransformedLikelihood::Impl {
 public:
 
     class Epoch {
@@ -139,13 +139,13 @@ public:
     afw::geom::ellipses::Ellipse scratch;
 };
 
-ProjectedLikelihood::ProjectedLikelihood(
+UnitTransformedLikelihood::UnitTransformedLikelihood(
     PTR(Model) model,
     ndarray::Array<Scalar const,1,1> const & fixed,
     UnitSystem const & fitSys,
     afw::coord::Coord const & position,
     std::vector<PTR(EpochFootprint)> const & epochFootprintList,
-    ProjectedLikelihoodControl const & ctrl
+    UnitTransformedLikelihoodControl const & ctrl
 ) : Likelihood(model, fixed), _impl(new Impl()) {
     int totPixels = std::accumulate(epochFootprintList.begin(), epochFootprintList.end(),
                                     0, componentPixelSum);
@@ -178,7 +178,7 @@ ProjectedLikelihood::ProjectedLikelihood(
     }
 }
 
-ProjectedLikelihood::ProjectedLikelihood(
+UnitTransformedLikelihood::UnitTransformedLikelihood(
     PTR(Model) model,
     ndarray::Array<Scalar const,1,1> const & fixed,
     UnitSystem const & fitSys,
@@ -186,7 +186,7 @@ ProjectedLikelihood::ProjectedLikelihood(
     afw::image::Exposure<Pixel> const & exposure,
     afw::detection::Footprint const & footprint,
     shapelet::MultiShapeletFunction const & psf,
-    ProjectedLikelihoodControl const & ctrl
+    UnitTransformedLikelihoodControl const & ctrl
 ) : Likelihood(model, fixed), _impl(new Impl()) {
     int totPixels = footprint.getArea();
     _data = ndarray::allocate(totPixels);
@@ -201,9 +201,9 @@ ProjectedLikelihood::ProjectedLikelihood(
     setupArrays(exposure.getMaskedImage(), footprint, _data, _weights, ctrl.usePixelWeights);
 }
 
-ProjectedLikelihood::~ProjectedLikelihood() {}
+UnitTransformedLikelihood::~UnitTransformedLikelihood() {}
 
-void ProjectedLikelihood::computeModelMatrix(
+void UnitTransformedLikelihood::computeModelMatrix(
     ndarray::Array<Pixel,2,-1> const & modelMatrix,
     ndarray::Array<Scalar const,1,1> const & nonlinear,
     bool doApplyWeights

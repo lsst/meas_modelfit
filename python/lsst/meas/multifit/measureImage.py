@@ -36,7 +36,7 @@ __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
 class MeasureImageConfig(BaseMeasureConfig):
     likelihood = lsst.pex.config.ConfigField(
-        dtype=multifitLib.ProjectedLikelihood.ConfigClass,
+        dtype=multifitLib.UnitTransformedLikelihood.ConfigClass,
         doc="Config for likelihood object that computes model probability at given parameters"
     )
     minInitialRadius = lsst.pex.config.Field(
@@ -156,13 +156,13 @@ class MeasureImageTask(BaseMeasureTask):
     def makeLikelihood(self, inputs, record):
         """Create a Likelihood object for a single object.
 
-        The MeasureImage implementation creates a ProjectedLikelihood with data from a single
+        The MeasureImage implementation creates a UnitTransformedLikelihood with data from a single
         exposure.
         """
         psfModel = FitPsfAlgorithm.apply(self.config.psf.makeControl(), inputs.exposure.getPsf(),
                                          record.get(self.keys["center"]))
         psf = psfModel.asMultiShapelet()
-        return multifitLib.ProjectedLikelihood(
+        return multifitLib.UnitTransformedLikelihood(
             self.model, record[self.keys["fixed"]],
             self.getUnitSystem(record),
             record.getCoord(),

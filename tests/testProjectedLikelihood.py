@@ -69,7 +69,7 @@ def scaleExposure(exposure, factor):
     mi = exposure.getMaskedImage()
     mi *= factor
 
-class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
+class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         self.position = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
@@ -187,7 +187,7 @@ class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
     def testDirect(self):
         """Test likelihood evaluation when the fit system is the same as the data system.
         """
-        ctrl = lsst.meas.multifit.ProjectedLikelihoodControl()
+        ctrl = lsst.meas.multifit.UnitTransformedLikelihoodControl()
         var = numpy.random.rand(self.bbox0.getHeight(), self.bbox0.getWidth()) + 2.0
         self.exposure0.getMaskedImage().getVariance().getArray()[:,:] = var
         efv = lsst.meas.multifit.EpochFootprintVector()
@@ -195,19 +195,19 @@ class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
         # test with per-pixel weights, using both ctors
         ctrl.usePixelWeights = True
         data = self.exposure0.getMaskedImage().getImage().getArray() / var**0.5
-        l0a = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0a = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0a, data)
-        l0b = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0b = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l0b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
         data = self.exposure0.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
-        l0c = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0c = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0c, data)
-        l0d = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0d = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l0d, data)
 
@@ -222,25 +222,25 @@ class ProjectedLikelihoodTestCase(lsst.utils.tests.TestCase):
         exposure1.setCalib(self.sys1.calib)
         var = numpy.random.rand(self.bbox1.getHeight(), self.bbox1.getWidth()) + 2.0
         exposure1.getMaskedImage().getVariance().getArray()[:,:] = var
-        ctrl = lsst.meas.multifit.ProjectedLikelihoodControl()
+        ctrl = lsst.meas.multifit.UnitTransformedLikelihoodControl()
         efv = lsst.meas.multifit.EpochFootprintVector()
         efv.push_back(lsst.meas.multifit.EpochFootprint(self.footprint1, exposure1, self.psf1))
         # test with per-pixel weights, using both ctors
         ctrl.usePixelWeights = True
         data = exposure1.getMaskedImage().getImage().getArray() / var**0.5
-        l1a = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1a = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1a, data)
-        l1b = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1b = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l1b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
         data = exposure1.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
-        l1c = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1c = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1c, data)
-        l1d = lsst.meas.multifit.ProjectedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1d = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l1d, data)
 
@@ -250,7 +250,7 @@ def suite():
     lsst.utils.tests.init()
 
     suites = []
-    suites += unittest.makeSuite(ProjectedLikelihoodTestCase)
+    suites += unittest.makeSuite(UnitTransformedLikelihoodTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
 

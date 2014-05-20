@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_ProjectedLikelihood_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_ProjectedLikelihood_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_UnitTransformedLikelihood_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_UnitTransformedLikelihood_h_INCLUDED
 
 #include <vector>
 #include "boost/scoped_ptr.hpp"
@@ -42,12 +42,12 @@
 namespace lsst { namespace meas { namespace multifit {
 
 /**
- *  @brief Control object used to initialize a ProjectedLikelihood.
+ *  @brief Control object used to initialize a UnitTransformedLikelihood.
  *
- *  Translated to Python as ProjectedLikelihoodConfig; the Swig-wrapped C++ Control object can
+ *  Translated to Python as UnitTransformedLikelihoodConfig; the Swig-wrapped C++ Control object can
  *  be created from the config object via the makeControl() method (see lsst.pex.config.wrap).
  */
-class ProjectedLikelihoodControl {
+class UnitTransformedLikelihoodControl {
 public:
 
     LSST_CONTROL_FIELD(usePixelWeights, bool,
@@ -55,7 +55,7 @@ public:
     LSST_CONTROL_FIELD(useApproximateExp, bool,
                        "whether to use fast approximate exponentials when evaluating the model");
 
-    ProjectedLikelihoodControl() : usePixelWeights(true), useApproximateExp(false) {}
+    UnitTransformedLikelihoodControl() : usePixelWeights(true), useApproximateExp(false) {}
 
 };
 
@@ -85,7 +85,7 @@ public:
 };
 
 /// Likelihood class for use with multi-epoch modeling
-class ProjectedLikelihood : public Likelihood {
+class UnitTransformedLikelihood : public Likelihood {
 public:
 
     /// @copydoc Likelihood::computeModelMatrix
@@ -96,7 +96,7 @@ public:
     ) const;
 
     /**
-     * @brief Initialize a ProjectedLikelihood with data from multiple exposures.
+     * @brief Initialize a UnitTransformedLikelihood with data from multiple exposures.
      *
      * @param[in] model             Object that defines the model to fit and its parameters.
      * @param[in] fixed             Model parameters that are held fixed.
@@ -105,17 +105,17 @@ public:
      * @param[in] epochFootprintList   List of shared pointers to EpochFootprint
      * @param[in] ctrl              Control object with various options
      */
-    explicit ProjectedLikelihood(
+    explicit UnitTransformedLikelihood(
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
         afw::coord::Coord const & position,
         std::vector<PTR(EpochFootprint)> const & epochFootprintList,
-        ProjectedLikelihoodControl const & ctrl
+        UnitTransformedLikelihoodControl const & ctrl
     );
 
     /**
-     * @brief Initialize a ProjectedLikelihood with data from multiple exposures.
+     * @brief Initialize a UnitTransformedLikelihood with data from multiple exposures.
      *
      * @param[in] model             Object that defines the model to fit and its parameters.
      * @param[in] fixed             Model parameters that are held fixed.
@@ -126,7 +126,7 @@ public:
      * @param[in] psf               Shapelet approximation to the PSF
      * @param[in] ctrl              Control object with various options
      */
-    explicit ProjectedLikelihood(
+    explicit UnitTransformedLikelihood(
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
@@ -134,10 +134,10 @@ public:
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,
-        ProjectedLikelihoodControl const & ctrl
+        UnitTransformedLikelihoodControl const & ctrl
     );
 
-    virtual ~ProjectedLikelihood();
+    virtual ~UnitTransformedLikelihood();
 
 private:
     class Impl;
@@ -146,4 +146,4 @@ private:
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_ProjectedLikelihood_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_UnitTransformedLikelihood_h_INCLUDED
