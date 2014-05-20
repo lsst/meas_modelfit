@@ -84,7 +84,18 @@ public:
     shapelet::MultiShapeletFunction const psf;   ///< multi-shapelet model of exposure PSF
 };
 
-/// Likelihood class for use with multi-epoch modeling
+/**
+ *  @brief A concrete Likelihood class that does not require its parameters and data to be
+ *         in the same UnitSystem
+ *
+ *  This is the main concrete Likelihood class using when fitting sources, even in the case where
+ *  the measurement UnitSystem is the same as that of the data; we always prefer to fit in
+ *  a special UnitSystem (see @ref multifitUnits), using this class to transform the model
+ *  realization when comparing to the data.  This makes forced photometry and multifit measurements
+ *  just as easy as single-frame measurements (aside from data access); one can simply initialize
+ *  a UnitTransformedLikelihood with multiple exposures instead of a single exposure to fit
+ *  simultaneously to multiple exposures.
+ */
 class UnitTransformedLikelihood : public Likelihood {
 public:
 

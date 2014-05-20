@@ -101,6 +101,8 @@ public:
      *  @param[in] schema   Schema that defines the fields, offsets, and record size for the main table.
      *  @param[in] sampleTable   A table object for the samples associated with the fitting results
      *                           in a many (samples) to one (model fits) relationship.
+     *  @param[in] interpreter   An instance of Interpreter that can be used to interpret the
+     *                           Sample catalog and Pdf Mixture.
      */
     static PTR(ModelFitTable) make(
         afw::table::Schema const & schema,

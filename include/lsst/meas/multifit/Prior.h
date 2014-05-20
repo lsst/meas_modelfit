@@ -125,7 +125,7 @@ public:
      *  @param[in]  hessian      Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
      *                           @f$\theta@f$; the matrix @f$H@f$ in the equation above.
      *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$.
-     *  @param[out] amplitude    The posterior-maximum amplitude parameters @f$\alpha@f$.
+     *  @param[out] amplitudes   The posterior-maximum amplitude parameters @f$\alpha@f$.
      *
      *  @return The -log(posterior) at the computed amplitude point.
      */

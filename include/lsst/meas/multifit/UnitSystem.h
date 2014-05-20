@@ -34,22 +34,41 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
+/**
+ *  @brief A simple struct that combines a Wcs and a Calib.
+ */
 struct UnitSystem {
     PTR(afw::image::Wcs const) wcs;
     PTR(afw::image::Calib const) calib;
 
+    /**
+     *  @brief Construct a "standard" UnitSystem
+     *
+     *  This constructs a UnitSystem with a TAN Wcs centered on the given position, with flux units
+     *  set such that unit flux is the given magnitude.  See @ref multifitUnits for an explanation
+     *  of why we frequently use this system.
+     */
     UnitSystem(afw::coord::Coord const & position, Scalar mag);
 
+    /// Construct a UnitSystem from a give Wcs and Calib
     UnitSystem(PTR(afw::image::Wcs const) wcs_, PTR(afw::image::Calib const) calib_) :
         wcs(wcs_), calib(calib_)
     {}
 
+    /// Construct a UnitSystem by extracting the Wcs and Calib from an Exposure (implicit)
     template <typename T>
     UnitSystem(afw::image::Exposure<T> const & exposure) :
         wcs(exposure.getWcs()), calib(exposure.getCalib())
     {}
 };
 
+/**
+ *  @brief A local mapping between two UnitSystems
+ *
+ *  LocalUnitTransform is "local" because it linearizes the Wcs and evaluates the Calib transform
+ *  at a particular predifined point, allowing it to represent the geometric transform as an
+ *  AffineTransform and the photometric transform as a simple scaling.
+ */
 struct LocalUnitTransform {
 
     /// Maps source pixel coordinates to destination pixel coordinates
