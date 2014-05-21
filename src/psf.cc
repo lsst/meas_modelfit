@@ -63,7 +63,7 @@ public:
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
         if (prior->getTag() != "PSF") {
-            throw LSST_EXCEPT(pex::exceptions::LogicErrorException, "Invalid prior for this model");
+            throw LSST_EXCEPT(pex::exceptions::LogicError, "Invalid prior for this model");
         }
         return prior;
     }
@@ -137,12 +137,12 @@ public:
     ) const {
         shapelet::MultiShapeletFunction result;
         shapelet::ShapeletFunction const & previousPrimary
-            = previousFit.getElements()[previousModel.findComponentIndex("primary")];
+            = previousFit.getComponents()[previousModel.findComponentIndex("primary")];
         for (ComponentIterator i = _components.begin(); i != _components.end(); ++i) {
-            result.getElements().push_back(shapelet::ShapeletFunction(i->second.order, shapelet::HERMITE));
-            shapelet::ShapeletFunction & current = result.getElements().back();
+            result.getComponents().push_back(shapelet::ShapeletFunction(i->second.order, shapelet::HERMITE));
+            shapelet::ShapeletFunction & current = result.getComponents().back();
             std::size_t n = previousModel.findComponentIndex(i->first);
-            if (n >= previousFit.getElements().size()) {
+            if (n >= previousFit.getComponents().size()) {
                 // previous didn't include the component we're setting up now, so we base its parameters
                 // off the previous primary component (but we initialize the coefficients to zero).
                 current.setEllipse(previousPrimary.getEllipse());
@@ -150,7 +150,7 @@ public:
             } else {
                 // previous did include the component we're setting up now, so we copy it over,
                 // including as many coeffients as possible.
-                shapelet::ShapeletFunction const & previousComponent = previousFit.getElements()[n];
+                shapelet::ShapeletFunction const & previousComponent = previousFit.getComponents()[n];
                 current.setEllipse(previousComponent.getEllipse());
                 int minOrder = std::min(current.getOrder(), previousComponent.getOrder());
                 int minSize = shapelet::computeSize(minOrder);
@@ -164,8 +164,8 @@ public:
     shapelet::MultiShapeletFunction makeInitial(afw::geom::ellipses::Quadrupole const & moments) const {
         shapelet::MultiShapeletFunction result;
         for (ComponentIterator i = _components.begin(); i != _components.end(); ++i) {
-            result.getElements().push_back(shapelet::ShapeletFunction(i->second.order, shapelet::HERMITE));
-            shapelet::ShapeletFunction & current = result.getElements().back();
+            result.getComponents().push_back(shapelet::ShapeletFunction(i->second.order, shapelet::HERMITE));
+            shapelet::ShapeletFunction & current = result.getComponents().back();
             current.getEllipse().setCore(moments);
             current.getEllipse().getCore().scale(i->second.radiusFactor);
             if (i->first == "primary") {
@@ -183,17 +183,17 @@ public:
     ) const {
         EllipseVector ellipses = makeEllipseVector();
         LSST_THROW_IF_NE(
-            input.getElements().size(), ellipses.size(),
-            pex::exceptions::LengthErrorException,
+            input.getComponents().size(), ellipses.size(),
+            pex::exceptions::LengthError,
             "Number of elements in input multishapelet (%d) does not match expected number of elements (%d)"
         );
         assert(ellipses.size() == _components.size()); // should be guaranteed by construction
         ndarray::Array<Scalar,1,1>::Iterator amplitudeIter = amplitudes.begin();
         for (std::size_t n = 0; n < ellipses.size(); ++n) {
-            shapelet::ShapeletFunction const & current = input.getElements()[n];
+            shapelet::ShapeletFunction const & current = input.getComponents()[n];
             if (current.getOrder() != _components[n].second.order) {
                 throw LSST_EXCEPT(
-                    pex::exceptions::LengthErrorException,
+                    pex::exceptions::LengthError,
                     (boost::format("Shapelet order of component %d has order %d, not %d")
                      % n % current.getOrder() % _components[n].second.order).str()
                 );
@@ -291,7 +291,7 @@ public:
         ndarray::Array<Scalar const,1,1> const & nonlinear
     ) const {
         // Don't need this unless we want to sample PSF models
-        throw LSST_EXCEPT(pex::exceptions::LogicErrorException, "Not Implemented");
+        throw LSST_EXCEPT(pex::exceptions::LogicError, "Not Implemented");
     }
 
     virtual Scalar maximize(
@@ -300,7 +300,7 @@ public:
         ndarray::Array<Scalar,1,1> const & amplitudes
     ) const {
         // Don't need this unless we want to sample PSF models
-        throw LSST_EXCEPT(pex::exceptions::LogicErrorException, "Not Implemented");
+        throw LSST_EXCEPT(pex::exceptions::LogicError, "Not Implemented");
     }
 
     virtual void drawAmplitudes(
@@ -312,7 +312,7 @@ public:
         bool multiplyWeights=false
     ) const {
         // Don't need this unless we want to sample PSF models
-        throw LSST_EXCEPT(pex::exceptions::LogicErrorException, "Not Implemented");
+        throw LSST_EXCEPT(pex::exceptions::LogicError, "Not Implemented");
     }
 
 private:
@@ -343,7 +343,7 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
 {
     if (_ctrl.primary.order < 0) {
         throw LSST_EXCEPT(
-            pex::exceptions::InvalidParameterException,
+            pex::exceptions::InvalidParameterError,
             "PsfFitter control must have a primary component with nonnegative order"
         );
     }
@@ -401,7 +401,7 @@ shapelet::MultiShapeletFunction PsfFitter::adapt(
     PTR(PsfFitterModel) m = boost::dynamic_pointer_cast<PsfFitterModel>(previousModel);
     if (!m) {
         throw LSST_EXCEPT(
-            pex::exceptions::InvalidParameterException,
+            pex::exceptions::InvalidParameterError,
             "Model passed to PsfFitter::adapt must have been constructed by PsfFitter"
         );
     }
@@ -479,6 +479,11 @@ public:
         ndarray::Array<Scalar const,1,1> const & fixed,
         Model const & model
     ) {
+        // We should put something like this code (but more general) into the shapelet package.
+        // We already have a class that evaluates a single-shapelet basis without convolving
+        // them (shapelet::ModelBuilder), and a class that evaluates a multi-shapelet basis
+        // while convolving it (shapelet::MultiShapeletMatrixBuilder).  What we need here is
+        // something that evaluates a multi-shapelet basis without convolving it.
         model.writeEllipses(nonlinear.begin(), fixed.begin(), _ellipses.begin());
         modelMatrix.deep() = 0.0;
         Model::BasisVector const & basisVector = model.getBasisVector();

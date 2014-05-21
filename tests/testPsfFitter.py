@@ -104,13 +104,13 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertClose(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
-        self.assertClose(len(msf.getElements()), len(ellipses1))
+        self.assertClose(len(msf.getComponents()), len(ellipses1))
         ellipses3 = model.makeEllipseVector()
         for i in range(len(ellipses2)):
             self.assertClose(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector())
-            ellipses3[i] = msf.getElements()[i].getEllipse()  # need to convert ellipse parametrization
+            ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
             self.assertClose(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector())
-            self.assertClose(amplitudes[i:i+1], msf.getElements()[i].getCoefficients())
+            self.assertClose(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients())
 
     def testEllipseModel(self):
         fitter = lsst.meas.multifit.PsfFitter(self.configs['ellipse'].makeControl())
@@ -145,13 +145,13 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertClose(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
-        self.assertClose(len(msf.getElements()), len(ellipses1))
+        self.assertClose(len(msf.getComponents()), len(ellipses1))
         ellipses3 = model.makeEllipseVector()
         for i in range(len(ellipses2)):
             self.assertClose(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(), rtol=1E-8)
-            ellipses3[i] = msf.getElements()[i].getEllipse()  # need to convert ellipse parametrization
+            ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
             self.assertClose(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(), rtol=1E-8)
-            self.assertClose(amplitudes[i:i+1], msf.getElements()[i].getCoefficients(), rtol=1E-8)
+            self.assertClose(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients(), rtol=1E-8)
 
         # test the ellipse round-tripping again, this time starting with nonzero nonlinear parameters:
         # this will be read back in by adding to the fixed parameters and zeroing the nonlinear parameters.
@@ -210,16 +210,16 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertClose(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
-        self.assertClose(len(msf.getElements()), len(ellipses1))
+        self.assertClose(len(msf.getComponents()), len(ellipses1))
         ellipses3 = model.makeEllipseVector()
         amplitudeOffset = 0
         for i in range(len(ellipses2)):
             self.assertClose(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(), rtol=1E-8)
-            ellipses3[i] = msf.getElements()[i].getEllipse()  # need to convert ellipse parametrization
-            amplitudeCount = len(msf.getElements()[i].getCoefficients())
+            ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
+            amplitudeCount = len(msf.getComponents()[i].getCoefficients())
             self.assertClose(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(), rtol=1E-8)
             self.assertClose(amplitudes[amplitudeOffset:amplitudeOffset+amplitudeCount],
-                             msf.getElements()[i].getCoefficients(), rtol=1E-8)
+                             msf.getComponents()[i].getCoefficients(), rtol=1E-8)
             amplitudeOffset += amplitudeCount
 
         # test the ellipse round-tripping again, this time starting with nonzero nonlinear parameters:
