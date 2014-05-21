@@ -430,7 +430,7 @@ shapelet::MultiShapeletFunction PsfFitter::apply(
     ndarray::Array<Scalar,1,1> parameters = ndarray::allocate(parameterDim);
     ndarray::Array<Scalar,1,1> nonlinear = parameters[ndarray::view(0, _model->getNonlinearDim())];
     ndarray::Array<Scalar,1,1> amplitudes
-        = parameters[ndarray::view(_model->getAmplitudeDim(), parameterDim)];
+        = parameters[ndarray::view(_model->getNonlinearDim(), parameterDim)];
     ndarray::Array<Scalar,1,1> fixed = ndarray::allocate(_model->getFixedDim());
 
     boost::static_pointer_cast<PsfFitterModel>(_model)->fillParameters(initial, nonlinear, amplitudes, fixed);
