@@ -476,6 +476,11 @@ public:
         ndarray::Array<Scalar const,1,1> const & fixed,
         Model const & model
     ) {
+        // We should put something like this code (but more general) into the shapelet package.
+        // We already have a class that evaluates a single-shapelet basis without convolving
+        // them (shapelet::ModelBuilder), and a class that evaluates a multi-shapelet basis
+        // while convolving it (shapelet::MultiShapeletMatrixBuilder).  What we need here is
+        // something that evaluates a multi-shapelet basis without convolving it.
         model.writeEllipses(nonlinear.begin(), fixed.begin(), _ellipses.begin());
         modelMatrix.deep() = 0.0;
         Model::BasisVector const & basisVector = model.getBasisVector();
@@ -484,9 +489,18 @@ public:
             for (shapelet::MultiShapeletBasis::Iterator j = basisVector[i]->begin();
                  j != basisVector[i]->end(); ++j
             ) {
-                _workspace.deep() = 0.0;
-                _builder.addModelMatrix(j->getOrder(), _workspace);
-                modelMatrix.asEigen() += _workspace.asEigen() * j->getMatrix().asEigen().cast<Pixel>();
+                // Each basis component can have different dimensions, so we need to
+                // operate on correctly-sized views of the workspace and output arrays.
+                // (in the constructor we ensured that the workspace is large enough
+                // for the highest-order component).
+                ndarray::Array<Pixel,2,-2> workspaceView
+                    = _workspace[ndarray::view()(0, j->getMatrix().getSize<0>())];
+                ndarray::Array<Pixel,2,-1> modelMatrixView
+                    = modelMatrix[ndarray::view()(0, j->getMatrix().getSize<1>())];
+                workspaceView.deep() = 0.0;
+                _builder.addModelMatrix(j->getOrder(), workspaceView);
+                modelMatrixView.asEigen()
+                    += workspaceView.asEigen() * j->getMatrix().asEigen().cast<Pixel>();
             }
         }
         modelMatrix.asEigen() /= _sigma;
