@@ -44,7 +44,7 @@ static Model::NameVector concatenateNameVectors(
 ) {
     LSST_THROW_IF_NE(
         components.size(), prefixes.size(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Number of model components (%d) does not match number of prefixes (%d)"
     );
     Model::NameVector r;
@@ -71,7 +71,7 @@ MultiModel::MultiModel(ModelVector components, NameVector const & prefixes) :
 
 PTR(Prior) MultiModel::adaptPrior(PTR(Prior) prior) const {
     throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
+        pex::exceptions::LogicError,
         "adaptPrior not implemented for MultiModel"
     );
 }

@@ -64,7 +64,7 @@ public:
     {
         if (!getInterpreter()->getPrior()) {
             throw LSST_EXCEPT(
-                pex::exceptions::LogicErrorException,
+                pex::exceptions::LogicError,
                 "Cannot create MarginalSamplingObjective without a Prior"
             );
         }
@@ -200,7 +200,7 @@ struct MapSamplingFields {
         }
         if (directKey != directItem.key) {
             throw LSST_EXCEPT(
-                pex::exceptions::LogicErrorException,
+                pex::exceptions::LogicError,
                 (boost::format("Unexpected mismatch between direct and marginal schemas at field '%s'")
                  % directItem.field.getName()).str()
             );
@@ -233,7 +233,7 @@ UnnestMarginalSamples::UnnestMarginalSamples(
     }
     if (!_prior) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "Cannot unnest without a Prior"
         );
     }

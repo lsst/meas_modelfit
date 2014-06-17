@@ -173,7 +173,7 @@ void ModelFitFitsWriter::_writeTable(CONST_PTR(afw::table::BaseTable) const & t,
     CONST_PTR(ModelFitTable) inTable = boost::dynamic_pointer_cast<ModelFitTable const>(t);
     if (!inTable) {
         throw LSST_EXCEPT(
-            lsst::pex::exceptions::LogicErrorException,
+            lsst::pex::exceptions::LogicError,
             "Cannot use a ModelFitFitsWriter on a non-ModelFit table."
         );
     }
@@ -268,7 +268,7 @@ ModelFitRecord::ModelFitRecord(PTR(ModelFitTable) const & table) :
 {
     if (!table->getSampleTable()) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "Cannot create ModelFitRecords when the associated SampleTable is not defined "
             "(please call ModelFitTable::setSampleTable)"
         );
@@ -298,7 +298,7 @@ PTR(ModelFitTable) ModelFitTable::make(
 ) {
     if (!checkSchema(schema)) {
         throw LSST_EXCEPT(
-            pex::exceptions::InvalidParameterException,
+            pex::exceptions::InvalidParameterError,
             "Schema for ModelFit must contain at least the keys defined by makeMinimalSchema()."
         );
     }

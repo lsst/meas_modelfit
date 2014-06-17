@@ -151,7 +151,7 @@ public:
         ndarray::Array<Scalar const,1,1> const & fixed
     ) const;
 
-    /// Given an arbitrary prior, return one compatible with this Model or throw LogicErrorException
+    /// Given an arbitrary prior, return one compatible with this Model or throw LogicError
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const = 0;
 
     /**

@@ -78,7 +78,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
     int const n = gradient.size();
     if (hessian.rows() != n || hessian.cols() != n) {
         throw LSST_EXCEPT(
-            pex::exceptions::LengthErrorException,
+            pex::exceptions::LengthError,
             (boost::format("Mismatch between grad size (%d) and hessian dimensions (%d, %d)")
              % n % hessian.rows() % hessian.cols()).str()
         );
@@ -114,13 +114,13 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
         if (isSingular) {
             if (!(std::abs(v.col(0).dot(g)) < std::sqrt(THRESHOLD))) {
                 throw LSST_EXCEPT(
-                    pex::exceptions::RuntimeErrorException,
+                    pex::exceptions::RuntimeError,
                     "Integral diverges: H*mu = -g has no solution"
                 );
             }
             if (v(1,1) < 0.0) {
                 throw LSST_EXCEPT(
-                    pex::exceptions::RuntimeErrorException,
+                    pex::exceptions::RuntimeError,
                     "Integral diverges: degenerate direction is not constrained"
                 );
             }
@@ -162,7 +162,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
         impl->v.block<2,2>(0,0) = v;
     } else {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "Greater than 2 dimensions not yet supported"
         );
     }
@@ -179,7 +179,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
     int const n = mean.size();
     if (covariance.rows() != n || covariance.cols() != n) {
         throw LSST_EXCEPT(
-            pex::exceptions::LengthErrorException,
+            pex::exceptions::LengthError,
             (boost::format("Mismatch between mean size (%d) and covariance dimensions (%d, %d)")
              % n % covariance.rows() % covariance.cols()).str()
         );
@@ -207,7 +207,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
         bool isSingular = !(s[1] >= s[0] * THRESHOLD);
         if (isSingular) {
             throw LSST_EXCEPT(
-                pex::exceptions::RuntimeErrorException,
+                pex::exceptions::RuntimeError,
                 "TruncatedGaussian cannot be normalized"
             );
         }
@@ -225,7 +225,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
         impl->v.block<2,2>(0,0) = v;
     } else {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "Greater than 2 dimensions not yet supported"
         );
     }
@@ -302,7 +302,7 @@ void TruncatedGaussianLogEvaluator::operator()(
 ) const {
     LSST_THROW_IF_NE(
         alpha.getSize<0>(), output.getSize<0>(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of inputs (%d) does not match size of outputs (%d)"
     );
     for (int i = 0, n = alpha.getSize<0>(); i < n; ++i) {
@@ -322,7 +322,7 @@ void TruncatedGaussianEvaluator::operator()(
 ) const {
     LSST_THROW_IF_NE(
         alpha.getSize<0>(), output.getSize<0>(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of inputs (%d) does not match size of outputs (%d)"
     );
     for (int i = 0, n = alpha.getSize<0>(); i < n; ++i) {
@@ -509,7 +509,7 @@ TruncatedGaussianSampler::TruncatedGaussianSampler(
     }
     if (!_impl) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "Invalid enum value for SampleStrategy"
         );
     }
@@ -529,7 +529,7 @@ void TruncatedGaussianSampler::operator()(
 ) const {
     LSST_THROW_IF_NE(
         alpha.getSize<0>(), weights.getSize<0>(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "First dimension of alpha array (%d) does not match size of weights array (%d)"
     );
     if (multiplyWeights) {
