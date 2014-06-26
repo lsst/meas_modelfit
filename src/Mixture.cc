@@ -68,12 +68,12 @@ MixtureComponent::MixtureComponent(Scalar weight_, Vector const & mu, Matrix con
 {
     LSST_THROW_IF_NE(
         sigma.rows(), _mu.size(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Number of rows of sigma matrix (%d) does not match size of mu vector (%d)"
     );
     LSST_THROW_IF_NE(
         sigma.cols(), _mu.size(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Number of columns of sigma matrix (%d) does not match size of mu vector (%d)"
     );
     _sigmaLLT.compute(sigma);
@@ -83,7 +83,7 @@ MixtureComponent::MixtureComponent(Scalar weight_, Vector const & mu, Matrix con
 MixtureComponent & MixtureComponent::operator=(MixtureComponent const & other) {
     LSST_THROW_IF_NE(
         other.getDimension(), getDimension(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Cannot assign MixtureComponent with dim=%d to one with dim=%d"
     );
     if (&other != this) {
@@ -169,12 +169,12 @@ void Mixture::evaluate(
 ) const {
     LSST_THROW_IF_NE(
         x.getSize<0>(), p.getSize<0>(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "First dimension of x array (%d) does not match size of p array (%d)"
     );
     LSST_THROW_IF_NE(
         x.getSize<1>(), _dim,
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Second dimension of x array (%d) does not dimension of mixture (%d)"
     );
     ndarray::Array<Scalar const,2,1>::Iterator ix = x.begin(), xEnd = x.end();
@@ -190,17 +190,17 @@ void Mixture::evaluateComponents(
 ) const {
     LSST_THROW_IF_NE(
         x.getSize<0>(), p.getSize<0>(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "First dimension of x array (%d) does not match first dimension of p array (%d)"
     );
     LSST_THROW_IF_NE(
         x.getSize<1>(), _dim,
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Second dimension of x array (%d) does not dimension of mixture (%d)"
     );
     LSST_THROW_IF_NE(
         p.getSize<1>(), static_cast<int>(_components.size()),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Second dimension of p array (%d) does not match number of components (%d)"
     );
     ndarray::Array<Scalar const,2,1>::Iterator ix = x.begin(), xEnd = x.end();
@@ -220,22 +220,22 @@ void Mixture::evaluateDerivatives(
 ) const {
     LSST_THROW_IF_NE(
         x.getSize<0>(), _dim,
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of x array (%d) does not dimension of mixture (%d)"
     );
     LSST_THROW_IF_NE(
         gradient.getSize<0>(), _dim,
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of gradient array (%d) does not dimension of mixture (%d)"
     );
     LSST_THROW_IF_NE(
         hessian.getSize<0>(), _dim,
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Number of rows of hessian array (%d) does not dimension of mixture (%d)"
     );
     LSST_THROW_IF_NE(
         hessian.getSize<1>(), _dim,
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Number of columns of hessian array (%d) does not dimension of mixture (%d)"
     );
     gradient.deep() = 0.0;
@@ -298,12 +298,12 @@ void Mixture::updateEM(
 ) {
     LSST_THROW_IF_NE(
         x.getSize<0>(), w.getSize<0>(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "First dimension of x array (%d) does not match size of w array (%d)"
     );
     LSST_THROW_IF_NE(
         x.getSize<1>(), _dim,
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Second dimension of x array (%d) does not dimension of mixture (%d)"
     );
     int const nSamples = w.getSize<0>();

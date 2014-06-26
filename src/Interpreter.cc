@@ -36,18 +36,18 @@ void Interpreter::packParameters(
 ) const {
     LSST_THROW_IF_NE(
         parameters.getSize<0>(), getParameterDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of parameter array (%d) does not match expected size (%d)"
         
     );
     LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of nonlinear array (%d) does not match expected size (%d)"
     );
     LSST_THROW_IF_NE(
         amplitudes.getSize<0>(), getAmplitudeDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of ampiltude array (%d) does not match expected size (%d)"
     );
     _packParameters(nonlinear, amplitudes, parameters);
@@ -59,12 +59,12 @@ void Interpreter::unpackNonlinear(
 ) const {
     LSST_THROW_IF_NE(
         parameters.getSize<0>(), getParameterDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of parameter array (%d) does not match expected size (%d)"
     );
     LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of nonlinear array (%d) does not match expected size (%d)"
     );
     _unpackNonlinear(parameters, nonlinear);

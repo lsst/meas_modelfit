@@ -125,7 +125,7 @@ protected:
         _model(model), _fixed(fixed) {
         LSST_THROW_IF_NE(
             fixed.getSize<0>(), model->getFixedDim(),
-            pex::exceptions::LengthErrorException,
+            pex::exceptions::LengthError,
             "Fixed parameter vector size (%d) does not match Model fixed parameter dimensionality (%d)"
         );
     }

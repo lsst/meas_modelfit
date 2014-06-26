@@ -370,7 +370,7 @@ OptimizerHistoryRecorder::OptimizerHistoryRecorder(afw::table::Schema const & sc
 {
     try {
         derivatives = schema["derivatives"];
-    } catch (pex::exceptions::NotFoundException &) {}
+    } catch (pex::exceptions::NotFoundError &) {}
 }
 
 void OptimizerHistoryRecorder::apply(
@@ -426,7 +426,7 @@ void OptimizerHistoryRecorder::unpackDerivatives(
 ) const {
     if (!derivatives.isValid()) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "HistoryRecorder was not configured to save derivatives"
         );
     }
@@ -454,7 +454,7 @@ void OptimizerHistoryRecorder::unpackDerivatives(
 ) const {
     if (!derivatives.isValid()) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "HistoryRecorder was not configured to save derivatives"
         );
     }
@@ -502,7 +502,7 @@ Optimizer::Optimizer(
     pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
     if (parameters.getSize<0>() != _objective->parameterSize) {
         throw LSST_EXCEPT(
-            pex::exceptions::LengthErrorException,
+            pex::exceptions::LengthError,
             (boost::format("Parameter vector size (%d) does not match objective (%d)")
              % parameters.getSize<0>() % _objective->parameterSize).str()
         );

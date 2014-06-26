@@ -151,7 +151,7 @@ void AdaptiveImportanceSampler::run(
             }
             if (samples.empty()) {
                 throw LSST_EXCEPT(
-                    pex::exceptions::LogicErrorException,
+                    pex::exceptions::LogicError,
                     "No finite objective values in entire sample set"
                 );
             }
@@ -159,7 +159,7 @@ void AdaptiveImportanceSampler::run(
             perplexity = computeNormalizedPerplexity(subSamples);
             if (!lsst::utils::isfinite(perplexity)) {
                 throw LSST_EXCEPT(
-                    pex::exceptions::LogicErrorException,
+                    pex::exceptions::LogicError,
                     "Normalized perplexity is non-finite."
                 );
             }

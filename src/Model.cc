@@ -86,7 +86,7 @@ public:
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
         if (prior->getTag() != "single-ellipse") {
             throw LSST_EXCEPT(
-                pex::exceptions::LogicErrorException,
+                pex::exceptions::LogicError,
                 "Cannot adapt prior unless its tag is 'single-ellipse'"
             );
         }
@@ -147,7 +147,7 @@ public:
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "adaptPrior not implemented for SingleCenterModel"
         );
     }
@@ -211,7 +211,7 @@ public:
 
     virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "adaptPrior not implemented for MultiCenterModel"
         );
     }
@@ -307,7 +307,7 @@ Model::Model(
     }
     LSST_THROW_IF_NE(
         amplitudeDim, getAmplitudeDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Number of amplitudes in basis vectors (%d) does not match number of amplitude names (%d)"
     );
 }
@@ -318,12 +318,12 @@ Model::EllipseVector Model::writeEllipses(
 ) const {
     LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of nonlinear array (%d) does not match dimension of model (%d)"
     );
     LSST_THROW_IF_NE(
         fixed.getSize<0>(), getFixedDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of fixed array (%d) does not match dimension of model (%d)"
     );
     EllipseVector r = makeEllipseVector();
@@ -338,17 +338,17 @@ void Model::readEllipses(
 ) const {
     LSST_THROW_IF_NE(
         nonlinear.getSize<0>(), getNonlinearDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of nonlinear array (%d) does not match dimension of model (%d)"
     );
     LSST_THROW_IF_NE(
         fixed.getSize<0>(), getFixedDim(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of fixed array (%d) does not match dimension of model (%d)"
     );
     LSST_THROW_IF_NE(
         int(ellipses.size()), getBasisCount(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of ellipse vector (%d) does not match basis count (%d)"
     );
     readEllipses(ellipses.begin(), nonlinear.begin(), fixed.begin());
@@ -357,7 +357,7 @@ void Model::readEllipses(
 PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center) {
     LSST_THROW_IF_NE(
         basisVector.size(), prefixes.size(),
-        pex::exceptions::LengthErrorException,
+        pex::exceptions::LengthError,
         "Size of basis vector (%d) does not match number of prefixes (%d)"
     );
     NameVector nonlinearNames;
@@ -398,7 +398,7 @@ PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, Cen
         return boost::make_shared<MultiCenterModel>(basisVector, nonlinearNames, amplitudeNames);
     }
     throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
+        pex::exceptions::LogicError,
         "Unexpected value for CenterEnum"
     );
 }
@@ -424,7 +424,7 @@ PTR(Model) Model::make(PTR(shapelet::MultiShapeletBasis) basis, CenterEnum cente
         return boost::make_shared<SingleCenterModel>(basisVector, nonlinearNames, amplitudeNames);
     }
     throw LSST_EXCEPT(
-        pex::exceptions::LogicErrorException,
+        pex::exceptions::LogicError,
         "Unexpected value for CenterEnum"
     );
 }
