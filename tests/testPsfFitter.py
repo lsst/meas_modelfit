@@ -24,6 +24,7 @@
 
 import unittest
 import os
+import glob
 import numpy
 
 import lsst.utils.tests
@@ -37,6 +38,19 @@ lsst.pex.logging.Debug("meas.multifit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.multifit.optimizer.solveTrustRegion", 0)
 
 ELLIPSE_PARAMETER_NAMES = ["eta1", "eta2", "logR", "x", "y"]
+DATA_DIR = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "tests", "data")
+
+def computeMoments(image):
+    """Helper function to compute moments of a postage stamp about its origin."""
+    maskedImage = lsst.afw.image.makeMaskedImage(image)
+    result = lsst.meas.base.SdssShapeAlgorithm.Result()
+    lsst.meas.base.SdssShapeAlgorithm.apply(
+        maskedImage,
+        lsst.afw.detection.Footprint(image.getBBox(lsst.afw.image.PARENT)),
+        lsst.afw.geom.Point2D(0.0, 0.0),
+        result
+        )
+    return result.getShape()
 
 class PsfFitterTestCase(lsst.utils.tests.TestCase):
 
@@ -229,6 +243,24 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         model.readEllipses(ellipses4, nonlinear, fixed)
         self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar))
         self.assertClose(fixed, 1.5*ellipseParameters.ravel())
+
+    def testApply(self):
+        tolerances = {"full": 1E-4, "ellipse": 1E-3, "fixed": 1E-2}
+        for filename in glob.glob(os.path.join(DATA_DIR, "psfs", "*.fits")):
+            kernelImageD = lsst.afw.image.ImageD(filename)
+            kernelImageF = kernelImageD.convertF()
+            shape = computeMoments(kernelImageF)
+            for configKey in ["full", "ellipse", "fixed"]:
+                fitter = lsst.meas.multifit.PsfFitter(self.configs[configKey].makeControl())
+                multiShapeletFit = fitter.apply(kernelImageF,
+                                                0.1,  #not sure what to put here
+                                                shape)
+                modelImageD = lsst.afw.image.ImageD(kernelImageD.getBBox(lsst.afw.image.PARENT))
+                multiShapeletFit.evaluate().addToImage(modelImageD)
+                modelImageF = modelImageD.convertF()
+                self.assertClose(kernelImageD.getArray(), modelImageD.getArray(),
+                                 atol=tolerances[configKey],
+                                 plotOnFailure=True)
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
