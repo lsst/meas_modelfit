@@ -270,8 +270,8 @@ shapelet::MultiShapeletFunction Model::makeShapeletFunction(
     int c = 0;
     for (int i = 0, n = getBasisCount(); i < n; ++i) {
         if (!_basisVector[i]) {
-            r.getElements().push_back(shapelet::ShapeletFunction(0, shapelet::HERMITE, ellipses[i]));
-            r.getElements().back().getCoefficients()[0]
+            r.getComponents().push_back(shapelet::ShapeletFunction(0, shapelet::HERMITE, ellipses[i]));
+            r.getComponents().back().getCoefficients()[0]
                 = amplitudes[c] / shapelet::ShapeletFunction::FLUX_FACTOR;
             ++c;
         } else {
@@ -279,7 +279,7 @@ shapelet::MultiShapeletFunction Model::makeShapeletFunction(
             shapelet::MultiShapeletFunction p = _basisVector[i]->makeFunction(
                 ellipses[i], amplitudes[ndarray::view(c,c+k)]
             );
-            r.getElements().insert(r.getElements().end(), p.getElements().begin(), p.getElements().end());
+            r.getComponents().insert(r.getComponents().end(), p.getComponents().begin(), p.getComponents().end());
             c += k;
         }
     }
