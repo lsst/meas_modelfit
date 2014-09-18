@@ -26,7 +26,6 @@ import numpy
 
 import lsst.pipe.base
 import lsst.pex.config
-from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 from . import multifitLib
 from .baseMeasure import BaseMeasureConfig, BaseMeasureTask
@@ -168,8 +167,10 @@ class MeasureMultiTask(BaseMeasureTask):
 
             sourceCalexpPos = calexp.getWcs().skyToPixel(record.getCoord())
 
-            psfModel = FitPsfAlgorithm.apply(psfCtrl, calexp.getPsf(), sourceCalexpPos)
-            psf = psfModel.asMultiShapelet()
+            psfFitter = multifitLib.PsfFitter(self.config.psf.makeControl())
+            psfImage = calexp.getPsf().computeImage(sourceCalexpPos).convertF()
+            psfMoments = calexp.getPsf().computeShape(center)
+            psf = psfFitter.apply(psfImage, psfMoments)
 
             epochFootprint = multifitLib.EpochFootprint(calexpFootprint, calexp, psf)
             epochFootprintList.append(epochFootprint)
