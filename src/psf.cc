@@ -479,16 +479,14 @@ public:
         ndarray::Array<Scalar const,1,1> const & fixed,
         Model const & model
     ) {
-        // We should put something like this code (but more general) into the shapelet package.
-        // We already have a class that evaluates a single-shapelet basis without convolving
-        // them (shapelet::ModelBuilder), and a class that evaluates a multi-shapelet basis
-        // while convolving it (shapelet::MultiShapeletMatrixBuilder).  What we need here is
-        // something that evaluates a multi-shapelet basis without convolving it.
         model.writeEllipses(nonlinear.begin(), fixed.begin(), _ellipses.begin());
         modelMatrix.deep() = 0.0;
         Model::BasisVector const & basisVector = model.getBasisVector();
+        int amplitudeOffset = 0;
         for (std::size_t i = 0; i < basisVector.size(); ++i) {
-            _builders[i](modelMatrix, _ellipses[i]);
+            int amplitudeEnd = amplitudeOffset + _builders[i].getBasisSize();
+            _builders[i](modelMatrix[ndarray::view()(amplitudeOffset, amplitudeEnd)], _ellipses[i]);
+            amplitudeOffset = amplitudeEnd;
         }
         modelMatrix.asEigen() /= _sigma;
     }
