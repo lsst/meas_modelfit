@@ -75,7 +75,9 @@ public:
 class PsfFitterControl {
 public:
 
-    PsfFitterControl() : inner(-1, 0.5), primary(0, 1.0), wings(0, 2.0), outer(-1, 4.0) {}
+    PsfFitterControl() :
+        inner(-1, 0.5), primary(0, 1.0), wings(0, 2.0), outer(-1, 4.0), defaultNoiseSigma(0.001)
+    {}
 
     LSST_NESTED_CONTROL_FIELD(
         inner, lsst.meas.multifit.multifitLib, PsfFitterComponentControl,
@@ -100,6 +102,10 @@ public:
     LSST_NESTED_CONTROL_FIELD(
         optimizer, lsst.meas.multifit.multifitLib, OptimizerControl,
         "Configuration of the optimizer used to do the fitting"
+    );
+
+    LSST_CONTROL_FIELD(
+        defaultNoiseSigma, double, "Default value for the noiseSigma parameter in PsfFitter.apply()"
     );
 
 };
@@ -177,18 +183,19 @@ public:
      *  @param[in]  moments     Second moments of the PSF, typically result of Psf::computeShape() or running
      *                          some other adaptive moments code on the PSF image.  This will be used to
      *                          set the initial ellipses of the multishapelet model.
+     *                          A default value from the control object is used if this is negative.
      */
     shapelet::MultiShapeletFunction apply(
-        afw::image::Image<float> const & image,
-        Scalar noiseSigma,
-        afw::geom::ellipses::Quadrupole const & moments
+        afw::image::Image<Pixel> const & image,
+        afw::geom::ellipses::Quadrupole const & moments,
+        Scalar noiseSigma=-1
     ) const;
     shapelet::MultiShapeletFunction apply(
         afw::image::Image<double> const & image,
-        Scalar noiseSigma,
-        afw::geom::ellipses::Quadrupole const & moments
+        afw::geom::ellipses::Quadrupole const & moments,
+        Scalar noiseSigma=-1
     ) const {
-        return apply(afw::image::Image<float>(image, true), noiseSigma, moments);
+        return apply(afw::image::Image<float>(image, true), moments, noiseSigma);
     }
     //@}
 
@@ -198,23 +205,24 @@ public:
      *
      *  @param[in]  image       The image to fit, typically the result of Psf::computeKernelImage().  The
      *                          image's xy0 should be set such that the center of the PSF is at (0,0).
-     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
-     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
      *  @param[in]  initial     The result of a previous call to apply(), using an identically-configured
      *                          PsfFitter instance.  To use a result from a differently-configured PsfFitter,
      *                          use adapt().
+     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
+     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
+     *                          A default value from the control object is used if this is negative.
      */
     shapelet::MultiShapeletFunction apply(
-        afw::image::Image<float> const & image,
-        Scalar noiseSigma,
-        shapelet::MultiShapeletFunction const & initial
+        afw::image::Image<Pixel> const & image,
+        shapelet::MultiShapeletFunction const & initial,
+        Scalar noiseSigma=-1
     ) const;
     shapelet::MultiShapeletFunction apply(
         afw::image::Image<double> const & image,
-        Scalar noiseSigma,
-        shapelet::MultiShapeletFunction const & initial
+        shapelet::MultiShapeletFunction const & initial,
+        Scalar noiseSigma=-1
     ) const {
-        return apply(afw::image::Image<float>(image, true), noiseSigma, initial);
+        return apply(afw::image::Image<float>(image, true), initial, noiseSigma);
     }
     //@}
 

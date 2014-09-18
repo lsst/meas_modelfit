@@ -414,20 +414,25 @@ shapelet::MultiShapeletFunction PsfFitter::adapt(
 
 shapelet::MultiShapeletFunction PsfFitter::apply(
     afw::image::Image<Pixel> const & image,
-    Scalar noiseSigma,
-    afw::geom::ellipses::Quadrupole const & moments
+    afw::geom::ellipses::Quadrupole const & moments,
+    Scalar noiseSigma
 ) const {
+    if (noiseSigma <= 0) {
+        noiseSigma = _ctrl.defaultNoiseSigma;
+    }
     shapelet::MultiShapeletFunction initial
         = boost::static_pointer_cast<PsfFitterModel>(_model)->makeInitial(moments);
-    return apply(image, noiseSigma, initial);
+    return apply(image, initial, noiseSigma);
 }
 
 shapelet::MultiShapeletFunction PsfFitter::apply(
     afw::image::Image<Pixel> const & image,
-    Scalar noiseSigma,
-    shapelet::MultiShapeletFunction const & initial
+    shapelet::MultiShapeletFunction const & initial,
+    Scalar noiseSigma
 ) const {
-
+    if (noiseSigma <= 0) {
+        noiseSigma = _ctrl.defaultNoiseSigma;
+    }
     int const parameterDim = _model->getNonlinearDim() + _model->getAmplitudeDim();
     ndarray::Array<Scalar,1,1> parameters = ndarray::allocate(parameterDim);
     ndarray::Array<Scalar,1,1> nonlinear = parameters[ndarray::view(0, _model->getNonlinearDim())];
