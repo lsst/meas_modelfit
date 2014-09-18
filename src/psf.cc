@@ -24,7 +24,7 @@
 #include "ndarray/eigen.h"
 
 #include "lsst/pex/exceptions.h"
-#include "lsst/shapelet/ModelBuilder.h"
+#include "lsst/shapelet/MatrixBuilder.h"
 #include "lsst/shapelet/MultiShapeletBasis.h"
 #include "lsst/meas/multifit/psf.h"
 
@@ -56,18 +56,22 @@ public:
         Model::BasisVector const & basisVector,
         Scalar sigma
     ) : _ellipses(ellipses),
-        _builder(x, y),
+        _builders(),
         _sigma(sigma)
     {
-        int maxOrder = 0;
+        FactoryVector factories;
+        factories.reserve(basisVector.size());
+        _builders.reserve(basisVector.size());
+        int workspaceSize = 0;
         for (Model::BasisVector::const_iterator i = basisVector.begin(); i != basisVector.end(); ++i) {
-            for (shapelet::MultiShapeletBasis::Iterator j = (**i).begin(); j != (**i).end(); ++j) {
-                maxOrder = std::max(j->getOrder(), maxOrder);
-            }
+            factories.push_back(shapelet::MatrixBuilderFactory<Pixel>(x, y, **i));
+            workspaceSize = std::max(workspaceSize, factories.back().computeWorkspace());
         }
-        ndarray::Array<Pixel,2,2> workspaceT
-            = ndarray::allocate(shapelet::computeSize(maxOrder), x.getSize<0>());
-        _workspace = workspaceT.transpose();
+        shapelet::MatrixBuilderWorkspace<Pixel> workspace(workspaceSize);
+        for (FactoryVector::const_iterator i = factories.begin(); i != factories.end(); ++i) {
+            shapelet::MatrixBuilderWorkspace<Pixel> wsCopy(workspace); // share workspace between builders
+            _builders.push_back((*i)(wsCopy));
+        }
     }
 
     void computeModelMatrix(
@@ -80,22 +84,17 @@ public:
         modelMatrix.deep() = 0.0;
         Model::BasisVector const & basisVector = model.getBasisVector();
         for (std::size_t i = 0; i < basisVector.size(); ++i) {
-            _builder.update(_ellipses[i]);
-            for (shapelet::MultiShapeletBasis::Iterator j = basisVector[i]->begin();
-                 j != basisVector[i]->end(); ++j
-            ) {
-                _workspace.deep() = 0.0;
-                _builder.addModelMatrix(j->getOrder(), _workspace);
-                modelMatrix.asEigen() += _workspace.asEigen() * j->getMatrix().asEigen().cast<Pixel>();
-            }
+            _builders[i](modelMatrix, _ellipses[i]);
         }
         modelMatrix.asEigen() /= _sigma;
     }
 
 private:
+    typedef std::vector< shapelet::MatrixBuilder<Pixel> > BuilderVector;
+    typedef std::vector< shapelet::MatrixBuilderFactory<Pixel> > FactoryVector;
+
     Model::EllipseVector _ellipses;
-    shapelet::ModelBuilder<Pixel> _builder;
-    ndarray::Array<Pixel,2,-2> _workspace;
+    BuilderVector _builders;
     Scalar _sigma;
 };
 

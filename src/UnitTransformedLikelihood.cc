@@ -30,13 +30,15 @@
 
 #include "lsst/afw/image/Calib.h"
 #include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
+#include "lsst/shapelet/MatrixBuilder.h"
 #include "lsst/meas/multifit/UnitTransformedLikelihood.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
 namespace {
 
-typedef std::vector< shapelet::MultiShapeletMatrixBuilder<Pixel> > MatrixBuilderVector;
+typedef std::vector< shapelet::MatrixBuilder<Pixel> > BuilderVector;
+typedef std::vector< shapelet::MatrixBuilderFactory<Pixel> > FactoryVector;
 
 /*
  * Function intended for use with std algorithms to compute the cumulative sum
@@ -47,17 +49,18 @@ int componentPixelSum(int partialNumPixels, CONST_PTR(EpochFootprint) const &epo
 }
 
 /*
- * Return a vector of MultiShapeletMatrixBuilders, with one for each MultiShapeletBasis in the input vector,
+ * Return a vector of MatrixBuilders, with one for each MultiShapeletBasis in the input vector,
  * using the pixel region defined by the given Footprint and the given shapelet PSF approximation.
  */
-MatrixBuilderVector makeMatrixBuilders(
+BuilderVector makeMatrixBuilders(
     Model::BasisVector const & basisVector,
     shapelet::MultiShapeletFunction const & psf,
-    afw::detection::Footprint const & footprint,
-    bool useApproximateExp
+    afw::detection::Footprint const & footprint
 ) {
-    MatrixBuilderVector result;
-    result.reserve(basisVector.size());
+    BuilderVector builders;
+    FactoryVector factories;
+    builders.reserve(basisVector.size());
+    factories.reserve(basisVector.size());
     ndarray::Array<Pixel,1,1> x = ndarray::allocate(footprint.getArea());
     ndarray::Array<Pixel,1,1> y = ndarray::allocate(footprint.getArea());
     int n = 0;
@@ -71,12 +74,17 @@ MatrixBuilderVector makeMatrixBuilders(
             y[n] = j->getY();
         }
     }
+    int workspaceSize = 0;
     for (Model::BasisVector::const_iterator k = basisVector.begin(); k != basisVector.end(); ++k) {
-        result.push_back(
-            shapelet::MultiShapeletMatrixBuilder<Pixel>(**k, psf, x, y, useApproximateExp)
-        );
+        factories.push_back(shapelet::MatrixBuilderFactory<Pixel>(x, y, **k, psf));
+        workspaceSize = std::max(workspaceSize, factories.back().computeWorkspace());
     }
-    return result;
+    shapelet::MatrixBuilderWorkspace<Pixel> workspace(workspaceSize);
+    for (FactoryVector::const_iterator i = factories.begin(); i != factories.end(); ++i) {
+        shapelet::MatrixBuilderWorkspace<Pixel> wsCopy(workspace); // share workspace between builders
+        builders.push_back((*i)(wsCopy));
+    }
+    return builders;
 }
 
 /*
@@ -124,12 +132,12 @@ public:
     class Epoch {
     public:
 
-        Epoch(int nPix_, LocalUnitTransform transform_, MatrixBuilderVector matrixBuilders_) :
-            nPix(nPix_), transform(transform_), matrixBuilders(matrixBuilders_) {}
+        Epoch(int nPix_, LocalUnitTransform const & transform_, BuilderVector const & builders_) :
+            nPix(nPix_), transform(transform_), builders(builders_) {}
 
         int nPix;
         LocalUnitTransform transform;
-        MatrixBuilderVector matrixBuilders;
+        BuilderVector builders;
     };
 
     Impl() : scratch(afw::geom::ellipses::Quadrupole(), afw::geom::Point2D()) {}
@@ -164,8 +172,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
         _impl->epochs.push_back(
             Impl::Epoch(
                 nPix, LocalUnitTransform(position, fitSys, (**imPtrIter).exposure),
-                makeMatrixBuilders(model->getBasisVector(), (**imPtrIter).psf, (**imPtrIter).footprint,
-                                   ctrl.useApproximateExp)
+                makeMatrixBuilders(model->getBasisVector(), (**imPtrIter).psf, (**imPtrIter).footprint)
             )
         );
         setupArrays(
@@ -195,7 +202,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     _impl->epochs.push_back(
         Impl::Epoch(
             totPixels, LocalUnitTransform(position, fitSys, exposure),
-            makeMatrixBuilders(model->getBasisVector(), psf, footprint, ctrl.useApproximateExp)
+            makeMatrixBuilders(model->getBasisVector(), psf, footprint)
         )
     );
     setupArrays(exposure.getMaskedImage(), footprint, _data, _weights, ctrl.usePixelWeights);
@@ -210,6 +217,7 @@ void UnitTransformedLikelihood::computeModelMatrix(
 ) const {
     getModel()->writeEllipses(nonlinear.begin(), _fixed.begin(), _impl->ellipses.begin());
     int dataOffset = 0;
+    modelMatrix.deep() = 0.0;
     for (
         std::vector<Impl::Epoch>::const_iterator i = _impl->epochs.begin();
         i != _impl->epochs.end();
@@ -219,8 +227,8 @@ void UnitTransformedLikelihood::computeModelMatrix(
         int amplitudeOffset = 0;
         for (std::size_t j = 0; j < _impl->ellipses.size(); ++j) {
             _impl->scratch = _impl->ellipses[j].transform(i->transform.geometric);
-            int amplitudeEnd = amplitudeOffset + i->matrixBuilders[j].getBasisSize();
-            i->matrixBuilders[j].build(
+            int amplitudeEnd = amplitudeOffset + i->builders[j].getBasisSize();
+            i->builders[j](
                 modelMatrix[ndarray::view(dataOffset, dataEnd)(amplitudeOffset, amplitudeEnd)],
                 _impl->scratch
             );
