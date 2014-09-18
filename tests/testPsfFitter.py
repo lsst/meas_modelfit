@@ -252,9 +252,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
             shape = computeMoments(kernelImageF)
             for configKey in ["full", "ellipse", "fixed"]:
                 fitter = lsst.meas.multifit.PsfFitter(self.configs[configKey].makeControl())
-                multiShapeletFit = fitter.apply(kernelImageF,
-                                                0.1,  #not sure what to put here
-                                                shape)
+                multiShapeletFit = fitter.apply(kernelImageF, shape, 0.1)
                 modelImageD = lsst.afw.image.ImageD(kernelImageD.getBBox(lsst.afw.image.PARENT))
                 multiShapeletFit.evaluate().addToImage(modelImageD)
                 modelImageF = modelImageD.convertF()
