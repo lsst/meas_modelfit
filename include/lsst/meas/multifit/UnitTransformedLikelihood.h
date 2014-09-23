@@ -52,10 +52,8 @@ public:
 
     LSST_CONTROL_FIELD(usePixelWeights, bool,
                        "whether to individually weigh pixels using the variance image.");
-    LSST_CONTROL_FIELD(useApproximateExp, bool,
-                       "whether to use fast approximate exponentials when evaluating the model");
 
-    UnitTransformedLikelihoodControl() : usePixelWeights(true), useApproximateExp(false) {}
+    UnitTransformedLikelihoodControl() : usePixelWeights(true) {}
 
 };
 

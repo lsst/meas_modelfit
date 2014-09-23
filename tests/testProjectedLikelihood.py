@@ -50,7 +50,7 @@ def makeGaussianFunction(ellipse, flux=1.0):
     s.normalize()
     s.getCoefficients()[0] *= flux
     msf = lsst.shapelet.MultiShapeletFunction()
-    msf.getElements().push_back(s)
+    msf.getComponents().push_back(s)
     return msf
 
 def addGaussian(exposure, ellipse, flux, psf=None):
