@@ -245,7 +245,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertClose(fixed, 1.5*ellipseParameters.ravel())
 
     def testApply(self):
-        tolerances = {"full": 1E-4, "ellipse": 1E-3, "fixed": 1E-2}
+        tolerances = {"full": 1E-4, "ellipse": 8E-3, "fixed": 1E-2}
         for filename in glob.glob(os.path.join(DATA_DIR, "psfs", "*.fits")):
             kernelImageD = lsst.afw.image.ImageD(filename)
             kernelImageF = kernelImageD.convertF()
