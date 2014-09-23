@@ -51,6 +51,10 @@ int componentPixelSum(int partialNumPixels, CONST_PTR(EpochFootprint) const &epo
 /*
  * Return a vector of MatrixBuilders, with one for each MultiShapeletBasis in the input vector,
  * using the pixel region defined by the given Footprint and the given shapelet PSF approximation.
+ *
+ * basisVector - vector of MultiShapeletBasis objects; will produce one MatrixBuilder for each.
+ * psf - MultiShapeletFunction representation of the PSF
+ * footprint - Footprint that defines the region of pixels that will be used in the fit.
  */
 BuilderVector makeMatrixBuilders(
     Model::BasisVector const & basisVector,
@@ -89,7 +93,14 @@ BuilderVector makeMatrixBuilders(
 
 /*
  *  Flatten image and variance arrays from a MaskedImage using a footprint, and transform
- *  the variance into weights
+ *  the variance into weights.
+ *
+ *  image - MaskedImage whose image and variance pixels should be used in the fit
+ *  footprint - Footprint that defines the pixels to be included in the fit
+ *  data - array to be filled with flattened values from the MaskedImage's image plane
+ *  weights - array to be filled with flattened values computed from the MaskedImage's variance plane
+ *  usePixelWeights - if true, weights will be per-pixel inverse sqrt(variance); if false, a constant
+ *                    average value will be used
  */
 void setupArrays(
     afw::image::MaskedImage<Pixel> const & image,
