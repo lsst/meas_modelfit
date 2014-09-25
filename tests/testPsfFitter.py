@@ -31,6 +31,7 @@ import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
 import lsst.meas.multifit
+import lsst.meas.base
 
 numpy.random.seed(500)
 
@@ -59,9 +60,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.configs['fixed'] = lsst.meas.multifit.PsfFitterConfig()
         self.configs['ellipse'] = lsst.meas.multifit.PsfFitterConfig()
         self.configs['ellipse'].primary.ellipticityPriorSigma = 0.3
-        self.configs['ellipse'].primary.ellipticityPriorSigma = 0.3
         self.configs['ellipse'].primary.radiusPriorSigma = 0.5
-        self.configs['ellipse'].wings.ellipticityPriorSigma = 0.3
         self.configs['ellipse'].wings.ellipticityPriorSigma = 0.3
         self.configs['ellipse'].wings.radiusPriorSigma = 0.5
         self.configs['full'] = lsst.meas.multifit.PsfFitterConfig()
@@ -70,18 +69,14 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.configs['full'].wings.order = 4
         self.configs['full'].outer.order = 0
         self.configs['full'].inner.ellipticityPriorSigma = 0.3
-        self.configs['full'].inner.ellipticityPriorSigma = 0.3
         self.configs['full'].inner.radiusPriorSigma = 0.5
         self.configs['full'].inner.positionPriorSigma = 0.1
-        self.configs['full'].primary.ellipticityPriorSigma = 0.3
         self.configs['full'].primary.ellipticityPriorSigma = 0.3
         self.configs['full'].primary.radiusPriorSigma = 0.5
         self.configs['full'].primary.positionPriorSigma = 0.1
         self.configs['full'].wings.ellipticityPriorSigma = 0.3
-        self.configs['full'].wings.ellipticityPriorSigma = 0.3
         self.configs['full'].wings.radiusPriorSigma = 0.5
         self.configs['full'].wings.positionPriorSigma = 0.1
-        self.configs['full'].outer.ellipticityPriorSigma = 0.3
         self.configs['full'].outer.ellipticityPriorSigma = 0.3
         self.configs['full'].outer.radiusPriorSigma = 0.5
         self.configs['full'].outer.positionPriorSigma = 0.1
