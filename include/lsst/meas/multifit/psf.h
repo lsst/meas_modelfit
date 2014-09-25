@@ -166,6 +166,7 @@ public:
         PTR(Model) previousModel
     ) const;
 
+    //@{
     /**
      *  Perform an initial fit to a PSF image.
      *
@@ -178,11 +179,20 @@ public:
      *                          set the initial ellipses of the multishapelet model.
      */
     shapelet::MultiShapeletFunction apply(
-        afw::image::Image<Pixel> const & image,
+        afw::image::Image<float> const & image,
         Scalar noiseSigma,
         afw::geom::ellipses::Quadrupole const & moments
     ) const;
+    shapelet::MultiShapeletFunction apply(
+        afw::image::Image<double> const & image,
+        Scalar noiseSigma,
+        afw::geom::ellipses::Quadrupole const & moments
+    ) const {
+        return apply(afw::image::Image<float>(image, true), noiseSigma, moments);
+    }
+    //@}
 
+    //@{
     /**
      *  Perform a fit to a PSF image, using a previous fit as a starting point
      *
@@ -195,10 +205,18 @@ public:
      *                          use adapt().
      */
     shapelet::MultiShapeletFunction apply(
-        afw::image::Image<Pixel> const & image,
+        afw::image::Image<float> const & image,
         Scalar noiseSigma,
         shapelet::MultiShapeletFunction const & initial
     ) const;
+    shapelet::MultiShapeletFunction apply(
+        afw::image::Image<double> const & image,
+        Scalar noiseSigma,
+        shapelet::MultiShapeletFunction const & initial
+    ) const {
+        return apply(afw::image::Image<float>(image, true), noiseSigma, initial);
+    }
+    //@}
 
 private:
     PsfFitterControl _ctrl;
