@@ -35,13 +35,15 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-/// Control object used to define one piece of multishapelet fit to a PSF model; see PsfFitter.
+/**
+ *  Control object used to define one piece of multishapelet fit to a PSF model; see PsfFitterControl
+ */
 class PsfFitterComponentControl {
 public:
 
     PsfFitterComponentControl(int order_=0, double radiusFactor_=1.0) :
-        order(order_), positionPriorSigma(0.0), ellipticityPriorSigma(0.0),
-        radiusFactor(radiusFactor_), radiusPriorSigma(0.0)
+        order(order_), positionPriorSigma(0.1), ellipticityPriorSigma(0.3),
+        radiusFactor(radiusFactor_), radiusPriorSigma(0.5)
     {}
 
     LSST_CONTROL_FIELD(
@@ -71,7 +73,14 @@ public:
 
 };
 
-/// Control object used to configure a multishapelet fit to a PSF model; see PsfFitter.
+/**
+ * Control object used to configure a multishapelet fit to a PSF model; see PsfFitter.
+ *
+ *  The default configuration corresponds to fitting an elliptical double-Gaussian, in which each component
+ *  can have different radii, positions, and ellipticities.  While the fitter can support much more complex
+ *  models, at present, fitting these is prohibitively slow, and is not recommended in production
+ *  environments.
+ */
 class PsfFitterControl {
 public:
 

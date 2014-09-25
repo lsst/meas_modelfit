@@ -58,11 +58,15 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
         self.configs = {}
         self.configs['fixed'] = lsst.meas.multifit.PsfFitterConfig()
+        self.configs['fixed'].primary.ellipticityPriorSigma = 0.0
+        self.configs['fixed'].primary.radiusPriorSigma = 0.0
+        self.configs['fixed'].primary.positionPriorSigma = 0.0
+        self.configs['fixed'].wings.ellipticityPriorSigma = 0.0
+        self.configs['fixed'].wings.radiusPriorSigma = 0.0
+        self.configs['fixed'].wings.positionPriorSigma = 0.0
         self.configs['ellipse'] = lsst.meas.multifit.PsfFitterConfig()
-        self.configs['ellipse'].primary.ellipticityPriorSigma = 0.3
-        self.configs['ellipse'].primary.radiusPriorSigma = 0.5
-        self.configs['ellipse'].wings.ellipticityPriorSigma = 0.3
-        self.configs['ellipse'].wings.radiusPriorSigma = 0.5
+        self.configs['ellipse'].primary.positionPriorSigma = 0.0
+        self.configs['ellipse'].wings.positionPriorSigma = 0.0
         self.configs['full'] = lsst.meas.multifit.PsfFitterConfig()
         self.configs['full'].inner.order = 0
         self.configs['full'].primary.order = 4
