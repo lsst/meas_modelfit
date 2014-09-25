@@ -348,6 +348,9 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
         );
     }
     ComponentVector components = vectorizeComponents(_ctrl);
+
+    _prior = boost::make_shared<PsfFitterPrior>(components);
+
     Model::BasisVector basisVector;
     Model::NameVector nonlinearNames;
     Model::NameVector amplitudeNames;

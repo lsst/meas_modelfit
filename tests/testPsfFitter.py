@@ -245,17 +245,16 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertClose(fixed, 1.5*ellipseParameters.ravel())
 
     def testApply(self):
-        tolerances = {"full": 1E-4, "ellipse": 8E-3, "fixed": 1E-2}
+        tolerances = {"full": 3E-4, "ellipse": 8E-3, "fixed": 1E-2}
         for filename in glob.glob(os.path.join(DATA_DIR, "psfs", "*.fits")):
             kernelImageD = lsst.afw.image.ImageD(filename)
             kernelImageF = kernelImageD.convertF()
             shape = computeMoments(kernelImageF)
             for configKey in ["full", "ellipse", "fixed"]:
                 fitter = lsst.meas.multifit.PsfFitter(self.configs[configKey].makeControl())
-                multiShapeletFit = fitter.apply(kernelImageF, 0.1, shape)
+                multiShapeletFit = fitter.apply(kernelImageF, 0.01, shape)
                 modelImageD = lsst.afw.image.ImageD(kernelImageD.getBBox(lsst.afw.image.PARENT))
                 multiShapeletFit.evaluate().addToImage(modelImageD)
-                modelImageF = modelImageD.convertF()
                 self.assertClose(kernelImageD.getArray(), modelImageD.getArray(),
                                  atol=tolerances[configKey],
                                  plotOnFailure=True)
