@@ -42,7 +42,7 @@ DATA_DIR = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "tests", "data")
 
 def computeMoments(image):
     """Helper function to compute moments of a postage stamp about its origin."""
-    maskedImage = lsst.afw.image.makeMaskedImage(image)
+    maskedImage = lsst.afw.image.MaskedImageD(image)
     result = lsst.meas.base.SdssShapeAlgorithm.Result()
     lsst.meas.base.SdssShapeAlgorithm.apply(
         maskedImage,
@@ -247,15 +247,14 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
     def testApply(self):
         tolerances = {"full": 3E-4, "ellipse": 8E-3, "fixed": 1E-2}
         for filename in glob.glob(os.path.join(DATA_DIR, "psfs", "*.fits")):
-            kernelImageD = lsst.afw.image.ImageD(filename)
-            kernelImageF = kernelImageD.convertF()
-            shape = computeMoments(kernelImageF)
+            kernelImage = lsst.afw.image.ImageD(filename)
+            shape = computeMoments(kernelImage)
             for configKey in ["full", "ellipse", "fixed"]:
                 fitter = lsst.meas.multifit.PsfFitter(self.configs[configKey].makeControl())
-                multiShapeletFit = fitter.apply(kernelImageF, 0.01, shape)
-                modelImageD = lsst.afw.image.ImageD(kernelImageD.getBBox(lsst.afw.image.PARENT))
-                multiShapeletFit.evaluate().addToImage(modelImageD)
-                self.assertClose(kernelImageD.getArray(), modelImageD.getArray(),
+                multiShapeletFit = fitter.apply(kernelImage, 0.01, shape)
+                modelImage = lsst.afw.image.ImageD(kernelImage.getBBox(lsst.afw.image.PARENT))
+                multiShapeletFit.evaluate().addToImage(modelImage)
+                self.assertClose(kernelImage.getArray(), modelImage.getArray(),
                                  atol=tolerances[configKey],
                                  plotOnFailure=True)
 
