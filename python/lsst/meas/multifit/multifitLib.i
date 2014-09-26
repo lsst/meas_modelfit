@@ -114,6 +114,7 @@ Pixel = numpy.float32
 
 %shared_ptr(lsst::meas::multifit::Prior);
 %shared_ptr(lsst::meas::multifit::MixturePrior);
+%shared_ptr(lsst::meas::multifit::SoftenedLinearPrior);
 
 %shared_ptr(lsst::meas::multifit::ModelFitTable);
 %shared_ptr(lsst::meas::multifit::ModelFitRecord);
@@ -179,10 +180,14 @@ Pixel = numpy.float32
 
 //----------- Miscellaneous ---------------------------------------------------------------------------------
 
+%copyctor lsst::meas::multifit::SoftenedLinearPriorControl;
+%returnCopy(lsst::meas::multifit::SoftenedLinearPrior::getControl)
+
 %include "lsst/meas/multifit/Model.h"
 %include "lsst/meas/multifit/MultiModel.h"
 %include "lsst/meas/multifit/Prior.h"
 %include "lsst/meas/multifit/MixturePrior.h"
+%include "lsst/meas/multifit/SoftenedLinearPrior.h"
 %include "lsst/meas/multifit/Interpreter.h"
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/UnitSystem.h"
@@ -198,6 +203,15 @@ Pixel = numpy.float32
     %template(UnitSystem) UnitSystem<double>;
 }
 
+%pythoncode %{
+import lsst.pex.config
+SoftenedLinearPriorConfig = lsst.pex.config.makeConfigClass(SoftenedLinearPriorControl)
+
+SoftenedLinearPrior.Control = SoftenedLinearPriorControl
+SoftenedLinearPrior.ConfigClass = SoftenedLinearPriorConfig
+%}
+
+%castShared(lsst::meas::multifit::SoftenedLinearPrior, lsst::meas::multifit::Prior)
 %castShared(lsst::meas::multifit::MixturePrior, lsst::meas::multifit::Prior)
 %castShared(lsst::meas::multifit::MultiModel, lsst::meas::multifit::Model)
 %castShared(lsst::meas::multifit::SamplingInterpreter, lsst::meas::multifit::Interpreter)
