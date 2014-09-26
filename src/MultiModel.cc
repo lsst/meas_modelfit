@@ -48,10 +48,10 @@ static Model::NameVector concatenateNameVectors(
         "Number of model components (%d) does not match number of prefixes (%d)"
     );
     Model::NameVector r;
-    for (ModelVector::const_iterator i = components.begin(); i != components.end(); ++i) {
-        Model::NameVector const & componentNames = ((**i).*getter)();
-        for (std::size_t j = 0, n = componentNames.size(); j < n; ++j) {
-            r.push_back(prefixes[j] + componentNames[j]);
+    for (std::size_t i = 0, ni = components.size(); i < ni; ++i) {
+        Model::NameVector const & componentNames = ((*components[i]).*getter)();
+        for (std::size_t j = 0, nj = componentNames.size(); j < nj; ++j) {
+            r.push_back(prefixes[i] + componentNames[j]);
         }
     }
     return r;
