@@ -37,6 +37,7 @@
 #include "lsst/meas/multifit/Interpreter.h"
 #include "lsst/meas/multifit/Prior.h"
 #include "lsst/meas/multifit/MixturePrior.h"
+#include "lsst/meas/multifit/SoftenedLinearPrior.h"
 #include "lsst/meas/multifit/integrals.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/MultiModel.h"
