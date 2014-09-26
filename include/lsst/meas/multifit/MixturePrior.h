@@ -32,10 +32,7 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief A prior that's flat in amplitude parameters, and uses a Mixture for nonlinear parameters.
  */
-class MixturePrior :
-    public afw::table::io::PersistableFacade<MixturePrior>,
-    public Prior
-{
+class MixturePrior : public Prior {
 public:
 
     explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
@@ -89,14 +86,6 @@ public:
     static MixtureUpdateRestriction const & getUpdateRestriction();
 
     PTR(Mixture const) getMixture() const { return _mixture; }
-
-    virtual bool isPersistable() const { return true; }
-
-protected:
-
-    virtual std::string getPersistenceName() const;
-
-    virtual void write(OutputArchiveHandle & handle) const;
 
 private:
     PTR(Mixture const) _mixture;
