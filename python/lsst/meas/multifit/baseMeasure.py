@@ -26,7 +26,6 @@ import lsst.pipe.base
 import lsst.afw.image
 import lsst.afw.geom
 import lsst.afw.table
-import lsst.meas.extensions.multiShapelet
 
 from . import multifitLib
 from .models import modelRegistry
@@ -59,7 +58,7 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         doc="Show progress log message every [progressChunk] objects"
     )
     psf = lsst.pex.config.ConfigField(
-        dtype=lsst.meas.extensions.multiShapelet.FitPsfConfig,
+        dtype=multifitLib.PsfFitterConfig,
         doc="Config options for approximating the PSF using shapelets"
     )
     prepOnly = lsst.pex.config.Field(

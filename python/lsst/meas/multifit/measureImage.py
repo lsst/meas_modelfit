@@ -26,7 +26,6 @@ import numpy
 import lsst.pex.config
 import lsst.pipe.base
 import lsst.afw.table
-from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 from . import multifitLib
 from .baseMeasure import BaseMeasureConfig, BaseMeasureTask
@@ -159,9 +158,11 @@ class MeasureImageTask(BaseMeasureTask):
         The MeasureImage implementation creates a UnitTransformedLikelihood with data from a single
         exposure.
         """
-        psfModel = FitPsfAlgorithm.apply(self.config.psf.makeControl(), inputs.exposure.getPsf(),
-                                         record.get(self.keys["center"]))
-        psf = psfModel.asMultiShapelet()
+        psfFitter = multifitLib.PsfFitter(self.config.psf.makeControl())
+        center = record.get(self.keys["center"])
+        psfImage = inputs.exposure.getPsf().computeImage(center).convertF()
+        psfMoments = inputs.exposure.getPsf().computeShape(center)
+        psf = psfFitter.apply(psfImage, psfMoments)
         return multifitLib.UnitTransformedLikelihood(
             self.model, record[self.keys["fixed"]],
             self.getUnitSystem(record),
