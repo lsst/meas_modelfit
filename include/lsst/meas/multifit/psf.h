@@ -28,6 +28,7 @@
 
 #include "lsst/pex/config.h"
 
+#include "lsst/shapelet/FunctorKeys.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/Prior.h"
 #include "lsst/meas/multifit/Likelihood.h"
@@ -145,6 +146,19 @@ public:
 
     /// Initialize the fitter class with the given control object.
     PsfFitter(PsfFitterControl const & ctrl);
+
+    /**
+     *  Add fields to a Schema that can be used to store the MultiShapeletFunction returned by apply().
+     *
+     *  @param[in,out]   schema    Schema to add fields to.
+     *  @param[in]       prefix    Field name prefix for all fields.
+     *  @return a FunctorKey that can get/set MultiShapeletFunctions that match the configuration of this
+     *          fitter on a record.
+     */
+    shapelet::MultiShapeletFunctionKey addFields(
+        afw::table::Schema & schema,
+        std::string const & prefix
+    ) const;
 
     /**
      *  Return the Model object that corresponds to the configuration.
