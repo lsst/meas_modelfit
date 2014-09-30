@@ -37,7 +37,6 @@ import lsst.afw.detection
 import lsst.meas.multifit
 import lsst.meas.multifit.display
 import lsst.afw.display.ds9
-from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 numpy.random.seed(500)
 

@@ -32,7 +32,6 @@ import mpl_toolkits.mplot3d
 import lsst.pipe.base
 import lsst.pex.config
 import lsst.daf.persistence
-import lsst.meas.extensions.multiShapelet
 import lsst.afw.image
 import lsst.afw.geom.ellipses
 import lsst.afw.display.ds9
