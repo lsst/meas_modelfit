@@ -39,12 +39,10 @@
         return boost::make_shared<lsst::afw::geom::ellipses::Quadrupole>($self->ellipse);
     }
 
-}
-
 %pythoncode %{
 
 def displayHistory(self, *kwds):
-    """Return a display.xOptimizerDisplay object that shows the track of the optimizer
+    """Return a display.OptimizerDisplay object that shows the track of the optimizer
     in this fit.  Additional keyword arguments are forwarded to the OptimizerDisplay
     constructor.
     """
@@ -52,6 +50,7 @@ def displayHistory(self, *kwds):
     return OptimizerDisplay(self.history, self.model, self.objfunc, *kwds)
 
 %}
+
 }
 
 %pythoncode %{
@@ -63,12 +62,6 @@ CModelStageConfig = lsst.pex.config.makeConfigClass(CModelStageControl)
 CModelRegionConfig = lsst.pex.config.makeConfigClass(CModelRegionControl)
 
 CModelDiagnosticsConfig = lsst.pex.config.makeConfigClass(CModelDiagnosticsControl)
-
-lsst.meas.algorithms.AlgorithmRegistry.register("cmodel", CModelControl)
-
-for fieldName in ("cmodel.exp.flux", "cmodel.dev.flux", "cmodel.flux"):
-    lsst.meas.algorithms.getApCorrRegistry().insert(fieldName)
-del fieldName
 
 CModelAlgorithm.Result = CModelResult
 

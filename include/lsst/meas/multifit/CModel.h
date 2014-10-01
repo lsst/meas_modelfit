@@ -28,11 +28,12 @@
 
 #include "lsst/pex/config.h"
 #include "lsst/afw/table/Source.h"
-#include "lsst/meas/algorithms/Algorithm.h"
 #include "lsst/shapelet/RadialProfile.h"
-#include "lsst/meas/multifit/models.h"
-#include "lsst/meas/multifit/priors.h"
-#include "lsst/meas/multifit/ProjectedLikelihood.h"
+#include "lsst/meas/multifit/Model.h"
+#include "lsst/meas/multifit/Prior.h"
+#include "lsst/meas/multifit/MixturePrior.h"
+#include "lsst/meas/multifit/SoftenedLinearPrior.h"
+#include "lsst/meas/multifit/UnitTransformedLikelihood.h"
 #include "lsst/meas/multifit/optimizer.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -95,7 +96,7 @@ struct CModelStageControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        likelihood, lsst.meas.multifit.multifitLib, ProjectedLikelihoodControl,
+        likelihood, lsst.meas.multifit.multifitLib, UnitTransformedLikelihoodControl,
         "Configuration for how the compound model is evaluated and residuals are weighted in this "
         "stage of the fit"
     );
@@ -180,11 +181,11 @@ struct CModelDiagnosticsControl {
 
 };
 
-struct CModelControl : public algorithms::AlgorithmControl {
+struct CModelControl {
 
     CModelControl() :
-        algorithms::AlgorithmControl("cmodel", 2.5),
-        psfName("multishapelet.psf"), minInitialRadius(0.1)
+        psfName("DoubleGaussian"),
+        minInitialRadius(0.1)
     {
         initial.nComponents = 3; // use very rough model in initial fit
         initial.optimizer.gradientThreshold = 1E-2; // with coarse convergence criteria
@@ -192,18 +193,12 @@ struct CModelControl : public algorithms::AlgorithmControl {
         dev.profileName = "luv";
     }
 
-    PTR(CModelControl) clone() const {
-        return boost::static_pointer_cast<CModelControl>(_clone());
-    }
-
-    PTR(CModelAlgorithm) makeAlgorithm(
-        afw::table::Schema & schema,
-        PTR(daf::base::PropertyList) const & metadata = PTR(daf::base::PropertyList)(),
-        algorithms::AlgorithmMap const & others = algorithms::AlgorithmMap(),
-        bool isForced = false
-    ) const;
-
-    LSST_CONTROL_FIELD(psfName, std::string, "Root name of the FitPsfAlgorithm fields.");
+    LSST_CONTROL_FIELD(
+        psfName,
+        std::string,
+        "Name of the ShapeletPsfApprox model (one of the keys in the ShapeletPsfApproxConfig.model dict) "
+        "used to convolve the galaxy model."
+    );
 
     LSST_NESTED_CONTROL_FIELD(
         region, lsst.meas.multifit.multifitLib, CModelRegionControl,
@@ -232,7 +227,7 @@ struct CModelControl : public algorithms::AlgorithmControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        likelihood, lsst.meas.multifit.multifitLib, ProjectedLikelihoodControl,
+        likelihood, lsst.meas.multifit.multifitLib, UnitTransformedLikelihoodControl,
         "configuration for how the compound model is evaluated and residuals are weighted in the exp+dev "
         "linear combination fit"
     );
@@ -242,14 +237,6 @@ struct CModelControl : public algorithms::AlgorithmControl {
         "Minimum initial radius in pixels (used to regularize initial moments-based PSF deconvolution)"
     );
 
-private:
-    virtual PTR(algorithms::AlgorithmControl) _clone() const;
-    virtual PTR(algorithms::Algorithm) _makeAlgorithm(
-        afw::table::Schema & schema,
-        PTR(daf::base::PropertyList) const & metadata,
-        algorithms::AlgorithmMap const & others,
-        bool isForced
-    ) const;
 };
 
 struct CModelStageResult {
@@ -321,24 +308,27 @@ struct CModelResult {
 #endif
 };
 
-class CModelAlgorithm : public algorithms::Algorithm {
+class CModelAlgorithm {
 public:
 
     typedef CModelControl Control;
     typedef CModelResult Result;
 
     CModelAlgorithm(
+        std::string const & name,
         Control const & ctrl,
-        afw::table::Schema & schema,
-        algorithms::AlgorithmMap const & others,
-        bool isForced
+        afw::table::Schema & schema
+    );
+
+    CModelAlgorithm(
+        std::string const & name,
+        Control const & ctrl,
+        afw::table::SchemaMapper & schemaMapper
     );
 
     explicit CModelAlgorithm(Control const & ctrl);
 
-    Control const & getControl() const {
-        return static_cast<Control const &>(algorithms::Algorithm::getControl());
-    }
+    Control const & getControl() const { return _ctrl; }
 
     /**
      *  @brief Determine the initial fit region for a CModelAlgorithm fit
@@ -417,7 +407,7 @@ private:
         Scalar approxFlux=-1
     ) const {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "double-precision image measurement not implemented for CModelAlgorithm"
         );
     }
@@ -445,7 +435,7 @@ private:
         Scalar approxFlux=-1
     ) const {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "double-precision image measurement not implemented for CModelAlgorithm"
         );
     }
@@ -472,23 +462,11 @@ private:
         afw::geom::AffineTransform const & refToMeas
     ) const;
 
-    LSST_MEAS_ALGORITHM_PRIVATE_INTERFACE(CModelAlgorithm);
-
     class Impl;
 
+    Control _ctrl;
     PTR(Impl) _impl;
 };
-
-inline PTR(CModelAlgorithm) CModelControl::makeAlgorithm(
-    afw::table::Schema & schema,
-    PTR(daf::base::PropertyList) const & metadata,
-    algorithms::AlgorithmMap const & others,
-    bool isForced
-) const {
-    return boost::static_pointer_cast<CModelAlgorithm>(
-        _makeAlgorithm(schema, metadata, others, isForced)
-    );
-}
 
 }}} // namespace lsst::meas::multifit
 
