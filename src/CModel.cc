@@ -29,9 +29,11 @@
 
 #include "lsst/afw/detection/FootprintSet.h"
 #include "lsst/afw/detection/FootprintArray.cc"
+#include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/math/LeastSquares.h"
-#include "lsst/meas/extensions/multiShapelet/FitPsf.h"
+#include "lsst/shapelet/FunctorKeys.h"
 #include "lsst/meas/multifit/TruncatedGaussian.h"
+#include "lsst/meas/multifit/MultiModel.h"
 #include "lsst/meas/multifit/CModel.h"
 
 namespace lsst { namespace meas { namespace multifit {
@@ -60,7 +62,7 @@ PTR(afw::detection::Footprint) _mergeFootprints(
     );
     if (fpSet.getFootprints()->size() > 1u) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             (boost::format("Footprints to be merged do not overlap: %s vs. %s")
              % a.getBBox() % b.getBBox()).str()
         );
@@ -90,7 +92,7 @@ PTR(Prior) CModelStageControl::getPrior() const {
         char const * pkgDir = std::getenv("MEAS_MULTIFIT_DIR");
         if (!pkgDir) {
             throw LSST_EXCEPT(
-                pex::exceptions::IoErrorException,
+                pex::exceptions::IoError,
                 "MEAS_MULTIFIT_DIR environment variable not defined; cannot find persisted Priors"
             );
         }
@@ -104,23 +106,10 @@ PTR(Prior) CModelStageControl::getPrior() const {
         return boost::make_shared<SoftenedLinearPrior>(priorConfig);
     } else {
         throw LSST_EXCEPT(
-            pex::exceptions::InvalidParameterException,
+            pex::exceptions::InvalidParameterError,
             "priorSource must be one of 'NONE', 'FILE', or 'CONFIG'"
         );
     }
-}
-
-PTR(algorithms::AlgorithmControl) CModelControl::_clone() const {
-    return boost::make_shared<CModelControl>(*this);
-}
-
-PTR(algorithms::Algorithm) CModelControl::_makeAlgorithm(
-    afw::table::Schema & schema,
-    PTR(daf::base::PropertyList) const & metadata,
-    algorithms::AlgorithmMap const & others,
-    bool isForced
-) const {
-    return boost::make_shared<CModelAlgorithm>(*this, boost::ref(schema), others, isForced);
 }
 
 // ------------------- Result Objects -----------------------------------------------------------------------
@@ -214,12 +203,12 @@ struct CModelStageKeys {
         flags[CModelStageResult::FAILED] = flux.flag; // these flags refer to the same underlying field
         LSST_THROW_IF_NE(
             model.getNonlinearDim(), nonlinear.getSize(),
-            pex::exceptions::LengthErrorException,
+            pex::exceptions::LengthError,
             "Configured model nonlinear dimension (%d) does not match reference schema (%d)"
         );
         LSST_THROW_IF_NE(
             model.getFixedDim(), fixed.getSize(),
-            pex::exceptions::LengthErrorException,
+            pex::exceptions::LengthError,
             "Configured model fixed dimension (%d) does not match reference schema (%d)"
         );
     }
@@ -285,6 +274,7 @@ struct CModelKeys {
         initial(initialModel, schema, prefix + ".initial", "initial", isForced, ctrl.initial),
         exp(expModel, schema, prefix + ".exp", "exponential", isForced, ctrl.exp),
         dev(devModel, schema, prefix + ".dev", "de Vaucouleur", isForced, ctrl.dev),
+        psf(schema["multifit"]["ShapeletPsfApprox"][ctrl.psfName]),
         center(schema.addField<afw::table::Point<Scalar> >(
                    // The fact that the center passed to all the algorithms isn't saved by the measurement
                    // framework is a bug that will be addressed in the next version of the framework.
@@ -362,6 +352,7 @@ struct CModelKeys {
     CModelStageKeys initial;
     CModelStageKeys exp;
     CModelStageKeys dev;
+    shapelet::MultiShapeletFunctionKey psf;
     afw::table::Key<afw::table::Point<Scalar> > center;
     afw::table::KeyTuple<afw::table::Flux> flux;
     afw::table::Key<Scalar> fracDev;
@@ -494,7 +485,7 @@ public:
         if (ctrl.doRecordTime) {
             startTime = daf::base::DateTime::now().nsecs();
         }
-        PTR(ProjectedLikelihood) likelihood = boost::make_shared<ProjectedLikelihood>(
+        PTR(UnitTransformedLikelihood) likelihood = boost::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
             exposure, footprint, data.psf, ctrl.likelihood
         );
@@ -512,9 +503,9 @@ public:
             result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
         } catch (std::underflow_error &) {
             result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-        } catch (pex::exceptions::UnderflowErrorException &) {
+        } catch (pex::exceptions::UnderflowError &) {
             result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-        } catch (pex::exceptions::OverflowErrorException &) {
+        } catch (pex::exceptions::OverflowError &) {
             result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
         }
 
@@ -557,7 +548,7 @@ public:
         CModelStageControl const & ctrl, CModelStageResult & result, CModelStageData const & data,
         afw::image::Exposure<Pixel> const & exposure, afw::detection::Footprint const & footprint
     ) const {
-        ProjectedLikelihood likelihood(
+        UnitTransformedLikelihood likelihood(
             model, data.fixed, data.fitSys, *data.position,
             exposure, footprint, data.psf, ctrl.likelihood
         );
@@ -618,7 +609,6 @@ public:
     PTR(Model) model;
     PTR(CModelKeys) keys;
     PTR(CModelKeys) refKeys;
-    PTR(extensions::multiShapelet::FitPsfControl const) fitPsfCtrl;
     afw::image::MaskPixel badPixelMask;
     std::set<boost::int64_t> diagnosticIds;
 
@@ -643,7 +633,7 @@ public:
         fixed[ndarray::view(0, exp.model->getFixedDim())] = expData.fixed;
         fixed[ndarray::view(exp.model->getFixedDim(), model->getFixedDim())] = devData.fixed;
 
-        ProjectedLikelihood likelihood(
+        UnitTransformedLikelihood likelihood(
             model, fixed, expData.fitSys, *expData.position,
             exposure, footprint, expData.psf, ctrl.likelihood
         );
@@ -731,7 +721,7 @@ public:
             initial.model->readEllipses(initial.ellipses.begin(), data.nonlinear.begin(), data.fixed.begin());
             if (initial.prior->evaluate(data.nonlinear, data.amplitudes) == 0.0) {
                 throw LSST_EXCEPT(
-                    pex::exceptions::LogicErrorException,
+                    pex::exceptions::LogicError,
                     "minInitialRadius is incompatible with prior"
                 );
             }
@@ -782,32 +772,35 @@ public:
 // ------------------- CModelAlgorithm itself ---------------------------------------------------------------
 
 CModelAlgorithm::CModelAlgorithm(
+    std::string const & name,
     Control const & ctrl,
-    afw::table::Schema & schema,
-    algorithms::AlgorithmMap const & others,
-    bool isForced
-) : algorithms::Algorithm(ctrl), _impl(new Impl(ctrl))
+    afw::table::Schema & schema
+) : _ctrl(ctrl), _impl(new Impl(ctrl))
 {
     _impl->keys = boost::make_shared<CModelKeys>(
         *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
-        boost::ref(schema), ctrl.name, isForced, ctrl
+        boost::ref(schema), name, false, ctrl
     );
-    // Ideally we'd like to initalize refKeys here too when isForced==true, but we aren't passed the
-    // refSchema here, so instead we'll construct that on first use.  This will be fixed in the next
-    // version of the measurement framework that's in progress on the LSST side.
+}
 
-    algorithms::AlgorithmMap::const_iterator i = others.find(ctrl.psfName);
-    if (i != others.end()) {
-        // Not finding the PSF is now a non-fatal error at this point, because in Jose's use case, we
-        // don't need it here.  We'll throw later if it's missing.
-        _impl->fitPsfCtrl = boost::dynamic_pointer_cast<extensions::multiShapelet::FitPsfControl const>(
-            i->second->getControl().clone()
-        );
-    }
+CModelAlgorithm::CModelAlgorithm(
+    std::string const & name,
+    Control const & ctrl,
+    afw::table::SchemaMapper & schemaMapper
+) : _ctrl(ctrl), _impl(new Impl(ctrl))
+{
+    _impl->keys = boost::make_shared<CModelKeys>(
+        *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
+        boost::ref(schemaMapper.editOutputSchema()), name, true, ctrl
+    );
+    _impl->refKeys = boost::make_shared<CModelKeys>(
+        *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
+        schemaMapper.getInputSchema(), name
+    );
 }
 
 CModelAlgorithm::CModelAlgorithm(Control const & ctrl) :
-    algorithms::Algorithm(ctrl), _impl(new Impl(ctrl))
+    _ctrl(ctrl), _impl(new Impl(ctrl))
 {}
 
 PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
@@ -818,7 +811,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     PTR(afw::detection::Footprint) region;
     if (footprint.getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Maximum area exceeded by original footprint"
         );
     }
@@ -829,7 +822,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     );
     if (region->getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Maximum area exceeded by grown footprint"
         );
     }
@@ -854,7 +847,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     PTR(afw::detection::Footprint) region;
     if (footprint.getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Maximum area exceeded by original footprint"
         );
     }
@@ -867,7 +860,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     fullEllipse.getCore().scale(getControl().region.nInitialRadii);
     if (fullEllipse.getCore().getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Maximum area exceeded by ellipse component of region"
         );
     }
@@ -921,7 +914,7 @@ void CModelAlgorithm::_applyImpl(
             footprint,
             psfBBox
         );
-    } catch (pex::exceptions::RuntimeErrorException) {
+    } catch (pex::exceptions::RuntimeError) {
         result.setFlag(CModelResult::MAX_AREA, true);
         return;
     }
@@ -965,7 +958,7 @@ void CModelAlgorithm::_applyImpl(
             psfBBox,
             _impl->initial.ellipses.front()
         );
-    } catch (pex::exceptions::RuntimeErrorException) {
+    } catch (pex::exceptions::RuntimeError) {
         result.setFlag(CModelResult::MAX_AREA, true);
         return;
     }
@@ -1014,7 +1007,7 @@ void CModelAlgorithm::writeResultToRecord(
 ) const {
     if (!_impl->keys) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "Algorithm was not initialized with a schema; cannot copy to record"
         );
     }
@@ -1063,7 +1056,7 @@ void CModelAlgorithm::_applyForcedImpl(
             psfBBox,
             _impl->initial.ellipses.front()
         );
-    } catch (pex::exceptions::RuntimeErrorException &) {
+    } catch (pex::exceptions::RuntimeError &) {
         result.setFlag(CModelResult::MAX_AREA, true);
         return;
     }
@@ -1118,47 +1111,32 @@ shapelet::MultiShapeletFunction CModelAlgorithm::_processInputs(
     source.set(_impl->keys->dev.flags[CModelStageResult::FAILED], true);
     if (!_impl->keys) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
+            pex::exceptions::LogicError,
             "Algorithm was not initialized with a schema; cannot run in plugin mode"
         );
     }
     if (!exposure.getWcs()) {
         source.set(_impl->keys->flags[Result::NO_WCS], true);
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Exposure has no Wcs"
         );
     }
     if (!exposure.getCalib() || exposure.getCalib()->getFluxMag0().first == 0.0) {
         source.set(_impl->keys->flags[Result::NO_CALIB], true);
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Exposure has no valid Calib"
         );
     }
     if (!exposure.getPsf()) {
         source.set(_impl->keys->flags[Result::NO_PSF], true);
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Exposure has no Psf"
         );
     }
-    if (!_impl->fitPsfCtrl) {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicErrorException,
-            "Schema passed to constructor did not have FitPsf fields; "
-            "a MultiShapeletFunction PSF must be passed to apply()."
-        );
-    }
-    extensions::multiShapelet::FitPsfModel psfModel(*_impl->fitPsfCtrl, source);
-    if (psfModel.hasFailed() || !(psfModel.ellipse.getArea() > 0.0)) {
-        source.set(_impl->keys->flags[Result::NO_PSF], true);
-        throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
-            "Multishapelet PSF approximation failed or was not run"
-        );
-    }
-    return psfModel.asMultiShapelet();
+    return source.get(_impl->keys->psf);
 }
 
 template <typename PixelT>
@@ -1176,7 +1154,7 @@ void CModelAlgorithm::_apply(
         (source.getTable()->getShapeFlagKey().isValid() && source.getShapeFlag())) {
         source.set(_impl->keys->flags[Result::NO_SHAPE], true);
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeErrorException,
+            pex::exceptions::RuntimeError,
             "Shape slot algorithm failed or was not run"
         );
     }
@@ -1214,14 +1192,6 @@ void CModelAlgorithm::_applyForced(
     source.set(_impl->keys->center, center);
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
     shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
-    if (!_impl->refKeys) { // ideally we'd do this in the ctor, but we can't so we do it on first use
-        _impl->refKeys.reset(
-            new CModelKeys(
-                *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
-                reference.getSchema(), getControl().name
-            )
-        );
-    }
     // If PsfFlux has been run, use that for approx flux; otherwise we'll compute it ourselves.
     Scalar approxFlux = -1.0;
     if (source.getTable()->getPsfFluxKey().isValid() && !source.getPsfFluxFlag()) {
@@ -1236,7 +1206,5 @@ void CModelAlgorithm::_applyForced(
     }
     _impl->keys->copyResultToRecord(result, source);
 }
-
-LSST_MEAS_ALGORITHM_PRIVATE_IMPLEMENTATION(CModelAlgorithm);
 
 }}} // namespace lsst::meas::multifit
