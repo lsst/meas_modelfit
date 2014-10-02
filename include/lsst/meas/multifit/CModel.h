@@ -27,6 +27,7 @@
 #include "ndarray.h"
 
 #include "lsst/pex/config.h"
+#include "lsst/meas/base/exceptions.h"
 #include "lsst/afw/table/Source.h"
 #include "lsst/shapelet/RadialProfile.h"
 #include "lsst/meas/multifit/Model.h"
@@ -412,14 +413,11 @@ struct CModelResult {
     enum FlagBit {
         FAILED=0,                ///< General failure flag for the linear fit flux; set if any other
                                  ///  CModel flag is set, or if any of the three previous stages failed.
-        MAX_AREA, ///< Set if we aborted early because the fit region was too large.
+        MAX_AREA,                ///< Set if we aborted early because the fit region was too large.
         MAX_BAD_PIXEL_FRACTION,  ///< Set if we aborted early because the fit region had too many bad pixels.
-        NO_SHAPE,                ///< Set if we aborted early because the input SourceRecord had no valid
-                                 ///  shape slot with which to start the fit.
-        NO_PSF,                  ///< Set if the Exposure has no Psf or if something went wrong approximating
-                                 ///  the Psf model image with shapelets.
-        NO_WCS,                  ///< Set if the Exposure has no Wcs
-        NO_CALIB,                ///< Set if the Exposure has no Calib
+        NO_SHAPE,                ///< Set if the input SourceRecord had no valid shape slot with which to
+                                 ///  start the fit.
+        NO_SHAPELET_PSF,         ///< Set if the Psf shapelet approximation failed.
         N_FLAGS                  ///< Non-flag counter to indicate the number of flags
     };
 
@@ -520,8 +518,8 @@ public:
      *  This routine grows the given footprint by nGrowFootprint, then clips on the bounding box
      *  of the given mask and removes pixels indicated as bad by badMaskPlanes.
      *
-     *  If more than maxBadPixelFraction pixels are clipped, the returned pointer is null.  If the
-     *  area of the region is more than maxArea, throws pex::exceptions::RuntimeError.
+     *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
+     *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
      */
     PTR(afw::detection::Footprint) determineInitialFitRegion(
         afw::image::Mask<> const & mask,
@@ -536,8 +534,8 @@ public:
      *  the given ellipse scaled by nInitialRadii.  It then clips on the bounding box of the
      *  given mask and removes pixels indicated as bad by badMaskPlanes.
      *
-     *  If more than maxBadPixelFraction pixels are clipped, the returned pointer is null.  If the
-     *  area of the region is more than maxArea, throws pex::exceptions::RuntimeError.
+     *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
+     *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
      */
     PTR(afw::detection::Footprint) determineFinalFitRegion(
         afw::image::Mask<> const & mask,
@@ -549,7 +547,7 @@ public:
     /**
      *  Run the CModel algorithm on an image, supplying inputs directly and returning outputs in a Result.
      *
-     *  @param[in]   exposure     Image to measure.  Must have a valid Wcs and Calib.
+     *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and Calib.
      *  @param[in]   footprint    Detection footprint of the object to be measured, used as a starting point
      *                            for the region of pixels to be fit.
      *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
@@ -573,7 +571,7 @@ public:
      *  Run the CModel algorithm in forced mode on an image, supplying inputs directly and returning
      *  outputs in a Result.
      *
-     *  @param[in]   exposure     Image to measure.  Must have a valid Wcs and Calib.
+     *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and Calib.
      *  @param[in]   footprint    Detection footprint of the object to be measured, used as a starting point
      *                            for the region of pixels to be fit.
      *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
@@ -592,6 +590,57 @@ public:
         Scalar approxFlux=-1
     ) const;
 
+    /**
+     *  Run the CModel algorithm on an image, using a SourceRecord for inputs and outputs.
+     *
+     *  @param[in,out] measRecord  A SourceRecord instance used to provide a Footprint, the centroid and
+     *                             shape of the source, a MultiShapeletFunction PSF, and an approximate
+     *                             estimate of the (via the PsfFlux slot), and to which all outputs will
+     *                             be written.
+     *  @param[in]     exposure    Image to be measured.  Must have a valid Psf, Wcs, and Calib.
+     *
+     *  To run this method, the CModelAlgorithm instance must have been created using the constructor
+     *  that takes a Schema argument, and that Schema must match the Schema of the SourceRecord passed here.
+     */
+     void measure(
+        afw::table::SourceRecord & measRecord,
+        afw::image::Exposure<Pixel> const & exposure
+    ) const;
+
+    /**
+     *  Run the CModel algorithm in forced mode on an image, using a SourceRecord for inputs and outputs.
+     *
+     *  @param[in,out] measRecord  A SourceRecord instance used to provide a Footprint, the centroid of
+     *                             the source, a MultiShapeletFunction PSF, and an approximate
+     *                             estimate of the (via the PsfFlux slot), and to which all outputs will
+     *                             be written.
+     *  @param[in]     exposure    Image to be measured.  Must have a valid Psf, Wcs, and Calib.
+     *  @param[in]     refRecord   A SourceRecord that contains the outputs of a previous non-forced run
+     *                             of CModelAlgorithm (which may have taken place on an image with a
+     *                             different Wcs).
+     *
+     *  To run this method, the CModelAlgorithm instance must have been created using the constructor
+     *  that takes a Schema argument, and that Schema must match the Schema of the SourceRecord passed here.
+     */
+    void measure(
+        afw::table::SourceRecord & measRecord,
+        afw::image::Exposure<Pixel> const & exposure,
+        afw::table::SourceRecord const & refRecord
+    ) const;
+
+    /**
+     *  Handle an exception thrown by one of the measure() methods, setting the appropriate flag in
+     *  the given record.
+     *
+     *  @param[out]   measRecord   Record on which the flag should be set.
+     *  @param[in]    error        Error containing the bit to be set.  If null, only the general
+     *                             failure bit will be set.
+     */
+    void fail(
+        afw::table::SourceRecord & measRecord,
+        meas::base::MeasurementError * error
+    ) const;
+
     /// Copy values from a Result struct to a BaseRecord object.
     void writeResultToRecord(Result const & result, afw::table::BaseRecord & record) const;
 
@@ -599,8 +648,8 @@ private:
 
     friend class CModelAlgorithmControl;
 
-    // Actual implementations go here, so we can get partial results to the plugin
-    // version when we throw.
+    // Actual implementations go here; we use an output argument for the result so we can get partial
+    // results to the plugin version when we throw.
     void _applyImpl(
         Result & result,
         afw::image::Exposure<Pixel> const & exposure,
@@ -611,24 +660,8 @@ private:
         Scalar approxFlux
     ) const;
 
-    // this method just throws an exception; it's present to resolve dispatches from _apply()
-    void _applyImpl(
-        Result & result,
-        afw::image::Exposure<double> const & exposure,
-        afw::detection::Footprint const & footprint,
-        shapelet::MultiShapeletFunction const & psf,
-        afw::geom::Point2D const & center,
-        afw::geom::ellipses::Quadrupole const & moments,
-        Scalar approxFlux=-1
-    ) const {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicError,
-            "double-precision image measurement not implemented for CModelAlgorithm"
-        );
-    }
-
-    // Actual implementations go here, so we can get partial results to the plugin
-    // version when we throw.
+    // Actual implementations go here; we use an output argument for the result so we can get partial
+    // results to the SourceRecord version when we throw.
     void _applyForcedImpl(
         Result & result,
         afw::image::Exposure<Pixel> const & exposure,
@@ -639,42 +672,11 @@ private:
         Scalar approxFlux
     ) const;
 
-    // this method just throws an exception; it's present to resolve dispatches from _applyForced()
-    void _applyForcedImpl(
-        Result & result,
-        afw::image::Exposure<double> const & exposure,
-        afw::detection::Footprint const & footprint,
-        shapelet::MultiShapeletFunction const & psf,
-        afw::geom::Point2D const & center,
-        Result const & reference,
-        Scalar approxFlux=-1
-    ) const {
-        throw LSST_EXCEPT(
-            pex::exceptions::LogicError,
-            "double-precision image measurement not implemented for CModelAlgorithm"
-        );
-    }
-
+    // gets/checks inputs from SourceRecord that are needed by both apply and applyForced
     template <typename PixelT>
     shapelet::MultiShapeletFunction _processInputs(
         afw::table::SourceRecord & source,
         afw::image::Exposure<PixelT> const & exposure
-    ) const;
-
-    template <typename PixelT>
-    void _apply(
-        afw::table::SourceRecord & source,
-        afw::image::Exposure<PixelT> const & exposure,
-        afw::geom::Point2D const & center
-    ) const;
-
-    template <typename PixelT>
-    void _applyForced(
-        afw::table::SourceRecord & source,
-        afw::image::Exposure<PixelT> const & exposure,
-        afw::geom::Point2D const & center,
-        afw::table::SourceRecord const & reference,
-        afw::geom::AffineTransform const & refToMeas
     ) const;
 
     class Impl;
