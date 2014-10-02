@@ -139,6 +139,7 @@ CModelResult::CModelResult() :
 
 namespace {
 
+// Keys for a single stage (one of 'initial', 'exp', 'dev'
 struct CModelStageKeys {
 
     // this constructor is used to allocate output fields in both forced and non-forced mode
@@ -299,6 +300,7 @@ struct CModelStageKeys {
     afw::table::Key<int> nIter;
 };
 
+// Master Keys object for CModel; holds keys that aren't specific to one nonlinear stage
 struct CModelKeys {
 
     // this constructor is used to allocate output fields in both forced and non-forced mode
@@ -425,19 +427,23 @@ struct CModelKeys {
 
 // ------------------- CModelStageData: per-object data we pass around together a lot -----------------------
 
+// Of all the objects related to CModel, CModelStageData is the only that's created per-source (i.e. in the
+// apply() methods.  It holds a bunch of stuff related to a single nonlinear fit stage, both things that
+// never change (coordinate systems and their transforms) and some things that change a lot (parameters).
+
 namespace {
 
 struct CModelStageData {
-    afw::geom::Point2D measSysCenter;
-    PTR(afw::coord::Coord) position;
-    UnitSystem measSys;
-    UnitSystem fitSys;
-    LocalUnitTransform fitSysToMeasSys;
-    ndarray::Array<Scalar,1,1> parameters;
-    ndarray::Array<Scalar,1,1> nonlinear;
-    ndarray::Array<Scalar,1,1> amplitudes;
-    ndarray::Array<Scalar,1,1> fixed;
-    shapelet::MultiShapeletFunction psf;
+    afw::geom::Point2D measSysCenter;       // position of the object in image ("meas") coordinates
+    PTR(afw::coord::Coord) position;        // position of the object in ra,dec
+    UnitSystem measSys;                     // coordinate systems for the image being measured
+    UnitSystem fitSys;                      // coordinate systems for the model parameters
+    LocalUnitTransform fitSysToMeasSys;     // coordinate transform from fitSys to measSys
+    ndarray::Array<Scalar,1,1> parameters;  // all free parameters (nonlinear + amplitudes)
+    ndarray::Array<Scalar,1,1> nonlinear;   // nonlinear parameters (a view into parameters array)
+    ndarray::Array<Scalar,1,1> amplitudes;  // linear parameters (a view into parameters array)
+    ndarray::Array<Scalar,1,1> fixed;       // fixed parameters (not being fit, still needed to eval model)
+    shapelet::MultiShapeletFunction psf;    // multi-shapelet approximation to PSF
 
     CModelStageData(
         afw::image::Exposure<Pixel> const & exposure,
@@ -456,11 +462,12 @@ struct CModelStageData {
     {}
 
     CModelStageData changeModel(Model const & model) const {
-        // If we allow centroids to vary in some stages and not others, this will resize the parameter
+        // If we allowed centroids to vary in some stages and not others, this would resize the parameter
         // arrays and update them accordingly.  For now we just assert that dimensions haven't changed
         // and do a deep-copy.
         // In theory, we should also assert that the ellipse parametrizations haven't changed, but that
-        // assert would be too much work to be worthwhile.
+        // assert would be too much work to be worthwhile, since at present all Models use the same
+        // ellipse parametrization
         assert(model.getNonlinearDim() == nonlinear.getSize<0>());
         assert(model.getAmplitudeDim() == amplitudes.getSize<0>());
         assert(model.getFixedDim() == fixed.getSize<0>());
@@ -480,6 +487,8 @@ struct CModelStageData {
 
 namespace {
 
+// utility function to create a model matrix: just allocates space for the matrix and calls the likelihood
+// object to do the work.
 ndarray::Array<Pixel,2,-1> makeModelMatrix(
     Likelihood const & likelihood,
     ndarray::Array<Scalar const,1,1> const & nonlinear
@@ -491,14 +500,18 @@ ndarray::Array<Pixel,2,-1> makeModelMatrix(
     return modelMatrix;
 }
 
+// Implementation object for a single nonlinear stage (one of "initial", "exp", "dev")
+// Note that this doesn't hold its own CModelStageControl; that's held by the CModelControl
+// in the main CModelAlgorithm class (for historical and compatibility-with-HSC-fork reasons),
+// and hence passed to every method here that needs it.
 class CModelStageImpl {
 public:
-    shapelet::RadialProfile const * profile;
-    PTR(Model) model;
-    PTR(Prior) prior;
-    mutable Model::EllipseVector ellipses;
-    PTR(afw::table::BaseTable) historyTable;
-    PTR(OptimizerHistoryRecorder) historyRecorder;
+    shapelet::RadialProfile const * profile; // what profile we're trying to fit (ref to singleton)
+    PTR(Model) model;                        // defition of parameters, and how to map to Gaussians
+    PTR(Prior) prior;                        // Bayesian prior on parameters
+    mutable Model::EllipseVector ellipses;   // workspace for asking Model to turn parameters into ellipses
+    PTR(afw::table::BaseTable) historyTable;       // optimizer trace Table object
+    PTR(OptimizerHistoryRecorder) historyRecorder; // optimizer trace keys/handler
 
     explicit CModelStageImpl(CModelStageControl const & ctrl) :
         profile(&ctrl.getProfile()),
@@ -513,6 +526,7 @@ public:
         }
     }
 
+    // Create a blank result object, and just fill in the stuff that never changes.
     CModelStageResult makeResult() const {
         CModelStageResult result;
         result.model = model;
@@ -520,6 +534,8 @@ public:
         return result;
     }
 
+    // Use a CModelStageData containing the results of a fit to fill in the higher-level outputs
+    // that are part of a CModelStageResult
     void fillResult(
         CModelStageResult & result,
         CModelStageData const & data,
@@ -538,6 +554,7 @@ public:
         result.ellipse = ellipses.front().getCore().transform(data.fitSysToMeasSys.geometric.getLinear());
     }
 
+    // Do the full nonlinear fit for this stage
     void fit(
         CModelStageControl const & ctrl, CModelStageResult & result, CModelStageData const & data,
         afw::image::Exposure<Pixel> const & exposure, afw::detection::Footprint const & footprint
@@ -605,6 +622,7 @@ public:
         }
     }
 
+    // Do a linear-only fit for this stage (used only in forced mode)
     void fitLinear(
         CModelStageControl const & ctrl, CModelStageResult & result, CModelStageData const & data,
         afw::image::Exposure<Pixel> const & exposure, afw::detection::Footprint const & footprint
@@ -632,9 +650,23 @@ public:
 
 } // anonymous
 
-
+// Master implementation object for CModel.
+// Note that this doesn't hold its own CModelControl; that's held by the CModelAlgorithm class
+// (for historical and compatibility-with-HSC-fork reasons), and hence passed to every method
+// here that needs it.
 class CModelAlgorithm::Impl {
 public:
+
+    CModelStageImpl initial;  // Implementation object for initial nonlinear fitting stage
+    CModelStageImpl exp;      // Implementation object for exponential nonlinear fitting stage
+    CModelStageImpl dev;      // Implementation object for de Vaucouleur nonlinear fitting stage
+    PTR(Model) model;         // Model object used in final two-component linear fit
+    PTR(CModelKeys) keys;     // Key object used to map Result objects to SourceRecord outputs
+                              // and extract shapelet PSF approximation.  May be null, depending
+                              // on the CModelAlgorithm ctor called
+    PTR(CModelKeys) refKeys;  // Key object used to retreive reference ellipses in forced mode
+    afw::image::MaskPixel badPixelMask;      // Bitwise OR of mask values we want to leave out of fit region
+    std::set<boost::int64_t> diagnosticIds;  // IDs of objects for which we should save diagnostic outputs
 
     explicit Impl(CModelControl const & ctrl) :
         initial(ctrl.initial), exp(ctrl.exp), dev(ctrl.dev),
@@ -664,15 +696,7 @@ public:
         }
     }
 
-    CModelStageImpl initial;
-    CModelStageImpl exp;
-    CModelStageImpl dev;
-    PTR(Model) model;
-    PTR(CModelKeys) keys;
-    PTR(CModelKeys) refKeys;
-    afw::image::MaskPixel badPixelMask;
-    std::set<boost::int64_t> diagnosticIds;
-
+    // Create a blank result object, filling in only the things that don't change
     CModelResult makeResult() const {
         CModelResult result;
         result.initial = initial.makeResult();
@@ -681,6 +705,7 @@ public:
         return result;
     }
 
+    // Do the final two-component linear fit.
     void fitLinear(
         CModelControl const & ctrl, CModelResult & result,
         CModelStageData const & expData, CModelStageData const & devData,
@@ -733,6 +758,7 @@ public:
         result.objective = tg.evaluateLog()(amplitudes);
     }
 
+    // Guess parameters for the initial fit stage from image moments
     void guessParametersFromMoments(
         CModelControl const & ctrl, CModelStageData & data,
         afw::geom::ellipses::Quadrupole const & moments
@@ -789,6 +815,7 @@ public:
         }
     }
 
+    // Save diagnostic  outputs for a particular source
     template <typename T>
     void writeDiagnostics(
         CModelControl const & ctrl,
