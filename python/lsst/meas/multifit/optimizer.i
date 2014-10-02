@@ -9,7 +9,7 @@
 
 %include "lsst/meas/multifit/optimizer.h"
 
-%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::OptimizerInterpreter)
+%castShared(lsst::meas::multifit::OptimizerInterpreter, lsst::meas::multifit::Interpreter)
 %usePointerEquality(lsst::meas::multifit::OptimizerObjective)
 
 // ignore std::vector methods that require a default ctor, as we don't have one for this class

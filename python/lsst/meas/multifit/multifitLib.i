@@ -71,15 +71,6 @@ Basic routines to talk to lsst::meas::multifit classes
 %import "lsst/shapelet/shapeletLib.i"
 %import "lsst/pex/config.h"
 
-// We should have something like this macro in p_lsstSwig.i
-%define %downcastPtr(BASE, DERIVED)
-%extend DERIVED {
-    static PTR(DERIVED) cast(PTR(BASE) base) {
-        return boost::dynamic_pointer_cast< DERIVED >(base);
-    }
-}
-%enddef
-
 %template(EpochFootprintVector) std::vector<PTR(lsst::meas::multifit::EpochFootprint)>;
 
 %declareNumPyConverters(ndarray::Array<lsst::meas::multifit::Scalar,1,0>);
@@ -121,8 +112,9 @@ Scalar = numpy.float64
 Pixel = numpy.float32
 %}
 
-%declareTablePersistable(Prior, lsst::meas::multifit::Prior);
-%declareTablePersistable(MixturePrior, lsst::meas::multifit::MixturePrior);
+%shared_ptr(lsst::meas::multifit::Prior);
+%shared_ptr(lsst::meas::multifit::MixturePrior);
+%shared_ptr(lsst::meas::multifit::SoftenedLinearPrior);
 
 %shared_ptr(lsst::meas::multifit::ModelFitTable);
 %shared_ptr(lsst::meas::multifit::ModelFitRecord);
@@ -188,10 +180,14 @@ Pixel = numpy.float32
 
 //----------- Miscellaneous ---------------------------------------------------------------------------------
 
+%copyctor lsst::meas::multifit::SoftenedLinearPriorControl;
+%returnCopy(lsst::meas::multifit::SoftenedLinearPrior::getControl)
+
 %include "lsst/meas/multifit/Model.h"
 %include "lsst/meas/multifit/MultiModel.h"
 %include "lsst/meas/multifit/Prior.h"
 %include "lsst/meas/multifit/MixturePrior.h"
+%include "lsst/meas/multifit/SoftenedLinearPrior.h"
 %include "lsst/meas/multifit/Interpreter.h"
 %include "lsst/meas/multifit/Likelihood.h"
 %include "lsst/meas/multifit/UnitSystem.h"
@@ -207,10 +203,20 @@ Pixel = numpy.float32
     %template(UnitSystem) UnitSystem<double>;
 }
 
-%downcastPtr(lsst::meas::multifit::Model, lsst::meas::multifit::MultiModel)
-%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::SamplingInterpreter)
-%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::DirectSamplingInterpreter)
-%downcastPtr(lsst::meas::multifit::Interpreter, lsst::meas::multifit::MarginalSamplingInterpreter)
+%pythoncode %{
+import lsst.pex.config
+SoftenedLinearPriorConfig = lsst.pex.config.makeConfigClass(SoftenedLinearPriorControl)
+
+SoftenedLinearPrior.Control = SoftenedLinearPriorControl
+SoftenedLinearPrior.ConfigClass = SoftenedLinearPriorConfig
+%}
+
+%castShared(lsst::meas::multifit::SoftenedLinearPrior, lsst::meas::multifit::Prior)
+%castShared(lsst::meas::multifit::MixturePrior, lsst::meas::multifit::Prior)
+%castShared(lsst::meas::multifit::MultiModel, lsst::meas::multifit::Model)
+%castShared(lsst::meas::multifit::SamplingInterpreter, lsst::meas::multifit::Interpreter)
+%castShared(lsst::meas::multifit::DirectSamplingInterpreter, lsst::meas::multifit::Interpreter)
+%castShared(lsst::meas::multifit::MarginalSamplingInterpreter, lsst::meas::multifit::Interpreter)
 
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
@@ -281,3 +287,4 @@ typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
 %include "lsst/meas/multifit/optimizer.i"
 %include "lsst/meas/multifit/MarginalSamplingInterpreter.h"
 %include "lsst/meas/multifit/psf.i"
+%include "lsst/meas/multifit/CModel.i"

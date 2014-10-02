@@ -37,11 +37,13 @@
 #include "lsst/meas/multifit/Interpreter.h"
 #include "lsst/meas/multifit/Prior.h"
 #include "lsst/meas/multifit/MixturePrior.h"
+#include "lsst/meas/multifit/SoftenedLinearPrior.h"
 #include "lsst/meas/multifit/integrals.h"
 #include "lsst/meas/multifit/Model.h"
 #include "lsst/meas/multifit/MultiModel.h"
 #include "lsst/meas/multifit/Mixture.h"
 #include "lsst/meas/multifit/optimizer.h"
 #include "lsst/meas/multifit/psf.h"
+#include "lsst/meas/multifit/CModel.h"
 
 #endif // !LSST_MEAS_MULTIFIT_H

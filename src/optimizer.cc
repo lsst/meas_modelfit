@@ -195,10 +195,9 @@ void OptimizerObjective::fillObjectiveValueGrid(
         output[i] = 0.5*residuals.asEigen().squaredNorm();
         if (hasPrior()) {
             Scalar prior = computePrior(grid[i]);
-            if (prior <= 0.0) {
+            output[i] -= std::log(prior);
+            if (utils::isnan(output[i])) {
                 output[i] = std::numeric_limits<Scalar>::infinity();
-            } else {
-                output[i] -= std::log(prior);
             }
         }
     }
@@ -582,7 +581,8 @@ bool Optimizer::_stepImpl(
         log.debug<10>("Step has length %g", stepLength);
         if (_objective->hasPrior()) {
             _next.priorValue = _objective->computePrior(_next.parameters);
-            if (_next.priorValue <= 0.0) {
+            _next.objectiveValue = -std::log(_next.priorValue);
+            if (_next.priorValue <= 0.0 || utils::isnan(_next.objectiveValue)) {
                 _next.objectiveValue = std::numeric_limits<Scalar>::infinity();
                 log.debug<10>("Rejecting step due to zero prior");
                 if (stepLength < _trustRadius) {
@@ -605,7 +605,6 @@ bool Optimizer::_stepImpl(
                 if (recorder) recorder->apply(outerIterCount, innerIterCount, *history, *this);
                 continue;
             }
-            _next.objectiveValue = -std::log(_next.priorValue);
         }
         _objective->computeResiduals(_next.parameters, _next.residuals);
         _next.objectiveValue += 0.5*_next.residuals.asEigen().squaredNorm();

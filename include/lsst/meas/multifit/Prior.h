@@ -25,7 +25,6 @@
 #define LSST_MEAS_MULTIFIT_Prior_h_INCLUDED
 
 #include "lsst/base.h"
-#include "lsst/afw/table/io/Persistable.h"
 #include "lsst/afw/math/Random.h"
 #include "lsst/meas/multifit/common.h"
 
@@ -34,11 +33,7 @@ namespace lsst { namespace meas { namespace multifit {
 /**
  *  @brief Base class for Bayesian priors
  */
-class Prior :
-    public afw::table::io::PersistableFacade<Prior>,
-    public afw::table::io::Persistable,
-    private boost::noncopyable
-{
+class Prior: private boost::noncopyable {
 public:
 
     std::string const & getTag() const { return _tag; }
@@ -168,8 +163,6 @@ public:
 protected:
 
     explicit Prior(std::string const & tag="") : _tag(tag) {}
-
-    virtual std::string getPythonModule() const { return "lsst.meas.multifit"; }
 
 private:
     std::string _tag;

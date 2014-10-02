@@ -26,13 +26,8 @@
 #include "ndarray/eigen.h"
 
 #include "lsst/pex/exceptions.h"
-#include "lsst/afw/table/io/OutputArchive.h"
-#include "lsst/afw/table/io/InputArchive.h"
-#include "lsst/afw/table/io/CatalogVector.h"
 #include "lsst/meas/multifit/MixturePrior.h"
 #include "lsst/meas/multifit/TruncatedGaussian.h"
-
-namespace tbl = lsst::afw::table;
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -124,64 +119,6 @@ public:
 Mixture::UpdateRestriction const & MixturePrior::getUpdateRestriction() {
     static EllipseUpdateRestriction const instance;
     return instance;
-}
-
-namespace {
-
-class MixturePriorPersistenceKeys : private boost::noncopyable {
-public:
-    tbl::Schema schema;
-    tbl::Key<int> mixture;
-    tbl::Key<std::string> tag;
-
-    static MixturePriorPersistenceKeys const & get() {
-        static MixturePriorPersistenceKeys const instance;
-        return instance;
-    }
-private:
-    MixturePriorPersistenceKeys() :
-        schema(),
-        mixture(schema.addField<int>("mixture", "archive ID of mixture")),
-        tag(schema.addField<std::string>("tag", "string used to indicate certain kinds of priors", 64))
-    {
-        schema.getCitizen().markPersistent();
-    }
-};
-
-class MixturePriorFactory : public tbl::io::PersistableFactory {
-public:
-
-    virtual PTR(tbl::io::Persistable)
-    read(InputArchive const & archive, CatalogVector const & catalogs) const {
-        MixturePriorPersistenceKeys const & keys = MixturePriorPersistenceKeys::get();
-        LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
-        LSST_ARCHIVE_ASSERT(catalogs.front().size() == 1u);
-        LSST_ARCHIVE_ASSERT(catalogs.front().getSchema() == keys.schema);
-        tbl::BaseRecord const & record = catalogs.front().front();
-        return boost::make_shared<MixturePrior>(
-            archive.get< Mixture >(record.get(keys.mixture)),
-            record.get(keys.tag)
-        );
-    }
-
-    explicit MixturePriorFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}
-
-};
-
-std::string getMixturePriorPersistenceName() { return "MixturePrior"; }
-
-MixturePriorFactory mixturePriorRegistration(getMixturePriorPersistenceName());
-
-} // anonymous
-
-std::string MixturePrior::getPersistenceName() const { return getMixturePriorPersistenceName(); }
-
-void MixturePrior::write(OutputArchiveHandle & handle) const {
-    MixturePriorPersistenceKeys const & keys = MixturePriorPersistenceKeys::get();
-    tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
-    PTR(tbl::BaseRecord) record = catalog.addNew();
-    record->set(keys.mixture, handle.put(_mixture));
-    handle.saveCatalog(catalog);
 }
 
 }}} // namespace lsst::meas::multifit

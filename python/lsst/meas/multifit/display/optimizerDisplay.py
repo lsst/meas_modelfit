@@ -52,6 +52,8 @@ class OptimizerIterationDisplay(object):
             self._objectiveValues = numpy.zeros(self.grid.shape[:-1], dtype=float)
             self.parent.objective.fillObjectiveValueGrid(self.grid.reshape(-1, self.parent.ndim),
                                                          self._objectiveValues.reshape(-1))
+            good = numpy.isfinite(self._objectiveValues)
+            self._objectiveValues[numpy.logical_not(good)] = self._objectiveValues[good].max()
         return self._objectiveValues
 
     @property
@@ -65,10 +67,10 @@ class OptimizerIterationDisplay(object):
 
 class OptimizerDisplay(object):
 
-    def __init__(self, record, objective, steps=11):
-        self.recorder = multifitLib.OptimizerHistoryRecorder(record.getSamples().getSchema())
+    def __init__(self, history, model, objective, steps=11):
+        self.recorder = multifitLib.OptimizerHistoryRecorder(history.schema)
         # len(dimensions) == N in comments below
-        self.dimensions = record.getInterpreter().getParameterNames()
+        self.dimensions = list(model.getNonlinearNames()) + list(model.getAmplitudeNames())
         self.ndim = len(self.dimensions)
         self.track = []
         self.objective = objective
@@ -81,7 +83,7 @@ class OptimizerDisplay(object):
         transposeArgs = tuple(range(1, self.ndim+1) + [0])
         self.unitGrid = numpy.mgrid[mgridArgs].transpose(transposeArgs).copy()
         current = None
-        for sample in record.getSamples():
+        for sample in history:
             if sample.get(self.recorder.state) & multifitLib.Optimizer.STATUS_STEP_REJECTED:
                 assert current is not None
                 current.rejected.append(sample)
