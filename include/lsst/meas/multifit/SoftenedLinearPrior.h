@@ -102,7 +102,7 @@ public:
         ndarray::Array<Scalar,2,1> const & crossHessian
     ) const;
 
-    /// @copydoc Prior::evaluate
+    /// @copydoc Prior::marginalize
     virtual Scalar marginalize(
         Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear
