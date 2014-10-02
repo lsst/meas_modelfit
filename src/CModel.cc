@@ -35,6 +35,7 @@
 #include "lsst/meas/multifit/TruncatedGaussian.h"
 #include "lsst/meas/multifit/MultiModel.h"
 #include "lsst/meas/multifit/CModel.h"
+#include "lsst/meas/base/Results.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
@@ -149,45 +150,78 @@ struct CModelStageKeys {
         bool isForced,
         CModelStageControl const & ctrl
     ) :
-        flux(afw::table::addFluxFields(schema, prefix + ".flux", "flux from the " + stage + " fit"))
+        flux(
+            schema.addField<meas::base::Flux>(
+                schema.join(prefix, "flux"),
+                "flux from the " + stage + " fit",
+                "dn"
+            )
+        ),
+        fluxSigma(
+            schema.addField<meas::base::FluxErrElement>(
+                schema.join(prefix, "fluxSigma"),
+                "flux uncertainty from the " + stage + " fit",
+                "dn"
+            )
+        ),
+        fluxFlag(
+            schema.addField<afw::table::Flag>(
+                schema.join(prefix, "flag"),
+                "flag set when the flux for the " + stage + " flux failed"
+            )
+        )
     {
         if (!isForced) {
-            ellipse = schema.addField<afw::table::Moments<Scalar> >(
-                prefix + ".ellipse", "effective radius ellipse from the " + stage + " fit"
+            ellipse = afw::table::QuadrupoleKey::addFields(
+                schema,
+                schema.join(prefix, "ellipse"),
+                "half-light ellipse of the " + stage + " fit",
+                "pixels^2"
             );
             objective = schema.addField<Scalar>(
-                prefix + ".objective", "-ln(likelihood*prior) at best-fit point for the " + stage + " fit"
+                schema.join(prefix, "objective"),
+                "-ln(likelihood*prior) at best-fit point for the " + stage + " fit"
             );
-            nonlinear = schema.addField<afw::table::Array<Scalar> >(
-                prefix + ".nonlinear", "nonlinear parameters for the " + stage + " fit",
+            nonlinear = afw::table::ArrayKey<double>::addFields(
+                schema,
+                schema.join(prefix, "nonlinear"),
+                "nonlinear parameters for the " + stage + " fit", "",
                 model.getNonlinearDim()
             );
-            fixed = schema.addField<afw::table::Array<Scalar> >(
-                prefix + ".fixed", "fixed parameters for the " + stage + " fit",
+            fixed = afw::table::ArrayKey<double>::addFields(
+                schema,
+                schema.join(prefix, "fixed"),
+                "fixed parameters for the " + stage + " fit", "",
                 model.getFixedDim()
             );
             flags[CModelStageResult::TR_SMALL] = schema.addField<afw::table::Flag>(
-                prefix + ".flags.trSmall",
+                schema.join(prefix, "flag", "trSmall"),
                 "the optimizer converged because the trust radius became too small; this is a less-secure "
                 "result than when the gradient is below the threshold, but usually not a problem"
             );
             flags[CModelStageResult::MAX_ITERATIONS] = schema.addField<afw::table::Flag>(
-                prefix + ".flags.maxIter",
+                schema.join(prefix, "flag", "maxIter"),
                 "the optimizer hit the maximum number of iterations and did not converge"
             );
             flags[CModelStageResult::NUMERIC_ERROR] = schema.addField<afw::table::Flag>(
-                prefix + ".flags.numericError",
+                schema.join(prefix, "flag", "numericError"),
                 "numerical underflow or overflow in model evaluation; usually this means the prior was "
                 "insufficient to regularize the fit"
             );
             if (ctrl.doRecordHistory) {
-                nIter = schema.addField<int>(prefix + ".nIter", "Number of total iterations in stage");
+                nIter = schema.addField<int>(
+                    schema.join(prefix, "nIter"),
+                    "Number of total iterations in stage"
+                );
             }
             if (ctrl.doRecordTime) {
-                time = schema.addField<Scalar>(prefix + ".time", "Time spent in stage", "seconds");
+                time = schema.addField<Scalar>(
+                    schema.join(prefix, "time"),
+                    "Time spent in stage", "seconds"
+                );
             }
         }
-        flags[CModelStageResult::FAILED] = flux.flag; // these flags refer to the same underlying field
+        flags[CModelStageResult::FAILED] = fluxFlag; // these flags refer to the same underlying field
     }
 
     // this constructor is used to get needed keys from the reference schema in forced mode
@@ -196,11 +230,13 @@ struct CModelStageKeys {
         afw::table::Schema const & schema,
         std::string const & prefix
     ) :
-        flux(schema[prefix + ".flux"], schema[prefix + ".flux.err"], schema[prefix + ".flux.flags"]),
-        nonlinear(schema[prefix + ".nonlinear"]),
-        fixed(schema[prefix + ".fixed"])
+        flux(schema[prefix]["flux"]),
+        fluxSigma(schema[prefix]["fluxSigma"]),
+        fluxFlag(schema[prefix]["flag"]),
+        nonlinear(schema[prefix]["nonlinear"]),
+        fixed(schema[prefix]["fixed"])
     {
-        flags[CModelStageResult::FAILED] = flux.flag; // these flags refer to the same underlying field
+        flags[CModelStageResult::FAILED] = fluxFlag; // these flags refer to the same underlying field
         LSST_THROW_IF_NE(
             model.getNonlinearDim(), nonlinear.getSize(),
             pex::exceptions::LengthError,
@@ -214,9 +250,9 @@ struct CModelStageKeys {
     }
 
     void copyResultToRecord(CModelStageResult const & result, afw::table::BaseRecord & record) {
-        record.set(flux.meas, result.flux);
-        record.set(flux.err, result.fluxSigma);
-        record.set(flux.flag, result.getFlag(CModelStageResult::FAILED));
+        record.set(flux, result.flux);
+        record.set(fluxSigma, result.fluxSigma);
+        record.set(fluxFlag, result.getFlag(CModelStageResult::FAILED));
         if (objective.isValid()) {
             record.set(objective, result.objective);
         }
@@ -251,12 +287,14 @@ struct CModelStageKeys {
         return result;
     }
 
-    afw::table::KeyTuple<afw::table::Flux> flux;
-    afw::table::Key<afw::table::Moments<Scalar> > ellipse;
+    afw::table::Key<meas::base::Flux> flux;
+    afw::table::Key<meas::base::FluxErrElement> fluxSigma;
+    afw::table::Key<afw::table::Flag> fluxFlag;
+    afw::table::QuadrupoleKey ellipse;
     afw::table::Key<Scalar> objective;
     afw::table::Key<afw::table::Flag> flags[CModelStageResult::N_FLAGS];
-    afw::table::Key<afw::table::Array<Scalar> > nonlinear;
-    afw::table::Key<afw::table::Array<Scalar> > fixed;
+    afw::table::ArrayKey<Scalar> nonlinear;
+    afw::table::ArrayKey<Scalar> fixed;
     afw::table::Key<Scalar> time;
     afw::table::Key<int> nIter;
 };
@@ -271,44 +309,67 @@ struct CModelKeys {
         bool isForced,
         CModelControl const & ctrl
     ) :
-        initial(initialModel, schema, prefix + ".initial", "initial", isForced, ctrl.initial),
-        exp(expModel, schema, prefix + ".exp", "exponential", isForced, ctrl.exp),
-        dev(devModel, schema, prefix + ".dev", "de Vaucouleur", isForced, ctrl.dev),
+        initial(initialModel, schema, schema.join(prefix, "initial"), "initial",
+                isForced, ctrl.initial),
+        exp(expModel, schema, schema.join(prefix, "exp"), "exponential", isForced, ctrl.exp),
+        dev(devModel, schema, schema.join(prefix, "dev"), "de Vaucouleur", isForced, ctrl.dev),
+        // Unlike all the other keys, we expect the psf keys to already be present in the schema,
+        // and we just retrieve them, because they're created and filled by the ShapeletPsfApprox plugin.
         psf(schema["multifit"]["ShapeletPsfApprox"][ctrl.psfName]),
-        center(schema.addField<afw::table::Point<Scalar> >(
-                   // The fact that the center passed to all the algorithms isn't saved by the measurement
-                   // framework is a bug that will be addressed in the next version of the framework.
-                   // For now, we save it ourselves so we can reproduce the conditions in the framework
-                   // exactly.
-                   prefix + ".center", "center position used in CModel fit", "pixels"
-               )),
-        flux(afw::table::addFluxFields(schema, prefix + ".flux", "flux from the final cmodel fit")),
-        fracDev(schema.addField<Scalar>(prefix + ".fracDev", "fraction of flux in de Vaucouleur component")),
-        objective(schema.addField<Scalar>(prefix + ".objective", "-ln(likelihood) (chi^2) in cmodel fit"))
+        flux(
+            schema.addField<meas::base::Flux>(
+                schema.join(prefix, "flux"),
+                "flux from the final cmodel fit"
+            )
+        ),
+        fluxSigma(
+            schema.addField<meas::base::FluxErrElement>(
+                schema.join(prefix, "fluxSigma"),
+                "flux uncertainty from the final cmodel fit"
+            )
+        ),
+        fluxFlag(
+            schema.addField<afw::table::Flag>(
+                schema.join(prefix, "flag"),
+                "flag set if the final cmodel fit (or any previous fit) failed"
+            )
+        ),
+        fracDev(
+            schema.addField<Scalar>(
+                schema.join(prefix, "fracDev"),
+                "fraction of flux in de Vaucouleur component"
+            )
+        ),
+        objective(
+            schema.addField<Scalar>(
+                schema.join(prefix, "objective"),
+                "-ln(likelihood) (chi^2) in cmodel fit"
+            )
+        )
     {
-        flags[CModelResult::FAILED] = flux.flag; // these keys refer to the same underlying field
+        flags[CModelResult::FAILED] = fluxFlag; // these keys refer to the same underlying field
         flags[CModelResult::MAX_AREA] = schema.addField<afw::table::Flag>(
-            prefix + ".flags.maxArea",
+            schema.join(prefix, "flag", "maxArea"),
             "number of pixels in fit region exceeded the region.maxArea value (usually due to bad moments)"
         );
         flags[CModelResult::MAX_BAD_PIXEL_FRACTION] = schema.addField<afw::table::Flag>(
-            prefix + ".flags.maxBadPixelFraction",
+            schema.join(prefix, "flag", "maxBadPixelFraction"),
             "the fraction of bad/clipped pixels in the fit region exceeded region.maxBadPixelFraction"
         );
         flags[CModelResult::NO_SHAPE] = schema.addField<afw::table::Flag>(
-            prefix + ".flags.noShape",
+            schema.join(prefix, "flag", "noShape"),
             "the shape slot needed to initialize the parameters failed or was not defined"
         );
         flags[CModelResult::NO_PSF] = schema.addField<afw::table::Flag>(
-            prefix + ".flags.noPsf",
+            schema.join(prefix, "flag", "noPsf"),
             "the multishapelet fit to the PSF model did not succeed"
         );
         flags[CModelResult::NO_WCS] = schema.addField<afw::table::Flag>(
-            prefix + ".flags.noWcs",
+            schema.join(prefix, "flag", "noWcs"),
             "input exposure has no world coordinate system information"
         );
         flags[CModelResult::NO_CALIB] = schema.addField<afw::table::Flag>(
-            prefix + ".flags.noCalib",
+            schema.join(prefix, "flag", "noCalib"),
             "input exposure has no photometric calibration information"
         );
     }
@@ -319,18 +380,17 @@ struct CModelKeys {
         afw::table::Schema const & schema,
         std::string const & prefix
     ) :
-        initial(initialModel, schema, prefix + ".initial"),
-        exp(expModel, schema, prefix + ".exp"),
-        dev(devModel, schema, prefix + ".dev"),
-        center(schema[prefix + ".center"])
+        initial(initialModel, schema, schema.join(prefix, "initial")),
+        exp(expModel, schema, schema.join(prefix, "exp")),
+        dev(devModel, schema, schema.join(prefix, "dev"))
     {}
 
     void copyResultToRecord(CModelResult const & result, afw::table::BaseRecord & record) {
         initial.copyResultToRecord(result.initial, record);
         exp.copyResultToRecord(result.exp, record);
         dev.copyResultToRecord(result.dev, record);
-        record.set(flux.meas, result.flux);
-        record.set(flux.err, result.fluxSigma);
+        record.set(flux, result.flux);
+        record.set(fluxSigma, result.fluxSigma);
         record.set(fracDev, result.fracDev);
         record.set(objective, result.objective);
         for (int b = 0; b < CModelResult::N_FLAGS; ++b) {
@@ -353,8 +413,9 @@ struct CModelKeys {
     CModelStageKeys exp;
     CModelStageKeys dev;
     shapelet::MultiShapeletFunctionKey psf;
-    afw::table::Key<afw::table::Point<Scalar> > center;
-    afw::table::KeyTuple<afw::table::Flux> flux;
+    afw::table::Key<meas::base::Flux> flux;
+    afw::table::Key<meas::base::FluxErrElement> fluxSigma;
+    afw::table::Key<afw::table::Flag> fluxFlag;
     afw::table::Key<Scalar> fracDev;
     afw::table::Key<Scalar> objective;
     afw::table::Key<afw::table::Flag> flags[CModelResult::N_FLAGS];
@@ -1146,8 +1207,6 @@ void CModelAlgorithm::_apply(
     afw::geom::Point2D const & center
 ) const {
     Result result = _impl->makeResult();
-    // Record the center we used in the fit
-    source.set(_impl->keys->center, center);
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
     shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
     if (!source.getTable()->getShapeKey().isValid() ||
@@ -1188,8 +1247,6 @@ void CModelAlgorithm::_applyForced(
 ) const {
     Result result = _impl->makeResult();
     assert(source.getFootprint()->getArea());
-    // Record the center we used in the fit
-    source.set(_impl->keys->center, center);
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
     shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
     // If PsfFlux has been run, use that for approx flux; otherwise we'll compute it ourselves.
