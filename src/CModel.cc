@@ -93,7 +93,7 @@ PTR(Prior) CModelStageControl::getPrior() const {
         char const * pkgDir = std::getenv("MEAS_MULTIFIT_DIR");
         if (!pkgDir) {
             throw LSST_EXCEPT(
-                pex::exceptions::IoError,
+                meas::base::FatalAlgorithmError,
                 "MEAS_MULTIFIT_DIR environment variable not defined; cannot find persisted Priors"
             );
         }
@@ -107,7 +107,7 @@ PTR(Prior) CModelStageControl::getPrior() const {
         return boost::make_shared<SoftenedLinearPrior>(priorConfig);
     } else {
         throw LSST_EXCEPT(
-            pex::exceptions::InvalidParameterError,
+            meas::base::FatalAlgorithmError,
             "priorSource must be one of 'NONE', 'FILE', or 'CONFIG'"
         );
     }
@@ -240,12 +240,12 @@ struct CModelStageKeys {
         flags[CModelStageResult::FAILED] = fluxFlag; // these flags refer to the same underlying field
         LSST_THROW_IF_NE(
             model.getNonlinearDim(), nonlinear.getSize(),
-            pex::exceptions::LengthError,
+            meas::base::FatalAlgorithmError,
             "Configured model nonlinear dimension (%d) does not match reference schema (%d)"
         );
         LSST_THROW_IF_NE(
             model.getFixedDim(), fixed.getSize(),
-            pex::exceptions::LengthError,
+            meas::base::FatalAlgorithmError,
             "Configured model fixed dimension (%d) does not match reference schema (%d)"
         );
     }
@@ -362,17 +362,9 @@ struct CModelKeys {
             schema.join(prefix, "flag", "noShape"),
             "the shape slot needed to initialize the parameters failed or was not defined"
         );
-        flags[CModelResult::NO_PSF] = schema.addField<afw::table::Flag>(
-            schema.join(prefix, "flag", "noPsf"),
+        flags[CModelResult::NO_SHAPELET_PSF] = schema.addField<afw::table::Flag>(
+            schema.join(prefix, "flag", "noShapeletPsf"),
             "the multishapelet fit to the PSF model did not succeed"
-        );
-        flags[CModelResult::NO_WCS] = schema.addField<afw::table::Flag>(
-            schema.join(prefix, "flag", "noWcs"),
-            "input exposure has no world coordinate system information"
-        );
-        flags[CModelResult::NO_CALIB] = schema.addField<afw::table::Flag>(
-            schema.join(prefix, "flag", "noCalib"),
-            "input exposure has no photometric calibration information"
         );
     }
 
@@ -808,7 +800,7 @@ public:
             initial.model->readEllipses(initial.ellipses.begin(), data.nonlinear.begin(), data.fixed.begin());
             if (initial.prior->evaluate(data.nonlinear, data.amplitudes) == 0.0) {
                 throw LSST_EXCEPT(
-                    pex::exceptions::LogicError,
+                    meas::base::FatalAlgorithmError,
                     "minInitialRadius is incompatible with prior"
                 );
             }
@@ -899,8 +891,9 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     PTR(afw::detection::Footprint) region;
     if (footprint.getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
-            "Maximum area exceeded by original footprint"
+            meas::base::MeasurementError,
+            "Maximum area exceeded by original footprint",
+            CModelResult::MAX_AREA
         );
     }
     region = afw::detection::growFootprint(
@@ -910,8 +903,9 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     );
     if (region->getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
-            "Maximum area exceeded by grown footprint"
+             meas::base::MeasurementError,
+             "Maximum area exceeded by grown footprint",
+             CModelResult::MAX_AREA
         );
     }
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
@@ -921,7 +915,18 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     region->clipTo(mask.getBBox(afw::image::PARENT));
     region->intersectMask(mask, _impl->badPixelMask);
     if (originalArea - region->getArea() > originalArea*getControl().region.maxBadPixelFraction) {
-        region.reset();
+        throw LSST_EXCEPT(
+             meas::base::MeasurementError,
+             "Fraction of bad pixels in fit region exceeds threshold",
+             CModelResult::MAX_BAD_PIXEL_FRACTION
+        );
+    }
+    if (region->getArea() > getControl().region.maxArea) {
+        throw LSST_EXCEPT(
+            meas::base::MeasurementError,
+            "Maximum area exceeded by initial fit region",
+            CModelResult::MAX_AREA
+        );
     }
     return region;
 }
@@ -935,8 +940,9 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     PTR(afw::detection::Footprint) region;
     if (footprint.getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
-            "Maximum area exceeded by original footprint"
+            meas::base::MeasurementError,
+            "Maximum area exceeded by original footprint",
+            CModelResult::MAX_AREA
         );
     }
     region = afw::detection::growFootprint(
@@ -948,8 +954,9 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     fullEllipse.getCore().scale(getControl().region.nInitialRadii);
     if (fullEllipse.getCore().getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
-            "Maximum area exceeded by ellipse component of region"
+            meas::base::MeasurementError,
+            "Maximum area exceeded by ellipse component of region",
+            CModelResult::MAX_AREA
         );
     }
     afw::detection::Footprint ellipseFootprint(fullEllipse);
@@ -963,7 +970,18 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     region->clipTo(mask.getBBox(afw::image::PARENT));
     region->intersectMask(mask, _impl->badPixelMask);
     if ((1.0 - region->getArea() / originalArea) > getControl().region.maxBadPixelFraction) {
-        region.reset();
+        throw LSST_EXCEPT(
+             meas::base::MeasurementError,
+             "Fraction of bad pixels in fit region exceeds threshold",
+             CModelResult::MAX_BAD_PIXEL_FRACTION
+        );
+    }
+    if (region->getArea() > getControl().region.maxArea) {
+        throw LSST_EXCEPT(
+            meas::base::MeasurementError,
+            "Maximum area exceeded by final fit region",
+            CModelResult::MAX_AREA
+        );
     }
     return region;
 }
@@ -981,7 +999,6 @@ CModelAlgorithm::Result CModelAlgorithm::apply(
     return result;
 }
 
-
 void CModelAlgorithm::_applyImpl(
     Result & result,
     afw::image::Exposure<Pixel> const & exposure,
@@ -995,26 +1012,11 @@ void CModelAlgorithm::_applyImpl(
     afw::geom::Box2I psfBBox = exposure.getPsf()->computeImage(center)->getBBox(afw::image::PARENT);
 
     // Grow the footprint, clip bad pixels and the exposure bbox
-    PTR(afw::detection::Footprint) initialFitRegion;
-    try {
-        initialFitRegion = determineInitialFitRegion(
-            *exposure.getMaskedImage().getMask(),
-            footprint,
-            psfBBox
-        );
-    } catch (pex::exceptions::RuntimeError) {
-        result.setFlag(CModelResult::MAX_AREA, true);
-        return;
-    }
-    if (!initialFitRegion) {
-        result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
-        return;
-    }
-    if (initialFitRegion->getArea() > getControl().region.maxArea) {
-        result.setFlag(CModelResult::MAX_AREA, true);
-        return;
-    }
-    result.initialFitRegion = initialFitRegion;
+    result.initialFitRegion = determineInitialFitRegion(
+        *exposure.getMaskedImage().getMask(),
+        footprint,
+        psfBBox
+    );
 
     // Negative approxFlux means we should come up with an estimate ourselves.
     // This is only used to avoid scaling problems in the optimizer, so it doesn't have to be very good.
@@ -1030,7 +1032,7 @@ void CModelAlgorithm::_applyImpl(
 
     // Do the initial fit
     // TODO: use only 0th-order terms in psf
-    _impl->initial.fit(getControl().initial, result.initial, initialData, exposure, *initialFitRegion);
+    _impl->initial.fit(getControl().initial, result.initial, initialData, exposure, *result.initialFitRegion);
 
     if (result.initial.getFlag(CModelStageResult::FAILED)) return;
 
@@ -1038,42 +1040,28 @@ void CModelAlgorithm::_applyImpl(
     result.initial.model->writeEllipses(initialData.nonlinear.begin(), initialData.fixed.begin(),
                                         _impl->initial.ellipses.begin());
     _impl->initial.ellipses.front().transform(initialData.fitSysToMeasSys.geometric).inPlace();
-    PTR(afw::detection::Footprint) finalFitRegion;
-    try {
-        finalFitRegion = determineFinalFitRegion(
-            *exposure.getMaskedImage().getMask(),
-            footprint,
-            psfBBox,
-            _impl->initial.ellipses.front()
-        );
-    } catch (pex::exceptions::RuntimeError) {
-        result.setFlag(CModelResult::MAX_AREA, true);
-        return;
-    }
-    if (!finalFitRegion) {
-        result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
-        return;
-    }
-    if (finalFitRegion->getArea() > getControl().region.maxArea) {
-        result.setFlag(CModelResult::MAX_AREA, true);
-        return;
-    }
 
-    result.finalFitRegion = finalFitRegion;
+    // Revisit the pixel region to use in the fit, taking into account the initial ellipse
+    result.finalFitRegion = determineFinalFitRegion(
+        *exposure.getMaskedImage().getMask(),
+        footprint,
+        psfBBox,
+        _impl->initial.ellipses.front()
+    );
 
     // Do the exponential fit
     CModelStageData expData = initialData.changeModel(*_impl->exp.model);
-    _impl->exp.fit(getControl().exp, result.exp, expData, exposure, *finalFitRegion);
+    _impl->exp.fit(getControl().exp, result.exp, expData, exposure, *result.finalFitRegion);
 
     // Do the de Vaucouleur fit
     CModelStageData devData = initialData.changeModel(*_impl->dev.model);
-    _impl->dev.fit(getControl().dev, result.dev, devData, exposure, *finalFitRegion);
+    _impl->dev.fit(getControl().dev, result.dev, devData, exposure, *result.finalFitRegion);
 
     if (result.exp.getFlag(CModelStageResult::FAILED) ||result.dev.getFlag(CModelStageResult::FAILED))
         return;
 
     // Do the linear combination fit
-    _impl->fitLinear(getControl(), result, expData, devData, exposure, *finalFitRegion);
+    _impl->fitLinear(getControl(), result, expData, devData, exposure, *result.finalFitRegion);
 }
 
 CModelAlgorithm::Result CModelAlgorithm::applyForced(
@@ -1095,11 +1083,27 @@ void CModelAlgorithm::writeResultToRecord(
 ) const {
     if (!_impl->keys) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicError,
+            meas::base::FatalAlgorithmError,
             "Algorithm was not initialized with a schema; cannot copy to record"
         );
     }
     _impl->keys->copyResultToRecord(result, record);
+}
+
+void CModelAlgorithm::fail(
+    afw::table::SourceRecord & record,
+    meas::base::MeasurementError * error
+) const {
+    if (!_impl->keys) {
+        throw LSST_EXCEPT(
+            meas::base::FatalAlgorithmError,
+            "Algorithm was not initialized with a schema; cannot handle failures"
+        );
+    }
+    record.set(_impl->keys->flags[CModelResult::FAILED], true);
+    if (error) {
+        record.set(_impl->keys->flags[error->getFlagBit()], true);
+    }
 }
 
 void CModelAlgorithm::_applyForcedImpl(
@@ -1136,32 +1140,17 @@ void CModelAlgorithm::_applyForcedImpl(
     // Grow the footprint and include the initial ellipse, clip bad pixels and the exposure bbox;
     // in forced mode we can just use the final fit region immediately since we won't be changing
     // the initial fit ellipse.
-    PTR(afw::detection::Footprint) finalFitRegion;
-    try {
-        finalFitRegion = determineFinalFitRegion(
-            *exposure.getMaskedImage().getMask(),
-            footprint,
-            psfBBox,
-            _impl->initial.ellipses.front()
-        );
-    } catch (pex::exceptions::RuntimeError &) {
-        result.setFlag(CModelResult::MAX_AREA, true);
-        return;
-    }
-    if (!finalFitRegion) {
-        result.setFlag(CModelResult::MAX_BAD_PIXEL_FRACTION, true);
-        return;
-    }
-    if (finalFitRegion->getArea() > getControl().region.maxArea) {
-        result.setFlag(CModelResult::MAX_AREA, true);
-        return;
-    }
-    result.finalFitRegion = finalFitRegion;
+    result.finalFitRegion = determineFinalFitRegion(
+        *exposure.getMaskedImage().getMask(),
+        footprint,
+        psfBBox,
+        _impl->initial.ellipses.front()
+    );
 
     // Do the initial fit (amplitudes only)
     if (!reference.initial.getFlag(CModelStageResult::FAILED)) {
         _impl->initial.fitLinear(getControl().initial, result.initial, initialData,
-                                 exposure, *finalFitRegion);
+                                 exposure, *result.finalFitRegion);
     }
 
     // Do the exponential fit (amplitudes only)
@@ -1169,7 +1158,7 @@ void CModelAlgorithm::_applyForcedImpl(
     if (!reference.exp.getFlag(CModelStageResult::FAILED)) {
         expData.nonlinear.deep() = reference.exp.nonlinear;
         expData.fixed.deep() = reference.exp.fixed;
-        _impl->exp.fitLinear(getControl().exp, result.exp, expData, exposure, *finalFitRegion);
+        _impl->exp.fitLinear(getControl().exp, result.exp, expData, exposure, *result.finalFitRegion);
     }
 
     // Do the de Vaucouleur fit (amplitudes only)
@@ -1177,14 +1166,14 @@ void CModelAlgorithm::_applyForcedImpl(
     if (!reference.dev.getFlag(CModelStageResult::FAILED)) {
         devData.nonlinear.deep() = reference.dev.nonlinear;
         devData.fixed.deep() = reference.dev.fixed;
-        _impl->dev.fitLinear(getControl().dev, result.dev, devData, exposure, *finalFitRegion);
+        _impl->dev.fitLinear(getControl().dev, result.dev, devData, exposure, *result.finalFitRegion);
     }
 
     if (result.exp.getFlag(CModelStageResult::FAILED) ||result.dev.getFlag(CModelStageResult::FAILED))
         return;
 
     // Do the linear combination fit
-    _impl->fitLinear(getControl(), result, expData, devData, exposure, *finalFitRegion);
+    _impl->fitLinear(getControl(), result, expData, devData, exposure, *result.finalFitRegion);
 }
 
 template <typename PixelT>
@@ -1199,96 +1188,90 @@ shapelet::MultiShapeletFunction CModelAlgorithm::_processInputs(
     source.set(_impl->keys->dev.flags[CModelStageResult::FAILED], true);
     if (!_impl->keys) {
         throw LSST_EXCEPT(
-            pex::exceptions::LogicError,
+            meas::base::FatalAlgorithmError,
             "Algorithm was not initialized with a schema; cannot run in plugin mode"
         );
     }
     if (!exposure.getWcs()) {
-        source.set(_impl->keys->flags[Result::NO_WCS], true);
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
+            meas::base::FatalAlgorithmError,
             "Exposure has no Wcs"
         );
     }
     if (!exposure.getCalib() || exposure.getCalib()->getFluxMag0().first == 0.0) {
-        source.set(_impl->keys->flags[Result::NO_CALIB], true);
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
+            meas::base::FatalAlgorithmError,
             "Exposure has no valid Calib"
         );
     }
     if (!exposure.getPsf()) {
-        source.set(_impl->keys->flags[Result::NO_PSF], true);
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
+            meas::base::FatalAlgorithmError,
             "Exposure has no Psf"
         );
     }
     return source.get(_impl->keys->psf);
 }
 
-template <typename PixelT>
-void CModelAlgorithm::_apply(
-    afw::table::SourceRecord & source,
-    afw::image::Exposure<PixelT> const & exposure,
-    afw::geom::Point2D const & center
+void CModelAlgorithm::measure(
+    afw::table::SourceRecord & measRecord,
+    afw::image::Exposure<Pixel> const & exposure
 ) const {
     Result result = _impl->makeResult();
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
-    shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
-    if (!source.getTable()->getShapeKey().isValid() ||
-        (source.getTable()->getShapeFlagKey().isValid() && source.getShapeFlag())) {
-        source.set(_impl->keys->flags[Result::NO_SHAPE], true);
+    shapelet::MultiShapeletFunction psf = _processInputs(measRecord, exposure);
+    if (!measRecord.getTable()->getShapeKey().isValid() ||
+        (measRecord.getTable()->getShapeFlagKey().isValid() && measRecord.getShapeFlag())) {
         throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
-            "Shape slot algorithm failed or was not run"
+            meas::base::MeasurementError,
+            "Shape slot algorithm failed or was not run",
+            Result::NO_SHAPE
         );
     }
     // If PsfFlux has been run, use that for approx flux; otherwise we'll compute it ourselves.
     Scalar approxFlux = -1.0;
-    if (source.getTable()->getPsfFluxKey().isValid() && !source.getPsfFluxFlag()) {
-        approxFlux = source.getPsfFlux();
+    if (measRecord.getTable()->getPsfFluxKey().isValid() && !measRecord.getPsfFluxFlag()) {
+        approxFlux = measRecord.getPsfFlux();
     }
     try {
-        _applyImpl(result, exposure, *source.getFootprint(), psf, center, source.getShape(), approxFlux);
+        _applyImpl(result, exposure, *measRecord.getFootprint(), psf, measRecord.getCentroid(),
+                   measRecord.getShape(), approxFlux);
     } catch (...) {
-        _impl->keys->copyResultToRecord(result, source);
-        if (_impl->diagnosticIds.find(source.getId()) != _impl->diagnosticIds.end()) {
-            _impl->writeDiagnostics(getControl(), source.getId(), result, exposure);
+        _impl->keys->copyResultToRecord(result, measRecord);
+        if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
+            _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
         }
         throw;
     }
-    _impl->keys->copyResultToRecord(result, source);
-    if (_impl->diagnosticIds.find(source.getId()) != _impl->diagnosticIds.end()) {
-        _impl->writeDiagnostics(getControl(), source.getId(), result, exposure);
+    _impl->keys->copyResultToRecord(result, measRecord);
+    if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
+        _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
     }
 }
 
-template <typename PixelT>
-void CModelAlgorithm::_applyForced(
-    afw::table::SourceRecord & source,
-    afw::image::Exposure<PixelT> const & exposure,
-    afw::geom::Point2D const & center,
-    afw::table::SourceRecord const & reference,
-    afw::geom::AffineTransform const & refToMeas
+void CModelAlgorithm::measure(
+    afw::table::SourceRecord & measRecord,
+    afw::image::Exposure<Pixel> const & exposure,
+    afw::table::SourceRecord const & refRecord
 ) const {
     Result result = _impl->makeResult();
-    assert(source.getFootprint()->getArea());
+    assert(measRecord.getFootprint()->getArea());
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
-    shapelet::MultiShapeletFunction psf = _processInputs(source, exposure);
+    shapelet::MultiShapeletFunction psf = _processInputs(measRecord, exposure);
     // If PsfFlux has been run, use that for approx flux; otherwise we'll compute it ourselves.
     Scalar approxFlux = -1.0;
-    if (source.getTable()->getPsfFluxKey().isValid() && !source.getPsfFluxFlag()) {
-        approxFlux = source.getPsfFlux();
+    if (measRecord.getTable()->getPsfFluxKey().isValid() && !measRecord.getPsfFluxFlag()) {
+        approxFlux = measRecord.getPsfFlux();
     }
     try {
-        Result refResult = _impl->refKeys->copyRecordToResult(reference);
-        _applyForcedImpl(result, exposure, *source.getFootprint(), psf, center, refResult, approxFlux);
+        Result refResult = _impl->refKeys->copyRecordToResult(refRecord);
+        _applyForcedImpl(result, exposure, *measRecord.getFootprint(), psf, measRecord.getCentroid(),
+                         refResult, approxFlux);
     } catch (...) {
-        _impl->keys->copyResultToRecord(result, source);
+        _impl->keys->copyResultToRecord(result, measRecord);
         throw;
     }
-    _impl->keys->copyResultToRecord(result, source);
+    _impl->keys->copyResultToRecord(result, measRecord);
 }
 
 }}} // namespace lsst::meas::multifit
