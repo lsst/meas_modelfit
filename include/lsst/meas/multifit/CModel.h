@@ -38,8 +38,101 @@
 
 namespace lsst { namespace meas { namespace multifit {
 
-class CModelAlgorithm;
+/**
+ *  @page multifitCModel CModel Magnitudes
+ *
+ *  The CModel approach to model-fit galaxy photometry - also known as the "Sloan Swindle" - is an
+ *  approximation to bulge+disk or Sersic model fitting that follows the following sequence:
+ *   - Fit a PSF-convolved elliptical exponential (Sersic n=1) model to the data.
+ *   - Fit a PSF-convolved elliptical de Vaucouleurs (Sersic n=4) model to the data.
+ *   - Holding the positions and ellipses of both models fixed (only allowing the amplitudes to vary),
+ *     fit a linear combination of the two models.
+ *  In the limit of pure bulge or pure disk galaxies, this approach yields the same results as a more
+ *  principled bugle+disk or Sersic fit.  For galaxies that are a combination of the two components (or
+ *  have more complicated morphologies, as of course all real galaxies do), it provides a smooth transition
+ *  between the two models, and the fraction of flux in each of the two parameters is correlated with
+ *  Sersic index and the true bulge-disk ratio.  Most importantly, this approach yieled good galaxy colors
+ *  in the SDSS data processing.
+ *
+ *  In this implementation of the CModel algorithm, we actually have 4 stages:
+ *   - In the "initial" stage, we fit a very approximate PSF-convolved elliptical model, just to provide
+ *     a good starting point for the subsequence exponential and de Vaucouleur fits.  Because we use
+ *     shapelet/Gaussian approximations to convolved models with the PSF, model evaluation is much faster
+ *     when only a few Gaussians are used in the approximation, as is done here.  In the future, we may
+ *     also use a simpler PSF approximation in the initial fit, but this is not yet implemented.  We also
+ *     have not yet researched how best to make use of the initial fit (i.e. how does the initial best-fit
+ *     radius typically relate to the best-fit exponential radius?), or what convergence criteria should
+ *     be used in the initial fit.  Following the initial fit, we also revisit the question of which pixels
+ *     should be included in the fit (see CModelRegionControl).
+ *   - In the "exp" stage, we start with the "initial" fit results, and fit an elliptical exponential
+ *     profile.
+ *   - In the "dev" stage, we start with the "initial" fit results, and fit an elliptical de Vaucouleur
+ *     profile.
+ *   - Holding the "exp" and "dev" ellipses fixed, we fit a linear combination of those two profiles.
+ *  In all of these steps, the centroid is held fixed at a given input value (take from the slot centroid
+ *  when run by the measurement framework).
+ *
+ *  @section cmodelUnits Units
+ *
+ *  Unlike most measurement algorithms, CModel requires the Exposure it is given to have both a Wcs and
+ *  a Calib.  This is because it makes use of Bayesian priors, and hence it has to know the relationship
+ *  between the raw units of the image (pixels and dn) and the global units in which the priors are defined.
+ *
+ *  In fact, all of the nonlinear fits in CModel are done in a special, local coordinate system, defined
+ *  by a Wcs in which the "pixels" have units of arcseconds (because we never create an image in this system,
+ *  we don't have to worry about the size of the pixels) and the fluxes should be of order unity.  In
+ *  addition to allowing us to use priors, it also ensures that the parameters all have the same order
+ *  of magnitude, which improves the behavior of the optimizer.
+ *
+ *  See @ref multifitUnits for more information.
+ *
+ *  @section cmodelForced Forced Photometry
+ *
+ *  In forced photometry, we replace the three nonlinear fits with amplitude-only fits, and then repeat the
+ *  final linear fit, using the ellipses from the reference catalog in all casees.  We do allow the relative
+ *  amplitudes of the two components to vary in forced mode, though in the future we will add an option to
+ *  hold this fixed as well as the ellipses.
+ *
+ *  @section cmodelPsf Shapelet Approximations to the PSF
+ *
+ *  The CModel algorithm relies on a multi-shapelet approximation to the PSF to convolve galaxy models.  It
+ *  does not compute this approximation directly; for CModelAlgorithm methods that take inputs directly
+ *  as arguments, the PSF must be supplied as a shapelet::MultiShapeletFunction instance.  When using
+ *  SourceRecords for input/output, CModel assumes that the ShapeletPsfApprox plugin has already been
+ *  run (see psf.py), and uses the fields created by that plugin to retrieve the PSF approximation.
+ *
+ *  @section cmodelOrg Code Organization
+ *
+ *  The CModel implementation consists of many classes, defined in this file and CModel.cc.  These mostly
+ *  fall into four categories:
+ *    - Control structs: C++ analogs of Python Config classes, these structs contain the
+ *      configuration parameters that control the behavior of the algorithm.  These are nested; the
+ *      @ref CModelControl struct contains a @ref CModelRegionControl instance, a
+ *      @ref CModelDiagnosticsControl instance, and three @ref CModelStageControl (one for each of "initial",
+ *      "exp", and "dev").  The configuration for the final amplitude-only fit goes in @ref CModelControl
+ *      itself; because it is a simpler linear fit, it doesn't have much in common with the first
+ *      three stages.
+ *    - Result structs: while the algorithm has methods to use SourceRecord objects for input/output,
+ *      it can also take inputs directly as arguments and return the outputs using these structs.  Like
+ *      the Control structs, the master @ref CModelResult struct holds three @ref CModelStageResult classes,
+ *      for each of the three nonlinear fits.
+ *    - Keys structs: these private classes (defined in an anonymous namespace in CModel.cc) hold the
+ *      afw::table::Key and FunctorKey objects that provide a mapping from the Result structs to
+ *      Schema fields.  They also provide methods to transfer values from Results to Records, or the
+ *      reverse.  These are also split into a master CModelKeys struct, which holds three
+ *      CModelStageKeys structs.
+ *    - Impl classes: these private classes contain the actual algorithmic code.  Once again, we
+ *      have the master implementation class (CModelAlgorithm::Impl) and a class for the nonlinear
+ *      fitting stages (CModelStageImpl).
+ *  In addition to these categories, we also have the @ref CModelAlgorithm class, which is the C++ public
+ *  interface to all of this, and the CModelStageData class, a private class that aggregates per-source
+ *  state and makes it easier to pass it around.
+ */
 
+/**
+ *  Nested control object for CModel that configures one of the three ("initial", "exp", "dev") nonlinear
+ *  fitting stages.
+ */
 struct CModelStageControl {
 
     CModelStageControl() :
@@ -113,6 +206,20 @@ struct CModelStageControl {
 
 };
 
+/**
+ *  Nested control object for CModel that configures which pixels are used in the fit.
+ *
+ *  The pixel region is determined from the union of several quantities:
+ *   - the Psf model image bounding box.
+ *   - the detection Footprint of the source, grown by a configurable number of pixels.
+ *   - the best-fit ellipse from the "initial" stage, scaled by a configurable factor (used to update
+ *     the fit region following the initial stage.
+ *  Masked pixels can also be removed from the fit region.
+ *
+ *  In addition, if the fit region is too large, or too many of its pixels were masked, the
+ *  fit will be aborted early.  This prevents the algorithm from spending too much time fitting
+ *  garbage such as bleed trails.
+ */
 struct CModelRegionControl {
 
     CModelRegionControl() :
@@ -160,6 +267,14 @@ struct CModelRegionControl {
 
 };
 
+/**
+ *  Nested control object for CModel that configures debug outputs
+ *
+ *  CModel has the capability to write optimizer traces to disk for selected objects, to enable
+ *  post-mortem debugging of those fits.  This is not implemented in the cleanest possible way
+ *  (output locations are not handled by the butler, for instance), but we'd need big changes
+ *  to the measurement framework and the butler to clean that up.
+ */
 struct CModelDiagnosticsControl {
 
     CModelDiagnosticsControl() : enabled(false), root(""), ids() {}
@@ -181,6 +296,10 @@ struct CModelDiagnosticsControl {
 
 };
 
+/**
+ *  The main control object for CModel, containing parameters for the final linear fit and aggregating
+ *  the other control objects.
+ */
 struct CModelControl {
 
     CModelControl() :
@@ -239,95 +358,160 @@ struct CModelControl {
 
 };
 
+/**
+ *  Result object for a single nonlinear fitting stage of the CModel algorithm
+ */
 struct CModelStageResult {
 
+    /// Flags for a single CModel stage (note that there are additional flags for the full multi-stage fit)
     enum FlagBit {
-        FAILED=0,
-        TR_SMALL,
-        MAX_ITERATIONS,
-        NUMERIC_ERROR,
-        N_FLAGS
+        FAILED=0,        ///< General flag, indicating whether the flux for this stage can be trusted.
+        TR_SMALL,        ///< Whether convergence was due to the optimizer trust region getting too small
+                         ///  (not a failure!)
+        MAX_ITERATIONS,  ///< Whether the optimizer exceeded the maximum number of iterations.  Indicates
+                         ///  a suspect fit, but not necessarily a bad one (implies FAILED).
+        NUMERIC_ERROR,   ///< Optimizer encountered a numerical error (something likely went to infinity).
+                         ///  Result will be unusable; implies FAILED.
+        N_FLAGS          ///< Non-flag counter to indicate the number of flags
     };
 
     CModelStageResult();
 
-    PTR(Model) model;
-    PTR(Prior) prior;
-    PTR(OptimizerObjective) objfunc;
-    Scalar flux;
-    Scalar fluxSigma;
-    Scalar objective;
-    Scalar time;
-    afw::geom::ellipses::Quadrupole ellipse;
+    PTR(Model) model;    ///< Model object that defines the parametrization (defined fully by Control struct)
+    PTR(Prior) prior;    ///< Bayesian priors on the parameters (defined fully by Control struct)
+    PTR(OptimizerObjective) objfunc;  ///< Objective class used by the optimizer
+    Scalar flux;         ///< Flux measured from just this stage fit.
+    Scalar fluxSigma;    ///< Flux uncertainty from just this stage fit.
+    Scalar objective;    ///< Value of the objective function at the best fit point: chisq/2 - ln(prior)
+    Scalar time;         ///< Time spent in this fit in seconds.
+    afw::geom::ellipses::Quadrupole ellipse;  ///< Best fit half-light ellipse in pixel coordinates
 
+    //@{
+    /// Flag accessors, to work around Swig's lack of support for std::bitset
     bool getFlag(FlagBit b) const { return flags[b]; }
     void setFlag(FlagBit b, bool value) { flags[b] = value; }
+    //}
 
-    ndarray::Array<Scalar const,1,1> nonlinear;
-    ndarray::Array<Scalar const,1,1> amplitudes;
-    ndarray::Array<Scalar const,1,1> fixed;
+    ndarray::Array<Scalar const,1,1> nonlinear;  ///< Opaque nonlinear parameters in specialized units
+    ndarray::Array<Scalar const,1,1> amplitudes; ///< Opaque linear parameters in specialized units
+    ndarray::Array<Scalar const,1,1> fixed;      ///< Opaque fixed parameters in specialized units
 
-    afw::table::BaseCatalog history;
+    afw::table::BaseCatalog history;  ///< Trace of the optimizer's path, if enabled by diagnostic options
 #ifndef SWIG
-    std::bitset<N_FLAGS> flags;
+    std::bitset<N_FLAGS> flags; ///< Array of flags.
 #endif
 };
 
+/**
+ *  Master result object for CModel, containing results for the final linear fit and three nested
+ *  CModelStageResult objects for the results of the previous stages.
+ */
 struct CModelResult {
 
+    /// Flags that apply to all four CModel fits or just the last one.
     enum FlagBit {
-        FAILED=0,
-        MAX_AREA,
-        MAX_BAD_PIXEL_FRACTION,
-        NO_SHAPE,
-        NO_PSF,
-        NO_WCS,
-        NO_CALIB,
-        N_FLAGS
+        FAILED=0,                ///< General failure flag for the linear fit flux; set if any other
+                                 ///  CModel flag is set, or if any of the three previous stages failed.
+        MAX_AREA, ///< Set if we aborted early because the fit region was too large.
+        MAX_BAD_PIXEL_FRACTION,  ///< Set if we aborted early because the fit region had too many bad pixels.
+        NO_SHAPE,                ///< Set if we aborted early because the input SourceRecord had no valid
+                                 ///  shape slot with which to start the fit.
+        NO_PSF,                  ///< Set if the Exposure has no Psf or if something went wrong approximating
+                                 ///  the Psf model image with shapelets.
+        NO_WCS,                  ///< Set if the Exposure has no Wcs
+        NO_CALIB,                ///< Set if the Exposure has no Calib
+        N_FLAGS                  ///< Non-flag counter to indicate the number of flags
     };
 
     CModelResult();
 
-    Scalar flux;
-    Scalar fluxSigma;
-    Scalar fracDev;
-    Scalar objective;
+    Scalar flux;       ///< Flux from the final linear fit
+    Scalar fluxSigma;  ///< Flux uncertainty from the final linear fit
+    Scalar fracDev;    ///< Fraction of flux from the final linear fit in the de Vaucouleur component
+                       ///  (always between 0 and 1).
+    Scalar objective;  ///< Objective value at the best-fit point (chisq/2)
 
+    //@{
+    /// Flag accessors, to work around Swig's lack of support for std::bitset
     bool getFlag(FlagBit b) const { return flags[b]; }
     void setFlag(FlagBit b, bool value) { flags[b] = value; }
+    //@}
 
-    CModelStageResult initial;
-    CModelStageResult exp;
-    CModelStageResult dev;
+    CModelStageResult initial; ///< Results from the initial approximate nonlinear fit that feeds the others
+    CModelStageResult exp;     ///< Results from the exponential (Sersic n=1) fit
+    CModelStageResult dev;     ///< Results from the de Vaucouleur (Sersic n=4) fit
 
-    PTR(afw::detection::Footprint) initialFitRegion;
-    PTR(afw::detection::Footprint) finalFitRegion;
+    PTR(afw::detection::Footprint) initialFitRegion;  ///< Pixels used in the initial fit.
+    PTR(afw::detection::Footprint) finalFitRegion;    ///< Pixels used in the exp, dev, and linear fits.
 
 #ifndef SWIG
-    std::bitset<N_FLAGS> flags;
+    std::bitset<N_FLAGS> flags; ///< Array of flags.
 #endif
 };
 
+/**
+ *  Main public interface class for CModel algorithm.
+ *
+ *  See @ref multifitCModel for a full description of the algorithm.
+ *
+ *  This class provides the methods that actually execute the algorithm, and (depending on how it is
+ *  constructed) holds the Key objects necessary to use SourceRecords for input and output.
+ */
 class CModelAlgorithm {
 public:
 
-    typedef CModelControl Control;
-    typedef CModelResult Result;
+    typedef CModelControl Control; ///< Typedef to the master Control struct
+    typedef CModelResult Result;   ///< Typedef to the master Result struct
 
+    /**
+     *  Construct an algorithm instance and add its fields to the Schema.
+     *
+     *  All fields needed to write the outputs of a regular, non-forced fit will be added to the given
+     *  Schema.  In addition, keys needed to retrieve the PSF shapelet approximation (assuming the
+     *  ShapeletPsfApprox plugin has been run) will be extracted from the Schema.
+     *
+     *  @param[in]     name    Name of the algorithm used as a prefix for all fields added to the Schema.
+     *  @param[in]     ctrl    Control object that configures the algorithm.
+     *  @param[in,out] schema  Schema to which fields will be added, and from which keys for the PSF
+     *                         shapelet approximation will be extacted.
+     */
     CModelAlgorithm(
         std::string const & name,
         Control const & ctrl,
         afw::table::Schema & schema
     );
 
+    /**
+     *  Construct an algorithm instance suitable for forced photometry and add its fields to the Schema.
+     *
+     *  All fields needed to write the outputs of a forced fit will be added to the given SchemaMapper's
+     *  output schema.  Keys needed to retrieve the reference ellipses for the exp and dev fits will be
+     *  extracted from the SchemaMapper's input schema.  In addition, keys needed to retrieve the PSF
+     *  shapelet approximation (assuming the ShapeletPsfApprox plugin has been run) will be extracted
+     *  from the SchemaMapper's output schema (note that the ShapeletPsfApprox plugin must be run in
+     *  forced mode as well, to approximate the measurement image's PSF rather than the reference image's
+     *  PSF, so its outputs are found in the output schema, not the input schema).
+     *
+     *  @param[in]     name    Name of the algorithm used as a prefix for all fields added to the Schema.
+     *  @param[in]     ctrl    Control object that configures the algorithm.
+     *  @param[in,out] schemaMapper  SchemaMapper containing input (reference) and output schemas.
+     */
     CModelAlgorithm(
         std::string const & name,
         Control const & ctrl,
         afw::table::SchemaMapper & schemaMapper
     );
 
+    /**
+     *  Construct an algorithm instance that cannot use SourceRecords for input/output.
+     *
+     *  This constructor initializes the algorithm without initializing any of the keys necessary to
+     *  operate on SourceRecords.  As a result, only methods that take inputs directly and return Result
+     *  objects may be called.
+     */
     explicit CModelAlgorithm(Control const & ctrl);
 
+    /// Return the control object the algorithm was constructed with.
     Control const & getControl() const { return _ctrl; }
 
     /**
@@ -336,7 +520,8 @@ public:
      *  This routine grows the given footprint by nGrowFootprint, then clips on the bounding box
      *  of the given mask and removes pixels indicated as bad by badMaskPlanes.
      *
-     *  If more than maxBadPixelFraction pixels are clipped, the returned pointer is null.
+     *  If more than maxBadPixelFraction pixels are clipped, the returned pointer is null.  If the
+     *  area of the region is more than maxArea, throws pex::exceptions::RuntimeError.
      */
     PTR(afw::detection::Footprint) determineInitialFitRegion(
         afw::image::Mask<> const & mask,
@@ -351,7 +536,8 @@ public:
      *  the given ellipse scaled by nInitialRadii.  It then clips on the bounding box of the
      *  given mask and removes pixels indicated as bad by badMaskPlanes.
      *
-     *  If more than maxBadPixelFraction pixels are clipped, the returned pointer is null.
+     *  If more than maxBadPixelFraction pixels are clipped, the returned pointer is null.  If the
+     *  area of the region is more than maxArea, throws pex::exceptions::RuntimeError.
      */
     PTR(afw::detection::Footprint) determineFinalFitRegion(
         afw::image::Mask<> const & mask,
@@ -360,6 +546,20 @@ public:
         afw::geom::ellipses::Ellipse const & ellipse
     ) const;
 
+    /**
+     *  Run the CModel algorithm on an image, supplying inputs directly and returning outputs in a Result.
+     *
+     *  @param[in]   exposure     Image to measure.  Must have a valid Wcs and Calib.
+     *  @param[in]   footprint    Detection footprint of the object to be measured, used as a starting point
+     *                            for the region of pixels to be fit.
+     *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
+     *  @param[in]   center       Centroid of the source to be fit.
+     *  @param[in]   moments      Non-PSF-corrected moments of the source, used to initialize the model
+     *                            parameters
+     *  @param[in]   approxFlux   Rough estimate of the flux of the source, used to set the fit coordinate
+     *                            system and ensure internal parameters are of order unity.  If less than
+     *                            or equal to zero, the sum of the flux within the footprint will be used.
+     */
     Result apply(
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,
@@ -369,6 +569,20 @@ public:
         Scalar approxFlux=-1
     ) const;
 
+    /**
+     *  Run the CModel algorithm in forced mode on an image, supplying inputs directly and returning
+     *  outputs in a Result.
+     *
+     *  @param[in]   exposure     Image to measure.  Must have a valid Wcs and Calib.
+     *  @param[in]   footprint    Detection footprint of the object to be measured, used as a starting point
+     *                            for the region of pixels to be fit.
+     *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
+     *  @param[in]   center       Centroid of the source to be fit.
+     *  @param[in]   reference    Result object from a previous, non-forced run of CModelAlgorithm.
+     *  @param[in]   approxFlux   Rough estimate of the flux of the source, used to set the fit coordinate
+     *                            system and ensure internal parameters are of order unity.  If less than
+     *                            or equal to zero, the sum of the flux within the footprint will be used.
+     */
     Result applyForced(
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,
@@ -378,6 +592,7 @@ public:
         Scalar approxFlux=-1
     ) const;
 
+    /// Copy values from a Result struct to a BaseRecord object.
     void writeResultToRecord(Result const & result, afw::table::BaseRecord & record) const;
 
 private:
