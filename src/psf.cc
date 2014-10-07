@@ -397,6 +397,23 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
     );
 }
 
+shapelet::MultiShapeletFunctionKey PsfFitter::addFields(
+    afw::table::Schema & schema,
+    std::string const & prefix
+) const {
+    ComponentVector components = vectorizeComponents(_ctrl);
+    std::vector<int> orders(components.size());
+    for (std::size_t i = 0; i < components.size(); ++i) {
+        orders[i] = components[i].second.order;
+    }
+    return shapelet::MultiShapeletFunctionKey::addFields(
+        schema, prefix, "multi-Shapelet approximation to the PSF model",
+        "pixels", // ellipse units
+        "",       // coefficient units (unitless)
+        orders
+    );
+}
+
 shapelet::MultiShapeletFunction PsfFitter::adapt(
     shapelet::MultiShapeletFunction const & previousFit,
     PTR(Model) previousModel
