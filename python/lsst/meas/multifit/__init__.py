@@ -30,3 +30,4 @@ from .samplers import *
 from .optimizer import *
 from .models import *
 from .priors import *
+from . import psf
