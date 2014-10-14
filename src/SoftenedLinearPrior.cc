@@ -189,7 +189,7 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
 
     // ellipticity distribution is a cylinder softened at the outside with a cubic radial profile.
     // First, the cylinder:
-    double ellipticityCoreIntegral = 2.0*ctrl.ellipticityMaxInner*ctrl.ellipticityMaxInner;
+    double ellipticityCoreIntegral = M_PI*ctrl.ellipticityMaxInner*ctrl.ellipticityMaxInner;
     // ...and now the softened annulus.  Note that we use moments(..., ..., 1) to compute
     // the integral of [p(e) e de], not just [p(e) de].
     double ellipticityMaxRampIntegral = 2.0*M_PI*Vandermonde<4>::moment(
@@ -252,7 +252,7 @@ void SoftenedLinearPrior::evaluateDerivatives(
 
     // Starting assumption is that we're in the inner segment in all dimensions
     // (use 'e' and 'r' instead of 'ellipticity', 'logRadius' for brevity, from here on)
-    Scalar pr = _logRadiusP1 + logRadius * _logRadiusSlope;
+    Scalar pr = _logRadiusP1 + (logRadius - _ctrl.logRadiusMinInner) * _logRadiusSlope;
     Scalar pe = 1.0;
     Scalar dpr = _logRadiusSlope;
     Scalar dpe = 0.0;
@@ -349,7 +349,7 @@ Scalar SoftenedLinearPrior::_evaluate(
     } else if (logRadius > _ctrl.logRadiusMaxInner) {
         p = _logRadiusPoly2.dot(Vandermonde<4>::eval(logRadius));
     } else {
-        p = _logRadiusP1 + logRadius * _logRadiusSlope;
+        p = _logRadiusP1 + (logRadius - _ctrl.logRadiusMinInner) * _logRadiusSlope;
     }
 
     if (ellipticity > _ctrl.ellipticityMaxInner) {

@@ -30,6 +30,12 @@ import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
 import lsst.meas.multifit
+from matplotlib import pyplot
+
+try:
+    import scipy.integrate
+except ImportError:
+    scipy = None
 
 numpy.random.seed(500)
 
@@ -37,7 +43,7 @@ lsst.pex.logging.Debug("meas.multifit.SoftenedLinearPrior", 10)
 
 class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
 
-    NUM_DIFF_STEP = 1E-4
+    NUM_DIFF_STEP = 1E-3
 
     def setUp(self):
         # a prior with broad ramps and non-zero slope; broad ramps makes evaluating numerical
@@ -120,6 +126,32 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
                 e2 = e*numpy.sin(2.0*theta)
                 for r in logRadiusPoints:
                     self.checkDerivatives(e1, e2, r)
+
+    @unittest.skipIf(scipy is None, "could not import scipy")
+    def testIntegral(self):
+        """Test that the prior is properly normalized.
+
+        Normally, this test has a very low bar, because it's expensive to compute a high-quality
+        numerical integral to compare with.  Even so, the scipy integrator does better than it
+        thinks it does, and we use that smaller tolerance for the test.  That means this test
+        could fail if something about the scipy integrator changes, because we're not telling it
+        that it has to get as close as it currently is (because doing so would take way too long).
+
+        If this class is ever changed, we should do at least one of this test with the tolerances
+        tightened.
+        """
+        ctrl = self.prior.getControl()
+        integral, absErr = scipy.integrate.tplquad(
+            self.evaluatePrior,
+            ctrl.logRadiusMinOuter, ctrl.logRadiusMaxOuter,
+            lambda logR: -ctrl.ellipticityMaxOuter,
+            lambda logR: ctrl.ellipticityMaxOuter,
+            lambda logR, e2: -(ctrl.ellipticityMaxOuter**2 - e2**2)**0.5,
+            lambda logR, e2: (ctrl.ellipticityMaxOuter**2 - e2**2)**0.5,
+            epsabs=1.0,
+            epsrel=1.0,
+            )
+        self.assertClose(integral, 1.0, atol=0.01)
 
     def testEllipticityDistribution(self):
         """Test that the ellipticity distribution is constant in the inner region,
