@@ -61,10 +61,10 @@ class CModelForcedConfig(lsst.meas.base.ForcedPluginConfig, multifitLib.CModelCo
 
 @lsst.meas.base.register("multifit_CModel")
 class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
-    """Minimal subclass of CModelMixin to conform to the forced measurement API.
+    """Forced measurement interface for CModelAlgorithm
 
     This class simply provides __init__ and measure methods that matched the ForcedPlugin signatures
-    and delegate to the CModelMixin's implmentations.
+    and delegate to CModelAlgorithm implementations.
     """
     ConfigClass = CModelForcedConfig
 
@@ -73,7 +73,7 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
         self.algorithm = multifitLib.CModelAlgorithm(name, config.makeControl(), schemaMapper)
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
-        self.algorithm.measure(measRecord, exposure)
+        self.algorithm.measure(measRecord, exposure, refRecord)
 
     def fail(self, measRecord, error=None):
         self.algorithm.fail(measRecord, error.cpp if error is not None else None)
