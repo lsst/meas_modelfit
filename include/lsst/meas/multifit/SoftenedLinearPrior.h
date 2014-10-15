@@ -21,21 +21,69 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MULTIFIT_MixturePrior_h_INCLUDED
-#define LSST_MEAS_MULTIFIT_MixturePrior_h_INCLUDED
+#ifndef LSST_MEAS_MULTIFIT_SoftenedLinearPrior_h_INCLUDED
+#define LSST_MEAS_MULTIFIT_SoftenedLinearPrior_h_INCLUDED
 
+#include "lsst/pex/config.h"
 #include "lsst/meas/multifit/Prior.h"
-#include "lsst/meas/multifit/Mixture.h"
 
 namespace lsst { namespace meas { namespace multifit {
 
+struct SoftenedLinearPriorControl {
+
+    LSST_CONTROL_FIELD(
+        ellipticityMaxOuter, double,
+        "Maximum ellipticity magnitude (conformal shear units)"
+    );
+
+    LSST_CONTROL_FIELD(
+        ellipticityMaxInner, double,
+        "Ellipticity magnitude (conformal shear units) at which the softened cutoff begins"
+    );
+
+    LSST_CONTROL_FIELD(
+        logRadiusMinOuter, double,
+        "Minimum ln(radius)"
+    );
+
+    LSST_CONTROL_FIELD(
+        logRadiusMinInner, double,
+        "ln(radius) at which the softened cutoff begins towards the minimum"
+    );
+
+    LSST_CONTROL_FIELD(
+        logRadiusMaxOuter, double,
+        "Maximum ln(radius)"
+    );
+
+    LSST_CONTROL_FIELD(
+        logRadiusMaxInner, double,
+        "ln(radius) at which the softened cutoff begins towards the maximum"
+    );
+
+    LSST_CONTROL_FIELD(
+        logRadiusMinMaxRatio, double,
+        "The ratio P(logRadiusMinInner)/P(logRadiusMaxInner)"
+    );
+
+    SoftenedLinearPriorControl() :
+        ellipticityMaxOuter(2.001), ellipticityMaxInner(2.0),
+        logRadiusMinOuter(-10.001), logRadiusMinInner(-10.0),
+        logRadiusMaxOuter(3.001), logRadiusMaxInner(3.0),
+        logRadiusMinMaxRatio(1.0)
+    {}
+
+};
+
 /**
- *  @brief A prior that's flat in amplitude parameters, and uses a Mixture for nonlinear parameters.
+ *  @brief A prior that's linear in radius and flat in ellipticity, with a cubic roll-off at the edges.
  */
-class MixturePrior : public Prior {
+class SoftenedLinearPrior : public Prior {
 public:
 
-    explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
+    typedef SoftenedLinearPriorControl Control;
+
+    explicit SoftenedLinearPrior(Control const & ctrl=Control());
 
     /// @copydoc Prior::evaluate
     virtual Scalar evaluate(
@@ -77,20 +125,23 @@ public:
         bool multiplyWeights=false
     ) const;
 
-    /**
-     *  @brief Return a MixtureUpdateRestriction appropriate for (e1,e2,r) data.
-     *
-     *  This restriction object can be used with Mixture<3>::updateEM() to create
-     *  a mixture with a strictly isotropic ellipticity distribution.
-     */
-    static MixtureUpdateRestriction const & getUpdateRestriction();
-
-    PTR(Mixture const) getMixture() const { return _mixture; }
+    Control const & getControl() const { return _ctrl; }
 
 private:
-    PTR(Mixture const) _mixture;
+
+    Scalar _evaluate(ndarray::Array<Scalar const,1,1> const & nonlinear) const;
+
+    Control _ctrl;
+    double _logRadiusP1; // probability value at ln(radius) = ctrl.logRadiusMinInner
+    double _logRadiusSlope;
+    double _logRadiusMinRampFraction;
+    double _logRadiusMaxRampFraction;
+    double _ellipticityMaxRampFraction;
+    Eigen::Matrix<double,4,1,Eigen::DontAlign> _logRadiusPoly1;
+    Eigen::Matrix<double,4,1,Eigen::DontAlign> _logRadiusPoly2;
+    Eigen::Matrix<double,4,1,Eigen::DontAlign> _ellipticityPoly;
 };
 
 }}} // namespace lsst::meas::multifit
 
-#endif // !LSST_MEAS_MULTIFIT_MixturePrior_h_INCLUDED
+#endif // !LSST_MEAS_MULTIFIT_SoftenedLinearPrior_h_INCLUDED

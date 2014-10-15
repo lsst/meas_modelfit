@@ -114,7 +114,11 @@ class ShapeletPsfApproxMixin(object):
 
 
 class ShapeletPsfApproxSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, ShapeletPsfApproxConfig):
-    pass
+
+    def setDefaults(self):
+        lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
+        ShapeletPsfApproxConfig.setDefaults(self)
+        self.executionOrder = 1.0
 
 @lsst.meas.base.register("multifit_ShapeletPsfApprox")
 class ShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, ShapeletPsfApproxMixin):
@@ -133,7 +137,11 @@ class ShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, Shape
         ShapeletPsfApproxMixin.measure(self, measRecord, exposure)
 
 class ShapeletPsfApproxForcedConfig(lsst.meas.base.ForcedPluginConfig, ShapeletPsfApproxConfig):
-    pass
+
+    def setDefaults(self):
+        lsst.meas.base.ForcedPluginConfig.setDefaults(self)
+        ShapeletPsfApproxConfig.setDefaults(self)
+        self.executionOrder = 1.0
 
 @lsst.meas.base.register("multifit_ShapeletPsfApprox")
 class ShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, ShapeletPsfApproxMixin):
