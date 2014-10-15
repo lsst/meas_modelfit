@@ -26,9 +26,9 @@
 #include "lsst/pex/exceptions.h"
 #include "lsst/shapelet/MatrixBuilder.h"
 #include "lsst/shapelet/MultiShapeletBasis.h"
-#include "lsst/meas/multifit/psf.h"
+#include "lsst/meas/modelfit/psf.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
@@ -563,4 +563,4 @@ void MultiShapeletPsfLikelihood::computeModelMatrix(
 
 MultiShapeletPsfLikelihood::~MultiShapeletPsfLikelihood() {}
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

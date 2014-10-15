@@ -23,10 +23,10 @@
 
 #include "ndarray/eigen.h"
 
-#include "lsst/meas/multifit/DirectSamplingInterpreter.h"
-#include "lsst/meas/multifit/ModelFitRecord.h"
+#include "lsst/meas/modelfit/DirectSamplingInterpreter.h"
+#include "lsst/meas/modelfit/ModelFitRecord.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
@@ -150,4 +150,4 @@ void DirectSamplingInterpreter::_unpackNonlinear(
     nonlinear.deep() = parameters[ndarray::view(0, getNonlinearDim())];
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

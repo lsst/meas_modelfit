@@ -22,10 +22,10 @@
  */
 
 #include "lsst/pex/exceptions.h"
-#include "lsst/meas/multifit/MultiModel.h"
-#include "lsst/meas/multifit/Prior.h"
+#include "lsst/meas/modelfit/MultiModel.h"
+#include "lsst/meas/modelfit/Prior.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
@@ -109,4 +109,4 @@ void MultiModel::readEllipses(
     }
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

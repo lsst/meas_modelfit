@@ -34,20 +34,20 @@ import lsst.shapelet.tests
 import lsst.afw.geom.ellipses
 import lsst.afw.image
 import lsst.afw.detection
-import lsst.meas.multifit
-import lsst.meas.multifit.display
+import lsst.meas.modelfit
+import lsst.meas.modelfit.display
 import lsst.afw.display.ds9
 
 numpy.random.seed(500)
 
 # Set to 7 for per-object messages, 10 for per-sample
-lsst.pex.logging.Debug("meas.multifit.AdaptiveImportanceSampler", 0)
-lsst.pex.logging.Debug("meas.multifit.TruncatedGaussian", 0)
-lsst.pex.logging.Debug("meas.multifit.optimizer", 0)
+lsst.pex.logging.Debug("meas.modelfit.AdaptiveImportanceSampler", 0)
+lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer", 0)
 
 DO_MAKE_PLOTS = True
 
-DATA_DIR = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "tests", "data")
+DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
 
 class FakeDataRef(object):
 
@@ -88,7 +88,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
 
     def setUp(self):
         self.dataRef = FakeDataRef()
-        self.config = lsst.meas.multifit.MeasureCcdTask.ConfigClass()
+        self.config = lsst.meas.modelfit.MeasureCcdTask.ConfigClass()
         self.config.progressChunk = 1
         self.config.doRaise = True
         self.models = [
@@ -97,14 +97,14 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             ]
 
     def testSampler(self):
-        self.config.fitter.retarget(lsst.meas.multifit.AdaptiveImportanceSamplerTask)
+        self.config.fitter.retarget(lsst.meas.modelfit.AdaptiveImportanceSamplerTask)
         for model in self.models:
             self.config.model.name = model
             config1 = copy.deepcopy(self.config)
             config1.tag = "marginal+%s" % model
             config1.fitter.doMarginalizeAmplitudes = True
             config1.freeze()
-            task1 = lsst.meas.multifit.MeasureCcdTask(config=config1, butler=self.dataRef,
+            task1 = lsst.meas.modelfit.MeasureCcdTask(config=config1, butler=self.dataRef,
                                                       name=('testMarginalSampler/%s' % model))
             task1.writeSchemas(butler=self.dataRef)
             task1.writeConfig(butler=self.dataRef)
@@ -123,7 +123,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             config2.previous = config1.tag
             config2.tag = "direct+%s" % model
             config2.freeze()
-            task2 = lsst.meas.multifit.MeasureCcdTask(config=config2, butler=self.dataRef,
+            task2 = lsst.meas.modelfit.MeasureCcdTask(config=config2, butler=self.dataRef,
                                                       name=('testDirectSampler/%s' % model))
             task2.writeSchemas(butler=self.dataRef)
             task2.writeConfig(butler=self.dataRef)
@@ -133,12 +133,12 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
                 self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
 
     def testOptimizer(self):
-        self.config.fitter.retarget(lsst.meas.multifit.OptimizerTask)
+        self.config.fitter.retarget(lsst.meas.modelfit.OptimizerTask)
         self.config.fitter.doRecordHistory = True
         for model in self.models:
             self.config.model.name = model
             name = 'testOptimizer/%s' % model
-            task = lsst.meas.multifit.MeasureCcdTask(config=self.config, name=name)
+            task = lsst.meas.modelfit.MeasureCcdTask(config=self.config, name=name)
             results = task.run(self.dataRef)
             for outRecord in results.outCat:
                 self.assertFalse(outRecord.get("fit.flags"))

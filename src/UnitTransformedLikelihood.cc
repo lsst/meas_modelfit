@@ -31,9 +31,9 @@
 #include "lsst/afw/image/Calib.h"
 #include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
 #include "lsst/shapelet/MatrixBuilder.h"
-#include "lsst/meas/multifit/UnitTransformedLikelihood.h"
+#include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
@@ -253,4 +253,4 @@ void UnitTransformedLikelihood::computeModelMatrix(
     }
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

@@ -26,10 +26,10 @@ import sys
 import numpy
 
 import lsst.meas.base
-import lsst.meas.multifit
+import lsst.meas.modelfit
 import lsst.pex.logging
 
-lsst.pex.logging.Debug("meas.multifit.optimizer", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer", 0)
 
 def printResidualStatistics(image, msf, index):
     residuals = image.Factory(image, True)
@@ -62,8 +62,8 @@ def fitPsfImage(image, fitters):
     printResidualStatistics(image, msf, n)
 
 ctrls = [
-    lsst.meas.multifit.PsfFitterControl(),
-    lsst.meas.multifit.PsfFitterControl(),
+    lsst.meas.modelfit.PsfFitterControl(),
+    lsst.meas.modelfit.PsfFitterControl(),
     ]
 ctrls[0].primary.ellipticityPriorSigma = 0.3
 ctrls[0].primary.radiusPriorSigma = 0.5
@@ -87,7 +87,7 @@ ctrls[1].outer.radiusPriorSigma = 0.5
 ctrls[1].outer.positionPriorSigma = 0.1
 
 def main(filenames):
-    fitters = [lsst.meas.multifit.PsfFitter(ctrl) for ctrl in ctrls]
+    fitters = [lsst.meas.modelfit.PsfFitter(ctrl) for ctrl in ctrls]
     for filename in filenames:
         image = lsst.afw.image.ImageD(filename)
         image.getArray()[:,:] /= image.getArray()[:,:].max()

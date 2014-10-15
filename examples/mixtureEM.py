@@ -25,18 +25,18 @@ import numpy
 from matplotlib import pyplot
 import mpl_toolkits.mplot3d
 
-import lsst.meas.multifit
+import lsst.meas.modelfit
 
 rng = lsst.afw.math.Random()
 
 def makeRandomMixture(nDim, nComponents, df=float("inf")):
-    l = lsst.meas.multifit.Mixture[nDim].ComponentList()
+    l = lsst.meas.modelfit.Mixture[nDim].ComponentList()
     for i in range(nComponents):
         mu = numpy.random.randn(nDim)*4
         a = numpy.random.randn(nDim+1,nDim)
         sigma = numpy.dot(a.transpose(),a) + numpy.identity(nDim)
-        l.append(lsst.meas.multifit.Mixture[nDim].Component(numpy.random.rand(), mu, sigma))
-    return lsst.meas.multifit.Mixture[nDim](l, df)
+        l.append(lsst.meas.modelfit.Mixture[nDim].Component(numpy.random.rand(), mu, sigma))
+    return lsst.meas.modelfit.Mixture[nDim](l, df)
 
 def initPlot1(fig, x, w):
     axes = fig.add_subplot(1,1,1)

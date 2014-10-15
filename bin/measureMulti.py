@@ -21,6 +21,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from lsst.meas.multifit import MeasureMultiTask
+from lsst.meas.modelfit import MeasureMultiTask
 
 MeasureMultiTask.parseAndRun()

@@ -32,12 +32,12 @@
 #include "lsst/afw/table/Catalog.h"
 #include "lsst/afw/table/BaseTable.h"
 #include "lsst/afw/table/BaseRecord.h"
-#include "lsst/meas/multifit/optimizer.h"
-#include "lsst/meas/multifit/Likelihood.h"
-#include "lsst/meas/multifit/Prior.h"
-#include "lsst/meas/multifit/ModelFitRecord.h"
+#include "lsst/meas/modelfit/optimizer.h"
+#include "lsst/meas/modelfit/Likelihood.h"
+#include "lsst/meas/modelfit/Prior.h"
+#include "lsst/meas/modelfit/ModelFitRecord.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 // ----------------- OptimizerInterpreter -------------------------------------------------------------------
 
@@ -498,7 +498,7 @@ Optimizer::Optimizer(
     _sr1v(objective->parameterSize),
     _sr1jtr(objective->parameterSize)
 {
-    pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
+    pex::logging::Debug log("meas.modelfit.optimizer.Optimizer");
     if (parameters.getSize<0>() != _objective->parameterSize) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthError,
@@ -555,7 +555,7 @@ bool Optimizer::_stepImpl(
     HistoryRecorder const * recorder,
     afw::table::BaseCatalog * history
 ) {
-    pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
+    pex::logging::Debug log("meas.modelfit.optimizer.Optimizer");
     _state &= ~int(STATUS);
     if (_gradient.asEigen().lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
         log.debug<7>("max(gradient)=%g below threshold; declaring convergence",
@@ -685,7 +685,7 @@ bool Optimizer::_stepImpl(
 }
 
 int Optimizer::_runImpl(HistoryRecorder const * recorder, afw::table::BaseCatalog * history) {
-    pex::logging::Debug log("meas.multifit.optimizer.Optimizer");
+    pex::logging::Debug log("meas.modelfit.optimizer.Optimizer");
     if (recorder) recorder->apply(-1, -1, *history, *this);
     int outerIterCount = 0;
     try {
@@ -712,7 +712,7 @@ void solveTrustRegion(
 ) {
     static double const ROOT_EPS = std::sqrt(std::numeric_limits<double>::epsilon());
     static int const ITER_MAX = 10;
-    pex::logging::Debug log("meas.multifit.optimizer.solveTrustRegion");
+    pex::logging::Debug log("meas.modelfit.optimizer.solveTrustRegion");
     double const r2 = r*r;
     double const r2min = r2 * (1.0 - tolerance) * (1.0 - tolerance);
     double const r2max = r2 * (1.0 + tolerance) * (1.0 + tolerance);
@@ -775,4 +775,4 @@ void solveTrustRegion(
     return;
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

@@ -29,12 +29,12 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
-import lsst.meas.multifit
+import lsst.meas.modelfit
 
 numpy.random.seed(500)
 
-lsst.pex.logging.Debug("meas.multifit.optimizer.Optimizer", 0)
-lsst.pex.logging.Debug("meas.multifit.optimizer.solveTrustRegion", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
 def makeMultiShapeletCircularGaussian(sigma):
     s = lsst.shapelet.ShapeletFunction(0, lsst.shapelet.HERMITE, sigma)
@@ -78,8 +78,8 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         subImage = lsst.afw.image.ImageF(exposure.getMaskedImage().getImage(), psfBBox, lsst.afw.image.PARENT)
         subImage.getArray()[:,:] = psfImage.getArray()
 
-        ctrl = lsst.meas.multifit.CModelControl()
-        algorithm = lsst.meas.multifit.CModelAlgorithm(ctrl)
+        ctrl = lsst.meas.modelfit.CModelControl()
+        algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
         result = algorithm.apply(
             exposure, lsst.afw.detection.Footprint(psfBBox),
             makeMultiShapeletCircularGaussian(psfSigma),

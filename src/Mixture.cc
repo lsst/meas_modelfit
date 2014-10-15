@@ -29,11 +29,11 @@
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/afw/table/io/InputArchive.h"
 #include "lsst/afw/table/io/CatalogVector.h"
-#include "lsst/meas/multifit/Mixture.h"
+#include "lsst/meas/modelfit/Mixture.h"
 
 namespace tbl = lsst::afw::table;
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 void MixtureComponent::setSigma(Matrix const & sigma) {
     _sigmaLLT.compute(sigma);
@@ -496,4 +496,4 @@ void Mixture::write(OutputArchiveHandle & handle) const {
     handle.saveCatalog(catalog);
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

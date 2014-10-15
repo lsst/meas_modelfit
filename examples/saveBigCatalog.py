@@ -26,13 +26,13 @@ A script to be used when profiling and debugging large-catalog IO.
 
 import resource
 import os
-import lsst.meas.multifit
+import lsst.meas.modelfit
 
 def main(nRecords, nSamplesPerRecord):
     print "Initializing Task"
-    task = lsst.meas.multifit.MeasureCcdTask()
+    task = lsst.meas.modelfit.MeasureCcdTask()
     print "Filling catalog"
-    catalog = lsst.meas.multifit.ModelFitCatalog(task.makeTable())
+    catalog = lsst.meas.modelfit.ModelFitCatalog(task.makeTable())
     for i in xrange(nRecords):
         record = catalog.addNew()
         samples = record.getSamples()
@@ -45,7 +45,7 @@ def main(nRecords, nSamplesPerRecord):
     print "Save complete: system=%f, user=%f" % (res1.ru_stime - res0.ru_utime, res1.ru_utime - res0.ru_utime)
     print "Loading catalog"
     res0 = resource.getrusage(resource.RUSAGE_SELF)
-    catalog1 = lsst.meas.multifit.ModelFitCatalog.readFits("tmp.fits")
+    catalog1 = lsst.meas.modelfit.ModelFitCatalog.readFits("tmp.fits")
     res1 = resource.getrusage(resource.RUSAGE_SELF)
     print "Load complete: system=%f, user=%f" % (res1.ru_stime - res0.ru_utime, res1.ru_utime - res0.ru_utime)
     os.remove("tmp.fits")
