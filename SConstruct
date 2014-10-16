@@ -1,3 +1,3 @@
 # -*- python -*-
 from lsst.sconsUtils import scripts
-scripts.BasicSConstruct("meas_multifit")
+scripts.BasicSConstruct("meas_modelfit")

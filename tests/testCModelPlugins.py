@@ -28,7 +28,7 @@ import lsst.afw.geom
 import lsst.afw.table
 import lsst.utils.tests
 import lsst.meas.base.tests
-import lsst.meas.multifit
+import lsst.meas.modelfit
 
 import lsst.afw.display
 
@@ -63,29 +63,29 @@ class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase):
         for measRecord, truthRecord in zip(measCat, self.truth):
             trueFlux = truthRecord.get("truth_flux")
             if not measRecord.getShapeFlag():
-                self.assertFalse(measRecord.get("multifit_CModel_initial_flag"))
-                self.assertFalse(measRecord.get("multifit_CModel_exp_flag"))
-                self.assertFalse(measRecord.get("multifit_CModel_dev_flag"))
-                self.assertFalse(measRecord.get("multifit_CModel_flag"))
-                self.assertClose(measRecord.get("multifit_CModel_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("multifit_CModel_fluxSigma"), 0.0)
-                self.assertClose(measRecord.get("multifit_CModel_initial_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("multifit_CModel_initial_fluxSigma"), 0.0)
-                self.assertClose(measRecord.get("multifit_CModel_exp_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("multifit_CModel_exp_fluxSigma"), 0.0)
-                self.assertClose(measRecord.get("multifit_CModel_dev_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("multifit_CModel_dev_fluxSigma"), 0.0)
+                self.assertFalse(measRecord.get("modelfit_CModel_initial_flag"))
+                self.assertFalse(measRecord.get("modelfit_CModel_exp_flag"))
+                self.assertFalse(measRecord.get("modelfit_CModel_dev_flag"))
+                self.assertFalse(measRecord.get("modelfit_CModel_flag"))
+                self.assertClose(measRecord.get("modelfit_CModel_flux"), trueFlux, rtol=0.5)
+                self.assertGreater(measRecord.get("modelfit_CModel_fluxSigma"), 0.0)
+                self.assertClose(measRecord.get("modelfit_CModel_initial_flux"), trueFlux, rtol=0.5)
+                self.assertGreater(measRecord.get("modelfit_CModel_initial_fluxSigma"), 0.0)
+                self.assertClose(measRecord.get("modelfit_CModel_exp_flux"), trueFlux, rtol=0.5)
+                self.assertGreater(measRecord.get("modelfit_CModel_exp_fluxSigma"), 0.0)
+                self.assertClose(measRecord.get("modelfit_CModel_dev_flux"), trueFlux, rtol=0.5)
+                self.assertGreater(measRecord.get("modelfit_CModel_dev_fluxSigma"), 0.0)
             else:
-                self.assertTrue(measRecord.get("multifit_CModel_initial_flag"))
-                self.assertTrue(measRecord.get("multifit_CModel_exp_flag"))
-                self.assertTrue(measRecord.get("multifit_CModel_dev_flag"))
-                self.assertTrue(measRecord.get("multifit_CModel_flag"))
+                self.assertTrue(measRecord.get("modelfit_CModel_initial_flag"))
+                self.assertTrue(measRecord.get("modelfit_CModel_exp_flag"))
+                self.assertTrue(measRecord.get("modelfit_CModel_dev_flag"))
+                self.assertTrue(measRecord.get("modelfit_CModel_flag"))
 
     def testPlugins(self):
         # Start with a run on some simulated data, using the single-frame measurement driver
         sfmConfig = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
-        sfmConfig.plugins.names = ["base_SdssShape", "base_PsfFlux", "multifit_CModel",
-                                   "multifit_ShapeletPsfApprox"]
+        sfmConfig.plugins.names = ["base_SdssShape", "base_PsfFlux", "modelfit_CModel",
+                                   "modelfit_ShapeletPsfApprox"]
         sfmConfig.slots.centroid = None
         sfmConfig.slots.shape = "base_SdssShape"
         sfmConfig.slots.psfFlux = "base_PsfFlux"
@@ -105,7 +105,7 @@ class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase):
         # Now we use the SFM results as the reference catalog for a forced measurement run
         forcedConfig = lsst.meas.base.ForcedMeasurementTask.ConfigClass()
         forcedConfig.plugins.names = ["base_TransformedCentroid", "base_TransformedShape",
-                                      "base_PsfFlux", "multifit_CModel", "multifit_ShapeletPsfApprox"]
+                                      "base_PsfFlux", "modelfit_CModel", "modelfit_ShapeletPsfApprox"]
         forcedConfig.slots.centroid = "base_TransformedCentroid"
         forcedConfig.slots.shape = "base_TransformedShape"
         forcedConfig.slots.psfFlux = "base_PsfFlux"

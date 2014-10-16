@@ -28,10 +28,10 @@
 #define LSST_MAX_DEBUG 10
 #include "lsst/pex/logging/Debug.h"
 #include "lsst/pex/exceptions.h"
-#include "lsst/meas/multifit/SoftenedLinearPrior.h"
-#include "lsst/meas/multifit/TruncatedGaussian.h"
+#include "lsst/meas/modelfit/SoftenedLinearPrior.h"
+#include "lsst/meas/modelfit/TruncatedGaussian.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 //------------- SoftenedLinearPrior -------------------------------------------------------------------------
 
@@ -170,7 +170,7 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
             "ellipticityMaxOuter must be > 0"
         );
     }
-    pex::logging::Debug log("meas.multifit.SoftenedLinearPrior");
+    pex::logging::Debug log("meas.modelfit.SoftenedLinearPrior");
     log.debug<7>("Constructing new SoftenedLinearPrior");
     // Radius distribution is a trapezoid with cubic-softened sides.  First, the trapezoid:
     double logRadiusCoreIntegral = (ctrl.logRadiusMaxInner - ctrl.logRadiusMinInner)
@@ -359,4 +359,4 @@ Scalar SoftenedLinearPrior::_evaluate(
     return p;
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

@@ -34,13 +34,13 @@ except ImportError:
 
 import lsst.pex.logging
 import lsst.utils.tests
-import lsst.meas.multifit
+import lsst.meas.modelfit
 
 numpy.random.seed(500)
 
 if False:
-    lsst.pex.logging.Debug("meas.multifit.integrals", 10)
-    lsst.pex.logging.Debug("meas.multifit.TruncatedGaussian", 10)
+    lsst.pex.logging.Debug("meas.modelfit.integrals", 10)
+    lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 10)
 
 class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
 
@@ -125,8 +125,8 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             q0 = float(numpy.random.randn())
             hessian = numpy.linalg.inv(sigma)
             gradient = -numpy.dot(hessian, mu)
-            tg1 = lsst.meas.multifit.TruncatedGaussian.fromStandardParameters(mu, sigma)
-            tg2 = lsst.meas.multifit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
+            tg1 = lsst.meas.modelfit.TruncatedGaussian.fromStandardParameters(mu, sigma)
+            tg2 = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertEqual(tg1.getLogIntegral(), 0.0)
             self.assertClose(tg1.getLogPeakAmplitude(),
                              (0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))
@@ -153,14 +153,14 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             sigma = numpy.linalg.inv(hessian)
             self.assertClose(numpy.linalg.inv(sigma), hessian)
             mu = -numpy.dot(sigma, gradient)
-            tg1 = lsst.meas.multifit.TruncatedGaussian.fromStandardParameters(mu, sigma)
+            tg1 = lsst.meas.modelfit.TruncatedGaussian.fromStandardParameters(mu, sigma)
             self.assertClose(tg1.getLogPeakAmplitude(),
                              (numpy.log(tg1.getUntruncatedFraction())
                               + 0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))),
                              rtol=1E-13)
             self.assertEqual(tg1.getLogIntegral(), 0.0)
             self.check2d(mu, hessian, tg1)
-            tg2 = lsst.meas.multifit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
+            tg2 = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertClose(tg2.getLogPeakAmplitude(),
                              q0+0.5*numpy.dot(mu, gradient),
                              rtol=1E-13)
@@ -179,7 +179,7 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             gradient = -numpy.dot(model.transpose(), data)
             hessian = numpy.dot(model.transpose(), model)
             mu, _, _, _ = numpy.linalg.lstsq(model, data)
-            tg = lsst.meas.multifit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
+            tg = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertClose(tg.getLogPeakAmplitude(),
                              q0+0.5*numpy.dot(mu, gradient),
                              rtol=1E-13)

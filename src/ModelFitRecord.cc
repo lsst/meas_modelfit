@@ -25,9 +25,9 @@
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/afw/table/io/InputArchive.h"
 
-#include "lsst/meas/multifit/ModelFitRecord.h"
+#include "lsst/meas/modelfit/ModelFitRecord.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 //-----------------------------------------------------------------------------------------------------------
 //----- Private ModelFitTable/Record classes ---------------------------------------------------------------
@@ -326,7 +326,7 @@ ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const {
     return boost::make_shared<ModelFitFitsWriter>(fitsfile, flags);
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit
 
 //-----------------------------------------------------------------------------------------------------------
 //----- Explicit instantiation ------------------------------------------------------------------------------
@@ -334,10 +334,10 @@ ModelFitTable::makeFitsWriter(afw::fits::Fits * fitsfile, int flags) const {
 
 namespace lsst { namespace afw { namespace table {
 
-template class CatalogT<meas::multifit::ModelFitRecord>;
-template class CatalogT<meas::multifit::ModelFitRecord const>;
+template class CatalogT<meas::modelfit::ModelFitRecord>;
+template class CatalogT<meas::modelfit::ModelFitRecord const>;
 
-template class SortedCatalogT<meas::multifit::ModelFitRecord>;
-template class SortedCatalogT<meas::multifit::ModelFitRecord const>;
+template class SortedCatalogT<meas::modelfit::ModelFitRecord>;
+template class SortedCatalogT<meas::modelfit::ModelFitRecord const>;
 
 }}} // namespace lsst::afw::table

@@ -25,11 +25,11 @@
 
 #include "ndarray/eigen.h"
 
-#include "lsst/meas/multifit/MarginalSamplingInterpreter.h"
-#include "lsst/meas/multifit/DirectSamplingInterpreter.h"
-#include "lsst/meas/multifit/ModelFitRecord.h"
+#include "lsst/meas/modelfit/MarginalSamplingInterpreter.h"
+#include "lsst/meas/modelfit/DirectSamplingInterpreter.h"
+#include "lsst/meas/modelfit/ModelFitRecord.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
@@ -330,4 +330,4 @@ void UnnestMarginalSamples::apply(
     directRecord.setPdf(directPdf);
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

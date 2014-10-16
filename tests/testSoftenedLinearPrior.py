@@ -29,7 +29,7 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
-import lsst.meas.multifit
+import lsst.meas.modelfit
 from matplotlib import pyplot
 
 try:
@@ -39,7 +39,7 @@ except ImportError:
 
 numpy.random.seed(500)
 
-lsst.pex.logging.Debug("meas.multifit.SoftenedLinearPrior", 10)
+lsst.pex.logging.Debug("meas.modelfit.SoftenedLinearPrior", 10)
 
 class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
 
@@ -48,13 +48,13 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
         # a prior with broad ramps and non-zero slope; broad ramps makes evaluating numerical
         # derivatives easier, and we want to do that to check the analytic ones
-        ctrl = lsst.meas.multifit.SoftenedLinearPrior.Control()
+        ctrl = lsst.meas.modelfit.SoftenedLinearPrior.Control()
         ctrl.logRadiusMinOuter = ctrl.logRadiusMinInner - 2.0
         ctrl.logRadiusMaxOuter = ctrl.logRadiusMaxInner + 2.0
         ctrl.ellipticityMaxOuter = ctrl.ellipticityMaxInner + 2.0
         ctrl.logRadiusMinMaxRatio = 2.0
-        self.prior = lsst.meas.multifit.SoftenedLinearPrior(ctrl)
-        self.amplitudes = numpy.array([1.0], dtype=lsst.meas.multifit.Scalar)
+        self.prior = lsst.meas.modelfit.SoftenedLinearPrior(ctrl)
+        self.amplitudes = numpy.array([1.0], dtype=lsst.meas.modelfit.Scalar)
 
     def tearDown(self):
         del self.prior
@@ -62,18 +62,18 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
 
     def evaluatePrior(self, e1, e2, r):
         b = numpy.broadcast(e1, e2, r)
-        p = numpy.zeros(b.shape, dtype=lsst.meas.multifit.Scalar)
+        p = numpy.zeros(b.shape, dtype=lsst.meas.modelfit.Scalar)
         for i, (e1i, e2i, ri) in enumerate(b):
             p.flat[i] = self.prior.evaluate(numpy.array([e1i, e2i, ri]), self.amplitudes)
         return p
 
     def checkDerivatives(self, e1, e2, r):
-        nonlinear = numpy.array([e1, e2, r], dtype=lsst.meas.multifit.Scalar)
-        amplitudeGradient = numpy.zeros(1, dtype=lsst.meas.multifit.Scalar)
-        amplitudeHessian = numpy.zeros((1,1), dtype=lsst.meas.multifit.Scalar)
-        crossHessian = numpy.zeros((3,1), dtype=lsst.meas.multifit.Scalar)
-        nonlinearGradient = numpy.zeros(3, dtype=lsst.meas.multifit.Scalar)
-        nonlinearHessian = numpy.zeros((3, 3), dtype=lsst.meas.multifit.Scalar)
+        nonlinear = numpy.array([e1, e2, r], dtype=lsst.meas.modelfit.Scalar)
+        amplitudeGradient = numpy.zeros(1, dtype=lsst.meas.modelfit.Scalar)
+        amplitudeHessian = numpy.zeros((1,1), dtype=lsst.meas.modelfit.Scalar)
+        crossHessian = numpy.zeros((3,1), dtype=lsst.meas.modelfit.Scalar)
+        nonlinearGradient = numpy.zeros(3, dtype=lsst.meas.modelfit.Scalar)
+        nonlinearHessian = numpy.zeros((3, 3), dtype=lsst.meas.modelfit.Scalar)
         self.prior.evaluateDerivatives(nonlinear, self.amplitudes,
                                   nonlinearGradient, amplitudeGradient,
                                   nonlinearHessian, amplitudeHessian,

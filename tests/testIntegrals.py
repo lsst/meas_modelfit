@@ -31,7 +31,7 @@ except ImportError:
     scipy = None
 
 import lsst.utils.tests
-import lsst.meas.multifit
+import lsst.meas.modelfit
 
 numpy.random.seed(500)
 
@@ -40,7 +40,7 @@ class IntegralsTestCase(lsst.utils.tests.TestCase):
     def testBVN(self):
         data = numpy.loadtxt(os.path.join("tests", "reference", "bvn.txt"), delimiter=',')
         for h, k, r, p1 in data:
-            p2 = lsst.meas.multifit.bvnu(h, k, r)
+            p2 = lsst.meas.modelfit.bvnu(h, k, r)
             self.assertClose(p1, p2, rtol=1E-14)
 
 def suite():

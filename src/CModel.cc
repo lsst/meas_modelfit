@@ -32,12 +32,12 @@
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/math/LeastSquares.h"
 #include "lsst/shapelet/FunctorKeys.h"
-#include "lsst/meas/multifit/TruncatedGaussian.h"
-#include "lsst/meas/multifit/MultiModel.h"
-#include "lsst/meas/multifit/CModel.h"
+#include "lsst/meas/modelfit/TruncatedGaussian.h"
+#include "lsst/meas/modelfit/MultiModel.h"
+#include "lsst/meas/modelfit/CModel.h"
 #include "lsst/meas/base/Results.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 
 //-------------------- Utility code -------------------------------------------------------------------------
@@ -90,11 +90,11 @@ PTR(Prior) CModelStageControl::getPrior() const {
     if (priorSource == "NONE") {
         return PTR(Prior)();
     } else if (priorSource == "FILE") {
-        char const * pkgDir = std::getenv("MEAS_MULTIFIT_DIR");
+        char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR");
         if (!pkgDir) {
             throw LSST_EXCEPT(
                 meas::base::FatalAlgorithmError,
-                "MEAS_MULTIFIT_DIR environment variable not defined; cannot find persisted Priors"
+                "MEAS_MODELFIT_DIR environment variable not defined; cannot find persisted Priors"
             );
         }
         boost::filesystem::path priorPath
@@ -317,7 +317,7 @@ struct CModelKeys {
         dev(devModel, schema, schema.join(prefix, "dev"), "de Vaucouleur", isForced, ctrl.dev),
         // Unlike all the other keys, we expect the psf keys to already be present in the schema,
         // and we just retrieve them, because they're created and filled by the ShapeletPsfApprox plugin.
-        psf(schema["multifit"]["ShapeletPsfApprox"][ctrl.psfName]),
+        psf(schema["modelfit"]["ShapeletPsfApprox"][ctrl.psfName]),
         flux(
             schema.addField<meas::base::Flux>(
                 schema.join(prefix, "flux"),
@@ -1274,4 +1274,4 @@ void CModelAlgorithm::measure(
     _impl->keys->copyResultToRecord(result, measRecord);
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

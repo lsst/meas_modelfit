@@ -40,10 +40,10 @@
 #define LSST_MAX_DEBUG 10
 #include "lsst/pex/logging/Debug.h"
 #include "lsst/pex/exceptions.h"
-#include "lsst/meas/multifit/integrals.h"
-#include "lsst/meas/multifit/TruncatedGaussian.h"
+#include "lsst/meas/modelfit/integrals.h"
+#include "lsst/meas/modelfit/TruncatedGaussian.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
@@ -74,7 +74,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
 ) {
     static Scalar const LN_2PI = std::log(2.0*M_PI);
     static Scalar const SQRT_PI = std::sqrt(M_PI);
-    pex::logging::Debug debugLog("meas.multifit.TruncatedGaussian");
+    pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
     int const n = gradient.size();
     if (hessian.rows() != n || hessian.cols() != n) {
         throw LSST_EXCEPT(
@@ -175,7 +175,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
     Vector const & mean, Matrix const & covariance
 ) {
     static Scalar const LN_2PI = std::log(2.0*M_PI);
-    pex::logging::Debug debugLog("meas.multifit.TruncatedGaussian");
+    pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
     int const n = mean.size();
     if (covariance.rows() != n || covariance.cols() != n) {
         throw LSST_EXCEPT(
@@ -427,7 +427,7 @@ public:
         {
             static Scalar const LOG_2PI = std::log(2.0*M_PI);
             static Scalar const MAX_NEGATIVE_SIGMA = 6.0;
-            pex::logging::Debug debugLog("meas.multifit.TruncatedGaussian");
+            pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
             // We start with the inverse of the diagonal of H; we'd prefer the diagonal of the inverse,
             // but H may not be invertible.  The inverse of the diagonal at H represents the width in
             // each dimension at a fixed point in all the other dimensions, so it's not quite wide
@@ -475,7 +475,7 @@ TruncatedGaussianSampler::TruncatedGaussianSampler(
     TruncatedGaussian const & parent,
     TruncatedGaussian::SampleStrategy strategy
 ) {
-    pex::logging::Debug debugLog("meas.multifit.TruncatedGaussian");
+    pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
     if (parent.getDim() == 1) {
         switch (strategy) {
         case TruncatedGaussian::DIRECT_WITH_REJECTION:
@@ -545,4 +545,4 @@ void TruncatedGaussianSampler::operator()(
 
 TruncatedGaussianSampler::~TruncatedGaussianSampler() {} // defined in .cc so it can see Impl's dtor
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

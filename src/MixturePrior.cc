@@ -26,10 +26,10 @@
 #include "ndarray/eigen.h"
 
 #include "lsst/pex/exceptions.h"
-#include "lsst/meas/multifit/MixturePrior.h"
-#include "lsst/meas/multifit/TruncatedGaussian.h"
+#include "lsst/meas/modelfit/MixturePrior.h"
+#include "lsst/meas/modelfit/TruncatedGaussian.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 //------------- MixturePrior --------------------------------------------------------------------------------
 
@@ -121,4 +121,4 @@ Mixture::UpdateRestriction const & MixturePrior::getUpdateRestriction() {
     return instance;
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

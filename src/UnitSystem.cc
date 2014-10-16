@@ -24,9 +24,9 @@
 #include "boost/format.hpp"
 #include "boost/make_shared.hpp"
 
-#include "lsst/meas/multifit/UnitSystem.h"
+#include "lsst/meas/modelfit/UnitSystem.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 UnitSystem::UnitSystem(afw::coord::Coord const & position, Scalar mag) {
     double cdelt = (1.0*lsst::afw::geom::arcseconds).asDegrees();
@@ -51,4 +51,4 @@ LocalUnitTransform::LocalUnitTransform(
     sb(flux / geometric.getLinear().computeDeterminant())
 {}
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

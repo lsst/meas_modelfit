@@ -32,8 +32,8 @@ import lsst.afw.geom.ellipses
 import lsst.afw.image
 import lsst.afw.math
 import lsst.afw.detection
-import lsst.meas.multifit
-import lsst.meas.multifit.display
+import lsst.meas.modelfit
+import lsst.meas.modelfit.display
 import lsst.afw.display.ds9
 
 numpy.random.seed(500)
@@ -70,15 +70,15 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         self.position = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
-        self.model = lsst.meas.multifit.Model.makeGaussian(lsst.meas.multifit.Model.FIXED_CENTER)
+        self.model = lsst.meas.modelfit.Model.makeGaussian(lsst.meas.modelfit.Model.FIXED_CENTER)
         self.ellipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(6.0, 5.0, numpy.pi/6))
         self.flux = 50.0
         ev = self.model.makeEllipseVector()
         ev[0] = self.ellipse
-        self.nonlinear = numpy.zeros(self.model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar)
-        self.fixed = numpy.zeros(self.model.getFixedDim(), dtype=lsst.meas.multifit.Scalar)
+        self.nonlinear = numpy.zeros(self.model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar)
+        self.fixed = numpy.zeros(self.model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
         self.model.readEllipses(ev, self.nonlinear, self.fixed)
-        self.amplitudes = numpy.zeros(self.model.getAmplitudeDim(), dtype=lsst.meas.multifit.Scalar)
+        self.amplitudes = numpy.zeros(self.model.getAmplitudeDim(), dtype=lsst.meas.modelfit.Scalar)
         self.amplitudes[:] = self.flux
         # setup ideal exposure0: uses fit Wcs and Calib, has delta function PSF
         cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
@@ -91,7 +91,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.exposure0 = lsst.afw.image.ExposureF(self.bbox0)
         self.exposure0.setWcs(wcs0)
         self.exposure0.setCalib(calib0)
-        self.sys0 = lsst.meas.multifit.UnitSystem(self.exposure0)
+        self.sys0 = lsst.meas.modelfit.UnitSystem(self.exposure0)
         addGaussian(self.exposure0, self.ellipse, self.flux, psf=self.psf0)
         self.exposure0.getMaskedImage().getVariance().set(1.0)
         # setup secondary exposure: 2x pixel scale, 3x gain, Gaussian PSF with sigma=2.5pix
@@ -99,9 +99,9 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         wcs1 = lsst.afw.image.makeWcs(self.position, lsst.afw.geom.Point2D(), cdelt, 0.0, 0.0, cdelt)
         calib1 = lsst.afw.image.Calib()
         calib1.setFluxMag0(30000)
-        self.sys1 = lsst.meas.multifit.UnitSystem(wcs1, calib1)
+        self.sys1 = lsst.meas.modelfit.UnitSystem(wcs1, calib1)
         # transform object that maps between exposures (not including PSF)
-        self.t01 = lsst.meas.multifit.LocalUnitTransform(self.position, self.sys0, self.sys1)
+        self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.position, self.sys0, self.sys1)
         self.bbox1 = lsst.afw.geom.Box2I(self.bbox0)
         self.bbox1.grow(-60)
         self.footprint1 = lsst.afw.detection.Footprint(self.bbox1)
@@ -124,7 +124,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
 
     def checkLikelihood(self, likelihood, data):
         self.assertClose(likelihood.getData().reshape(data.shape), data, rtol=1E-6, **ASSERT_CLOSE_KWDS)
-        matrix = numpy.zeros((1, likelihood.getDataDim()), dtype=lsst.meas.multifit.Pixel).transpose()
+        matrix = numpy.zeros((1, likelihood.getDataDim()), dtype=lsst.meas.modelfit.Pixel).transpose()
         likelihood.computeModelMatrix(matrix, self.nonlinear)
         model = numpy.dot(matrix, self.amplitudes)
         self.assertClose(model.reshape(data.shape), data, rtol=1E-6, atol=1E-7, **ASSERT_CLOSE_KWDS)
@@ -184,27 +184,27 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
     def testDirect(self):
         """Test likelihood evaluation when the fit system is the same as the data system.
         """
-        ctrl = lsst.meas.multifit.UnitTransformedLikelihoodControl()
+        ctrl = lsst.meas.modelfit.UnitTransformedLikelihoodControl()
         var = numpy.random.rand(self.bbox0.getHeight(), self.bbox0.getWidth()) + 2.0
         self.exposure0.getMaskedImage().getVariance().getArray()[:,:] = var
-        efv = lsst.meas.multifit.EpochFootprintVector()
-        efv.push_back(lsst.meas.multifit.EpochFootprint(self.footprint0, self.exposure0, self.psf0))
+        efv = lsst.meas.modelfit.EpochFootprintVector()
+        efv.push_back(lsst.meas.modelfit.EpochFootprint(self.footprint0, self.exposure0, self.psf0))
         # test with per-pixel weights, using both ctors
         ctrl.usePixelWeights = True
         data = self.exposure0.getMaskedImage().getImage().getArray() / var**0.5
-        l0a = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0a = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0a, data)
-        l0b = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0b = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l0b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
         data = self.exposure0.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
-        l0c = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0c, data)
-        l0d = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l0d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l0d, data)
 
@@ -219,25 +219,25 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         exposure1.setCalib(self.sys1.calib)
         var = numpy.random.rand(self.bbox1.getHeight(), self.bbox1.getWidth()) + 2.0
         exposure1.getMaskedImage().getVariance().getArray()[:,:] = var
-        ctrl = lsst.meas.multifit.UnitTransformedLikelihoodControl()
-        efv = lsst.meas.multifit.EpochFootprintVector()
-        efv.push_back(lsst.meas.multifit.EpochFootprint(self.footprint1, exposure1, self.psf1))
+        ctrl = lsst.meas.modelfit.UnitTransformedLikelihoodControl()
+        efv = lsst.meas.modelfit.EpochFootprintVector()
+        efv.push_back(lsst.meas.modelfit.EpochFootprint(self.footprint1, exposure1, self.psf1))
         # test with per-pixel weights, using both ctors
         ctrl.usePixelWeights = True
         data = exposure1.getMaskedImage().getImage().getArray() / var**0.5
-        l1a = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1a = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1a, data)
-        l1b = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1b = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l1b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
         data = exposure1.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
-        l1c = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1c, data)
-        l1d = lsst.meas.multifit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
+        l1d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
         self.checkLikelihood(l1d, data)
 

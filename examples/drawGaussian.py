@@ -26,18 +26,18 @@ import matplotlib
 
 import lsst.pex.logging
 import lsst.afw.math
-import lsst.meas.multifit.display
+import lsst.meas.modelfit.display
 
 rng = lsst.afw.math.Random()
-log = lsst.pex.logging.Debug("meas.multifit.TruncatedGaussian", 10)
+log = lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 10)
 
 class TruncatedGaussianData(object):
 
     def __init__(self, tg, nSamples, strategy=None):
         self.tg = tg
         self.dimensions = ['x', 'y']
-        self.values = numpy.zeros((nSamples, self.tg.getDim()), dtype=lsst.meas.multifit.Scalar)
-        self.weights = numpy.zeros(nSamples, dtype=lsst.meas.multifit.Scalar)
+        self.values = numpy.zeros((nSamples, self.tg.getDim()), dtype=lsst.meas.modelfit.Scalar)
+        self.weights = numpy.zeros(nSamples, dtype=lsst.meas.modelfit.Scalar)
         if strategy is None:
             sampler = self.tg.sample()
         else:
@@ -75,10 +75,10 @@ class TruncatedGaussianData(object):
 def display(tg, nSamples=5000, strategy=None):
     data = TruncatedGaussianData(tg, nSamples=nSamples, strategy=strategy)
     figure = matplotlib.pyplot.figure(figsize=(10, 10))
-    p = lsst.meas.multifit.display.DensityPlot(figure, data)
-    p.layers["hist"] = lsst.meas.multifit.display.HistogramLayer()
-    p.layers["samples"] = lsst.meas.multifit.display.ScatterLayer()
-    p.layers["func"] = lsst.meas.multifit.display.SurfaceLayer()
+    p = lsst.meas.modelfit.display.DensityPlot(figure, data)
+    p.layers["hist"] = lsst.meas.modelfit.display.HistogramLayer()
+    p.layers["samples"] = lsst.meas.modelfit.display.ScatterLayer()
+    p.layers["func"] = lsst.meas.modelfit.display.SurfaceLayer()
     p.draw()
     return p
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         hessian = (rot2*scale*rot1).getMatrix()
         mu = numpy.array([2.0, 2.0])
         gradient = numpy.dot(hessian, -mu)
-        tg = lsst.meas.multifit.TruncatedGaussian.fromSeriesParameters(0.0, gradient, hessian)
+        tg = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(0.0, gradient, hessian)
     else:
         angle = numpy.pi/6
         rot1 = lsst.afw.geom.LinearTransform.makeRotation(angle)
@@ -99,6 +99,6 @@ if __name__ == "__main__":
         scale = lsst.afw.geom.LinearTransform.makeScaling(8.0, 2.0)
         sigma = (rot2*scale*rot1).getMatrix()
         mu = numpy.array([-3.0, 3.0])
-        tg = lsst.meas.multifit.TruncatedGaussian.fromStandardParameters(mu, sigma)
+        tg = lsst.meas.modelfit.TruncatedGaussian.fromStandardParameters(mu, sigma)
     p = display(tg)
     matplotlib.pyplot.show()

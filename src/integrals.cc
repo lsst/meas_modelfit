@@ -26,9 +26,9 @@
 #define LSST_MAX_DEBUG 10
 #include "lsst/pex/logging/Debug.h"
 #include "lsst/pex/exceptions.h"
-#include "lsst/meas/multifit/integrals.h"
+#include "lsst/meas/modelfit/integrals.h"
 
-namespace lsst { namespace meas { namespace multifit { namespace detail {
+namespace lsst { namespace meas { namespace modelfit { namespace detail {
 
 // translation of matlab 'bvn.m' routines by Alan Genz:
 // http://www.math.wsu.edu/faculty/genz/homepage
@@ -38,7 +38,7 @@ double phid(double z) {
 }
 
 double bvnu(double h, double k, double rho) {
-    pex::logging::Debug log("meas.multifit.integrals");
+    pex::logging::Debug log("meas.modelfit.integrals");
     log.debug<8>("Starting bvnu: h=%g, k=%g, rho=%g", h, k, rho);
     if (h == std::numeric_limits<double>::infinity() || h == std::numeric_limits<double>::infinity()) {
         return 0.0;
@@ -150,4 +150,4 @@ double bvnu(double h, double k, double rho) {
     return std::max(0.0, std::min(1.0, bvn));
 }
 
-}}}} // namespace lsst::meas::multifit::detail
+}}}} // namespace lsst::meas::modelfit::detail

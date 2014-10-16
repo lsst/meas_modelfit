@@ -1,9 +1,9 @@
 // -*- lsst-c++ -*-
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 /**
- *  @page multifitTruncatedGaussianMath Truncated Gaussian Math
+ *  @page modelfitTruncatedGaussianMath Truncated Gaussian Math
  *
  *  The implementation of the TruncatedGaussian class is a bit opaque due to the
  *  complex mathematics involved.  This page provides formulae and explanations
@@ -17,7 +17,7 @@ namespace lsst { namespace meas { namespace multifit {
  *  an arbitrary path joining them at infinity (which we will regularly ignore since all the
  *  functions were are concerned with are zero at infinity).
  *
- *  @section multifitTruncatedGaussianStandardIntegral Standard-Parameter Integrals
+ *  @section modelfitTruncatedGaussianStandardIntegral Standard-Parameter Integrals
  *
  *  In the standard parameters form, we are modeling the function
  *  @f[
@@ -67,7 +67,7 @@ namespace lsst { namespace meas { namespace multifit {
  *                       \frac{\Sigma_{1,2}}{\sqrt{\Sigma_{1,1} \Sigma_{2,2}}}\right)
  *  @f]
  *
- *  @section multifitTruncatedGaussianSeriesIntegral Series-Parameter Integrals
+ *  @section modelfitTruncatedGaussianSeriesIntegral Series-Parameter Integrals
  *
  *  In the series form, we are modeling the function
  *  @f[
@@ -180,7 +180,7 @@ namespace lsst { namespace meas { namespace multifit {
  *    z \equiv \frac{V_{:,2}^T\,g}{\sqrt{2S_2}}
  *  @f]
  *
- *  @section multifitTruncatedGaussianSampling Sampling
+ *  @section modelfitTruncatedGaussianSampling Sampling
  *
  *  TruncatedGaussian supports two strategies for sampling, set by the
  *  TruncatedGaussian::SampleStrategy enum.  The "direct-with-rejection" strategy is quite simple,
@@ -257,7 +257,7 @@ namespace lsst { namespace meas { namespace multifit {
  *   w = \frac{A_p\;f(\alpha)}{A_f\;f(\alpha)}
  *  @f]
  *
- *  @section multifitTruncatedGaussianMaximization Maximization
+ *  @section modelfitTruncatedGaussianMaximization Maximization
  *
  *  To derive the formulae for higher-order moments, we will use the same hybrid functional form
  *  as in the sampling section:
@@ -332,7 +332,7 @@ namespace lsst { namespace meas { namespace multifit {
  *   \hat{\alpha} = Q_1 \tau_1 = Q_1 Q_1^T \mu
  *  @f]
  *
- *  @section multifitTruncatedGaussianMoments Moments
+ *  @section modelfitTruncatedGaussianMoments Moments
  *
  *  To derive the formulae for higher-order moments, we will use the same hybrid functional form
  *  as in the sampling section:

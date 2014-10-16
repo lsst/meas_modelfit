@@ -28,16 +28,16 @@
 #include "lsst/utils/ieee.h"
 #include "lsst/afw/table/BaseRecord.h"
 #include "lsst/afw/table/Catalog.h"
-#include "lsst/meas/multifit/AdaptiveImportanceSampler.h"
+#include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
 // Given a sample catalog with log unnormalized weights, transform to normalized weights
 Scalar computeRobustWeights(afw::table::BaseCatalog & samples, afw::table::Key<Scalar> const & weightKey) {
     static Scalar const CLIP_THRESHOLD = 100; // clip samples with weight < e^{-CLIP_THRESHOLD} * wMax
-    pex::logging::Debug log("meas.multifit.AdaptiveImportanceSampler");
+    pex::logging::Debug log("meas.modelfit.AdaptiveImportanceSampler");
     log.debug<8>("Starting computeRobustWeights with %d samples", int(samples.size()));
     // Sort the sample by weight so we can accumulate robustly.
     samples.sort(weightKey);
@@ -110,7 +110,7 @@ void AdaptiveImportanceSampler::run(
     PTR(Mixture) proposal,
     afw::table::BaseCatalog & samples
 ) const {
-    pex::logging::Debug log("meas.multifit.AdaptiveImportanceSampler");
+    pex::logging::Debug log("meas.modelfit.AdaptiveImportanceSampler");
     double perplexity = 0.0;
     int parameterDim = objective.getParameterDim();
     for (std::map<int,ImportanceSamplerControl>::const_iterator i = _ctrls.begin(); i != _ctrls.end(); ++i) {
@@ -206,4 +206,4 @@ double AdaptiveImportanceSampler::computeEffectiveSampleSizeFraction(
     return 1.0 / (t * samples.size());
 }
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

@@ -30,16 +30,16 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
-import lsst.meas.multifit
+import lsst.meas.modelfit
 import lsst.meas.base
 
 numpy.random.seed(500)
 
-lsst.pex.logging.Debug("meas.multifit.optimizer.Optimizer", 0)
-lsst.pex.logging.Debug("meas.multifit.optimizer.solveTrustRegion", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
 ELLIPSE_PARAMETER_NAMES = ["eta1", "eta2", "logR", "x", "y"]
-DATA_DIR = os.path.join(os.environ["MEAS_MULTIFIT_DIR"], "tests", "data")
+DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
 
 def computeMoments(image):
     """Helper function to compute moments of a postage stamp about its origin."""
@@ -57,17 +57,17 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         self.configs = {}
-        self.configs['fixed'] = lsst.meas.multifit.PsfFitterConfig()
+        self.configs['fixed'] = lsst.meas.modelfit.PsfFitterConfig()
         self.configs['fixed'].primary.ellipticityPriorSigma = 0.0
         self.configs['fixed'].primary.radiusPriorSigma = 0.0
         self.configs['fixed'].primary.positionPriorSigma = 0.0
         self.configs['fixed'].wings.ellipticityPriorSigma = 0.0
         self.configs['fixed'].wings.radiusPriorSigma = 0.0
         self.configs['fixed'].wings.positionPriorSigma = 0.0
-        self.configs['ellipse'] = lsst.meas.multifit.PsfFitterConfig()
+        self.configs['ellipse'] = lsst.meas.modelfit.PsfFitterConfig()
         self.configs['ellipse'].primary.positionPriorSigma = 0.0
         self.configs['ellipse'].wings.positionPriorSigma = 0.0
-        self.configs['full'] = lsst.meas.multifit.PsfFitterConfig()
+        self.configs['full'] = lsst.meas.modelfit.PsfFitterConfig()
         self.configs['full'].inner.order = 0
         self.configs['full'].primary.order = 4
         self.configs['full'].wings.order = 4
@@ -89,7 +89,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         del self.configs
 
     def testFixedModel(self):
-        fitter = lsst.meas.multifit.PsfFitter(self.configs['fixed'].makeControl())
+        fitter = lsst.meas.modelfit.PsfFitter(self.configs['fixed'].makeControl())
         model = fitter.getModel()
 
         # check that we have the right numbers and names for parameters
@@ -110,9 +110,9 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         ellipses1 = model.makeEllipseVector()
         for i in range(len(ellipses1)):
             ellipses1[i].setParameterVector(ellipseParameters[i])
-        nonlinear = numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar)
-        fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.multifit.Scalar)
-        amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.multifit.Scalar)
+        nonlinear = numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar)
+        fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
+        amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.modelfit.Scalar)
         model.readEllipses(ellipses1, nonlinear, fixed)
         self.assertClose(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
@@ -126,7 +126,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
             self.assertClose(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients())
 
     def testEllipseModel(self):
-        fitter = lsst.meas.multifit.PsfFitter(self.configs['ellipse'].makeControl())
+        fitter = lsst.meas.modelfit.PsfFitter(self.configs['ellipse'].makeControl())
         model = fitter.getModel()
 
         # check that we have the right numbers and names for parameters
@@ -150,11 +150,11 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         ellipses1 = model.makeEllipseVector()
         for i in range(len(ellipses1)):
             ellipses1[i].setParameterVector(ellipseParameters[i])
-        nonlinear = numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar)
-        fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.multifit.Scalar)
-        amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.multifit.Scalar)
+        nonlinear = numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar)
+        fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
+        amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.modelfit.Scalar)
         model.readEllipses(ellipses1, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar))
+        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar))
         self.assertClose(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
@@ -171,13 +171,13 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         nonlinear[:] = 0.5*ellipseParameters[:,:3].ravel()
         ellipses4 = model.writeEllipses(nonlinear, fixed)
         model.readEllipses(ellipses4, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar),
+        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar),
                          rtol=1E-8)
         self.assertClose(fixed.reshape(2,5)[:,:3], 1.5*ellipseParameters[:,:3], rtol=1E-8)
         self.assertClose(fixed.reshape(2,5)[:,3:], ellipseParameters[:,3:], rtol=1E-8)
 
     def testFullModel(self):
-        fitter = lsst.meas.multifit.PsfFitter(self.configs['full'].makeControl())
+        fitter = lsst.meas.modelfit.PsfFitter(self.configs['full'].makeControl())
         model = fitter.getModel()
 
         # check that we have the right numbers and names for parameters
@@ -215,11 +215,11 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         ellipses1 = model.makeEllipseVector()
         for i in range(len(ellipses1)):
             ellipses1[i].setParameterVector(ellipseParameters[i])
-        nonlinear = numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar)
-        fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.multifit.Scalar)
+        nonlinear = numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar)
+        fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
         amplitudes = numpy.random.randn(model.getAmplitudeDim())
         model.readEllipses(ellipses1, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar))
+        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar))
         self.assertClose(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
@@ -240,7 +240,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         nonlinear[:] = 0.5*ellipseParameters.ravel()
         ellipses4 = model.writeEllipses(nonlinear, fixed)
         model.readEllipses(ellipses4, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.multifit.Scalar))
+        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar))
         self.assertClose(fixed, 1.5*ellipseParameters.ravel())
 
     def testApply(self):
@@ -249,7 +249,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
             kernelImage = lsst.afw.image.ImageD(filename)
             shape = computeMoments(kernelImage)
             for configKey in ["full", "ellipse", "fixed"]:
-                fitter = lsst.meas.multifit.PsfFitter(self.configs[configKey].makeControl())
+                fitter = lsst.meas.modelfit.PsfFitter(self.configs[configKey].makeControl())
                 multiShapeletFit = fitter.apply(kernelImage, shape, 0.01)
                 modelImage = lsst.afw.image.ImageD(kernelImage.getBBox(lsst.afw.image.PARENT))
                 multiShapeletFit.evaluate().addToImage(modelImage)

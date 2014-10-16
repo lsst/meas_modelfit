@@ -23,10 +23,10 @@
 
 #include "ndarray/eigen.h"
 
-#include "lsst/meas/multifit/ModelFitRecord.h"
-#include "lsst/meas/multifit/Sampling.h"
+#include "lsst/meas/modelfit/ModelFitRecord.h"
+#include "lsst/meas/modelfit/Sampling.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 ndarray::Array<Scalar,1,1> SamplingInterpreter::computeParameterQuantiles(
     ModelFitRecord const & record,
@@ -175,4 +175,4 @@ SamplingObjective::SamplingObjective(
     _modelMatrix(ndarray::allocate(likelihood->getDataDim(), likelihood->getAmplitudeDim()))
 {}
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

@@ -28,11 +28,11 @@ import numpy
 
 import lsst.utils.tests
 import lsst.pex.logging
-import lsst.meas.multifit
+import lsst.meas.modelfit
 
 numpy.random.seed(500)
 
-log = lsst.pex.logging.Debug("meas.multifit.optimizer", 10)
+log = lsst.pex.logging.Debug("meas.modelfit.optimizer", 10)
 
 class OptimizerTestCase(lsst.utils.tests.TestCase):
 
@@ -46,7 +46,7 @@ class OptimizerTestCase(lsst.utils.tests.TestCase):
         g = numpy.dot(m.transpose(), y)
         x = numpy.zeros(5)
         for r in numpy.linspace(1E-3, 0.8, 5):
-            lsst.meas.multifit.solveTrustRegion(x, f, g, r, tolerance)
+            lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
             self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
         # now we try some matrices with zero eigenvalues due to model degeneracies
         log.info("Testing solveTrustRegion with positive-semidefinite matrices")
@@ -54,13 +54,13 @@ class OptimizerTestCase(lsst.utils.tests.TestCase):
         f = numpy.dot(m.transpose(), m)
         g = numpy.dot(m.transpose(), y)
         for r in numpy.linspace(1E-3, 0.8, 5):
-            lsst.meas.multifit.solveTrustRegion(x, f, g, r, tolerance)
+            lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
             self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
         m[:,-2] = m[:,1]
         f = numpy.dot(m.transpose(), m)
         g = numpy.dot(m.transpose(), y)
         for r in numpy.linspace(1E-3, 0.8, 5):
-            lsst.meas.multifit.solveTrustRegion(x, f, g, r, tolerance)
+            lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
             self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
         log.info("Testing solveTrustRegion with indefinite matrices")
         for i in range(3):
@@ -68,7 +68,7 @@ class OptimizerTestCase(lsst.utils.tests.TestCase):
             f = m + m.transpose()
             g = numpy.random.randn(5)
             for r in numpy.linspace(1E-3, 0.8, 5):
-                lsst.meas.multifit.solveTrustRegion(x, f, g, r, tolerance)
+                lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
                 self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
 
 def suite():

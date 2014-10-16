@@ -21,6 +21,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from lsst.meas.multifit import MeasureCcdTask
+from lsst.meas.modelfit import MeasureCcdTask
 
 MeasureCcdTask.parseAndRun()

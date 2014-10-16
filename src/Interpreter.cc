@@ -21,9 +21,9 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "lsst/meas/multifit/Interpreter.h"
+#include "lsst/meas/modelfit/Interpreter.h"
 
-namespace lsst { namespace meas { namespace multifit {
+namespace lsst { namespace meas { namespace modelfit {
 
 Interpreter::Interpreter(Model::NameVector parameterNames, PTR(Model) model, PTR(Prior) prior)
   : _parameterNames(parameterNames), _model(model), _prior(prior)
@@ -116,4 +116,4 @@ ndarray::Array<Scalar,2,2> Interpreter::computeAmplitudeCovariance(ModelFitRecor
 }
 
 
-}}} // namespace lsst::meas::multifit
+}}} // namespace lsst::meas::modelfit

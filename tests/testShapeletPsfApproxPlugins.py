@@ -30,13 +30,13 @@ import lsst.shapelet
 import lsst.afw.geom.ellipses
 import lsst.afw.table
 import lsst.afw.detection
-import lsst.meas.multifit
+import lsst.meas.modelfit
 import lsst.meas.base
 
 numpy.random.seed(500)
 
-lsst.pex.logging.Debug("meas.multifit.optimizer.Optimizer", 0)
-lsst.pex.logging.Debug("meas.multifit.optimizer.solveTrustRegion", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
+lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
 class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
 
@@ -71,15 +71,15 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.instFlux = None
         config.slots.modelFlux = None
         config.doReplaceWithNoise = False
-        config.plugins.names = ["multifit_ShapeletPsfApprox"]
-        config.plugins["multifit_ShapeletPsfApprox"].sequence = ["SingleGaussian"]
+        config.plugins.names = ["modelfit_ShapeletPsfApprox"]
+        config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["SingleGaussian"]
         task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
         measRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
         task.run(measCat, self.exposure)
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
-            self.schema["multifit"]["ShapeletPsfApprox"]["SingleGaussian"]
+            self.schema["modelfit"]["ShapeletPsfApprox"]["SingleGaussian"]
             )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
@@ -94,8 +94,8 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.instFlux = None
         config.slots.modelFlux = None
         config.doReplaceWithNoise = False
-        config.plugins.names = ["base_TransformedCentroid", "multifit_ShapeletPsfApprox"]
-        config.plugins["multifit_ShapeletPsfApprox"].sequence = ["SingleGaussian"]
+        config.plugins.names = ["base_TransformedCentroid", "modelfit_ShapeletPsfApprox"]
+        config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["SingleGaussian"]
         refCat = lsst.afw.table.SourceCatalog(self.schema)
         refRecord = refCat.addNew()
         refRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
@@ -105,7 +105,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measRecord = measCat[0]
         measSchema = measCat.schema
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
-            measSchema["multifit"]["ShapeletPsfApprox"]["SingleGaussian"]
+            measSchema["modelfit"]["ShapeletPsfApprox"]["SingleGaussian"]
             )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
