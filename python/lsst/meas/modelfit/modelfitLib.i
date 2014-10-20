@@ -198,10 +198,12 @@ Pixel = numpy.float32
 %include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
 %include "lsst/meas/modelfit/TruncatedGaussian.h"
 
-%extend lsst::meas::modelfit::UnitSystem {
-    %template(UnitSystem) UnitSystem<float>;
-    %template(UnitSystem) UnitSystem<double>;
-}
+// work around a bug in SWIG 3.0.2: mis-handling templated constructors
+// once we have a fixed SWIG you may remove the hack from UnitSystem.h and uncomment the next few lines
+// %extend lsst::meas::modelfit::UnitSystem {
+//     %template(UnitSystem) UnitSystem<float>;
+//     %template(UnitSystem) UnitSystem<double>;
+// }
 
 %pythoncode %{
 import lsst.pex.config
