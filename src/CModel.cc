@@ -555,11 +555,11 @@ public:
         if (ctrl.doRecordTime) {
             startTime = daf::base::DateTime::now().nsecs();
         }
-        PTR(UnitTransformedLikelihood) likelihood = boost::make_shared<UnitTransformedLikelihood>(
+        result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
             exposure, footprint, data.psf, ctrl.likelihood
         );
-        PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, prior);
+        PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(result.likelihood, prior);
         result.objfunc = objective;
         Optimizer optimizer(objective, data.parameters, ctrl.optimizer);
         try {
@@ -625,19 +625,19 @@ public:
         CModelStageControl const & ctrl, CModelStageResult & result, CModelStageData const & data,
         afw::image::Exposure<Pixel> const & exposure, afw::detection::Footprint const & footprint
     ) const {
-        UnitTransformedLikelihood likelihood(
+        result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
             exposure, footprint, data.psf, ctrl.likelihood
         );
-        ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(likelihood, data.nonlinear);
+        ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(*result.likelihood, data.nonlinear);
         afw::math::LeastSquares lstsq = afw::math::LeastSquares::fromDesignMatrix(
             modelMatrix,
-            likelihood.getData()
+            result.likelihood->getData()
         );
         data.amplitudes.deep() = lstsq.getSolution();
         result.objective
             = 0.5*(
-                likelihood.getData().asEigen().cast<Scalar>()
+                result.likelihood->getData().asEigen().cast<Scalar>()
                 - modelMatrix.asEigen().cast<Scalar>() * lstsq.getSolution().asEigen()
             ).squaredNorm();
         fillResult(result, data, lstsq.getCovariance()[0][0]);

@@ -383,6 +383,7 @@ struct CModelStageResult {
     PTR(Model) model;    ///< Model object that defines the parametrization (defined fully by Control struct)
     PTR(Prior) prior;    ///< Bayesian priors on the parameters (defined fully by Control struct)
     PTR(OptimizerObjective) objfunc;  ///< Objective class used by the optimizer
+    PTR(UnitTransformedLikelihood) likelihood; ///< Object used to evaluate models and compare to data.
     Scalar flux;         ///< Flux measured from just this stage fit.
     Scalar fluxSigma;    ///< Flux uncertainty from just this stage fit.
     Scalar objective;    ///< Value of the objective function at the best fit point: chisq/2 - ln(prior)
