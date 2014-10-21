@@ -464,6 +464,9 @@ public:
 
     ndarray::Array<Scalar const,2,2> getHessian() const { return _hessian; }
 
+    /// Remove the symmetric-rank-1 secant term from the Hessian, making it just (J^T J)
+    void removeSR1Term();
+
 private:
 
     friend class OptimizerHistoryRecorder;

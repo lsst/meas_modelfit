@@ -550,6 +550,10 @@ void Optimizer::_computeDerivatives() {
     _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(_jacobian.adjoint(), 1.0);
 }
 
+void Optimizer::removeSR1Term() {
+   _hessian.asEigen() -= _sr1b;
+}
+
 bool Optimizer::_stepImpl(
     int outerIterCount,
     HistoryRecorder const * recorder,
