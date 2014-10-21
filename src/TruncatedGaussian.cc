@@ -48,6 +48,7 @@ namespace lsst { namespace meas { namespace modelfit {
 namespace {
 
 static double const THRESHOLD = 1E-15;
+static double const SLN_THRESHOLD = 1E-5;
 
 } // anonymous
 
@@ -118,7 +119,16 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
         Eigen::Vector2d mu;
         bool isSingular = (s[0] < s[1] * THRESHOLD);
         if (isSingular) {
-            if (!(std::abs(v.col(0).dot(g)) < std::sqrt(THRESHOLD))) {
+            double solutionThreshold = SLN_THRESHOLD*std::max(std::abs(g[0]), std::abs(g[1]));
+            if (!(std::abs(v.col(0).dot(g)) < solutionThreshold)) {
+                debugLog.debug<8>(
+                    "no solution: singular matrix with s=[%g, %g], mu=[%g, %g]",
+                    s[0], s[1], mu[0], mu[1]
+                );
+                debugLog.debug<8>(
+                    "|v.col(0).dot(g)=%g| > %g",
+                    v.col(0).dot(g), solutionThreshold
+                );
                 throw LSST_EXCEPT(
                     pex::exceptions::RuntimeError,
                     "Integral diverges: H*mu = -g has no solution"
