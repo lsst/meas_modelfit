@@ -3,4 +3,4 @@ from lsst.sconsUtils import scripts
 scripts.BasicSConscript.tests()
 
 # uncomment to rebuild the fortran reference test
-# SConscript("reference/SConscript")
+# SConscript("reference/SConscriptOnDemand")
