@@ -228,7 +228,7 @@ public:
         residuals.asEigen() -= _likelihood->getData().asEigen().cast<Scalar>();
     }
 
-    virtual bool hasPrior() const { return _prior; }
+    virtual bool hasPrior() const { return static_cast<bool>(_prior); }
 
     virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {
         int nlDim = _likelihood->getNonlinearDim();
