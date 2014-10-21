@@ -604,6 +604,12 @@ public:
         // This amplitudeVariance is computed holding all the nonlinear parameters fixed, which is likely
         // what we'd want for colors, but underestimates the actual uncertainty on the total flux.
         int amplitudeOffset = model->getNonlinearDim();
+        // Remove the secant term from the Hessian, if we used it; while it improves the Hessian for
+        // the nonlinear parameters most of the time, it can't possibly improve on that of the amplitudes
+        // because for linear parameters H = J^T J
+        if (!ctrl.optimizer.noSR1Term) {
+            optimizer.removeSR1Term();
+        }
         Scalar amplitudeVariance = 1.0 / optimizer.getHessian()[amplitudeOffset][amplitudeOffset];
 
         // Set parameter vectors, flux values, ellipse on result.
