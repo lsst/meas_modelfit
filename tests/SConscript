@@ -1,5 +1,6 @@
 # -*- python -*-
-from lsst.sconsUtils import scripts, targets
+from lsst.sconsUtils import scripts
 scripts.BasicSConscript.tests()
 
-SConscript("reference/SConscript")
+# uncomment to rebuild the fortran reference test
+# SConscript("reference/SConscript")
