@@ -733,23 +733,19 @@ public:
         Vector amplitudes = tg.maximize();
         result.flux = expData.fitSysToMeasSys.flux * amplitudes.sum();
 
-        // To compute the uncertainty on the cmodel flux, we start by transforming the amplitude parameters
-        // by the following orthogonal matrix:
-        Matrix p(2,2);
-        p <<
-            M_SQRT1_2, -M_SQRT1_2,
-            M_SQRT1_2, M_SQRT1_2;
-        Vector p_mu = p * amplitudes;
-        Matrix p_hessian_pt = p * hessian * p.adjoint();
-        // After this transformation, \sqrt(2)*p_mu[1] is the total flux, and \sqrt(2)*p_mu[0] is the
-        // difference between the fluxes of the two components.
-        // We define the flux error as the variance on the total flux with the difference between the
-        // fluxes held fixed.  This is artificial, and an underestimate of the true uncertainty, as we
-        // ought to be marginalizing over the difference between the fluxes - but that integral would
-        // often diverge if we don't take into account the constraints, and if we do, the probability
-        // distribution we get is complicated (Gaussian times a difference of error functions) and
-        // asymmetric, so we'll leave that as a potential project for the future.
-        result.fluxSigma = expData.fitSysToMeasSys.flux / std::sqrt(p_hessian_pt(1,1));
+        // To compute the error on the flux, we actually pretend we just fit a single component that
+        // corresponds to the best-fit linear combination of the two components we *did* just fit -
+        // that's equivalent to holding the ratio of the components fixed when computing the uncertainty.
+        // That means this is an underestimate of the true uncertainty, but it's the sort that kind of
+        // makes sense for colors, and it's consistent with the fact that we're also ignoring the
+        // uncertainty in the nonlinear parameters.  It also makes this uncertainty equivalent to the
+        // PSF flux uncertainty and the single-component exp or dev uncertainty when fitting point
+        // sources, which is convenient, even if it's not statistically correct.
+        // Doing a better job would involve taking into account that we have positivity constraints
+        // on the two components, which means the actual uncertainty is neither Gaussian nor symmetric,
+        // which is a lot harder to compute and a lot harder to use.
+        Scalar fixedH = (modelMatrix.asEigen().cast<Scalar>() * amplitudes).squaredNorm();
+        result.fluxSigma = expData.fitSysToMeasSys.flux / std::sqrt(fixedH);
         result.setFlag(CModelResult::FAILED, false);
 
         result.fracDev = amplitudes[1] / amplitudes.sum();
