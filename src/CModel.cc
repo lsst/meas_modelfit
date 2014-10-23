@@ -1068,7 +1068,12 @@ void CModelAlgorithm::_applyImpl(
         return;
 
     // Do the linear combination fit
-    _impl->fitLinear(getControl(), result, expData, devData, exposure, *result.finalFitRegion);
+    try {
+        _impl->fitLinear(getControl(), result, expData, devData, exposure, *result.finalFitRegion);
+    } catch (...) {
+        result.setFlag(CModelResult::FAILED, true);
+        throw;
+    }
 }
 
 CModelAlgorithm::Result CModelAlgorithm::applyForced(
@@ -1181,7 +1186,12 @@ void CModelAlgorithm::_applyForcedImpl(
         return;
 
     // Do the linear combination fit
-    _impl->fitLinear(getControl(), result, expData, devData, exposure, *result.finalFitRegion);
+    try {
+        _impl->fitLinear(getControl(), result, expData, devData, exposure, *result.finalFitRegion);
+    } catch (...) {
+        result.setFlag(CModelResult::FAILED, true);
+        throw;
+    }
 }
 
 template <typename PixelT>
