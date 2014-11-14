@@ -129,9 +129,9 @@ class ShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, Shape
     """
     ConfigClass = ShapeletPsfApproxSingleFrameConfig
 
-    def __init__(self, config, name, schema, flags, others, metadata):
+    def __init__(self, config, name, schema, metadata):
         ShapeletPsfApproxMixin.__init__(self, config, name, schema)
-        lsst.meas.base.SingleFramePlugin.__init__(self, config, name, schema, flags, others, metadata)
+        lsst.meas.base.SingleFramePlugin.__init__(self, config, name, schema, metadata)
 
     def measure(self, measRecord, exposure):
         ShapeletPsfApproxMixin.measure(self, measRecord, exposure)
@@ -152,9 +152,9 @@ class ShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, ShapeletPsfAppr
     """
     ConfigClass = ShapeletPsfApproxForcedConfig
 
-    def __init__(self, config, name, schemaMapper, flags, others, metadata):
+    def __init__(self, config, name, schemaMapper, metadata):
         ShapeletPsfApproxMixin.__init__(self, config, name, schemaMapper.editOutputSchema())
-        lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, flags, others, metadata)
+        lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, metadata)
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
         ShapeletPsfApproxMixin.measure(self, measRecord, exposure)

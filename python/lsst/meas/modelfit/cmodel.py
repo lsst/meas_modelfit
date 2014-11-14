@@ -42,8 +42,8 @@ class CModelSingleFramePlugin(lsst.meas.base.SingleFramePlugin):
     """
     ConfigClass = CModelSingleFrameConfig
 
-    def __init__(self, config, name, schema, flags, others, metadata):
-        lsst.meas.base.SingleFramePlugin.__init__(self, config, name, schema, flags, others, metadata)
+    def __init__(self, config, name, schema, metadata):
+        lsst.meas.base.SingleFramePlugin.__init__(self, config, name, schema, metadata)
         self.algorithm = modelfitLib.CModelAlgorithm(name, config.makeControl(), schema)
 
     def measure(self, measRecord, exposure):
@@ -68,8 +68,8 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
     """
     ConfigClass = CModelForcedConfig
 
-    def __init__(self, config, name, schemaMapper, flags, others, metadata):
-        lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, flags, others, metadata)
+    def __init__(self, config, name, schemaMapper, metadata):
+        lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, metadata)
         self.algorithm = modelfitLib.CModelAlgorithm(name, config.makeControl(), schemaMapper)
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
