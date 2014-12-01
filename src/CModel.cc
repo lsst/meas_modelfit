@@ -35,7 +35,7 @@
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
 #include "lsst/meas/modelfit/MultiModel.h"
 #include "lsst/meas/modelfit/CModel.h"
-#include "lsst/meas/base/Results.h"
+#include "lsst/meas/base/constants.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
