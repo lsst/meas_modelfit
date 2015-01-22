@@ -30,7 +30,6 @@ class CModelSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, modelfitLi
     def setDefaults(self):
         lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
         modelfitLib.CModelConfig.setDefaults(self)
-        self.executionOrder = 3.0
 
 
 @lsst.meas.base.register("modelfit_CModel")
@@ -41,6 +40,10 @@ class CModelSingleFramePlugin(lsst.meas.base.SingleFramePlugin):
     and delegate to the CModelAlgorithm's methods.
     """
     ConfigClass = CModelSingleFrameConfig
+
+    @staticmethod
+    def getExecutionOrder():
+        return 3.0
 
     def __init__(self, config, name, schema, metadata):
         lsst.meas.base.SingleFramePlugin.__init__(self, config, name, schema, metadata)
@@ -57,7 +60,6 @@ class CModelForcedConfig(lsst.meas.base.ForcedPluginConfig, modelfitLib.CModelCo
     def setDefaults(self):
         lsst.meas.base.ForcedPluginConfig.setDefaults(self)
         modelfitLib.CModelConfig.setDefaults(self)
-        self.executionOrder = 3.0
 
 @lsst.meas.base.register("modelfit_CModel")
 class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
@@ -67,6 +69,10 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
     and delegate to CModelAlgorithm implementations.
     """
     ConfigClass = CModelForcedConfig
+
+    @staticmethod
+    def getExecutionOrder():
+        return 3.0
 
     def __init__(self, config, name, schemaMapper, metadata):
         lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, metadata)

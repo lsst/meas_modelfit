@@ -118,7 +118,6 @@ class ShapeletPsfApproxSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig,
     def setDefaults(self):
         lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
         ShapeletPsfApproxConfig.setDefaults(self)
-        self.executionOrder = 1.0
 
 @lsst.meas.base.register("modelfit_ShapeletPsfApprox")
 class ShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, ShapeletPsfApproxMixin):
@@ -128,6 +127,10 @@ class ShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, Shape
     and delegate to the ShapeletPsfApproxMixin's implmeentations.
     """
     ConfigClass = ShapeletPsfApproxSingleFrameConfig
+
+    @staticmethod
+    def getExecutionOrder():
+        return 1.0
 
     def __init__(self, config, name, schema, metadata):
         ShapeletPsfApproxMixin.__init__(self, config, name, schema)
@@ -141,7 +144,6 @@ class ShapeletPsfApproxForcedConfig(lsst.meas.base.ForcedPluginConfig, ShapeletP
     def setDefaults(self):
         lsst.meas.base.ForcedPluginConfig.setDefaults(self)
         ShapeletPsfApproxConfig.setDefaults(self)
-        self.executionOrder = 1.0
 
 @lsst.meas.base.register("modelfit_ShapeletPsfApprox")
 class ShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, ShapeletPsfApproxMixin):
@@ -151,6 +153,10 @@ class ShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, ShapeletPsfAppr
     and delegate to the ShapeletPsfApproxMixin's implmeentations.
     """
     ConfigClass = ShapeletPsfApproxForcedConfig
+
+    @staticmethod
+    def getExecutionOrder():
+        return 1.0
 
     def __init__(self, config, name, schemaMapper, metadata):
         ShapeletPsfApproxMixin.__init__(self, config, name, schemaMapper.editOutputSchema())
