@@ -305,7 +305,8 @@ struct CModelControl {
 
     CModelControl() :
         psfName("DoubleGaussian"),
-        minInitialRadius(3E-3)
+        minInitialRadius(3E-3),
+        fallbackInitialMomentsPsfFactor(1.5)
     {
         initial.nComponents = 3; // use very rough model in initial fit
         initial.optimizer.gradientThreshold = 1E-2; // with coarse convergence criteria
@@ -357,6 +358,12 @@ struct CModelControl {
     LSST_CONTROL_FIELD(
         minInitialRadius, double,
         "Minimum initial radius in pixels (used to regularize initial moments-based PSF deconvolution)"
+    );
+
+    LSST_CONTROL_FIELD(
+        fallbackInitialMomentsPsfFactor, double,
+        "If the 2nd-moments shape used to initialize the fit failed, use the PSF moments multiplied by this."
+        "  If <= 0.0, abort the fit early instead."
     );
 
 };
