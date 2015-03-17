@@ -44,9 +44,8 @@ DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
 def computeMoments(image):
     """Helper function to compute moments of a postage stamp about its origin."""
     maskedImage = lsst.afw.image.MaskedImageD(image)
-    result = lsst.meas.base.SdssShapeAlgorithm.apply(
+    result = lsst.meas.base.SdssShapeAlgorithm.computeAdaptiveMoments(
         maskedImage,
-        lsst.afw.detection.Footprint(image.getBBox(lsst.afw.image.PARENT)),
         lsst.afw.geom.Point2D(0.0, 0.0)
         )
     return result.getShape()
