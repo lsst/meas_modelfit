@@ -27,12 +27,10 @@ import numpy
 import lsst.afw.geom
 import lsst.afw.table
 import lsst.utils.tests
-import lsst.meas.base.tests
 import lsst.meas.modelfit
 
-import lsst.afw.display
+from lsst.meas.base.tests import AlgorithmTestCase, TestDataset
 
-numpy.random.seed(1234567)
 
 # n.b. Some tests here depend on the noise realization in the test data
 # or from the numpy random number generator.
@@ -42,81 +40,69 @@ numpy.random.seed(1234567)
 # the measured flux lies within 2 sigma of the correct value, which we
 # should expect to fail sometimes.
 
-class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase):
+class CModelTestCase(AlgorithmTestCase):
     """Test case for the CModel measurement plugins
     """
 
     def setUp(self):
-        lsst.meas.base.tests.AlgorithmTestCase.setUp(self)
-        self.record = self.truth[0]
+        AlgorithmTestCase.setUp(self)
+        self.bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(0, 0),
+                                        lsst.afw.geom.Extent2I(200, 100))
+        self.dataset = TestDataset(self.bbox)
+        # first source is a point
+        self.dataset.addSource(100000.0, lsst.afw.geom.Point2D(50.1, 49.8))
+        # second source is extended
+        self.dataset.addSource(100000.0, lsst.afw.geom.Point2D(149.9, 50.3),
+                               lsst.afw.geom.ellipses.Quadrupole(8, 9, 3))
 
     def tearDown(self):
-        lsst.meas.base.tests.AlgorithmTestCase.tearDown(self)
-        del self.record
+        AlgorithmTestCase.tearDown(self)
+        del self.bbox
+        del self.dataset
 
-    def checkOutputs(self, measCat):
+    def checkOutputs(self, measCat, truthCat=None):
         """Test that the outputs of the CModel plugins are reasonable, and that the bookkeeping works.
 
         Science-quality tests either in testCModel.py (where we call the same code via a different interface)
         or something we have to do statistically on real data.
         """
-        for measRecord, truthRecord in zip(measCat, self.truth):
+        if truthCat is None: truthCat = measCat
+        for measRecord, truthRecord in zip(measCat, truthCat):
             trueFlux = truthRecord.get("truth_flux")
-            if not measRecord.getShapeFlag():
-                self.assertFalse(measRecord.get("modelfit_CModel_initial_flag"))
-                self.assertFalse(measRecord.get("modelfit_CModel_exp_flag"))
-                self.assertFalse(measRecord.get("modelfit_CModel_dev_flag"))
-                self.assertFalse(measRecord.get("modelfit_CModel_flag"))
-                self.assertClose(measRecord.get("modelfit_CModel_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("modelfit_CModel_fluxSigma"), 0.0)
-                self.assertClose(measRecord.get("modelfit_CModel_initial_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("modelfit_CModel_initial_fluxSigma"), 0.0)
-                self.assertClose(measRecord.get("modelfit_CModel_exp_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("modelfit_CModel_exp_fluxSigma"), 0.0)
-                self.assertClose(measRecord.get("modelfit_CModel_dev_flux"), trueFlux, rtol=0.5)
-                self.assertGreater(measRecord.get("modelfit_CModel_dev_fluxSigma"), 0.0)
-            else:
-                self.assertTrue(measRecord.get("modelfit_CModel_initial_flag"))
-                self.assertTrue(measRecord.get("modelfit_CModel_exp_flag"))
-                self.assertTrue(measRecord.get("modelfit_CModel_dev_flag"))
-                self.assertTrue(measRecord.get("modelfit_CModel_flag"))
+            self.assertFalse(measRecord.get("modelfit_CModel_initial_flag"))
+            self.assertFalse(measRecord.get("modelfit_CModel_exp_flag"))
+            self.assertFalse(measRecord.get("modelfit_CModel_dev_flag"))
+            self.assertFalse(measRecord.get("modelfit_CModel_flag"))
+            self.assertClose(measRecord.get("modelfit_CModel_flux"), trueFlux, rtol=0.5)
+            self.assertGreater(measRecord.get("modelfit_CModel_fluxSigma"), 0.0)
+            self.assertClose(measRecord.get("modelfit_CModel_initial_flux"), trueFlux, rtol=0.5)
+            self.assertGreater(measRecord.get("modelfit_CModel_initial_fluxSigma"), 0.0)
+            self.assertClose(measRecord.get("modelfit_CModel_exp_flux"), trueFlux, rtol=0.5)
+            self.assertGreater(measRecord.get("modelfit_CModel_exp_fluxSigma"), 0.0)
+            self.assertClose(measRecord.get("modelfit_CModel_dev_flux"), trueFlux, rtol=0.5)
+            self.assertGreater(measRecord.get("modelfit_CModel_dev_fluxSigma"), 0.0)
 
     def testPlugins(self):
-        # Start with a run on some simulated data, using the single-frame measurement driver
-        sfmConfig = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
-        sfmConfig.plugins.names = ["base_SdssShape", "base_PsfFlux", "modelfit_CModel",
-                                   "modelfit_ShapeletPsfApprox"]
-        sfmConfig.slots.centroid = None
-        sfmConfig.slots.shape = "base_SdssShape"
-        sfmConfig.slots.psfFlux = "base_PsfFlux"
-        sfmConfig.slots.apFlux = None
-        sfmConfig.slots.modelFlux = None
-        sfmConfig.slots.instFlux = None
-        sfmSchemaMapper = lsst.afw.table.SchemaMapper(self.truth.schema)
-        sfmSchemaMapper.addMinimalSchema(self.truth.schema)
-        sfmTask = lsst.meas.base.SingleFrameMeasurementTask(config=sfmConfig,
-                                                            schema=sfmSchemaMapper.editOutputSchema())
-        sfmMeasCat = lsst.afw.table.SourceCatalog(sfmSchemaMapper.getOutputSchema())
-        sfmMeasCat.extend(self.truth, sfmSchemaMapper)
-        sfmMeasCat.table.defineCentroid("truth")
-        sfmTask.run(sfmMeasCat, self.calexp)
-        self.checkOutputs(sfmMeasCat)
+        """Test that the plugin for single-frame measurement works, then use those outputs to test
+        that the forced measurement plugin works."""
+        plugin = "modelfit_CModel"
+        dependencies = ("modelfit_ShapeletPsfApprox", "base_PsfFlux")
+        sfmTask = self.makeSingleFrameMeasurementTask(plugin, dependencies=dependencies)
+        forcedTask = self.makeForcedMeasurementTask(plugin, dependencies=dependencies,
+                                                    refSchema=sfmTask.schema)
+        # catalog1 will contain both the SFM outputs and the truth catalog for sources in exposure 1.
+        # Those SFM outputs will also be used as the references for the forced task.
+        exposure1, catalog1 = self.dataset.realize(10.0, sfmTask.schema)
+        sfmTask.run(catalog1, exposure1)
+        self.checkOutputs(catalog1)
+        wcs2 = self.dataset.makePerturbedWcs(self.dataset.exposure.getWcs())
+        dataset2 = self.dataset.transform(wcs2)
+        # catalog2 will contain only the truth catalog for sources in exposure 1; the structure of
+        # ForcedMeasurementTask means we can't put the outputs in the same catalog.
+        exposure2, catalog2 = dataset2.realize(10.0, dataset2.makeMinimalSchema())
+        results = forcedTask.run(exposure2, refCat=catalog1, refWcs=exposure1.getWcs())
+        self.checkOutputs(results.sources, catalog2)
 
-        # Now we use the SFM results as the reference catalog for a forced measurement run
-        forcedConfig = lsst.meas.base.ForcedMeasurementTask.ConfigClass()
-        forcedConfig.plugins.names = ["base_TransformedCentroid", "base_TransformedShape",
-                                      "base_PsfFlux", "modelfit_CModel", "modelfit_ShapeletPsfApprox"]
-        forcedConfig.slots.centroid = "base_TransformedCentroid"
-        forcedConfig.slots.shape = "base_TransformedShape"
-        forcedConfig.slots.psfFlux = "base_PsfFlux"
-        forcedConfig.slots.apFlux = None
-        forcedConfig.slots.modelFlux = None
-        forcedConfig.slots.instFlux = None
-        forcedTask = lsst.meas.base.ForcedMeasurementTask(config=forcedConfig, refSchema=sfmMeasCat.schema)
-        forcedMeasCat = forcedTask.run(self.calexp, sfmMeasCat, self.calexp.getWcs()).sources
-        # only test the first three simulated sources: the last two are deblend children, and because
-        # of the lack of heavy footprints in forced mode, we don't measure those well at all.
-        self.checkOutputs(forcedMeasCat[:3])
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
