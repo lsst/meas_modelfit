@@ -177,7 +177,7 @@ struct CModelStageKeys {
                 schema,
                 schema.join(prefix, "ellipse"),
                 "half-light ellipse of the " + stage + " fit",
-                "pixels^2"
+                afw::table::CoordinateType::PIXEL
             );
             objective = schema.addField<Scalar>(
                 schema.join(prefix, "objective"),
