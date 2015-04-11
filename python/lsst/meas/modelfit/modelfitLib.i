@@ -40,28 +40,22 @@ Basic routines to talk to lsst::meas::modelfit classes
 #include "lsst/afw/image.h"
 #include "lsst/shapelet.h"
 #include "lsst/meas/modelfit.h"
-#include "ndarray/eigen.h"
-#include "Eigen/Core"
-
-// namespace-ish hack required by NumPy C-API; see NumPy docs for more info
-#define PY_ARRAY_UNIQUE_SYMBOL LSST_MEAS_MODELFIT_NUMPY_ARRAY_API
-#include "numpy/arrayobject.h"
-#include "ndarray/swig.h"
-#include "ndarray/swig/eigen.h"
-%}
-
-%init %{
-    import_array();
 %}
 
 %include "lsst/p_lsstSwig.i"
+%initializeNumPy(meas_modelfit)
+%{
+#include "ndarray/swig.h"
+#include "ndarray/swig/eigen.h"
+%}
+%include "ndarray.i"
+
 %include "lsst/base.h"
 %include "std_complex.i"
 
 %lsst_exceptions();
 
 %include "std_vector.i"
-%include "ndarray.i"
 %import "lsst/afw/geom/geomLib.i"
 %import "lsst/afw/geom/ellipses/ellipsesLib.i"
 %import "lsst/afw/table/io/ioLib.i"
