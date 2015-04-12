@@ -25,7 +25,6 @@ import os
 import collections
 import numpy
 import copy
-from matplotlib import pyplot
 import matplotlib.colors
 import mpl_toolkits.mplot3d
 
