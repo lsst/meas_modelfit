@@ -595,6 +595,8 @@ public:
             result.setFlag(CModelStageResult::FAILED, true);
             if (state & Optimizer::FAILED_MAX_ITERATIONS) {
                 result.setFlag(CModelStageResult::MAX_ITERATIONS, true);
+            } else if (state & Optimizer::FAILED_NAN) {
+                result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
             }
         } else {
             result.setFlag(CModelStageResult::FAILED, false);
