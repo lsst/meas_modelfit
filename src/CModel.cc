@@ -364,10 +364,12 @@ struct CModelKeys {
             schema.join(prefix, "flag", "maxBadPixelFraction"),
             "the fraction of bad/clipped pixels in the fit region exceeded region.maxBadPixelFraction"
         );
-        flags[CModelResult::NO_SHAPE] = schema.addField<afw::table::Flag>(
-            schema.join(prefix, "flag", "noShape"),
-            "the shape slot needed to initialize the parameters failed or was not defined"
-        );
+        if (!isForced) {
+            flags[CModelResult::NO_SHAPE] = schema.addField<afw::table::Flag>(
+                schema.join(prefix, "flag", "noShape"),
+                "the shape slot needed to initialize the parameters failed or was not defined"
+            );
+        }
         flags[CModelResult::NO_SHAPELET_PSF] = schema.addField<afw::table::Flag>(
             schema.join(prefix, "flag", "noShapeletPsf"),
             "the multishapelet fit to the PSF model did not succeed"
@@ -1243,8 +1245,8 @@ void CModelAlgorithm::measure(
     afw::geom::ellipses::Quadrupole moments;
     if (!measRecord.getTable()->getShapeKey().isValid() ||
         (measRecord.getTable()->getShapeFlagKey().isValid() && measRecord.getShapeFlag())) {
-        measRecord.set(_impl->keys->flags[Result::NO_SHAPE], true);
         if (getControl().fallbackInitialMomentsPsfFactor > 0.0) {
+            result.setFlag(Result::NO_SHAPE, true);
             moments = psf.evaluate().computeMoments().getCore();
             moments.scale(getControl().fallbackInitialMomentsPsfFactor);
         } else {
