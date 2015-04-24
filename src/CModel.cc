@@ -838,25 +838,21 @@ public:
         }
         afw::image::Image<T> subImage(*exposure.getMaskedImage().getImage(), bbox, afw::image::PARENT);
         subImage.writeFits(fits);
-        assert(fits.countHdus() == 1);
         if (ctrl.initial.doRecordHistory && result.initial.history.getTable()) {
             result.initial.history.writeFits(fits);
         } else {
             fits.createEmpty();
         }
-        assert(fits.countHdus() == 2);
         if (ctrl.exp.doRecordHistory && result.exp.history.getTable()) {
             result.exp.history.writeFits(fits);
         } else {
             fits.createEmpty();
         }
-        assert(fits.countHdus() == 3);
         if (ctrl.dev.doRecordHistory && result.dev.history.getTable()) {
             result.dev.history.writeFits(fits);
         } else {
             fits.createEmpty();
         }
-        assert(fits.countHdus() == 4);
     }
 
 };
