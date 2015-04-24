@@ -75,7 +75,13 @@ Pixel computeFluxInFootprint(
     afw::image::Image<Pixel> const & image,
     afw::detection::Footprint const & footprint
 ) {
-    return flattenArray(footprint, image.getArray(), image.getXY0()).asEigen().sum();
+    ndarray::Array<Pixel,1,1> flat = flattenArray(footprint, image.getArray(), image.getXY0());
+    // We're only using the flux to provide a scale for the problem that eases some numerical problems,
+    // so for objects with SNR < 1, it's probably better to use the RMS than the flux, since the latter
+    // can be negative.
+    Pixel a = flat.asEigen<Eigen::ArrayXpr>().sum();
+    Pixel b = std::sqrt(flat.asEigen<Eigen::ArrayXpr>().square().sum());
+    return std::max(a, b);
 }
 
 } // anonymous
