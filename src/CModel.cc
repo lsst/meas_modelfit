@@ -46,7 +46,8 @@ namespace {
 
 PTR(afw::detection::Footprint) _mergeFootprints(
     afw::detection::Footprint const & a,
-    afw::detection::Footprint const & b
+    afw::detection::Footprint const & b,
+    CModelResult & result
 ) {
     // Yuck: we have no routine that merges Footprints, so as a workaround we make a Mask from
     // the footprints, then run detection on the Mask to make a FootprintSet, then extract the
@@ -62,11 +63,17 @@ PTR(afw::detection::Footprint) _mergeFootprints(
         1 // npixMin
     );
     if (fpSet.getFootprints()->size() > 1u) {
-        throw LSST_EXCEPT(
-            pex::exceptions::RuntimeError,
-            (boost::format("Footprints to be merged do not overlap: %s vs. %s")
-             % a.getBBox() % b.getBBox()).str()
-        );
+        result.setFlag(CModelResult::INCOMPLETE_FIT_REGION, true);
+        result.setFlag(CModelResult::FAILED, true);
+        int biggestArea = 0;
+        std::size_t biggestIndex = 0;
+        for (std::size_t n = 0; n < fpSet.getFootprints()->size(); ++n) {
+            if ((*fpSet.getFootprints())[n]->getArea() > biggestArea) {
+                biggestArea = (*fpSet.getFootprints())[n]->getArea();
+                biggestIndex = n;
+            }
+        }
+        return (*fpSet.getFootprints())[biggestIndex];
     }
     return fpSet.getFootprints()->front();
 }
@@ -358,7 +365,7 @@ struct CModelKeys {
         flags[CModelResult::FAILED] = fluxFlag; // these keys refer to the same underlying field
         flags[CModelResult::MAX_AREA] = schema.addField<afw::table::Flag>(
             schema.join(prefix, "flag", "maxArea"),
-            "number of pixels in fit region exceeded the region.maxArea value (usually due to bad moments)"
+            "number of pixels in fit region exceeded the region.maxArea value"
         );
         flags[CModelResult::MAX_BAD_PIXEL_FRACTION] = schema.addField<afw::table::Flag>(
             schema.join(prefix, "flag", "maxBadPixelFraction"),
@@ -373,6 +380,10 @@ struct CModelKeys {
         flags[CModelResult::NO_SHAPELET_PSF] = schema.addField<afw::table::Flag>(
             schema.join(prefix, "flag", "noShapeletPsf"),
             "the multishapelet fit to the PSF model did not succeed"
+        );
+        flags[CModelResult::INCOMPLETE_FIT_REGION] = schema.addField<afw::table::Flag>(
+            schema.join(prefix, "flag", "incompleteFitRegion"),
+            "fit region was noncontiguous, so the largest contiguous region was used"
         );
     }
 
@@ -894,8 +905,13 @@ CModelAlgorithm::CModelAlgorithm(Control const & ctrl) :
 PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     afw::image::Mask<> const & mask,
     afw::detection::Footprint const & footprint,
-    afw::geom::Box2I const & psfBBox
+    afw::geom::Box2I const & psfBBox,
+    Result & result
 ) const {
+    // We have multiple checks for maximum area below because it really pays off
+    // to short-circuit as early as possible when the region is huge; some of
+    // the steps below (especially growing and merging) can themselves be
+    // really slow with large footprints.
     PTR(afw::detection::Footprint) region;
     if (footprint.getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
@@ -916,8 +932,10 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
              CModelResult::MAX_AREA
         );
     }
+    // From here on, steps can only shrink the footprint (or in pathological cases,
+    // grow it by a tiny amount), so we don't have to check max area anymore.
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
-        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox));
+        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox), result);
     }
     int originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
@@ -925,15 +943,8 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     if (originalArea - region->getArea() > originalArea*getControl().region.maxBadPixelFraction) {
         throw LSST_EXCEPT(
              meas::base::MeasurementError,
-             "Fraction of bad pixels in fit region exceeds threshold",
+             "Fraction of bad and/or edge-clipped pixels in fit region exceeds threshold",
              CModelResult::MAX_BAD_PIXEL_FRACTION
-        );
-    }
-    if (region->getArea() > getControl().region.maxArea) {
-        throw LSST_EXCEPT(
-            meas::base::MeasurementError,
-            "Maximum area exceeded by initial fit region",
-            CModelResult::MAX_AREA
         );
     }
     return region;
@@ -943,8 +954,13 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     afw::image::Mask<> const & mask,
     afw::detection::Footprint const & footprint,
     afw::geom::Box2I const & psfBBox,
-    afw::geom::ellipses::Ellipse const & ellipse
+    afw::geom::ellipses::Ellipse const & ellipse,
+    Result & result
 ) const {
+    // We have multiple checks for maximum area below because it really pays off
+    // to short-circuit as early as possible when the region is huge; some of
+    // the steps below (especially growing and merging) can themselves be
+    // really slow with large footprints.
     PTR(afw::detection::Footprint) region;
     if (footprint.getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
@@ -958,37 +974,44 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
         getControl().region.nGrowFootprint,
         true
     );
+    if (region->getArea() > getControl().region.maxArea) {
+        result.setFlag(Result::MAX_AREA, true);
+        region.reset();
+        return region;
+    }
     afw::geom::ellipses::Ellipse fullEllipse(ellipse);
     fullEllipse.getCore().scale(getControl().region.nInitialRadii);
     if (fullEllipse.getCore().getArea() > getControl().region.maxArea) {
-        throw LSST_EXCEPT(
-            meas::base::MeasurementError,
-            "Maximum area exceeded by ellipse component of region",
-            CModelResult::MAX_AREA
-        );
+    throw LSST_EXCEPT(
+        meas::base::MeasurementError,
+        "Maximum area exceeded by ellipse component of region",
+        CModelResult::MAX_AREA
+    );
     }
     afw::detection::Footprint ellipseFootprint(fullEllipse);
     if (ellipseFootprint.getArea() > 0) {
-        region = _mergeFootprints(*region, ellipseFootprint);
-    }
-    if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
-        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox));
-    }
-    double originalArea = region->getArea();
-    region->clipTo(mask.getBBox(afw::image::PARENT));
-    region->intersectMask(mask, _impl->badPixelMask);
-    if ((1.0 - region->getArea() / originalArea) > getControl().region.maxBadPixelFraction) {
-        throw LSST_EXCEPT(
-             meas::base::MeasurementError,
-             "Fraction of bad pixels in fit region exceeds threshold",
-             CModelResult::MAX_BAD_PIXEL_FRACTION
-        );
+        region = _mergeFootprints(*region, ellipseFootprint, result);
     }
     if (region->getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
             meas::base::MeasurementError,
-            "Maximum area exceeded by final fit region",
+            "Maximum area exceeded by union of ellipse and footprint regions",
             CModelResult::MAX_AREA
+        );
+    }
+    // From here on, steps can only shrink the footprint (or in pathological cases,
+    // grow it by a tiny amount), so we don't have to check max area anymore.
+    if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
+        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox), result);
+    }
+    double originalArea = region->getArea();
+    region->clipTo(mask.getBBox(afw::image::PARENT));
+    region->intersectMask(mask, _impl->badPixelMask);
+    if (originalArea - region->getArea() > originalArea*getControl().region.maxBadPixelFraction) {
+        throw LSST_EXCEPT(
+             meas::base::MeasurementError,
+             "Fraction of bad and/or edge-clipped pixels in fit region exceeds threshold",
+             CModelResult::MAX_BAD_PIXEL_FRACTION
         );
     }
     return region;
@@ -1023,7 +1046,8 @@ void CModelAlgorithm::_applyImpl(
     result.initialFitRegion = determineInitialFitRegion(
         *exposure.getMaskedImage().getMask(),
         footprint,
-        psfBBox
+        psfBBox,
+        result
     );
 
     // Negative approxFlux means we should come up with an estimate ourselves.
@@ -1055,7 +1079,8 @@ void CModelAlgorithm::_applyImpl(
         *exposure.getMaskedImage().getMask(),
         footprint,
         psfBBox,
-        _impl->initial.ellipses.front()
+        _impl->initial.ellipses.front(),
+        result
     );
 
     // Do the exponential fit
@@ -1159,7 +1184,8 @@ void CModelAlgorithm::_applyForcedImpl(
         *exposure.getMaskedImage().getMask(),
         footprint,
         psfBBox,
-        _impl->initial.ellipses.front()
+        _impl->initial.ellipses.front(),
+        result
     );
 
     // Do the initial fit (amplitudes only)

@@ -428,6 +428,8 @@ struct CModelResult {
         NO_SHAPE,                ///< Set if the input SourceRecord had no valid shape slot with which to
                                  ///  start the fit.
         NO_SHAPELET_PSF,         ///< Set if the Psf shapelet approximation failed.
+        INCOMPLETE_FIT_REGION,   ///< Region of pixels to use in the fit may be incomplete due to
+                                 ///  noncontiguous detection footprint.
         N_FLAGS                  ///< Non-flag counter to indicate the number of flags
     };
 
@@ -532,11 +534,15 @@ public:
      *
      *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
      *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
+     *
+     *  If a non-fatal error (e.g. INCOMPLETE_FIT_REGION) occurs, a flag bit will be set in the given
+     *  result object.
      */
     PTR(afw::detection::Footprint) determineInitialFitRegion(
         afw::image::Mask<> const & mask,
         afw::detection::Footprint const & footprint,
-        afw::geom::Box2I const & psfBBox
+        afw::geom::Box2I const & psfBBox,
+        Result & result
     ) const;
 
     /**
@@ -548,12 +554,16 @@ public:
      *
      *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
      *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
+     *
+     *  If a non-fatal error (e.g. INCOMPLETE_FIT_REGION) occurs, a flag bit will be set in the given
+     *  result object.
      */
     PTR(afw::detection::Footprint) determineFinalFitRegion(
         afw::image::Mask<> const & mask,
         afw::detection::Footprint const & footprint,
         afw::geom::Box2I const & psfBBox,
-        afw::geom::ellipses::Ellipse const & ellipse
+        afw::geom::ellipses::Ellipse const & ellipse,
+        Result & result
     ) const;
 
     /**
