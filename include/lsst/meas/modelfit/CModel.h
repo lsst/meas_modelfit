@@ -430,6 +430,7 @@ struct CModelResult {
         NO_SHAPELET_PSF,         ///< Set if the Psf shapelet approximation failed.
         INCOMPLETE_FIT_REGION,   ///< Region of pixels to use in the fit may be incomplete due to
                                  ///  noncontiguous detection footprint.
+        BAD_CENTROID,            ///< Input centroid did not land within the fit region.
         N_FLAGS                  ///< Non-flag counter to indicate the number of flags
     };
 
@@ -542,6 +543,7 @@ public:
         afw::image::Mask<> const & mask,
         afw::detection::Footprint const & footprint,
         afw::geom::Box2I const & psfBBox,
+        afw::geom::Point2D const & center,
         Result & result
     ) const;
 

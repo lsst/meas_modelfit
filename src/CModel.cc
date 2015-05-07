@@ -47,7 +47,8 @@ namespace {
 PTR(afw::detection::Footprint) _mergeFootprints(
     afw::detection::Footprint const & a,
     afw::detection::Footprint const & b,
-    CModelResult & result
+    CModelResult & result,
+    afw::geom::Point2D const & center
 ) {
     // Yuck: we have no routine that merges Footprints, so as a workaround we make a Mask from
     // the footprints, then run detection on the Mask to make a FootprintSet, then extract the
@@ -62,18 +63,19 @@ PTR(afw::detection::Footprint) _mergeFootprints(
         afw::detection::Threshold(0x1, afw::detection::Threshold::BITMASK),
         1 // npixMin
     );
+    afw::geom::Point2I pixel(center);
     if (fpSet.getFootprints()->size() > 1u) {
         result.setFlag(CModelResult::INCOMPLETE_FIT_REGION, true);
-        result.setFlag(CModelResult::FAILED, true);
-        int biggestArea = 0;
-        std::size_t biggestIndex = 0;
         for (std::size_t n = 0; n < fpSet.getFootprints()->size(); ++n) {
-            if ((*fpSet.getFootprints())[n]->getArea() > biggestArea) {
-                biggestArea = (*fpSet.getFootprints())[n]->getArea();
-                biggestIndex = n;
+            if ((*fpSet.getFootprints())[n]->contains(pixel)) {
+                return (*fpSet.getFootprints())[n];
             }
         }
-        return (*fpSet.getFootprints())[biggestIndex];
+        throw LSST_EXCEPT(
+            meas::base::MeasurementError,
+            "Bad inputs to CModel: centroid not in any part of discontinous Footprint.",
+            CModelResult::BAD_CENTROID
+        );
     }
     return fpSet.getFootprints()->front();
 }
@@ -383,7 +385,11 @@ struct CModelKeys {
         );
         flags[CModelResult::INCOMPLETE_FIT_REGION] = schema.addField<afw::table::Flag>(
             schema.join(prefix, "flag", "incompleteFitRegion"),
-            "fit region was noncontiguous, so the largest contiguous region was used"
+            "fit region was noncontiguous, so the subregion containing the centroid was used"
+        );
+        flags[CModelResult::BAD_CENTROID] = schema.addField<afw::table::Flag>(
+            schema.join(prefix, "flag", "badCentroid"),
+            "input centroid was not within the fit region (probably because it's not within the Footprint)"
         );
     }
 
@@ -830,6 +836,27 @@ public:
         }
     }
 
+    void checkFlagDetails(afw::table::SourceRecord & record) const {
+        // The INCOMPLETE_FIT_REGION flag should always imply general failure, even if we attempted to
+        // proceed (because the results should not be trusted).  But we set general failure to true
+        // at the beginning so it's set if an unexpected exception is thrown, and then we unset it
+        // when the optimizer succeeds, so we have to make sure INCOMPLETE_FIT_REGION implies FAILED
+        // here.
+        if (record.get(keys->flags[CModelResult::INCOMPLETE_FIT_REGION])) {
+            record.set(keys->flags[CModelResult::FAILED], true);
+        }
+        // Check for unflagged NaNs.  Warn if we see any so we can fix the underlying problem, and
+        // then flag them anyway.
+        if (lsst::utils::isnan(record.get(keys->flux)) && !record.get(keys->flags[CModelResult::FAILED])) {
+            // We throw a non-MeasurementError exception so the measurement error *will* log a warning.
+            throw LSST_EXCEPT(
+                pex::exceptions::LogicError,
+                (boost::format("Unflagged NaN detected for source %s; please report this as a bug in CModel")
+                 % record.getId()).str()
+            );
+        }
+    }
+
     // Save diagnostic  outputs for a particular source
     template <typename T>
     void writeDiagnostics(
@@ -906,8 +933,10 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     afw::image::Mask<> const & mask,
     afw::detection::Footprint const & footprint,
     afw::geom::Box2I const & psfBBox,
+    afw::geom::Point2D const & center,
     Result & result
 ) const {
+    afw::geom::Point2I pixel(center);
     // We have multiple checks for maximum area below because it really pays off
     // to short-circuit as early as possible when the region is huge; some of
     // the steps below (especially growing and merging) can themselves be
@@ -919,6 +948,10 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
             "Maximum area exceeded by original footprint",
             CModelResult::MAX_AREA
         );
+    }
+    if (!footprint.contains(pixel)) {
+        result.setFlag(CModelResult::BAD_CENTROID, true);
+        return region;
     }
     region = afw::detection::growFootprint(
         footprint,
@@ -935,7 +968,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineInitialFitRegion(
     // From here on, steps can only shrink the footprint (or in pathological cases,
     // grow it by a tiny amount), so we don't have to check max area anymore.
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
-        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox), result);
+        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox), result, center);
     }
     int originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
@@ -990,7 +1023,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     }
     afw::detection::Footprint ellipseFootprint(fullEllipse);
     if (ellipseFootprint.getArea() > 0) {
-        region = _mergeFootprints(*region, ellipseFootprint, result);
+        region = _mergeFootprints(*region, ellipseFootprint, result, ellipse.getCenter());
     }
     if (region->getArea() > getControl().region.maxArea) {
         throw LSST_EXCEPT(
@@ -1002,7 +1035,7 @@ PTR(afw::detection::Footprint) CModelAlgorithm::determineFinalFitRegion(
     // From here on, steps can only shrink the footprint (or in pathological cases,
     // grow it by a tiny amount), so we don't have to check max area anymore.
     if (getControl().region.includePsfBBox && !region->getBBox().contains(psfBBox)) {
-        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox), result);
+        region = _mergeFootprints(*region, afw::detection::Footprint(psfBBox), result, ellipse.getCenter());
     }
     double originalArea = region->getArea();
     region->clipTo(mask.getBBox(afw::image::PARENT));
@@ -1047,6 +1080,7 @@ void CModelAlgorithm::_applyImpl(
         *exposure.getMaskedImage().getMask(),
         footprint,
         psfBBox,
+        center,
         result
     );
 
@@ -1293,12 +1327,14 @@ void CModelAlgorithm::measure(
                    moments, approxFlux);
     } catch (...) {
         _impl->keys->copyResultToRecord(result, measRecord);
+        _impl->checkFlagDetails(measRecord);
         if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
             _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
         }
         throw;
     }
     _impl->keys->copyResultToRecord(result, measRecord);
+    _impl->checkFlagDetails(measRecord);
     if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
         _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
     }
@@ -1324,9 +1360,11 @@ void CModelAlgorithm::measure(
                          refResult, approxFlux);
     } catch (...) {
         _impl->keys->copyResultToRecord(result, measRecord);
+        _impl->checkFlagDetails(measRecord);
         throw;
     }
     _impl->keys->copyResultToRecord(result, measRecord);
+    _impl->checkFlagDetails(measRecord);
 }
 
 }}} // namespace lsst::meas::modelfit
