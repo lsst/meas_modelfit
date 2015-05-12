@@ -384,6 +384,7 @@ struct CModelStageResult {
                          ///  a suspect fit, but not necessarily a bad one (implies FAILED).
         NUMERIC_ERROR,   ///< Optimizer encountered a numerical error (something likely went to infinity).
                          ///  Result will be unusable; implies FAILED.
+        BAD_REFERENCE,   ///< Reference fit failed, so forced fit will fail as well.
         N_FLAGS          ///< Non-flag counter to indicate the number of flags
     };
 
@@ -433,6 +434,7 @@ struct CModelResult {
         INCOMPLETE_FIT_REGION,   ///< Region of pixels to use in the fit may be incomplete due to
                                  ///  noncontiguous detection footprint.
         BAD_CENTROID,            ///< Input centroid did not land within the fit region.
+        BAD_REFERENCE,           ///< Reference fit failed, so forced fit will fail as well.
         N_FLAGS                  ///< Non-flag counter to indicate the number of flags
     };
 
