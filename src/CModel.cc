@@ -784,33 +784,36 @@ public:
         CModelControl const & ctrl, CModelStageData & data,
         afw::geom::ellipses::Quadrupole const & moments
     ) const {
-
+        afw::geom::ellipses::Ellipse psfEllipse = data.psf.evaluate().computeMoments();
         // Deconvolve the moments ellipse, with a floor to keep the result from
         // having moments <= 0
-        afw::geom::ellipses::Ellipse psfEllipse = data.psf.evaluate().computeMoments();
-        afw::geom::ellipses::Quadrupole psfMoments(psfEllipse.getCore());
-        Scalar mir2 = ctrl.minInitialRadius * ctrl.minInitialRadius;
-        Scalar ixx = std::max(moments.getIxx() - psfMoments.getIxx(), mir2);
-        Scalar iyy = std::max(moments.getIyy() - psfMoments.getIyy(), mir2);
-        Scalar ixy = moments.getIxy() - psfMoments.getIxy();
+        Scalar const mir2 = ctrl.minInitialRadius * ctrl.minInitialRadius;
+        Scalar ixx = mir2, iyy = mir2, ixy = 0.0;
+        try {
+            afw::geom::ellipses::Quadrupole psfMoments(psfEllipse.getCore());
+            ixx = std::max(moments.getIxx() - psfMoments.getIxx(), mir2);
+            iyy = std::max(moments.getIyy() - psfMoments.getIyy(), mir2);
+            ixy = moments.getIxy() - psfMoments.getIxy();
+        } catch (pex::exceptions::InvalidParameterError &) {
+            // let ixx, iyy, ixy stay at initial minimum values
+        }
         if (ixx*iyy < ixy*ixy) {
             ixy = 0.0;
         }
-        afw::geom::ellipses::Quadrupole deconvolvedMoments(
-            ixx, iyy, ixy,
-            true // throw if ellipse is invalid
-        );
+        afw::geom::ellipses::Quadrupole deconvolvedMoments(ixx, iyy, ixy, false);
+        try {
+            deconvolvedMoments.normalize();
+        } catch (pex::exceptions::InvalidParameterError &) {
+            deconvolvedMoments = afw::geom::ellipses::Quadrupole(mir2, mir2, 0.0);
+        }
         afw::geom::ellipses::Ellipse deconvolvedEllipse(
             deconvolvedMoments,
             afw::geom::Point2D(data.measSysCenter - psfEllipse.getCenter())
         );
-
         // Convert ellipse from moments to half-light using the ratio for this profile
         deconvolvedEllipse.getCore().scale(1.0 / initial.profile->getMomentsRadiusFactor());
-
         // Transform the deconvolved ellipse from MeasSys to FitSys
         deconvolvedEllipse.transform(data.fitSysToMeasSys.geometric.invert()).inPlace();
-
         // Convert to the ellipse parametrization used by the Model (assigning to an ellipse converts
         // between parametrizations)
         assert(initial.ellipses.size() == 1u); // should be true of all Models that come from RadialProfiles
