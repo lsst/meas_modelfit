@@ -232,6 +232,8 @@ struct CModelRegionControl {
     {
         badMaskPlanes.push_back("EDGE");
         badMaskPlanes.push_back("SAT");
+        badMaskPlanes.push_back("BAD");
+        badMaskPlanes.push_back("NO_DATA");
     }
 
     LSST_CONTROL_FIELD(
