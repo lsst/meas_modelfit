@@ -227,7 +227,7 @@ struct CModelRegionControl {
         includePsfBBox(false),
         nGrowFootprint(5),
         nInitialRadii(3),
-        maxArea(10000),
+        maxArea(100000),
         maxBadPixelFraction(0.1)
     {
         badMaskPlanes.push_back("EDGE");
