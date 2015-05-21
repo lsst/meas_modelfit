@@ -270,7 +270,7 @@ struct CModelStageKeys {
             record.set(nIter, result.history.size());
         }
         if (time.isValid()) {
-            record.set(time, result.history.size());
+            record.set(time, result.time);
         }
         for (int b = 0; b < CModelStageResult::N_FLAGS; ++b) {
             if (flags[b].isValid()) {
