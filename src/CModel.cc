@@ -610,7 +610,7 @@ public:
         fillResult(result, data, amplitudeVariance);
 
         if (ctrl.doRecordTime) {
-            result.time = (daf::base::DateTime::now().nsecs() - startTime) * 1E9;
+            result.time = (daf::base::DateTime::now().nsecs() - startTime)/1E9;
         }
     }
 
