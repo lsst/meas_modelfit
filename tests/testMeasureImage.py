@@ -96,6 +96,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             'fixed-sersic',
             ]
 
+    @unittest.skip("Disabled until backwards-compatibile read support for FITS tables is available.")
     def testSampler(self):
         self.config.fitter.retarget(lsst.meas.modelfit.AdaptiveImportanceSamplerTask)
         for model in self.models:
@@ -132,6 +133,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
                 self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
                 self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
 
+    @unittest.skip("Disabled until backwards-compatibile read support for FITS tables is available.")
     def testOptimizer(self):
         self.config.fitter.retarget(lsst.meas.modelfit.OptimizerTask)
         self.config.fitter.doRecordHistory = True
