@@ -111,7 +111,7 @@ class MeasureImageTask(BaseMeasureTask):
             outRecord.assign(srcRecord, mapper)
             outRecord.setD(self.keys["snr"], srcRecord.getApFlux() / srcRecord.getApFluxErr())
             outRecord.setCoord(srcRecord.getCoord())
-            outRecord.setPointD(self.keys["center"], srcRecord.getCentroid())
+            outRecord.set(self.keys["center"], srcRecord.getCentroid())
 
             # Next we determine the pixel region we want to fit.
             outRecord.setFootprint(setupFitRegion(self.config.fitRegion, inputs.exposure, srcRecord))
