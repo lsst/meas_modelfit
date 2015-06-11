@@ -21,9 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "ndarray/eigen.h"
+
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/modelfit/Model.h"
 #include "lsst/meas/modelfit/Prior.h"
+#include "lsst/meas/modelfit/UnitSystem.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
@@ -353,6 +356,21 @@ void Model::readEllipses(
     );
     readEllipses(ellipses.begin(), nonlinear.begin(), fixed.begin());
 }
+
+void Model::transformParameters(
+    LocalUnitTransform const & transform,
+    ndarray::Array<Scalar,1,1> const & nonlinear,
+    ndarray::Array<Scalar,1,1> const & amplitudes,
+    ndarray::Array<Scalar,1,1> const & fixed
+) const {
+    EllipseVector ellipses = writeEllipses(nonlinear, fixed);
+    for (EllipseVector::iterator i = ellipses.begin(); i != ellipses.end(); ++i) {
+        i->transform(transform.geometric).inPlace();
+    }
+    readEllipses(ellipses.begin(), nonlinear.begin(), fixed.begin());
+    amplitudes.asEigen() *= transform.flux;
+}
+
 
 PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center) {
     LSST_THROW_IF_NE(
