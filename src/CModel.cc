@@ -1026,6 +1026,7 @@ void CModelAlgorithm::_applyImpl(
 
     // Set up coordinate systems and empty parameter vectors
     CModelStageData initialData(exposure, approxFlux, center, psf, *_impl->initial.model);
+    result.fitSysToMeasSys = initialData.fitSysToMeasSys;
 
     // Initialize the parameter vectors by doing deconvolving the moments
     _impl->guessParametersFromMoments(getControl(), initialData, moments);
@@ -1125,6 +1126,7 @@ void CModelAlgorithm::_applyForcedImpl(
 
     // Set up coordinate systems and empty parameter vectors
     CModelStageData initialData(exposure, approxFlux, center, psf, *_impl->initial.model);
+    result.fitSysToMeasSys = initialData.fitSysToMeasSys;
 
     // Initialize the parameter vectors from the reference values.  Because these are
     // in fitSys units, we don't need to transform them, as fitSys (or at least its

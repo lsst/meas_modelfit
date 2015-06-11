@@ -98,6 +98,9 @@ struct LocalUnitTransform {
         UnitSystem const & destination
     );
 
+    /// Construct an identity transform for both geometry and flux.
+    LocalUnitTransform() : geometric(), flux(1.0), sb(1.0) {}
+
 };
 
 }}} // namespace lsst::meas::modelfit

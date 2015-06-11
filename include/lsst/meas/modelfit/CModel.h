@@ -444,6 +444,8 @@ struct CModelResult {
     PTR(afw::detection::Footprint) initialFitRegion;  ///< Pixels used in the initial fit.
     PTR(afw::detection::Footprint) finalFitRegion;    ///< Pixels used in the exp, dev, and linear fits.
 
+    LocalUnitTransform fitSysToMeasSys; ///< Transforms to the coordinate system where parameters are defined
+
 #ifndef SWIG
     std::bitset<N_FLAGS> flags; ///< Array of flags.
 #endif
