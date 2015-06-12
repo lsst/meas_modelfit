@@ -305,12 +305,14 @@ struct CModelControl {
 
     CModelControl() :
         psfName("DoubleGaussian"),
-        minInitialRadius(0.1)
+        minInitialRadius(3E-3)
     {
         initial.nComponents = 3; // use very rough model in initial fit
         initial.optimizer.gradientThreshold = 1E-2; // with coarse convergence criteria
         initial.optimizer.minTrustRadiusThreshold = 1E-2;
         dev.profileName = "luv";
+        exp.nComponents = 6;
+        exp.optimizer.maxOuterIterations = 250;
     }
 
     LSST_CONTROL_FIELD(
