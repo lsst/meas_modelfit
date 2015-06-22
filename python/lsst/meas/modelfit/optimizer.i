@@ -5,11 +5,9 @@
 %returnCopy(Optimizer::getControl)
 %returnCopy(Optimizer::getIterations)
 %shared_ptr(lsst::meas::modelfit::OptimizerObjective)
-%shared_ptr(lsst::meas::modelfit::OptimizerInterpreter)
-
+\
 %include "lsst/meas/modelfit/optimizer.h"
 
-%castShared(lsst::meas::modelfit::OptimizerInterpreter, lsst::meas::modelfit::Interpreter)
 %usePointerEquality(lsst::meas::modelfit::OptimizerObjective)
 
 // ignore std::vector methods that require a default ctor, as we don't have one for this class

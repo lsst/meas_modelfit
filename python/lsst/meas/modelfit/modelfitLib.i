@@ -110,19 +110,13 @@ Pixel = numpy.float32
 %shared_ptr(lsst::meas::modelfit::MixturePrior);
 %shared_ptr(lsst::meas::modelfit::SoftenedLinearPrior);
 
-%shared_ptr(lsst::meas::modelfit::ModelFitTable);
-%shared_ptr(lsst::meas::modelfit::ModelFitRecord);
 %shared_ptr(lsst::meas::modelfit::Model);
 %shared_ptr(lsst::meas::modelfit::MultiModel);
-%shared_ptr(lsst::meas::modelfit::Interpreter);
 %shared_ptr(lsst::meas::modelfit::Likelihood);
 %shared_ptr(lsst::meas::modelfit::EpochFootprint);
 %shared_ptr(lsst::meas::modelfit::UnitTransformedLikelihood);
 %shared_ptr(lsst::meas::modelfit::Sampler);
 %shared_ptr(lsst::meas::modelfit::SamplingObjective);
-%shared_ptr(lsst::meas::modelfit::SamplingInterpreter);
-%shared_ptr(lsst::meas::modelfit::DirectSamplingInterpreter);
-%shared_ptr(lsst::meas::modelfit::MarginalSamplingInterpreter);
 %shared_ptr(lsst::meas::modelfit::AdaptiveImportanceSampler);
 %shared_ptr(lsst::meas::modelfit::MultiShapeletPsfLikelihood);
 
@@ -182,14 +176,12 @@ Pixel = numpy.float32
 %include "lsst/meas/modelfit/Prior.h"
 %include "lsst/meas/modelfit/MixturePrior.h"
 %include "lsst/meas/modelfit/SoftenedLinearPrior.h"
-%include "lsst/meas/modelfit/Interpreter.h"
 %include "lsst/meas/modelfit/Likelihood.h"
 %include "lsst/meas/modelfit/UnitSystem.h"
 %include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
 %include "lsst/meas/modelfit/Sampling.h"
 %include "lsst/meas/modelfit/Sampler.h"
-%include "lsst/meas/modelfit/DirectSamplingInterpreter.h"
-%include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
+\%include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
 %include "lsst/meas/modelfit/TruncatedGaussian.h"
 
 // work around a bug in SWIG 3.0.2: mis-handling templated constructors
@@ -210,9 +202,6 @@ SoftenedLinearPrior.ConfigClass = SoftenedLinearPriorConfig
 %castShared(lsst::meas::modelfit::SoftenedLinearPrior, lsst::meas::modelfit::Prior)
 %castShared(lsst::meas::modelfit::MixturePrior, lsst::meas::modelfit::Prior)
 %castShared(lsst::meas::modelfit::MultiModel, lsst::meas::modelfit::Model)
-%castShared(lsst::meas::modelfit::SamplingInterpreter, lsst::meas::modelfit::Interpreter)
-%castShared(lsst::meas::modelfit::DirectSamplingInterpreter, lsst::meas::modelfit::Interpreter)
-%castShared(lsst::meas::modelfit::MarginalSamplingInterpreter, lsst::meas::modelfit::Interpreter)
 
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::vector(size_type);
 %ignore std::vector<lsst::afw::geom::ellipses::Ellipse>::resize(size_type);
@@ -250,37 +239,9 @@ UnitTransformedLikelihoodConfig = lsst.pex.config.makeConfigClass(UnitTransforme
 UnitTransformedLikelihood.ConfigClass = UnitTransformedLikelihoodConfig
 %}
 
-//----------- ModelFitRecord/Table/Catalog ------------------------------------------------------------------
-
-%include "lsst/meas/modelfit/ModelFitRecord.h"
-
-%addCastMethod(lsst::meas::modelfit::ModelFitTable, lsst::afw::table::BaseTable)
-%addCastMethod(lsst::meas::modelfit::ModelFitRecord, lsst::afw::table::BaseRecord)
-
-
-%template(ModelFitColumnView) lsst::afw::table::ColumnViewT<lsst::meas::modelfit::ModelFitRecord>;
-
-%include "lsst/afw/table/SortedCatalog.i"
-
-namespace lsst { namespace afw { namespace table {
-
-using meas::modelfit::ModelFitRecord;
-using meas::modelfit::ModelFitTable;
-
-%declareSortedCatalog(SortedCatalogT, ModelFit)
-
-}}} // namespace lsst::afw::table
-
-namespace lsst { namespace meas { namespace modelfit {
-
-typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
-
-}}} // namespace lsst::meas::modelfit
-
 //----------- More Miscellaneous ----------------------------------------------------------------------------
 
 %include "lsst/meas/modelfit/integrals.h"
 %include "lsst/meas/modelfit/optimizer.i"
-%include "lsst/meas/modelfit/MarginalSamplingInterpreter.h"
 %include "lsst/meas/modelfit/psf.i"
 %include "lsst/meas/modelfit/CModel.i"
