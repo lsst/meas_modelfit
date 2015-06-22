@@ -193,7 +193,14 @@ Pixel = numpy.float32
 
 %pythoncode %{
 import lsst.pex.config
-SoftenedLinearPriorConfig = lsst.pex.config.makeConfigClass(SoftenedLinearPriorControl)
+
+@lsst.pex.config.wrap(SoftenedLinearPriorControl)
+class SoftenedLinearPriorConfig(lsst.pex.config.Config):
+
+    @staticmethod
+    def makePrior(config):   # needed to participate in registry in priors.py
+        return SoftenedLinearPrior(config.makeControl())
+
 
 SoftenedLinearPrior.Control = SoftenedLinearPriorControl
 SoftenedLinearPrior.ConfigClass = SoftenedLinearPriorConfig

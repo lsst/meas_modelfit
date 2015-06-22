@@ -51,6 +51,8 @@ def registerPrior(name):
         return cls
     return decorate
 
+registerPrior("linear")(modelfitLib.SoftenedLinearPriorConfig)
+
 @registerPrior("mixture")
 class MixturePriorConfig(lsst.pex.config.Config):
     filename = lsst.pex.config.Field(
