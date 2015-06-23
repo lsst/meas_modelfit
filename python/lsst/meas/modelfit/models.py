@@ -24,8 +24,6 @@
 Config classes used to define various galaxy models.
 """
 
-import numpy
-
 import lsst.pex.config
 import lsst.shapelet.tractor
 
@@ -71,7 +69,7 @@ class GaussianModelConfig(lsst.pex.config.Config):
 
     @staticmethod
     def makeModel(config):
-        return modelfitLib.Model.makeGaussian(getCenterEnum(config), self.config.radius)
+        return modelfitLib.Model.makeGaussian(getCenterEnum(config), config.radius)
 
 class FixedSersicConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
