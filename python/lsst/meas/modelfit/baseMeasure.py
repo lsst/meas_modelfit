@@ -116,9 +116,8 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         # we do a warm start (use a previous modelfits catalog for initial values).
         self.schema = modelfitLib.ModelFitTable.makeMinimalSchema()
         self.keys = {}
-        self.keys["center"] = self.schema.addField(
-            "center", type="PointD",
-            doc="input centroid of the object in image coordinates"
+        self.keys["center"] = lsst.afw.table.Point2DKey.addFields(
+            self.schema, "center", "input centroid of the object in image coordinates", "pixels"
             )
         self.keys["initial.nonlinear"] = self.schema.addField(
             "initial.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),
@@ -136,9 +135,8 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
             "snr", type=float,
             doc="signal to noise ratio from source apFlux/apFluxErr"
             )
-        self.keys["sys.position"] = self.schema.addField(
-            "sys.position", type="Coord",
-            doc="nominal position used to construct UnitSystem for parameters"
+        self.keys["sys.position"] = lsst.afw.table.CoordKey.addFields(
+            self.schema, "sys.position", "nominal position used to construct UnitSystem for parameters",
             )
         self.keys["sys.magnitude"] = self.schema.addField(
             "sys.mag", type=float,
