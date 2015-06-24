@@ -31,6 +31,7 @@ import lsst.afw.geom.ellipses
 
 from .models import modelRegistry
 from .priors import priorRegistry
+from . import fitRegion
 from . import modelfitLib
 
 class OptFitStageConfig(lsst.pex.config.Config):
@@ -38,7 +39,9 @@ class OptFitStageConfig(lsst.pex.config.Config):
     prior = priorRegistry.makeField(doc="Prior to use for this stage.", default="linear")
     optimizer = lsst.pex.config.ConfigField(dtype=modelfitLib.OptimizerConfig,
                                             doc="Optimizer configuration for this stage.")
-    psf = lsst.pex.config.Field(dtype=str, default="full",
+    region = lsst.pex.config.ConfigField(dtype=fitRegion.FitRegionConfig,
+                                            doc="Configuration for which pixels to include in the fit.")
+    psf = lsst.pex.config.Field(dtype=str, default="Full",
                                 doc="Name of the ShapeletPsfApprox model to use in this stage.")
 
 class OptFitStage(object):
@@ -48,40 +51,30 @@ class OptFitStage(object):
         self.model = self.config.model.apply()
         self.prior = self.config.prior.apply()
         self.keys = {}
+        # Add keys for the shapelet PSF approximation that's computed by another plugin.
         self.keys["psf"] = lsst.shapelet.MultiShapeletFunctionKey(
             schema["modelfit"]["ShapeletPsfApprox"][config.psf]
         )
-        def addField(name, type, doc):
-            return schema.addField(
-                "{algName}_{stageName}_{name}".format(algName=algName, stageName=stageName, name=name),
-                type=type,
-                doc=doc
-            )
-        self.keys["nonlinear"] = lsst.afw.table.ArrayDKey([
-            addField(name, numpy.float64, "best-fit nonlinear parameter {}".format(name))
-            for name in self.model.getNonlinearNames()
-        ])
-        self.keys["amplitudes"] = lsst.afw.table.ArrayDKey([
-            addField(name, numpy.float64, "best-fit amplitude parameter {}".format(name))
-            for name in self.model.getAmplitudeNames()
-        ])
-        self.keys["fixed"] = lsst.afw.table.ArrayDKey([
-            addField(name, numpy.float64, "fixed parameter {} (not fit)".format(name))
-            for name in self.model.getFixedNames()
-        ])
+        # Some local convenience functions to add fields for outputs and save the keys
+        def addArrayFields(aggregate, names, doc):
+            self.keys[aggregate] = lsst.afw.table.ArrayDKey([
+                schema.addField("_".join([algName, stageName, name]), type=numpy.float64,
+                                doc=doc.format(name))
+                for name in names
+            ])
+        def addFlagField(name, doc):
+            f = [algName, stageName, "flag"]
+            if name is not None: f.append(name)
+            self.keys["flag"][name] = schema.addField("_".join(f), type="Flag", doc=doc)
+        # Add fields for outputs, and save their keys
+        addArrayFields("nonlinear", self.model.getNonlinearNames(), "best-fit nonlinear parameter {}")
+        addArrayFields("amplitudes", self.model.getAmplitudeNames(), "best-fit amplitude parameter {}")
+        addArrayFields("fixed", self.model.getFixedNames(), "fixed parameter {} (not fit)")
         self.keys["flag"] = {}
-        self.keys["flag"]["failure"] = addField(
-            "flag", "Flag", "general failure flag set if model fit failed"
-        )
-        self.keys["flag"]["trSmall"] = addField(
-            "flag_trSmall", "Flag", "trust region grew too small before gradient threshold was met"
-        )
-        self.keys["flag"]["maxIter"] = addField(
-            "flag_maxIter", "Flag", "fit exceeded the maximum number of allowed iterations"
-        )
-        self.keys["flag"]["numericError"] = addField(
-            "flag_numericError", "Flag", "numeric error (usually overflow, underflow, or NaNs)"
-        )
+        addFlagField(None, "general failure flag set if model fit failed")
+        addFlagField("trSmall", "trust region grew too small before gradient threshold was met")
+        addFlagField("maxIter", "fit exceeded the maximum number of allowed iterations")
+        addFlagField("numericError", "numeric error (usually overflow, underflow, or NaNs)")
 
 
 class OptFitConfig(lsst.meas.base.SingleFramePluginConfig):
@@ -94,19 +87,39 @@ class OptFitConfig(lsst.meas.base.SingleFramePluginConfig):
     sequence = lsst.pex.config.ListField(
         dtype=str,
         doc="a sequence of stage names indicating which models should be fit, and their order",
-        default=["initial", "final"]
+        default=["initial", "tiedBD"]
     )
+
 
     def setDefaults(self):
         lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
+        # A fast initial stage that just fits a Gaussian model with a DoubleGaussian PSF approximation;
+        # should be used to warm-start other slower models.
         self.stages["initial"] = OptFitStageConfig()
-        self.stages["initial"].model = "gaussian"
+        self.stages["initial"].model.name = "gaussian"
         self.stages["initial"].psf = "DoubleGaussian"
         self.stages["initial"].optimizer.minTrustRadiusThreshold = 1E-2
         self.stages["initial"].optimizer.gradientThreshold = 1E-2
-        self.stages["final"] = OptFitStageConfig()
-        self.stages["final"].model = "bulge+disk"
-        self.stages["final"].psf = "Full"
+        # A bulge+disk model where the two components have the same ellipticity and a fixed radius ratio
+        # (as used in e.g. lensfit).
+        self.stages["tiedBD"] = OptFitStageConfig()
+        self.stages["tiedBD"].model.name = "bulge+disk"
+        # --------------------------------------------------------------------------------------------
+        # The stages below aren't enabled by default (they're not in the "sequence" field's defaults),
+        # but they are sufficiently useful we want to make them easy for users to enable.
+        # --------------------------------------------------------------------------------------------
+        # An exponential model, using the SDSS approximation.
+        self.stages["exp"] = OptFitStageConfig()
+        self.stages["exp"].model.name = "fixed-sersic"
+        self.stages["exp"].model["fixed-sersic"].profile = "lux"
+        # A de Vaucouleur model, using the SDSS approximation.
+        self.stages["dev"] = OptFitStageConfig()
+        self.stages["dev"].model.name = "fixed-sersic"
+        self.stages["dev"].model["fixed-sersic"].profile = "luv"
+        # A full bulge+disk model with independent ellipses (but still shared center)
+        self.stages["fullBD"] = OptFitStageConfig()
+        self.stages["fullBD"].model.name = "bulge+disk"
+        self.stages["fullBD"].model["bulge+disk"].bulgeRadius = None
 
 
 @lsst.meas.base.register("modelfit_OptFit")
