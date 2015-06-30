@@ -91,8 +91,15 @@ public:
     /// Return the vector of weighted, scaled data points @f$z@f$
     ndarray::Array<Pixel const,1,1> getData() const { return _data; }
 
-    /// Return the vector of weights @f$w@f$ applied to data points and model matrix rows
+    /**
+     *  Return the vector of weights @f$w@f$ applied to data points and model matrix rows
+     *
+     *  Will be an empty array if no weights are applied.
+     */
     ndarray::Array<Pixel const,1,1> getWeights() const { return _weights; }
+
+    /// Return the vector of per-data-point variances.
+    ndarray::Array<Pixel const,1,1> getVariance() const { return _variance; }
 
     /// Return an object that defines the model and its parameters
     PTR(Model) getModel() const { return _model; }
@@ -133,6 +140,7 @@ protected:
     PTR(Model) _model;
     ndarray::Array<Scalar const,1,1> _fixed;
     ndarray::Array<Pixel,1,1> _data;
+    ndarray::Array<Pixel,1,1> _variance;
     ndarray::Array<Pixel,1,1> _weights;
 };
 
