@@ -622,7 +622,7 @@ public:
         }
         result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
-            exposure, footprint, data.psf, ctrl.likelihood
+            exposure, footprint, data.psf, UnitTransformedLikelihoodControl(false)
         );
         PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(result.likelihood, prior);
         result.objfunc = objective;
@@ -694,7 +694,7 @@ public:
     ) const {
         result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
-            exposure, footprint, data.psf, ctrl.likelihood
+            exposure, footprint, data.psf, UnitTransformedLikelihoodControl(false)
         );
         ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(*result.likelihood, data.nonlinear);
         afw::math::LeastSquares lstsq = afw::math::LeastSquares::fromDesignMatrix(
@@ -786,7 +786,7 @@ public:
 
         UnitTransformedLikelihood likelihood(
             model, fixed, expData.fitSys, *expData.position,
-            exposure, footprint, expData.psf, ctrl.likelihood
+            exposure, footprint, expData.psf, UnitTransformedLikelihoodControl(false)
         );
         ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(likelihood, nonlinear);
         Vector gradient = -(modelMatrix.asEigen().adjoint() * likelihood.getData().asEigen()).cast<Scalar>();
