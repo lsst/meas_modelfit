@@ -557,6 +557,42 @@ ndarray::Array<Pixel,2,-1> makeModelMatrix(
     return modelMatrix;
 }
 
+
+struct WeightSums {
+
+    WeightSums(
+        ndarray::Array<Pixel const,2,-1> const & modelMatrix,
+        ndarray::Array<Pixel const,1,1> const & variance
+    ) : fluxVar(0.0), norm(0.0)
+    {
+        assert(modelMatrix.getSize<1>() == 1);
+        run(modelMatrix.transpose()[0].asEigen<Eigen::ArrayXpr>(), variance.asEigen<Eigen::ArrayXpr>());
+    }
+
+    WeightSums(
+        ndarray::Array<Pixel const,1,1> const & model,
+        ndarray::Array<Pixel const,1,1> const & variance
+    ) : fluxVar(0.0), norm(0.0)
+    {
+        run(model.asEigen<Eigen::ArrayXpr>(), variance.asEigen<Eigen::ArrayXpr>());
+    }
+
+    void run(
+        ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & model,
+        ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & variance
+    ) {
+        double w = model.sum();
+        double ww = model.square().sum();
+        double wwv = (model.square()*variance).sum();
+        norm = w/ww;
+        fluxVar = wwv*norm;
+    }
+
+    double fluxVar;
+    double norm;
+};
+
+
 // Implementation object for a single nonlinear stage (one of "initial", "exp", "dev")
 // Note that this doesn't hold its own CModelStageControl; that's held by the CModelControl
 // in the main CModelAlgorithm class (for historical and compatibility-with-HSC-fork reasons),
@@ -596,7 +632,7 @@ public:
     void fillResult(
         CModelStageResult & result,
         CModelStageData const & data,
-        Scalar amplitudeVariance
+        Scalar fluxVar
     ) const {
         // these are shallow assignments
         result.nonlinear = data.nonlinear;
@@ -604,7 +640,7 @@ public:
         result.fixed = data.fixed;
         // flux is just the amplitude converted from fitSys to measSys
         result.flux = data.amplitudes[0] * data.fitSysToMeasSys.flux;
-        result.fluxSigma = std::sqrt(amplitudeVariance) * data.fitSysToMeasSys.flux;
+        result.fluxSigma = std::sqrt(fluxVar);
         // to compute the ellipse, we need to first read the nonlinear parameters into the workspace
         // ellipse vector, then transform from fitSys to measSys.
         model->writeEllipses(data.nonlinear.begin(), data.fixed.begin(), ellipses.begin());
@@ -668,19 +704,17 @@ public:
         // amplitudes, then shallow-assign these to the result object.
         data.parameters.deep() = optimizer.getParameters(); // sets nonlinear and amplitudes - they are views
 
-        // This amplitudeVariance is computed holding all the nonlinear parameters fixed, which is likely
-        // what we'd want for colors, but underestimates the actual uncertainty on the total flux.
-        int amplitudeOffset = model->getNonlinearDim();
-        // Remove the secant term from the Hessian, if we used it; while it improves the Hessian for
-        // the nonlinear parameters most of the time, it can't possibly improve on that of the amplitudes
-        // because for linear parameters H = J^T J
-        if (!ctrl.optimizer.noSR1Term) {
-            optimizer.removeSR1Term();
-        }
-        Scalar amplitudeVariance = 1.0 / optimizer.getHessian()[amplitudeOffset][amplitudeOffset];
+        // This amplitudeVariance is computed holding all the nonlinear parameters fixed, and treating
+        // the best-fit model as a continuous aperture.  That's likely what we'd want for colors, but it
+        // underestimates the statistical uncertainty on the total flux (though that's probably dominated by
+        // systematic errors anyway).
+        WeightSums sums(
+            makeModelMatrix(*result.likelihood, data.nonlinear),
+            result.likelihood->getVariance()
+        );
 
         // Set parameter vectors, flux values, ellipse on result.
-        fillResult(result, data, amplitudeVariance);
+        fillResult(result, data, sums.fluxVar);
 
         if (ctrl.doRecordTime) {
             result.time = (daf::base::DateTime::now().nsecs() - startTime)/1E9;
@@ -707,7 +741,10 @@ public:
                 result.likelihood->getData().asEigen().cast<Scalar>()
                 - modelMatrix.asEigen().cast<Scalar>() * lstsq.getSolution().asEigen()
             ).squaredNorm();
-        fillResult(result, data, lstsq.getCovariance()[0][0]);
+
+        WeightSums sums(modelMatrix, result.likelihood->getVariance());
+
+        fillResult(result, data, sums.fluxVar);
         result.setFlag(CModelStageResult::FAILED, false);
     }
 
@@ -800,9 +837,8 @@ public:
         Vector amplitudes = tg.maximize();
         result.flux = expData.fitSysToMeasSys.flux * amplitudes.sum();
 
-        // To compute the error on the flux, we actually pretend we just fit a single component that
-        // corresponds to the best-fit linear combination of the two components we *did* just fit -
-        // that's equivalent to holding the ratio of the components fixed when computing the uncertainty.
+        // To compute the error on the flux, we treat the best-fit composite profile as a continuous
+        // aperture and compute the uncertainty on that aperture flux.
         // That means this is an underestimate of the true uncertainty, but it's the sort that kind of
         // makes sense for colors, and it's consistent with the fact that we're also ignoring the
         // uncertainty in the nonlinear parameters.  It also makes this uncertainty equivalent to the
@@ -811,8 +847,10 @@ public:
         // Doing a better job would involve taking into account that we have positivity constraints
         // on the two components, which means the actual uncertainty is neither Gaussian nor symmetric,
         // which is a lot harder to compute and a lot harder to use.
-        Scalar fixedH = (modelMatrix.asEigen().cast<Scalar>() * amplitudes).squaredNorm();
-        result.fluxSigma = expData.fitSysToMeasSys.flux / std::sqrt(fixedH);
+        ndarray::Array<Pixel,1,1> model = ndarray::allocate(likelihood.getData().getSize<0>());
+        model.asEigen() = modelMatrix.asEigen() * amplitudes.cast<Pixel>();
+        WeightSums sums(model, likelihood.getVariance());
+        result.fluxSigma = std::sqrt(sums.fluxVar);
         result.setFlag(CModelResult::FAILED, false);
 
         result.fracDev = amplitudes[1] / amplitudes.sum();
