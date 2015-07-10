@@ -70,6 +70,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.apFlux = None
         config.slots.instFlux = None
         config.slots.modelFlux = None
+        config.slots.calibFlux = None
         config.doReplaceWithNoise = False
         config.plugins.names = ["modelfit_ShapeletPsfApprox"]
         config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["SingleGaussian"]
