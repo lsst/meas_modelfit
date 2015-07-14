@@ -412,7 +412,9 @@ struct CModelKeys {
         initial(initialModel, schema, schema.join(prefix, "initial")),
         exp(expModel, schema, schema.join(prefix, "exp")),
         dev(devModel, schema, schema.join(prefix, "dev"))
-    {}
+    {
+        flags[CModelStageResult::FAILED] = schema[prefix]["flag"];
+    }
 
     void copyResultToRecord(CModelResult const & result, afw::table::BaseRecord & record) {
         initial.copyResultToRecord(result.initial, record);
@@ -435,6 +437,7 @@ struct CModelKeys {
         result.initial = initial.copyRecordToResult(record);
         result.exp = exp.copyRecordToResult(record);
         result.dev = dev.copyRecordToResult(record);
+        result.setFlag(CModelResult::FAILED, record.get(flags[CModelResult::FAILED]));
         return result;
     }
 
