@@ -308,6 +308,16 @@ struct CModelStageKeys {
         return result;
     }
 
+    bool checkBadReferenceFlag(afw::table::BaseRecord & record) const {
+        if (flags[CModelStageResult::BAD_REFERENCE].isValid()) {
+            if (record.get(flags[CModelStageResult::BAD_REFERENCE])) {
+                record.set(flags[CModelStageResult::FAILED], true);
+                return true;
+            }
+        }
+        return false;
+    }
+
     afw::table::Key<meas::base::Flux> flux;
     afw::table::Key<meas::base::FluxErrElement> fluxSigma;
     afw::table::Key<afw::table::Flag> fluxFlag;
@@ -439,6 +449,23 @@ struct CModelKeys {
         result.dev = dev.copyRecordToResult(record);
         result.setFlag(CModelResult::FAILED, record.get(flags[CModelResult::FAILED]));
         return result;
+    }
+
+    void checkBadReferenceFlag(afw::table::BaseRecord & record) const {
+        if (flags[CModelResult::BAD_REFERENCE].isValid()) {
+            // if any of the per-stage BAD_REFERENCE flags is set, the main one should be.
+            record.set(
+                flags[CModelResult::BAD_REFERENCE],
+                record.get(flags[CModelResult::BAD_REFERENCE]) ||
+                initial.checkBadReferenceFlag(record) ||
+                exp.checkBadReferenceFlag(record) ||
+                dev.checkBadReferenceFlag(record)
+            );
+            // if the main BAD_REFERENCE flag is set, the FAILED flag should be as well.
+            if (record.get(flags[CModelResult::BAD_REFERENCE])) {
+                record.set(flags[CModelResult::FAILED], true);
+            }
+        }
     }
 
     CModelStageKeys initial;
@@ -861,6 +888,9 @@ public:
         if (record.get(keys->flags[CModelResult::INCOMPLETE_FIT_REGION])) {
             record.set(keys->flags[CModelResult::FAILED], true);
         }
+        // We treat BAD_REFERENCE the same as INCOMPLETE_FIT_REGION (above): it always implies failure.
+        // But we also guarantee that the per-stage BAD_REFERENCE flags also imply the main one.
+        keys->checkBadReferenceFlag(record);
         // Check for unflagged NaNs.  Warn if we see any so we can fix the underlying problem, and
         // then flag them anyway.
         if (lsst::utils::isnan(record.get(keys->flux)) && !record.get(keys->flags[CModelResult::FAILED])) {
