@@ -53,7 +53,7 @@ public:
     LSST_CONTROL_FIELD(usePixelWeights, bool,
                        "whether to individually weigh pixels using the variance image.");
 
-    UnitTransformedLikelihoodControl() : usePixelWeights(true) {}
+    UnitTransformedLikelihoodControl() : usePixelWeights(false) {}
 
 };
 
