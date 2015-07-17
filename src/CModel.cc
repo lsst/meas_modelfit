@@ -133,6 +133,7 @@ PTR(Prior) CModelStageControl::getPrior() const {
 CModelStageResult::CModelStageResult() :
     flux(std::numeric_limits<Scalar>::quiet_NaN()),
     fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
+    fluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
     objective(std::numeric_limits<Scalar>::quiet_NaN()),
     ellipse(std::numeric_limits<Scalar>::quiet_NaN(), std::numeric_limits<Scalar>::quiet_NaN(),
             std::numeric_limits<Scalar>::quiet_NaN(), false)
@@ -143,6 +144,7 @@ CModelStageResult::CModelStageResult() :
 CModelResult::CModelResult() :
     flux(std::numeric_limits<Scalar>::quiet_NaN()),
     fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
+    fluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
     fracDev(std::numeric_limits<Scalar>::quiet_NaN()),
     objective(std::numeric_limits<Scalar>::quiet_NaN())
 {
@@ -184,6 +186,12 @@ struct CModelStageKeys {
             schema.addField<afw::table::Flag>(
                 schema.join(prefix, "flag"),
                 "flag set when the flux for the " + stage + " flux failed"
+            )
+        ),
+        fluxInner(
+            schema.addField<Scalar>(
+                schema.join(prefix, "flux", "inner"),
+                "flux within the fit region, with no extrapolation"
             )
         )
     {
@@ -274,6 +282,7 @@ struct CModelStageKeys {
         record.set(flux, result.flux);
         record.set(fluxSigma, result.fluxSigma);
         record.set(fluxFlag, result.getFlag(CModelStageResult::FAILED));
+        record.set(fluxInner, result.fluxInner);
         if (objective.isValid()) {
             record.set(objective, result.objective);
         }
@@ -321,6 +330,7 @@ struct CModelStageKeys {
     afw::table::Key<meas::base::Flux> flux;
     afw::table::Key<meas::base::FluxErrElement> fluxSigma;
     afw::table::Key<afw::table::Flag> fluxFlag;
+    afw::table::Key<Scalar> fluxInner;
     afw::table::QuadrupoleKey ellipse;
     afw::table::Key<Scalar> objective;
     afw::table::Key<afw::table::Flag> flags[CModelStageResult::N_FLAGS];
@@ -364,6 +374,12 @@ struct CModelKeys {
             schema.addField<afw::table::Flag>(
                 schema.join(prefix, "flag"),
                 "flag set if the final cmodel fit (or any previous fit) failed"
+            )
+        ),
+        fluxInner(
+            schema.addField<Scalar>(
+                schema.join(prefix, "flux", "inner"),
+                "flux within the fit region, with no extrapolation"
             )
         ),
         fracDev(
@@ -432,6 +448,7 @@ struct CModelKeys {
         dev.copyResultToRecord(result.dev, record);
         record.set(flux, result.flux);
         record.set(fluxSigma, result.fluxSigma);
+        record.set(fluxInner, result.fluxInner);
         record.set(fracDev, result.fracDev);
         record.set(objective, result.objective);
         for (int b = 0; b < CModelResult::N_FLAGS; ++b) {
@@ -475,6 +492,7 @@ struct CModelKeys {
     afw::table::Key<meas::base::Flux> flux;
     afw::table::Key<meas::base::FluxErrElement> fluxSigma;
     afw::table::Key<afw::table::Flag> fluxFlag;
+    afw::table::Key<Scalar> fluxInner;
     afw::table::Key<Scalar> fracDev;
     afw::table::Key<Scalar> objective;
     afw::table::Key<afw::table::Flag> flags[CModelResult::N_FLAGS];
@@ -562,32 +580,42 @@ struct WeightSums {
 
     WeightSums(
         ndarray::Array<Pixel const,2,-1> const & modelMatrix,
+        ndarray::Array<Pixel const,1,1> const & data,
         ndarray::Array<Pixel const,1,1> const & variance
-    ) : fluxVar(0.0), norm(0.0)
+    ) : fluxInner(0.0), fluxVar(0.0), norm(0.0)
     {
         assert(modelMatrix.getSize<1>() == 1);
-        run(modelMatrix.transpose()[0].asEigen<Eigen::ArrayXpr>(), variance.asEigen<Eigen::ArrayXpr>());
+        run(modelMatrix.transpose()[0].asEigen<Eigen::ArrayXpr>(),
+            data.asEigen<Eigen::ArrayXpr>(),
+            variance.asEigen<Eigen::ArrayXpr>());
     }
 
     WeightSums(
         ndarray::Array<Pixel const,1,1> const & model,
+        ndarray::Array<Pixel const,1,1> const & data,
         ndarray::Array<Pixel const,1,1> const & variance
-    ) : fluxVar(0.0), norm(0.0)
+    ) : fluxInner(0.0), fluxVar(0.0), norm(0.0)
     {
-        run(model.asEigen<Eigen::ArrayXpr>(), variance.asEigen<Eigen::ArrayXpr>());
+        run(model.asEigen<Eigen::ArrayXpr>(),
+            data.asEigen<Eigen::ArrayXpr>(),
+            variance.asEigen<Eigen::ArrayXpr>());
     }
 
     void run(
         ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & model,
+        ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & data,
         ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & variance
     ) {
         double w = model.sum();
+        double wd = (model*data).sum();
         double ww = model.square().sum();
         double wwv = (model.square()*variance).sum();
         norm = w/ww;
+        fluxInner = wd*norm;
         fluxVar = wwv*norm;
     }
 
+    double fluxInner;
     double fluxVar;
     double norm;
 };
@@ -632,7 +660,7 @@ public:
     void fillResult(
         CModelStageResult & result,
         CModelStageData const & data,
-        Scalar fluxVar
+        WeightSums const & sums
     ) const {
         // these are shallow assignments
         result.nonlinear = data.nonlinear;
@@ -640,7 +668,8 @@ public:
         result.fixed = data.fixed;
         // flux is just the amplitude converted from fitSys to measSys
         result.flux = data.amplitudes[0] * data.fitSysToMeasSys.flux;
-        result.fluxSigma = std::sqrt(fluxVar);
+        result.fluxInner = sums.fluxInner;
+        result.fluxSigma = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
         // to compute the ellipse, we need to first read the nonlinear parameters into the workspace
         // ellipse vector, then transform from fitSys to measSys.
         model->writeEllipses(data.nonlinear.begin(), data.fixed.begin(), ellipses.begin());
@@ -710,11 +739,12 @@ public:
         // systematic errors anyway).
         WeightSums sums(
             makeModelMatrix(*result.likelihood, data.nonlinear),
+            result.likelihood->getData(),
             result.likelihood->getVariance()
         );
 
         // Set parameter vectors, flux values, ellipse on result.
-        fillResult(result, data, sums.fluxVar);
+        fillResult(result, data, sums);
 
         if (ctrl.doRecordTime) {
             result.time = (daf::base::DateTime::now().nsecs() - startTime)/1E9;
@@ -742,9 +772,9 @@ public:
                 - modelMatrix.asEigen().cast<Scalar>() * lstsq.getSolution().asEigen()
             ).squaredNorm();
 
-        WeightSums sums(modelMatrix, result.likelihood->getVariance());
+        WeightSums sums(modelMatrix, result.likelihood->getData(), result.likelihood->getVariance());
 
-        fillResult(result, data, sums.fluxVar);
+        fillResult(result, data, sums);
         result.setFlag(CModelStageResult::FAILED, false);
     }
 
@@ -849,10 +879,10 @@ public:
         // which is a lot harder to compute and a lot harder to use.
         ndarray::Array<Pixel,1,1> model = ndarray::allocate(likelihood.getData().getSize<0>());
         model.asEigen() = modelMatrix.asEigen() * amplitudes.cast<Pixel>();
-        WeightSums sums(model, likelihood.getVariance());
-        result.fluxSigma = std::sqrt(sums.fluxVar);
+        WeightSums sums(model, likelihood.getData(), likelihood.getVariance());
+        result.fluxInner = sums.fluxInner;
+        result.fluxSigma = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
         result.setFlag(CModelResult::FAILED, false);
-
         result.fracDev = amplitudes[1] / amplitudes.sum();
         result.objective = tg.evaluateLog()(amplitudes);
     }

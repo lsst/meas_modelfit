@@ -384,6 +384,7 @@ struct CModelStageResult {
     PTR(UnitTransformedLikelihood) likelihood; ///< Object used to evaluate models and compare to data.
     Scalar flux;         ///< Flux measured from just this stage fit.
     Scalar fluxSigma;    ///< Flux uncertainty from just this stage fit.
+    Scalar fluxInner;    ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar objective;    ///< Value of the objective function at the best fit point: chisq/2 - ln(prior)
     Scalar time;         ///< Time spent in this fit in seconds.
     afw::geom::ellipses::Quadrupole ellipse;  ///< Best fit half-light ellipse in pixel coordinates
@@ -430,6 +431,7 @@ struct CModelResult {
 
     Scalar flux;       ///< Flux from the final linear fit
     Scalar fluxSigma;  ///< Flux uncertainty from the final linear fit
+    Scalar fluxInner;  ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar fracDev;    ///< Fraction of flux from the final linear fit in the de Vaucouleur component
                        ///  (always between 0 and 1).
     Scalar objective;  ///< Objective value at the best-fit point (chisq/2)
