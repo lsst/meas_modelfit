@@ -227,11 +227,6 @@ struct CModelStageKeys {
                 schema.join(prefix, "flag", "maxIter"),
                 "the optimizer hit the maximum number of iterations and did not converge"
             );
-            flags[CModelStageResult::NUMERIC_ERROR] = schema.addField<afw::table::Flag>(
-                schema.join(prefix, "flag", "numericError"),
-                "numerical underflow or overflow in model evaluation; usually this means the prior was "
-                "insufficient to regularize the fit"
-            );
             if (ctrl.doRecordHistory) {
                 nIter = schema.addField<int>(
                     schema.join(prefix, "nIter"),
@@ -250,6 +245,11 @@ struct CModelStageKeys {
                 "The original fit in the reference catalog failed."
             );
         }
+        flags[CModelStageResult::NUMERIC_ERROR] = schema.addField<afw::table::Flag>(
+            schema.join(prefix, "flag", "numericError"),
+            "numerical underflow or overflow in model evaluation; usually this means the prior was "
+            "insufficient to regularize the fit, or all pixel values were zero."
+        );
         flags[CModelStageResult::FAILED] = fluxFlag; // these flags refer to the same underlying field
     }
 
@@ -1200,8 +1200,20 @@ void CModelAlgorithm::_applyImpl(
 
     // Negative approxFlux means we should come up with an estimate ourselves.
     // This is only used to avoid scaling problems in the optimizer, so it doesn't have to be very good.
-    if (approxFlux < 0.0) {
+    if (!(approxFlux > 0.0)) {
         approxFlux = computeFluxInFootprint(*exposure.getMaskedImage().getImage(), footprint);
+        if (!(approxFlux > 0.0)) {
+            // This is only be possible if the object has all data pixels set to zero or
+            // if there are unmasked NaNs in the fit region.
+            result.initial.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.initial.setFlag(CModelStageResult::FAILED, true);
+            result.exp.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.exp.setFlag(CModelStageResult::FAILED, true);
+            result.dev.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.dev.setFlag(CModelStageResult::FAILED, true);
+            result.setFlag(CModelResult::FAILED, true);
+            return;
+        }
     }
 
     // Set up coordinate systems and empty parameter vectors
@@ -1311,8 +1323,20 @@ void CModelAlgorithm::_applyForcedImpl(
 
     // Negative approxFlux means we should come up with an estimate ourselves.
     // This is only used to avoid scaling problems in the optimizer, so it doesn't have to be very good.
-    if (approxFlux < 0.0) {
+    if (!(approxFlux > 0.0)) {
         approxFlux = computeFluxInFootprint(*exposure.getMaskedImage().getImage(), footprint);
+        if (!(approxFlux > 0.0)) {
+            // This is only be possible if the object has all data pixels set to zero or
+            // if there are unmasked NaNs in the fit region.
+            result.initial.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.initial.setFlag(CModelStageResult::FAILED, true);
+            result.exp.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.exp.setFlag(CModelStageResult::FAILED, true);
+            result.dev.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.dev.setFlag(CModelStageResult::FAILED, true);
+            result.setFlag(CModelResult::FAILED, true);
+            return;
+        }
     }
 
     // Set up coordinate systems and empty parameter vectors
