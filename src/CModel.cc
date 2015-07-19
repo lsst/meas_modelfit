@@ -1512,10 +1512,16 @@ void CModelAlgorithm::measure(
                          refResult, approxFlux);
     } catch (...) {
         _impl->keys->copyResultToRecord(result, measRecord);
+        if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
+            _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
+        }
         _impl->checkFlagDetails(measRecord);
         throw;
     }
     _impl->keys->copyResultToRecord(result, measRecord);
+    if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
+        _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
+    }
     _impl->checkFlagDetails(measRecord);
 }
 
