@@ -156,7 +156,7 @@ CModelResult::CModelResult() :
 
 namespace {
 
-// Keys for a single stage (one of 'initial', 'exp', 'dev'
+// Keys for a single stage (one of 'initial', 'exp', 'dev')
 struct CModelStageKeys {
 
     // this constructor is used to allocate output fields in both forced and non-forced mode
