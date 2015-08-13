@@ -100,8 +100,12 @@ class CModelTestCase(AlgorithmTestCase):
         # catalog2 will contain only the truth catalog for sources in exposure 1; the structure of
         # ForcedMeasurementTask means we can't put the outputs in the same catalog.
         exposure2, catalog2 = dataset2.realize(10.0, dataset2.makeMinimalSchema())
-        results = forcedTask.run(exposure2, refCat=catalog1, refWcs=exposure1.getWcs())
-        self.checkOutputs(results.sources, catalog2)
+        refWcs = exposure1.getWcs()
+        refCat = catalog1
+        sources = forcedTask.generateSources(exposure2, refCat, refWcs)
+        forcedTask.attachTransformedFootprints(sources, refCat, exposure2, refWcs)
+        forcedTask.run(exposure2, sources, refCat, refWcs)
+        self.checkOutputs(sources, catalog2)
 
 
 def suite():
