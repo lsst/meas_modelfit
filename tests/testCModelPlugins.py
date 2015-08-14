@@ -102,7 +102,7 @@ class CModelTestCase(AlgorithmTestCase):
         exposure2, catalog2 = dataset2.realize(10.0, dataset2.makeMinimalSchema())
         refWcs = exposure1.getWcs()
         refCat = catalog1
-        measCat = forcedTask.generateSources(exposure2, refCat, refWcs)
+        measCat = forcedTask.generateMeasCat(exposure2, refCat, refWcs)
         forcedTask.attachTransformedFootprints(measCat, refCat, exposure2, refWcs)
         forcedTask.run(measCat, exposure2, refCat, refWcs)
         self.checkOutputs(measCat, catalog2)
