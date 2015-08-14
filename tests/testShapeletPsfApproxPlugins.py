@@ -102,8 +102,8 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         refRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
         refWcs = self.exposure.getWcs() # same as measurement Wcs
         task = lsst.meas.base.ForcedMeasurementTask(config=config, refSchema=self.schema)
-        measCat = task.generateSources(self.exposure, refCat, refWcs)
-        task.run(self.exposure, measCat, refCat, refWcs)
+        measCat = task.generateMeasCat(self.exposure, refCat, refWcs)
+        task.run(measCat, self.exposure, refCat, refWcs)
         measRecord = measCat[0]
         measSchema = measCat.schema
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
