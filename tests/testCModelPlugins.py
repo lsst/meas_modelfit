@@ -102,10 +102,10 @@ class CModelTestCase(AlgorithmTestCase):
         exposure2, catalog2 = dataset2.realize(10.0, dataset2.makeMinimalSchema())
         refWcs = exposure1.getWcs()
         refCat = catalog1
-        sources = forcedTask.generateSources(exposure2, refCat, refWcs)
-        forcedTask.attachTransformedFootprints(sources, refCat, exposure2, refWcs)
-        forcedTask.run(exposure2, sources, refCat, refWcs)
-        self.checkOutputs(sources, catalog2)
+        measCat = forcedTask.generateSources(exposure2, refCat, refWcs)
+        forcedTask.attachTransformedFootprints(measCat, refCat, exposure2, refWcs)
+        forcedTask.run(measCat, exposure2, refCat, refWcs)
+        self.checkOutputs(measCat, catalog2)
 
 
 def suite():
