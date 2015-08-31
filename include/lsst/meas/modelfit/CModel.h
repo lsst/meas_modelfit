@@ -300,7 +300,7 @@ struct CModelDiagnosticsControl {
 struct CModelControl {
 
     CModelControl() :
-        psfName("DoubleGaussian"),
+        psfName("DoubleShapelet"),
         minInitialRadius(3E-3),
         fallbackInitialMomentsPsfFactor(1.5)
     {
