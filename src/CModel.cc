@@ -870,10 +870,12 @@ public:
         // To compute the error on the flux, we treat the best-fit composite profile as a continuous
         // aperture and compute the uncertainty on that aperture flux.
         // That means this is an underestimate of the true uncertainty, but it's the sort that kind of
-        // makes sense for colors, and it's consistent with the fact that we're also ignoring the
-        // uncertainty in the nonlinear parameters.  It also makes this uncertainty equivalent to the
-        // PSF flux uncertainty and the single-component exp or dev uncertainty when fitting point
-        // sources, which is convenient, even if it's not statistically correct.
+        // makes sense for colors - colors are measured in forced photometry, where the ellipses and
+        // positions aren't allowed to vary across bands, and hence we don't want uncertainties in
+        // those parameters included in the uncertainty on the flux.
+        // It also makes this uncertainty equivalent to the PSF flux uncertainty and the single-component
+        // exp or dev uncertainty when fitting point sources, which is convenient, even if it's not
+        // statistically correct.
         // Doing a better job would involve taking into account that we have positivity constraints
         // on the two components, which means the actual uncertainty is neither Gaussian nor symmetric,
         // which is a lot harder to compute and a lot harder to use.
