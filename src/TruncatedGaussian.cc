@@ -37,7 +37,7 @@
 #include "Eigen/LU"
 
 #include "ndarray/eigen.h"
-#define LSST_MAX_DEBUG 10
+#define LSST_MAX_DEBUG 0
 #include "lsst/pex/logging/Debug.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/modelfit/integrals.h"
@@ -48,6 +48,7 @@ namespace lsst { namespace meas { namespace modelfit {
 namespace {
 
 static double const THRESHOLD = 1E-15;
+static double const SLN_THRESHOLD = 1E-5;
 
 } // anonymous
 
@@ -109,16 +110,33 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
             v(0,1) *= -1;
             v(1,1) *= -1;
         }
+        debugLog.debug<8>(
+            "fromSeriesParameters: 2d with H=[[%16.16g, %16.16g], [%16.16g, %16.16g]], g=[%16.16g, %16.16g]",
+            H(0,0), H(0,1), H(1,0), H(1,1), g[0], g[1]
+        );
+        debugLog.debug<8>("fromSeriesParameters: v=[[%8.8g, %8.8g], [%8.8g, %8.8g]]",
+                          v(0,0), v(0,1), v(1,0), v(1,1));
         Eigen::Vector2d mu;
         bool isSingular = (s[0] < s[1] * THRESHOLD);
         if (isSingular) {
-            if (!(std::abs(v.col(0).dot(g)) < std::sqrt(THRESHOLD))) {
+            double solutionThreshold = SLN_THRESHOLD*std::max(std::abs(g[0]), std::abs(g[1]));
+            if (!(std::abs(v.col(0).dot(g)) < solutionThreshold)) {
+                debugLog.debug<8>(
+                    "no solution: singular matrix with s=[%g, %g], mu=[%g, %g]",
+                    s[0], s[1], mu[0], mu[1]
+                );
+                debugLog.debug<8>(
+                    "|v.col(0).dot(g)=%g| > %g",
+                    v.col(0).dot(g), solutionThreshold
+                );
                 throw LSST_EXCEPT(
                     pex::exceptions::RuntimeError,
                     "Integral diverges: H*mu = -g has no solution"
                 );
             }
             if (v(1,1) < 0.0) {
+                debugLog.debug<8>("unconstrained: singular matrix with s=[%g, %g], mu=[%g, %g]; v(1,1)=%g",
+                                  s[0], s[1], mu[0], mu[1], v(1,1));
                 throw LSST_EXCEPT(
                     pex::exceptions::RuntimeError,
                     "Integral diverges: degenerate direction is not constrained"
@@ -126,8 +144,6 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
             }
             mu = -(v.col(1).dot(g)/s[1]) * v.col(1);
             s[0] = 0.0; // better than leaving it as it was, because it might have been tiny and negative
-            debugLog.debug<8>("fromSeriesParameters: singular matrix with s=[%g, %g], mu=[%g, %g]",
-                              s[0],s[1], mu[0], mu[1]);
             Scalar z = v.col(1).dot(g) / std::sqrt(2.0 * s[1]);
             // we use abs() here because we know we want a positive integral, but we don't know which of
             // v(0,0) and v(0,1) is positive and which is negative

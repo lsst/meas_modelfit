@@ -189,12 +189,6 @@ struct CModelStageControl {
         "Configuration for how the objective surface is explored.  Ignored for forced fitting"
     );
 
-    LSST_NESTED_CONTROL_FIELD(
-        likelihood, lsst.meas.modelfit.modelfitLib, UnitTransformedLikelihoodControl,
-        "Configuration for how the compound model is evaluated and residuals are weighted in this "
-        "stage of the fit"
-    );
-
     LSST_CONTROL_FIELD(
         doRecordHistory, bool,
         "Whether to record the steps the optimizer takes (or just the number, if running as a plugin)"
@@ -227,11 +221,13 @@ struct CModelRegionControl {
         includePsfBBox(false),
         nGrowFootprint(5),
         nInitialRadii(3),
-        maxArea(10000),
+        maxArea(100000),
         maxBadPixelFraction(0.1)
     {
         badMaskPlanes.push_back("EDGE");
         badMaskPlanes.push_back("SAT");
+        badMaskPlanes.push_back("BAD");
+        badMaskPlanes.push_back("NO_DATA");
     }
 
     LSST_CONTROL_FIELD(
@@ -304,13 +300,16 @@ struct CModelDiagnosticsControl {
 struct CModelControl {
 
     CModelControl() :
-        psfName("DoubleGaussian"),
-        minInitialRadius(0.1)
+        psfName("DoubleShapelet"),
+        minInitialRadius(3E-3),
+        fallbackInitialMomentsPsfFactor(1.5)
     {
         initial.nComponents = 3; // use very rough model in initial fit
         initial.optimizer.gradientThreshold = 1E-2; // with coarse convergence criteria
         initial.optimizer.minTrustRadiusThreshold = 1E-2;
         dev.profileName = "luv";
+        exp.nComponents = 6;
+        exp.optimizer.maxOuterIterations = 250;
     }
 
     LSST_CONTROL_FIELD(
@@ -346,15 +345,15 @@ struct CModelControl {
         "Independent fit of the de Vaucouleur component"
     );
 
-    LSST_NESTED_CONTROL_FIELD(
-        likelihood, lsst.meas.modelfit.modelfitLib, UnitTransformedLikelihoodControl,
-        "configuration for how the compound model is evaluated and residuals are weighted in the exp+dev "
-        "linear combination fit"
-    );
-
     LSST_CONTROL_FIELD(
         minInitialRadius, double,
         "Minimum initial radius in pixels (used to regularize initial moments-based PSF deconvolution)"
+    );
+
+    LSST_CONTROL_FIELD(
+        fallbackInitialMomentsPsfFactor, double,
+        "If the 2nd-moments shape used to initialize the fit failed, use the PSF moments multiplied by this."
+        "  If <= 0.0, abort the fit early instead."
     );
 
 };
@@ -373,6 +372,7 @@ struct CModelStageResult {
                          ///  a suspect fit, but not necessarily a bad one (implies FAILED).
         NUMERIC_ERROR,   ///< Optimizer encountered a numerical error (something likely went to infinity).
                          ///  Result will be unusable; implies FAILED.
+        BAD_REFERENCE,   ///< Reference fit failed, so forced fit will fail as well.
         N_FLAGS          ///< Non-flag counter to indicate the number of flags
     };
 
@@ -381,8 +381,10 @@ struct CModelStageResult {
     PTR(Model) model;    ///< Model object that defines the parametrization (defined fully by Control struct)
     PTR(Prior) prior;    ///< Bayesian priors on the parameters (defined fully by Control struct)
     PTR(OptimizerObjective) objfunc;  ///< Objective class used by the optimizer
+    PTR(UnitTransformedLikelihood) likelihood; ///< Object used to evaluate models and compare to data.
     Scalar flux;         ///< Flux measured from just this stage fit.
     Scalar fluxSigma;    ///< Flux uncertainty from just this stage fit.
+    Scalar fluxInner;    ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar objective;    ///< Value of the objective function at the best fit point: chisq/2 - ln(prior)
     Scalar time;         ///< Time spent in this fit in seconds.
     afw::geom::ellipses::Quadrupole ellipse;  ///< Best fit half-light ellipse in pixel coordinates
@@ -418,6 +420,10 @@ struct CModelResult {
         NO_SHAPE,                ///< Set if the input SourceRecord had no valid shape slot with which to
                                  ///  start the fit.
         NO_SHAPELET_PSF,         ///< Set if the Psf shapelet approximation failed.
+        INCOMPLETE_FIT_REGION,   ///< Region of pixels to use in the fit may be incomplete due to
+                                 ///  noncontiguous detection footprint.
+        BAD_CENTROID,            ///< Input centroid did not land within the fit region.
+        BAD_REFERENCE,           ///< Reference fit failed, so forced fit will fail as well.
         N_FLAGS                  ///< Non-flag counter to indicate the number of flags
     };
 
@@ -425,6 +431,7 @@ struct CModelResult {
 
     Scalar flux;       ///< Flux from the final linear fit
     Scalar fluxSigma;  ///< Flux uncertainty from the final linear fit
+    Scalar fluxInner;  ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar fracDev;    ///< Fraction of flux from the final linear fit in the de Vaucouleur component
                        ///  (always between 0 and 1).
     Scalar objective;  ///< Objective value at the best-fit point (chisq/2)
@@ -441,6 +448,8 @@ struct CModelResult {
 
     PTR(afw::detection::Footprint) initialFitRegion;  ///< Pixels used in the initial fit.
     PTR(afw::detection::Footprint) finalFitRegion;    ///< Pixels used in the exp, dev, and linear fits.
+
+    LocalUnitTransform fitSysToMeasSys; ///< Transforms to the coordinate system where parameters are defined
 
 #ifndef SWIG
     std::bitset<N_FLAGS> flags; ///< Array of flags.
@@ -520,11 +529,16 @@ public:
      *
      *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
      *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
+     *
+     *  If a non-fatal error (e.g. INCOMPLETE_FIT_REGION) occurs, a flag bit will be set in the given
+     *  result object.
      */
     PTR(afw::detection::Footprint) determineInitialFitRegion(
         afw::image::Mask<> const & mask,
         afw::detection::Footprint const & footprint,
-        afw::geom::Box2I const & psfBBox
+        afw::geom::Box2I const & psfBBox,
+        afw::geom::Point2D const & center,
+        Result & result
     ) const;
 
     /**
@@ -536,12 +550,16 @@ public:
      *
      *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
      *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
+     *
+     *  If a non-fatal error (e.g. INCOMPLETE_FIT_REGION) occurs, a flag bit will be set in the given
+     *  result object.
      */
     PTR(afw::detection::Footprint) determineFinalFitRegion(
         afw::image::Mask<> const & mask,
         afw::detection::Footprint const & footprint,
         afw::geom::Box2I const & psfBBox,
-        afw::geom::ellipses::Ellipse const & ellipse
+        afw::geom::ellipses::Ellipse const & ellipse,
+        Result & result
     ) const;
 
     /**

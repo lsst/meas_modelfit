@@ -106,23 +106,18 @@ void setupArrays(
     afw::image::MaskedImage<Pixel> const & image,
     afw::detection::Footprint const & footprint,
     ndarray::Array<Pixel,1,1> const & data,
+    ndarray::Array<Pixel,1,1> const & variance,
     ndarray::Array<Pixel,1,1> const & weights,
     bool usePixelWeights
 ) {
     afw::detection::flattenArray(footprint, image.getImage()->getArray(), data, image.getXY0());
-    afw::detection::flattenArray(footprint, image.getVariance()->getArray(), weights, image.getXY0());
-    // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
-    // weighting, because we implicitly square it later.
-    weights.asEigen<Eigen::ArrayXpr>() = weights.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
-    if (!usePixelWeights) {
-        // We want a single number for the weights, so we use the geometric mean, as that
-        // preserves the determinant of the (diagonal) pixel covariance matrix.
-        weights.asEigen<Eigen::ArrayXpr>().setConstant(
-            std::exp(static_cast<double>(weights.asEigen<Eigen::ArrayXpr>().log().mean()))
-            // static_cast == workaround for ambiguous resolution on clang
-        );
+    afw::detection::flattenArray(footprint, image.getVariance()->getArray(), variance, image.getXY0());
+    if (usePixelWeights) {
+        // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
+        // weighting, because we implicitly square it later.
+        weights.asEigen<Eigen::ArrayXpr>() = variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
+        data.asEigen<Eigen::ArrayXpr>() *= weights.asEigen<Eigen::ArrayXpr>();
     }
-    data.asEigen<Eigen::ArrayXpr>() *= weights.asEigen<Eigen::ArrayXpr>();
 }
 
 } // anonymous
@@ -169,7 +164,10 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     int totPixels = std::accumulate(epochFootprintList.begin(), epochFootprintList.end(),
                                     0, componentPixelSum);
     _data = ndarray::allocate(totPixels);
-    _weights = ndarray::allocate(totPixels);
+    _variance = ndarray::allocate(totPixels);
+    if (ctrl.usePixelWeights) {
+        _weights = ndarray::allocate(totPixels);
+    }
     _impl->epochs.reserve(epochFootprintList.size());
     _impl->ellipses = model->makeEllipseVector();
     int dataOffset = 0;
@@ -190,7 +188,8 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
             (**imPtrIter).exposure.getMaskedImage(),
             (**imPtrIter).footprint,
             _data[ndarray::view(dataOffset, dataEnd)],
-            _weights[ndarray::view(dataOffset, dataEnd)],
+            _variance[ndarray::view(dataOffset, dataEnd)],
+            (ctrl.usePixelWeights) ? _weights[ndarray::view(dataOffset, dataEnd)] : _weights,
             ctrl.usePixelWeights
         );
     }
@@ -208,7 +207,10 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
 ) : Likelihood(model, fixed), _impl(new Impl()) {
     int totPixels = footprint.getArea();
     _data = ndarray::allocate(totPixels);
-    _weights = ndarray::allocate(totPixels);
+    _variance = ndarray::allocate(totPixels);
+    if (ctrl.usePixelWeights) {
+        _weights = ndarray::allocate(totPixels);
+    }
     _impl->ellipses = model->makeEllipseVector();
     _impl->epochs.push_back(
         Impl::Epoch(
@@ -216,7 +218,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
             makeMatrixBuilders(model->getBasisVector(), psf, footprint)
         )
     );
-    setupArrays(exposure.getMaskedImage(), footprint, _data, _weights, ctrl.usePixelWeights);
+    setupArrays(exposure.getMaskedImage(), footprint, _data, _variance, _weights, ctrl.usePixelWeights);
 }
 
 UnitTransformedLikelihood::~UnitTransformedLikelihood() {}
@@ -248,7 +250,7 @@ void UnitTransformedLikelihood::computeModelMatrix(
         modelMatrix[ndarray::view(dataOffset, dataEnd)()] *= i->transform.flux;
         dataOffset = dataEnd;
     }
-    if (doApplyWeights) {
+    if (doApplyWeights && !_weights.isEmpty()) {
         modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
     }
 }

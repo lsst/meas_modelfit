@@ -200,9 +200,9 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.checkLikelihood(l0b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
-        data = self.exposure0.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
+        data = self.exposure0.getMaskedImage().getImage().getArray()
         l0c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     self.exposure0, self.footprint0, self.psf0, ctrl)
+                                                           self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0c, data)
         l0d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      efv, ctrl)
@@ -233,7 +233,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.checkLikelihood(l1b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
-        data = exposure1.getMaskedImage().getImage().getArray() / numpy.exp(0.5*numpy.log(var).mean())
+        data = exposure1.getMaskedImage().getImage().getArray()
         l1c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                      exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1c, data)

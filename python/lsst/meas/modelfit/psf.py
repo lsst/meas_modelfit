@@ -36,7 +36,7 @@ class ShapeletPsfApproxConfig(lsst.pex.config.Config):
     sequence = lsst.pex.config.ListField(
         dtype=str,
         doc="a sequence of model names indicating which models should be fit, and their order",
-        default=["DoubleGaussian"]
+        default=["DoubleShapelet"]
         )
 
     def setDefaults(self):
@@ -51,6 +51,11 @@ class ShapeletPsfApproxConfig(lsst.pex.config.Config):
         self.models["DoubleGaussian"].primary.order = 0
         self.models["DoubleGaussian"].wings.order = 0
         self.models["DoubleGaussian"].outer.order = -1
+        self.models["DoubleShapelet"] = modelfitLib.PsfFitterConfig()
+        self.models["DoubleShapelet"].inner.order = -1
+        self.models["DoubleShapelet"].primary.order = 2
+        self.models["DoubleShapelet"].wings.order = 1
+        self.models["DoubleShapelet"].outer.order = -1
         self.models["Full"] = modelfitLib.PsfFitterConfig()
         self.models["Full"].inner.order = 0
         self.models["Full"].primary.order = 4

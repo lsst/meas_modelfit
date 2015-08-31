@@ -68,7 +68,7 @@ struct SoftenedLinearPriorControl {
 
     SoftenedLinearPriorControl() :
         ellipticityMaxOuter(2.001), ellipticityMaxInner(2.0),
-        logRadiusMinOuter(-10.001), logRadiusMinInner(-10.0),
+        logRadiusMinOuter(-6.001), logRadiusMinInner(-6.0),
         logRadiusMaxOuter(3.001), logRadiusMaxInner(3.0),
         logRadiusMinMaxRatio(1.0)
     {}

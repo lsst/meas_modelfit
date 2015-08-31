@@ -38,6 +38,8 @@ namespace lsst { namespace meas { namespace modelfit {
 class Model;
 class Prior;
 
+class LocalUnitTransform;
+
 typedef std::vector<PTR(Model)> ModelVector;
 
 /**
@@ -234,6 +236,21 @@ public:
     void readEllipses(
         EllipseVector const & ellipses,
         ndarray::Array<Scalar,1,1> const & nonlinear,
+        ndarray::Array<Scalar,1,1> const & fixed
+    ) const;
+
+    /**
+     *  Transform (in-place) parameter vectors from one unit system to another.
+     *
+     *  The default implementation transforms nonlinear and fixed parameters by converting them to
+     *  ellipses, transforming the ellipses, and converting back to parameters.  The amplitudes are
+     *  simply multiplied by transform.flux.  Subclasses for which this isn't appropriate should
+     *  override.
+     */
+    virtual void transformParameters(
+        LocalUnitTransform const & transform,
+        ndarray::Array<Scalar,1,1> const & nonlinear,
+        ndarray::Array<Scalar,1,1> const & amplitudes,
         ndarray::Array<Scalar,1,1> const & fixed
     ) const;
 
