@@ -419,6 +419,8 @@ struct CModelResult {
         MAX_BAD_PIXEL_FRACTION,  ///< Set if we aborted early because the fit region had too many bad pixels.
         NO_SHAPE,                ///< Set if the input SourceRecord had no valid shape slot with which to
                                  ///  start the fit.
+        SMALL_SHAPE,             ///< Initial moments were sufficiently small that we used minInitialRadius
+                                 ///  to set the initial parameters.
         NO_SHAPELET_PSF,         ///< Set if the Psf shapelet approximation failed.
         INCOMPLETE_FIT_REGION,   ///< Region of pixels to use in the fit may be incomplete due to
                                  ///  noncontiguous detection footprint.
