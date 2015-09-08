@@ -301,7 +301,7 @@ struct CModelControl {
 
     CModelControl() :
         psfName("DoubleShapelet"),
-        minInitialRadius(3E-3),
+        minInitialRadius(0.1),
         fallbackInitialMomentsPsfFactor(1.5)
     {
         initial.nComponents = 3; // use very rough model in initial fit
