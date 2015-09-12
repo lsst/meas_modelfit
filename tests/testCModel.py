@@ -46,56 +46,65 @@ def makeMultiShapeletCircularGaussian(sigma):
 
 class CModelTestCase(lsst.utils.tests.TestCase):
 
-    def testPointSource(self):
-        """Test that CModelAlgorithm.apply() works when applied to a postage-stamp
-        containing only a point source
-        """
+    def setUp(self):
+        # Setup test data: a single point source, initially with no noise.
         crval = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
         crpix = lsst.afw.geom.Point2D(0.0, 0.0)
         cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
         dataWcs = lsst.afw.image.makeWcs(crval, crpix, cdelt, 0.0, 0.0, cdelt)
         dataCalib = lsst.afw.image.Calib()
         dataCalib.setFluxMag0(1e12)
-        xyPosition = lsst.afw.geom.Point2D(1.1, -0.8)
-        position = dataWcs.pixelToSky(xyPosition)
-        noiseSigma = 0.01
+        self.xyPosition = lsst.afw.geom.Point2D(1.1, -0.8)
+        position = dataWcs.pixelToSky(self.xyPosition)
         bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
-        exposure = lsst.afw.image.ExposureF(bbox)
-        exposure.setWcs(dataWcs)
-        exposure.setCalib(dataCalib)
-        exposure.getMaskedImage().getVariance().getArray()[:,:] = noiseSigma**2
-
-        # Start by creating a point source and fitting it with an extended model
-        trueFlux = 65.0
-        exposure.getMaskedImage().getImage().getArray()[:,:] \
-            = numpy.random.randn(bbox.getHeight(), bbox.getWidth()) * noiseSigma
-        psfSigma = 2.0
-        psf = lsst.afw.detection.GaussianPsf(25, 25, psfSigma)
-        exposure.setPsf(psf)
-        psfImage = psf.computeImage(xyPosition)
-        psfImage.getArray()[:,:] *= trueFlux
+        self.exposure = lsst.afw.image.ExposureF(bbox)
+        self.exposure.setWcs(dataWcs)
+        self.exposure.setCalib(dataCalib)
+        self.trueFlux = 65.0
+        self.psfSigma = 2.0
+        psf = lsst.afw.detection.GaussianPsf(25, 25, self.psfSigma)
+        self.exposure.setPsf(psf)
+        psfImage = psf.computeImage(self.xyPosition)
+        psfImage.getArray()[:,:] *= self.trueFlux
         psfBBox = psfImage.getBBox(lsst.afw.image.PARENT)
-        subImage = lsst.afw.image.ImageF(exposure.getMaskedImage().getImage(), psfBBox, lsst.afw.image.PARENT)
+        self.footprint = lsst.afw.detection.Footprint(psfBBox)
+        subImage = lsst.afw.image.ImageF(self.exposure.getMaskedImage().getImage(), psfBBox,
+                                         lsst.afw.image.PARENT)
         subImage.getArray()[:,:] = psfImage.getArray()
 
+    def tearDown(self):
+        del self.xyPosition
+        del self.exposure
+        del self.trueFlux
+        del self.psfSigma
+        del self.footprint
+
+    def testNoNoise(self):
+        """Test that CModelAlgorithm.apply() works when applied to a postage-stamp
+        containing only a point source with no noise.
+        """
         ctrl = lsst.meas.modelfit.CModelControl()
         algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
         result = algorithm.apply(
-            exposure, lsst.afw.detection.Footprint(psfBBox),
-            makeMultiShapeletCircularGaussian(psfSigma),
-            xyPosition, psf.computeShape()
+            self.exposure, self.footprint,
+            makeMultiShapeletCircularGaussian(self.psfSigma),
+            self.xyPosition, self.exposure.getPsf().computeShape()
             )
         self.assertFalse(result.initial.getFlag(result.FAILED))
-        self.assertClose(result.initial.flux, trueFlux, rtol=0.01)
+        self.assertClose(result.initial.flux, self.trueFlux, rtol=0.01)
+        self.assertClose(result.initial.fluxSigma, 0.0, rtol=0.0)
         self.assertLess(result.initial.getEllipse().getDeterminantRadius(), 0.2)
         self.assertFalse(result.exp.getFlag(result.FAILED))
-        self.assertClose(result.exp.flux, trueFlux, rtol=0.01)
+        self.assertClose(result.exp.flux, self.trueFlux, rtol=0.01)
+        self.assertClose(result.exp.fluxSigma, 0.0, rtol=0.0)
         self.assertLess(result.exp.getEllipse().getDeterminantRadius(), 0.2)
         self.assertFalse(result.dev.getFlag(result.FAILED))
-        self.assertClose(result.dev.flux, trueFlux, rtol=0.01)
+        self.assertClose(result.dev.flux, self.trueFlux, rtol=0.01)
+        self.assertClose(result.dev.fluxSigma, 0.0, rtol=0.0)
         self.assertLess(result.dev.getEllipse().getDeterminantRadius(), 0.2)
         self.assertFalse(result.getFlag(result.FAILED))
-        self.assertClose(result.flux, trueFlux, rtol=0.01)
+        self.assertClose(result.flux, self.trueFlux, rtol=0.01)
+        self.assertClose(result.fluxSigma, 0.0, rtol=0.0, atol=0.0)
 
 
 def suite():
