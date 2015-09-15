@@ -25,8 +25,6 @@ import os
 import collections
 import numpy
 import copy
-import matplotlib.colors
-import mpl_toolkits.mplot3d
 
 import lsst.pipe.base
 import lsst.pex.config
