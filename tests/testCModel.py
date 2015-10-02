@@ -29,7 +29,9 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
+import lsst.afw.image
 import lsst.meas.modelfit
+import lsst.meas.base
 
 numpy.random.seed(500)
 
@@ -43,6 +45,16 @@ def makeMultiShapeletCircularGaussian(sigma):
     m.getComponents().push_back(s)
     return m
 
+def computePsfFlux(centroid, exposure):
+    schema = lsst.afw.table.SourceTable.makeMinimalSchema()
+    pointKey = lsst.afw.table.Point2DKey.addFields(schema, "centroid", "known input centroid", "pixels")
+    schema.getAliasMap().set("slot_Centroid", "centroid")
+    algorithm = lsst.meas.base.PsfFluxAlgorithm(lsst.meas.base.PsfFluxControl(), "base_PsfFlux", schema)
+    table = lsst.afw.table.SourceTable.make(schema)
+    record = table.makeRecord()
+    record.set(pointKey, centroid)
+    algorithm.measure(record, exposure)
+    return record.get("base_PsfFlux_flux"), record.get("base_PsfFlux_fluxSigma")
 
 class CModelTestCase(lsst.utils.tests.TestCase):
 
@@ -106,6 +118,27 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         self.assertClose(result.flux, self.trueFlux, rtol=0.01)
         self.assertClose(result.fluxSigma, 0.0, rtol=0.0, atol=0.0)
 
+    def testVsPsfFlux(self):
+        """Test that CModel produces results comparable to PsfFlux when run
+        on point sources.
+        """
+        noiseSigma = 1.0
+        for fluxFactor in (1.0, 10.0, 100.0):
+            exposure = self.exposure.Factory(self.exposure, True)
+            exposure.getMaskedImage().getImage().getArray()[:] *= fluxFactor
+            exposure.getMaskedImage().getVariance().getArray()[:] = noiseSigma**2
+            exposure.getMaskedImage().getImage().getArray()[:] += \
+                noiseSigma*numpy.random.randn(exposure.getHeight(), exposure.getWidth())
+            ctrl = lsst.meas.modelfit.CModelControl()
+            algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
+            cmodel = algorithm.apply(
+                exposure, self.footprint,
+                makeMultiShapeletCircularGaussian(self.psfSigma),
+                self.xyPosition, self.exposure.getPsf().computeShape()
+                )
+            psfFlux, psfFluxSigma = computePsfFlux(self.xyPosition, exposure)
+            self.assertClose(psfFlux, cmodel.flux, rtol=0.03)
+            self.assertClose(psfFluxSigma, cmodel.fluxSigma, rtol=0.03)
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
