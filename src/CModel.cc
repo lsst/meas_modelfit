@@ -1081,8 +1081,14 @@ PTR(afw::detection::Footprint) startDetermineFitRegion(
         );
     }
     if (!footprint.contains(pixel)) {
-        result.setFlag(CModelResult::BAD_CENTROID, true);
-        return region;
+        // temporary fix to bug DM-4033.  
+        // result.setFlag(CModelResult::BAD_CENTROID, true);
+        // return region;
+        throw LSST_EXCEPT(
+            meas::base::MeasurementError,
+            "Pixel not contained in footprint",
+            CModelResult::BAD_CENTROID
+        );
     }
     region = afw::detection::growFootprint(
         footprint,
