@@ -393,6 +393,18 @@ struct CModelKeys {
                 schema.join(prefix, "objective"),
                 "-ln(likelihood) (chi^2) in cmodel fit"
             )
+        ),
+        initialFitArea(
+            schema.addField<int>(
+                schema.join(prefix, "initialFitArea"),
+                "area of the initial fit region"
+            )
+        ),
+        finalFitArea(
+            schema.addField<int>(
+                schema.join(prefix, "finalFitArea"),
+                "area of the final fit region"
+            )
         )
     {
         flags[CModelResult::FAILED] = fluxFlag; // these keys refer to the same underlying field
@@ -457,6 +469,12 @@ struct CModelKeys {
         record.set(fluxInner, result.fluxInner);
         record.set(fracDev, result.fracDev);
         record.set(objective, result.objective);
+        if (result.initialFitRegion) {
+            record.set(initialFitArea, result.initialFitRegion->getArea());
+        }
+        if (result.finalFitRegion) {
+            record.set(finalFitArea, result.finalFitRegion->getArea());
+        }
         for (int b = 0; b < CModelResult::N_FLAGS; ++b) {
             if (flags[b].isValid()) {
                 record.set(flags[b], result.flags[b]);
@@ -501,6 +519,8 @@ struct CModelKeys {
     afw::table::Key<Scalar> fluxInner;
     afw::table::Key<Scalar> fracDev;
     afw::table::Key<Scalar> objective;
+    afw::table::Key<int> initialFitArea;
+    afw::table::Key<int> finalFitArea;
     afw::table::Key<afw::table::Flag> flags[CModelResult::N_FLAGS];
 };
 
