@@ -36,6 +36,7 @@
 #include "lsst/meas/modelfit/SoftenedLinearPrior.h"
 #include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
 #include "lsst/meas/modelfit/optimizer.h"
+#include "lsst/meas/modelfit/PixelFitRegion.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
@@ -108,7 +109,7 @@ namespace lsst { namespace meas { namespace modelfit {
  *  fall into four categories:
  *    - Control structs: C++ analogs of Python Config classes, these structs contain the
  *      configuration parameters that control the behavior of the algorithm.  These are nested; the
- *      @ref CModelControl struct contains a @ref CModelRegionControl instance and three
+ *      @ref CModelControl struct contains a @ref PixelFitRegionControl instance and three
  *      @ref CModelStageControl (one for each of "initial", "exp", and "dev").  The configuration
  *      for the final amplitude-only fit goes in @ref CModelControl itself; because it is a simpler
  *      linear fit, it doesn't have much in common with the first three stages.
@@ -209,63 +210,6 @@ struct CModelStageControl {
 };
 
 /**
- *  Nested control object for CModel that configures which pixels are used in the fit.
- *
- *  The pixel region is determined from the union of several quantities:
- *   - the Psf model image bounding box.
- *   - the detection Footprint of the source, grown by a configurable number of pixels.
- *   - the best-fit ellipse from the "initial" stage, scaled by a configurable factor (used to update
- *     the fit region following the initial stage.
- *  Masked pixels can also be removed from the fit region.
- *
- *  In addition, if the fit region is too large, or too many of its pixels were masked, the
- *  fit will be aborted early.  This prevents the algorithm from spending too much time fitting
- *  garbage such as bleed trails.
- */
-struct CModelRegionControl {
-
-    CModelRegionControl() :
-        nGrowFootprint(5),
-        nInitialRadii(3),
-        maxArea(100000),
-        maxBadPixelFraction(0.1)
-    {
-        badMaskPlanes.push_back("EDGE");
-        badMaskPlanes.push_back("SAT");
-        badMaskPlanes.push_back("BAD");
-        badMaskPlanes.push_back("NO_DATA");
-    }
-
-    LSST_CONTROL_FIELD(
-        nGrowFootprint, int,
-        "Number of pixels to grow the original footprint by before the initial fit."
-    );
-
-    LSST_CONTROL_FIELD(
-        nInitialRadii, double,
-        "After the initial fit, extend the fit region to include all the pixels within "
-        "this many initial-fit radii."
-    );
-
-    LSST_CONTROL_FIELD(
-        maxArea, int,
-        "Abort if the fit region grows beyond this many pixels."
-    );
-
-    LSST_CONTROL_FIELD(
-        badMaskPlanes, std::vector<std::string>,
-        "Mask planes that indicate pixels that should be ignored in the fit."
-    );
-
-    LSST_CONTROL_FIELD(
-        maxBadPixelFraction, double,
-        "Maximum fraction of pixels that may be ignored due to masks; "
-        "more than this and we don't even try."
-    );
-
-};
-
-/**
  *  The main control object for CModel, containing parameters for the final linear fit and aggregating
  *  the other control objects.
  */
@@ -292,7 +236,7 @@ struct CModelControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        region, lsst.meas.modelfit.modelfitLib, CModelRegionControl,
+        region, lsst.meas.modelfit.modelfitLib, PixelFitRegionControl,
         "Configuration parameters related to the determination of the pixels to include in the fit."
     );
 
@@ -382,15 +326,23 @@ struct CModelResult {
     enum FlagBit {
         FAILED=0,                ///< General failure flag for the linear fit flux; set if any other
                                  ///  CModel flag is set, or if any of the three previous stages failed.
-        MAX_AREA,                ///< Set if we aborted early because the fit region was too large.
-        MAX_BAD_PIXEL_FRACTION,  ///< Set if we aborted early because the fit region had too many bad pixels.
+        REGION_MAX_AREA,                  ///< Set if we aborted early because the fit region was too large.
+        REGION_MAX_BAD_PIXEL_FRACTION,    ///< Set if we aborted early because the fit region had too many
+                                          ///  bad pixels.
+        REGION_USED_FOOTPRINT_AREA,       ///< Kron radius was unavailable or outside bounds, so the
+                                          ///  second-moment ellipse scaled to the footprint area was used
+                                          ///  instead.
+        REGION_USED_PSF_AREA,             ///< Kron radius was unavailable or outside bounds, so the
+                                          ///  second-moment ellipse scaled to the PSF area was used instead.
+        REGION_USED_INITIAL_ELLIPSE_MIN,  ///< Fit region implied by the best-fit ellipse of the initial was
+                                          ///  too small, so we used the configuration minimum instead.
+        REGION_USED_INITIAL_ELLIPSE_MAX,  ///< Fit region implied by the best-fit ellipse of the initial was
+                                          ///  too large, so we used the configuration maximum instead.
         NO_SHAPE,                ///< Set if the input SourceRecord had no valid shape slot with which to
                                  ///  start the fit.
         SMALL_SHAPE,             ///< Initial moments were sufficiently small that we used minInitialRadius
                                  ///  to set the initial parameters.
         NO_SHAPELET_PSF,         ///< Set if the Psf shapelet approximation failed.
-        INCOMPLETE_FIT_REGION,   ///< Region of pixels to use in the fit may be incomplete due to
-                                 ///  noncontiguous detection footprint.
         BAD_CENTROID,            ///< Input centroid did not land within the fit region.
         BAD_REFERENCE,           ///< Reference fit failed, so forced fit will fail as well.
         N_FLAGS                  ///< Non-flag counter to indicate the number of flags
@@ -415,8 +367,8 @@ struct CModelResult {
     CModelStageResult exp;     ///< Results from the exponential (Sersic n=1) fit
     CModelStageResult dev;     ///< Results from the de Vaucouleur (Sersic n=4) fit
 
-    PTR(afw::detection::Footprint) initialFitRegion;  ///< Pixels used in the initial fit.
-    PTR(afw::detection::Footprint) finalFitRegion;    ///< Pixels used in the exp, dev, and linear fits.
+    afw::geom::ellipses::Quadrupole initialFitRegion;  ///< Pixels used in the initial fit.
+    afw::geom::ellipses::Quadrupole finalFitRegion;    ///< Pixels used in the exp, dev, and linear fits.
 
     LocalUnitTransform fitSysToMeasSys; ///< Transforms to the coordinate system where parameters are defined
 
@@ -491,50 +443,9 @@ public:
     Control const & getControl() const { return _ctrl; }
 
     /**
-     *  @brief Determine the initial fit region for a CModelAlgorithm fit
-     *
-     *  This routine grows the given footprint by nGrowFootprint, then clips on the bounding box
-     *  of the given mask and removes pixels indicated as bad by badMaskPlanes.
-     *
-     *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
-     *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
-     *
-     *  If a non-fatal error (e.g. INCOMPLETE_FIT_REGION) occurs, a flag bit will be set in the given
-     *  result object.
-     */
-    PTR(afw::detection::Footprint) determineInitialFitRegion(
-        afw::image::Mask<> const & mask,
-        afw::detection::Footprint const & footprint,
-        afw::geom::Point2D const & center,
-        Result & result
-    ) const;
-
-    /**
-     *  @brief Determine the final fit region for a CModelAlgorithm fit.
-     *
-     *  This routine grows the given footprint by nGrowFootprint, then extends it to include
-     *  the given ellipse scaled by nInitialRadii.  It then clips on the bounding box of the
-     *  given mask and removes pixels indicated as bad by badMaskPlanes.
-     *
-     *  @throw meas::base::MeasurementError if the area exceeds CModelRegionControl::maxArea or the fraction
-     *         of rejected pixels exceeds CModelRegionControl::maxBadPixelFraction.
-     *
-     *  If a non-fatal error (e.g. INCOMPLETE_FIT_REGION) occurs, a flag bit will be set in the given
-     *  result object.
-     */
-    PTR(afw::detection::Footprint) determineFinalFitRegion(
-        afw::image::Mask<> const & mask,
-        afw::detection::Footprint const & footprint,
-        afw::geom::ellipses::Ellipse const & ellipse,
-        Result & result
-    ) const;
-
-    /**
      *  Run the CModel algorithm on an image, supplying inputs directly and returning outputs in a Result.
      *
      *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and Calib.
-     *  @param[in]   footprint    Detection footprint of the object to be measured, used as a starting point
-     *                            for the region of pixels to be fit.
      *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
      *  @param[in]   center       Centroid of the source to be fit.
      *  @param[in]   moments      Non-PSF-corrected moments of the source, used to initialize the model
@@ -542,14 +453,19 @@ public:
      *  @param[in]   approxFlux   Rough estimate of the flux of the source, used to set the fit coordinate
      *                            system and ensure internal parameters are of order unity.  If less than
      *                            or equal to zero, the sum of the flux within the footprint will be used.
+     *  @param[in]   kronRadius   Estimate of the Kron radius (optional); used as the first choice when
+     *                            estimating the region of pixel to include in the fit.
+     *  @param[in]   footprintArea  Area of the detection Fooptrint; used as the fallback when
+     *                              estimating the region of pixel to include in the fit.
      */
     Result apply(
         afw::image::Exposure<Pixel> const & exposure,
-        afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,
         afw::geom::Point2D const & center,
         afw::geom::ellipses::Quadrupole const & moments,
-        Scalar approxFlux=-1
+        Scalar approxFlux=-1,
+        Scalar kronRadius=-1,
+        int footprintArea=-1
     ) const;
 
     /**
@@ -557,8 +473,6 @@ public:
      *  outputs in a Result.
      *
      *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and Calib.
-     *  @param[in]   footprint    Detection footprint of the object to be measured, used as a starting point
-     *                            for the region of pixels to be fit.
      *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
      *  @param[in]   center       Centroid of the source to be fit.
      *  @param[in]   reference    Result object from a previous, non-forced run of CModelAlgorithm.
@@ -568,7 +482,6 @@ public:
      */
     Result applyForced(
         afw::image::Exposure<Pixel> const & exposure,
-        afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,
         afw::geom::Point2D const & center,
         Result const & reference,
@@ -638,11 +551,12 @@ private:
     void _applyImpl(
         Result & result,
         afw::image::Exposure<Pixel> const & exposure,
-        afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,
         afw::geom::Point2D const & center,
         afw::geom::ellipses::Quadrupole const & moments,
-        Scalar approxFlux
+        Scalar approxFlux,
+        Scalar kronRadius=-1,
+        int footprintArea=-1
     ) const;
 
     // Actual implementations go here; we use an output argument for the result so we can get partial
@@ -650,7 +564,6 @@ private:
     void _applyForcedImpl(
         Result & result,
         afw::image::Exposure<Pixel> const & exposure,
-        afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,
         afw::geom::Point2D const & center,
         Result const & reference,
