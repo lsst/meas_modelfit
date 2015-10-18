@@ -91,6 +91,9 @@ public:
     /// Return the vector of weighted, scaled data points @f$z@f$
     ndarray::Array<Pixel const,1,1> getData() const { return _data; }
 
+    /// Return the vector of unweighted data points @f$y@f$
+    ndarray::Array<Pixel const,1,1> getUnweightedData() const { return _unweightedData; }
+
     /**
      *  Return the vector of weights @f$w@f$ applied to data points and model matrix rows
      *
@@ -115,8 +118,7 @@ public:
      *                           correct, but implementations should not assume anything about
      *                           the initial values of the matrix elements.
      *  @param[in] nonlinear     Vector of nonlinear parameters at which to evaluate the model.
-     *  @param[in] doApplyWeights   If False, do not apply the weights to the modelMatrix (intended
-     *                              for debugging purposes only).
+     *  @param[in] doApplyWeights   If False, do not apply the weights to the modelMatrix.
      */
     virtual void computeModelMatrix(
         ndarray::Array<Pixel,2,-1> const & modelMatrix,
@@ -140,6 +142,7 @@ protected:
     PTR(Model) _model;
     ndarray::Array<Scalar const,1,1> _fixed;
     ndarray::Array<Pixel,1,1> _data;
+    ndarray::Array<Pixel,1,1> _unweightedData;
     ndarray::Array<Pixel,1,1> _variance;
     ndarray::Array<Pixel,1,1> _weights;
 };

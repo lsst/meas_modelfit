@@ -611,7 +611,7 @@ ndarray::Array<Pixel,2,-1> makeModelMatrix(
     ndarray::Array<Pixel,2,2> modelMatrixT
         = ndarray::allocate(likelihood.getAmplitudeDim(), likelihood.getDataDim());
     ndarray::Array<Pixel,2,-1> modelMatrix = modelMatrixT.transpose();
-    likelihood.computeModelMatrix(modelMatrix, nonlinear);
+    likelihood.computeModelMatrix(modelMatrix, nonlinear, false);
     return modelMatrix;
 }
 
@@ -727,7 +727,7 @@ public:
         }
         result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
-            exposure, footprint, data.psf, UnitTransformedLikelihoodControl(false)
+            exposure, footprint, data.psf, UnitTransformedLikelihoodControl(ctrl.usePixelWeights)
         );
         PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(result.likelihood, prior);
         result.objfunc = objective;
@@ -773,15 +773,27 @@ public:
         // amplitudes, then shallow-assign these to the result object.
         data.parameters.deep() = optimizer.getParameters(); // sets nonlinear and amplitudes - they are views
 
-        // This amplitudeVariance is computed holding all the nonlinear parameters fixed, and treating
+        // This flux uncertainty is computed holding all the nonlinear parameters fixed, and treating
         // the best-fit model as a continuous aperture.  That's likely what we'd want for colors, but it
         // underestimates the statistical uncertainty on the total flux (though that's probably dominated by
         // systematic errors anyway).
+        ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(*result.likelihood, data.nonlinear);
         WeightSums sums(
-            makeModelMatrix(*result.likelihood, data.nonlinear),
-            result.likelihood->getData(),
+            modelMatrix,
+            result.likelihood->getUnweightedData(),
             result.likelihood->getVariance()
         );
+
+        // If we're using per-pixel variances, we need to do another linear fit without them, since
+        // using per-pixel variances there can cause magnitude-dependent biases in the flux.
+        // (We're not sure if using per-pixel variances in the nonlinear fit can do that).
+        if (ctrl.usePixelWeights) {
+            afw::math::LeastSquares lstsq = afw::math::LeastSquares::fromDesignMatrix(
+                modelMatrix,
+                result.likelihood->getUnweightedData()
+            );
+            data.amplitudes.deep() = lstsq.getSolution();
+        }
 
         // Set parameter vectors, flux values, ellipse on result.
         fillResult(result, data, sums);
@@ -798,21 +810,21 @@ public:
     ) const {
         result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
-            exposure, footprint, data.psf, UnitTransformedLikelihoodControl(false)
+            exposure, footprint, data.psf, UnitTransformedLikelihoodControl(ctrl.usePixelWeights)
         );
         ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(*result.likelihood, data.nonlinear);
         afw::math::LeastSquares lstsq = afw::math::LeastSquares::fromDesignMatrix(
             modelMatrix,
-            result.likelihood->getData()
+            result.likelihood->getUnweightedData()
         );
         data.amplitudes.deep() = lstsq.getSolution();
         result.objective
             = 0.5*(
-                result.likelihood->getData().asEigen().cast<Scalar>()
+                result.likelihood->getUnweightedData().asEigen().cast<Scalar>()
                 - modelMatrix.asEigen().cast<Scalar>() * lstsq.getSolution().asEigen()
             ).squaredNorm();
 
-        WeightSums sums(modelMatrix, result.likelihood->getData(), result.likelihood->getVariance());
+        WeightSums sums(modelMatrix, result.likelihood->getUnweightedData(), result.likelihood->getVariance());
 
         fillResult(result, data, sums);
         result.setFlag(CModelStageResult::FAILED, false);
@@ -896,10 +908,11 @@ public:
             exposure, footprint, expData.psf, UnitTransformedLikelihoodControl(false)
         );
         ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(likelihood, nonlinear);
-        Vector gradient = -(modelMatrix.asEigen().adjoint() * likelihood.getData().asEigen()).cast<Scalar>();
+        Vector gradient = -(modelMatrix.asEigen().adjoint() *
+            likelihood.getUnweightedData().asEigen()).cast<Scalar>();
         Matrix hessian = Matrix::Zero(likelihood.getAmplitudeDim(), likelihood.getAmplitudeDim());
         hessian.selfadjointView<Eigen::Lower>().rankUpdate(modelMatrix.asEigen().adjoint().cast<Scalar>());
-        Scalar q0 = 0.5*likelihood.getData().asEigen().squaredNorm();
+        Scalar q0 = 0.5*likelihood.getUnweightedData().asEigen().squaredNorm();
 
         // Use truncated Gaussian to compute the maximum-likelihood amplitudes with the constraint
         // that all amplitude must be >= 0
@@ -919,9 +932,9 @@ public:
         // Doing a better job would involve taking into account that we have positivity constraints
         // on the two components, which means the actual uncertainty is neither Gaussian nor symmetric,
         // which is a lot harder to compute and a lot harder to use.
-        ndarray::Array<Pixel,1,1> model = ndarray::allocate(likelihood.getData().getSize<0>());
+        ndarray::Array<Pixel,1,1> model = ndarray::allocate(likelihood.getDataDim());
         model.asEigen() = modelMatrix.asEigen() * amplitudes.cast<Pixel>();
-        WeightSums sums(model, likelihood.getData(), likelihood.getVariance());
+        WeightSums sums(model, likelihood.getUnweightedData(), likelihood.getVariance());
         result.fluxInner = sums.fluxInner;
         result.fluxSigma = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
         result.setFlag(CModelResult::FAILED, false);

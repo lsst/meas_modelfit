@@ -142,6 +142,7 @@ struct CModelStageControl {
         priorName(),
         nComponents(8),
         maxRadius(0),
+        usePixelWeights(false),
         doRecordHistory(true),
         doRecordTime(true)
     {}
@@ -182,6 +183,13 @@ struct CModelStageControl {
         maxRadius,
         int,
         "Maximum radius used in approximating profile with Gaussians (0=default for this profile)"
+    );
+
+    LSST_CONTROL_FIELD(
+        usePixelWeights,
+        bool,
+        "Use per-pixel variances as weights in the nonlinear fit (the final linear fit for"
+        " flux never uses per-pixel variances)"
     );
 
     LSST_NESTED_CONTROL_FIELD(
