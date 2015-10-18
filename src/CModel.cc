@@ -422,10 +422,16 @@ struct CModelKeys {
                 "the shape slot needed to initialize the parameters failed or was not defined"
             );
             flags[CModelResult::SMALL_SHAPE] = schema.addField<afw::table::Flag>(
-                prefix + ".flags.smallShape",
+                schema.join(prefix, "flags", "smallShape"),
                 (boost::format(
                     "initial parameter guess resulted in negative radius; used minimum of %f pixels instead."
                 ) % ctrl.minInitialRadius).str()
+            );
+            ellipse = afw::table::QuadrupoleKey::addFields(
+                schema,
+                schema.join(prefix, "ellipse"),
+                "fracDev-weighted average of exp.ellipse and dev.ellipse",
+                afw::table::CoordinateType::PIXEL
             );
         } else {
             flags[CModelResult::BAD_REFERENCE] = schema.addField<afw::table::Flag>(
@@ -466,6 +472,13 @@ struct CModelKeys {
         dev.copyResultToRecord(result.dev, record);
         record.set(flux, result.flux);
         record.set(fluxSigma, result.fluxSigma);
+        if (ellipse.isValid()) {
+            double u = 1.0 - result.fracDev;
+            double v = result.fracDev;
+            record.set(ellipse.getIxx(), u*result.exp.ellipse.getIxx() + v*result.dev.ellipse.getIxx());
+            record.set(ellipse.getIyy(), u*result.exp.ellipse.getIyy() + v*result.dev.ellipse.getIyy());
+            record.set(ellipse.getIxy(), u*result.exp.ellipse.getIxy() + v*result.dev.ellipse.getIxy());
+        }
         record.set(fluxInner, result.fluxInner);
         record.set(fracDev, result.fracDev);
         record.set(objective, result.objective);
@@ -521,6 +534,7 @@ struct CModelKeys {
     afw::table::Key<Scalar> objective;
     afw::table::Key<int> initialFitArea;
     afw::table::Key<int> finalFitArea;
+    afw::table::QuadrupoleKey ellipse;
     afw::table::Key<afw::table::Flag> flags[CModelResult::N_FLAGS];
 };
 
