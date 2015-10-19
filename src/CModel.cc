@@ -850,7 +850,6 @@ public:
                               // on the CModelAlgorithm ctor called
     PTR(CModelKeys) refKeys;  // Key object used to retreive reference ellipses in forced mode
     afw::image::MaskPixel badPixelMask;      // Bitwise OR of mask values we want to leave out of fit region
-    std::set<boost::int64_t> diagnosticIds;  // IDs of objects for which we should save diagnostic outputs
 
     explicit Impl(CModelControl const & ctrl) :
         initial(ctrl.initial), exp(ctrl.exp), dev(ctrl.dev),
@@ -874,10 +873,6 @@ public:
         prefixes[0] = "exp";
         prefixes[1] = "dev";
         model = boost::make_shared<MultiModel>(components, prefixes);
-        // create set of diagnostic IDs for fast lookup
-        if (ctrl.diagnostics.enabled) {
-            diagnosticIds.insert(ctrl.diagnostics.ids.begin(), ctrl.diagnostics.ids.end());
-        }
     }
 
     // Create a blank result object, filling in only the things that don't change
@@ -1027,42 +1022,6 @@ public:
                 (boost::format("Unflagged NaN detected for source %s; please report this as a bug in CModel")
                  % record.getId()).str()
             );
-        }
-    }
-
-    // Save diagnostic  outputs for a particular source
-    template <typename T>
-    void writeDiagnostics(
-        CModelControl const & ctrl,
-        boost::int64_t id,
-        CModelResult const & result,
-        afw::image::Exposure<T> const & exposure
-    ) const {
-        if (!result.initialFitRegion) {
-            return; // cannot write diagnostics if we didn't at least get this far.
-        }
-        std::string path = (boost::format("%s/%d.fits") % ctrl.diagnostics.root % id).str();
-        afw::fits::Fits fits(path, "w", afw::fits::Fits::AUTO_CLOSE | afw::fits::Fits::AUTO_CHECK);
-        afw::geom::Box2I bbox = result.initialFitRegion->getBBox();
-        if (result.finalFitRegion) {
-            bbox.include(result.finalFitRegion->getBBox());
-        }
-        afw::image::Image<T> subImage(*exposure.getMaskedImage().getImage(), bbox, afw::image::PARENT);
-        subImage.writeFits(fits);
-        if (ctrl.initial.doRecordHistory && result.initial.history.getTable()) {
-            result.initial.history.writeFits(fits);
-        } else {
-            fits.createEmpty();
-        }
-        if (ctrl.exp.doRecordHistory && result.exp.history.getTable()) {
-            result.exp.history.writeFits(fits);
-        } else {
-            fits.createEmpty();
-        }
-        if (ctrl.dev.doRecordHistory && result.dev.history.getTable()) {
-            result.dev.history.writeFits(fits);
-        } else {
-            fits.createEmpty();
         }
     }
 
@@ -1540,16 +1499,10 @@ void CModelAlgorithm::measure(
     } catch (...) {
         _impl->keys->copyResultToRecord(result, measRecord);
         _impl->checkFlagDetails(measRecord);
-        if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
-            _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
-        }
         throw;
     }
     _impl->keys->copyResultToRecord(result, measRecord);
     _impl->checkFlagDetails(measRecord);
-    if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
-        _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
-    }
 }
 
 void CModelAlgorithm::measure(
@@ -1572,16 +1525,10 @@ void CModelAlgorithm::measure(
                          refResult, approxFlux);
     } catch (...) {
         _impl->keys->copyResultToRecord(result, measRecord);
-        if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
-            _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
-        }
         _impl->checkFlagDetails(measRecord);
         throw;
     }
     _impl->keys->copyResultToRecord(result, measRecord);
-    if (_impl->diagnosticIds.find(measRecord.getId()) != _impl->diagnosticIds.end()) {
-        _impl->writeDiagnostics(getControl(), measRecord.getId(), result, exposure);
-    }
     _impl->checkFlagDetails(measRecord);
 }
 

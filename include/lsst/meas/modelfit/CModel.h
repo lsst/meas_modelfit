@@ -108,11 +108,10 @@ namespace lsst { namespace meas { namespace modelfit {
  *  fall into four categories:
  *    - Control structs: C++ analogs of Python Config classes, these structs contain the
  *      configuration parameters that control the behavior of the algorithm.  These are nested; the
- *      @ref CModelControl struct contains a @ref CModelRegionControl instance, a
- *      @ref CModelDiagnosticsControl instance, and three @ref CModelStageControl (one for each of "initial",
- *      "exp", and "dev").  The configuration for the final amplitude-only fit goes in @ref CModelControl
- *      itself; because it is a simpler linear fit, it doesn't have much in common with the first
- *      three stages.
+ *      @ref CModelControl struct contains a @ref CModelRegionControl instance and three
+ *      @ref CModelStageControl (one for each of "initial", "exp", and "dev").  The configuration
+ *      for the final amplitude-only fit goes in @ref CModelControl itself; because it is a simpler
+ *      linear fit, it doesn't have much in common with the first three stages.
  *    - Result structs: while the algorithm has methods to use SourceRecord objects for input/output,
  *      it can also take inputs directly as arguments and return the outputs using these structs.  Like
  *      the Control structs, the master @ref CModelResult struct holds three @ref CModelStageResult classes,
@@ -267,35 +266,6 @@ struct CModelRegionControl {
 };
 
 /**
- *  Nested control object for CModel that configures debug outputs
- *
- *  CModel has the capability to write optimizer traces to disk for selected objects, to enable
- *  post-mortem debugging of those fits.  This is not implemented in the cleanest possible way
- *  (output locations are not handled by the butler, for instance), but we'd need big changes
- *  to the measurement framework and the butler to clean that up.
- */
-struct CModelDiagnosticsControl {
-
-    CModelDiagnosticsControl() : enabled(false), root(""), ids() {}
-
-    LSST_CONTROL_FIELD(
-        enabled,  bool,
-        "Whether to write diagnostic outputs for post-run debugging"
-    );
-
-    LSST_CONTROL_FIELD(
-        root, std::string,
-        "Root output path for diagnostic outputs"
-    );
-
-    LSST_CONTROL_FIELD(
-        ids, std::vector<boost::int64_t>,
-        "Source IDs for which diagnostic outpust should be produced"
-    );
-
-};
-
-/**
  *  The main control object for CModel, containing parameters for the final linear fit and aggregating
  *  the other control objects.
  */
@@ -324,11 +294,6 @@ struct CModelControl {
     LSST_NESTED_CONTROL_FIELD(
         region, lsst.meas.modelfit.modelfitLib, CModelRegionControl,
         "Configuration parameters related to the determination of the pixels to include in the fit."
-    );
-
-    LSST_NESTED_CONTROL_FIELD(
-        diagnostics, lsst.meas.modelfit.modelfitLib, CModelDiagnosticsControl,
-        "Configuration parameters related to diagnostic outputs for post-run debugging."
     );
 
     LSST_NESTED_CONTROL_FIELD(
