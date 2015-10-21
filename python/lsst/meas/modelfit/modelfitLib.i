@@ -109,6 +109,7 @@ Pixel = numpy.float32
 %shared_ptr(lsst::meas::modelfit::Prior);
 %shared_ptr(lsst::meas::modelfit::MixturePrior);
 %shared_ptr(lsst::meas::modelfit::SoftenedLinearPrior);
+%shared_ptr(lsst::meas::modelfit::SemiEmpiricalPrior);
 
 %shared_ptr(lsst::meas::modelfit::ModelFitTable);
 %shared_ptr(lsst::meas::modelfit::ModelFitRecord);
@@ -177,11 +178,15 @@ Pixel = numpy.float32
 %copyctor lsst::meas::modelfit::SoftenedLinearPriorControl;
 %returnCopy(lsst::meas::modelfit::SoftenedLinearPrior::getControl)
 
+%copyctor lsst::meas::modelfit::SemiEmpiricalPriorControl;
+%returnCopy(lsst::meas::modelfit::SemiEmpiricalPrior::getControl)
+
 %include "lsst/meas/modelfit/Model.h"
 %include "lsst/meas/modelfit/MultiModel.h"
 %include "lsst/meas/modelfit/Prior.h"
 %include "lsst/meas/modelfit/MixturePrior.h"
 %include "lsst/meas/modelfit/SoftenedLinearPrior.h"
+%include "lsst/meas/modelfit/SemiEmpiricalPrior.h"
 %include "lsst/meas/modelfit/Interpreter.h"
 %include "lsst/meas/modelfit/Likelihood.h"
 %include "lsst/meas/modelfit/UnitSystem.h"
@@ -202,12 +207,16 @@ Pixel = numpy.float32
 %pythoncode %{
 import lsst.pex.config
 SoftenedLinearPriorConfig = lsst.pex.config.makeConfigClass(SoftenedLinearPriorControl)
+SemiEmpiricalPriorConfig = lsst.pex.config.makeConfigClass(SemiEmpiricalPriorControl)
 
 SoftenedLinearPrior.Control = SoftenedLinearPriorControl
+SemiEmpiricalPrior.Control = SemiEmpiricalPriorControl
 SoftenedLinearPrior.ConfigClass = SoftenedLinearPriorConfig
+SemiEmpiricalPrior.ConfigClass = SemiEmpiricalPriorConfig
 %}
 
 %castShared(lsst::meas::modelfit::SoftenedLinearPrior, lsst::meas::modelfit::Prior)
+%castShared(lsst::meas::modelfit::SemiEmpiricalPrior, lsst::meas::modelfit::Prior)
 %castShared(lsst::meas::modelfit::MixturePrior, lsst::meas::modelfit::Prior)
 %castShared(lsst::meas::modelfit::MultiModel, lsst::meas::modelfit::Model)
 %castShared(lsst::meas::modelfit::SamplingInterpreter, lsst::meas::modelfit::Interpreter)
