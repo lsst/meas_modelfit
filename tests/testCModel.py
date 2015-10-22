@@ -96,6 +96,7 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         containing only a point source with no noise.
         """
         ctrl = lsst.meas.modelfit.CModelControl()
+        ctrl.initial.usePixelWeights = False
         algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
         result = algorithm.apply(
             self.exposure, makeMultiShapeletCircularGaussian(self.psfSigma),

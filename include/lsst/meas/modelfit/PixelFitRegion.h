@@ -36,7 +36,7 @@ namespace lsst { namespace meas { namespace modelfit {
 struct PixelFitRegionControl {
 
     PixelFitRegionControl() :
-        nKronRadii(2.0),
+        nKronRadii(1.5),
         nPsfSigmaMin(4.0),
         nPsfSigmaGrow(2.0),
         nFitRadiiMin(1.0),

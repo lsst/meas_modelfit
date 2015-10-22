@@ -223,6 +223,7 @@ struct CModelControl {
         initial.nComponents = 3; // use very rough model in initial fit
         initial.optimizer.gradientThreshold = 1E-2; // with coarse convergence criteria
         initial.optimizer.minTrustRadiusThreshold = 1E-2;
+        initial.usePixelWeights = true;
         dev.profileName = "luv";
         exp.nComponents = 6;
         exp.optimizer.maxOuterIterations = 250;
