@@ -82,12 +82,14 @@ PTR(Prior) CModelStageControl::getPrior() const {
             / boost::filesystem::path(priorName + ".fits");
         PTR(Mixture) mixture = Mixture::readFits(priorPath.string());
         return boost::make_shared<MixturePrior>(mixture, "single-ellipse");
-    } else if (priorSource == "CONFIG") {
-        return boost::make_shared<SoftenedLinearPrior>(priorConfig);
+    } else if (priorSource == "LINEAR") {
+        return boost::make_shared<SoftenedLinearPrior>(linearPriorConfig);
+    } else if (priorSource == "EMPIRICAL") {
+        return boost::make_shared<SemiEmpiricalPrior>(empiricalPriorConfig);
     } else {
         throw LSST_EXCEPT(
             meas::base::FatalAlgorithmError,
-            "priorSource must be one of 'NONE', 'FILE', or 'CONFIG'"
+            "priorSource must be one of 'NONE', 'FILE', 'LINEAR', or 'EMPIRICAL'"
         );
     }
 }
