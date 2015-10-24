@@ -70,7 +70,7 @@ struct SemiEmpiricalPriorControl {
     SemiEmpiricalPriorControl() :
         ellipticitySigma(0.3), ellipticityCore(0.001),
         logRadiusMinOuter(-6.001), logRadiusMinInner(-6.0),
-        logRadiusMu(-1.0), logRadiusSigma(0.45), logRadiusNu(2.0)
+        logRadiusMu(-1.0), logRadiusSigma(0.45), logRadiusNu(50.0)
     {}
 
     /// Raise InvalidParameterException if the configuration options are invalid.

@@ -53,6 +53,7 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
         self.ctrl.logRadiusMinOuter = self.ctrl.logRadiusMinInner - 8.0
         self.ctrl.logRadiusMu = 2.0
         self.ctrl.logRadiusSigma = 5.0
+        self.ctrl.logRadiusNu = 2.0
         self.prior = lsst.meas.modelfit.SemiEmpiricalPrior(self.ctrl)
         self.amplitudes = numpy.array([1.0], dtype=lsst.meas.modelfit.Scalar)
         dtype = numpy.dtype([("eta1", float), ("eta2", float), ("lnR", float), ("p", float),
