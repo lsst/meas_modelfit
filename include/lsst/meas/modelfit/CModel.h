@@ -139,7 +139,7 @@ struct CModelStageControl {
 
     CModelStageControl() :
         profileName("lux"),
-        priorSource("LINEAR"),
+        priorSource("EMPIRICAL"),
         priorName(),
         nComponents(8),
         maxRadius(0),
