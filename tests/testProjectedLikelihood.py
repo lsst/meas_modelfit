@@ -29,6 +29,7 @@ import lsst.pex.logging
 import lsst.utils.tests
 import lsst.shapelet.tests
 import lsst.afw.geom.ellipses
+from lsst.afw.geom import AffineXYTransform
 import lsst.afw.image
 import lsst.afw.math
 import lsst.afw.detection
@@ -157,8 +158,9 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         # exposure1b: warp exposure0 using warpImage with AffineTransform arguments
         exposure1b = lsst.afw.image.ExposureF(self.bbox1)
         exposure1b.setWcs(self.sys1.wcs)
+        xyTransform = AffineXYTransform(self.t01.geometric)
         lsst.afw.math.warpImage(exposure1b.getMaskedImage(), self.exposure0.getMaskedImage(),
-                                self.t01.geometric, warpCtrl)
+                                xyTransform, warpCtrl)
         exposure1b.setCalib(self.sys1.calib)
         scaleExposure(exposure1b, self.t01.flux)
         self.assertClose(exposure1.getMaskedImage().getImage().getArray(),
