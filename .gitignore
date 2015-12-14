@@ -3,13 +3,14 @@
 *.os
 *.pyc
 *.so
+_build.*
 .sconf_temp
 .sconsign.dblite
 config.log
 ups/*.cfgc
 doc/doxygen.conf
 doc/html/
-doc/meas_multifit.tag
+doc/meas_modelfit.tag
 *Lib.py
 *Lib_wrap.cc
 version.py
