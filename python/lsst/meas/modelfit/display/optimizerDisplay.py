@@ -22,7 +22,9 @@
 
 import numpy
 import matplotlib
+import matplotlib.colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import mpl_toolkits.mplot3d
 
 from .densityPlot import mergeDefaults, hide_xticklabels, hide_yticklabels
 from .. import modelfitLib

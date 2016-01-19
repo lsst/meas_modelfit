@@ -25,9 +25,6 @@ import os
 import collections
 import numpy
 import copy
-from matplotlib import pyplot
-import matplotlib.colors
-import mpl_toolkits.mplot3d
 
 import lsst.pipe.base
 import lsst.pex.config
@@ -113,6 +110,7 @@ class Interactive(object):
     def plotDistribution(self, *records):
         """Plot a representation of the posterior distribution from a ModelFitRecord.
         """
+        import matplotlib
         recordId = records[0].getId()
         figure = matplotlib.pyplot.figure(recordId, figsize=(10, 10))
         data = {}

@@ -25,7 +25,6 @@
 import os
 import unittest
 import numpy
-import matplotlib
 import copy
 
 import lsst.pex.logging

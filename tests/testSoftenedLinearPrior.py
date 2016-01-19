@@ -30,7 +30,6 @@ import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
 import lsst.meas.modelfit
-from matplotlib import pyplot
 
 try:
     import scipy.integrate
