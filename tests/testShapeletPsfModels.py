@@ -57,7 +57,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         data = lsst.afw.image.ImageF(psfname).getArray().astype(numpy.float64)
         kernel = lsst.afw.math.FixedKernel(lsst.afw.image.ImageD(data))
         return lsst.meas.algorithms.KernelPsf(kernel)
-  
+
     def runTask(self, psftype, model):
         config = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
         config.slots.centroid = None
