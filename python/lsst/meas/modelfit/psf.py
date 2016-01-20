@@ -103,7 +103,7 @@ class ShapeletPsfApproxMixin(object):
         if not exposure.hasPsf():
             raise lsst.meas.base.FatalAlgorithmError("ShapeletPsfApprox requires Exposure to have a Psf")
         psf = exposure.getPsf()
-        psfImage = psf.computeImage(measRecord.getCentroid())
+        psfImage = psf.computeKernelImage(measRecord.getCentroid())
         psfShape = psf.computeShape(measRecord.getCentroid())
         # Fit the first element in the sequence, using the PSFs moments to initialize the parameters
         fitter, key = self.sequence[0]

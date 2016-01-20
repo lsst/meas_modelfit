@@ -242,7 +242,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
 
     def testApply(self):
         tolerances = {"full": 3E-4, "ellipse": 8E-3, "fixed": 1E-2}
-        for filename in glob.glob(os.path.join(DATA_DIR, "psfs", "*.fits")):
+        for filename in glob.glob(os.path.join(DATA_DIR, "psfs", "great3*.fits")):
             kernelImage = lsst.afw.image.ImageD(filename)
             shape = computeMoments(kernelImage)
             for configKey in ["full", "ellipse", "fixed"]:
