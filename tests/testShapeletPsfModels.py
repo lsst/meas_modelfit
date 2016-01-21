@@ -24,6 +24,7 @@
 
 import unittest
 import numpy
+import os
 import time
 
 import lsst.utils.tests
@@ -47,18 +48,25 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.schema = lsst.afw.table.SourceTable.makeMinimalSchema()
         self.centroidKey = lsst.afw.table.Point2DKey.addFields(self.schema, "centroid", "centroid", "pixels")
         self.schema.getAliasMap().set("slot_Centroid", "centroid")
+        self.psfDir = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data", "psfs")
 
     def tearDown(self):
         del self.exposure
         del self.schema
         del self.centroidKey
+        del self.psfDir
 
-    def makePsf(self, psfname):
-        data = lsst.afw.image.ImageF(psfname).getArray().astype(numpy.float64)
+    def makePsf(self, psfname, max=None):
+        data = lsst.afw.image.ImageF(os.path.join(self.psfDir, psfname)).getArray().astype(numpy.float64)
+        if max is not None:
+            trim0 = (data.shape[0] - max)/2
+            trim1 = (data.shape[1] - max)/2
+            if trim0 > 0 and trim1 > 0:
+                data = data[trim0:trim0+max, trim1:trim1+max]
         kernel = lsst.afw.math.FixedKernel(lsst.afw.image.ImageD(data))
         return lsst.meas.algorithms.KernelPsf(kernel)
 
-    def runTask(self, psftype, model):
+    def runTask(self, psftype, sequence):
         config = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
         config.slots.centroid = None
         config.slots.shape = None
@@ -69,7 +77,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.calibFlux = None
         config.doReplaceWithNoise = False
         config.plugins.names = ["modelfit_ShapeletPsfApprox"]
-        config.plugins["modelfit_ShapeletPsfApprox"].sequence = [model]
+        config.plugins["modelfit_ShapeletPsfApprox"].sequence = sequence
         task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
@@ -81,7 +89,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
     def testSingleGaussian(self):
         sigma1 = 3.0
         self.exposure.setPsf(lsst.afw.detection.GaussianPsf(19, 19, sigma1))
-        measRecord = self.runTask("Single Gaussian Psf", "SingleGaussian")
+        measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian"])
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["ShapeletPsfApprox"]["SingleGaussian"]
             )
@@ -95,7 +103,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         sigma1 = 2.0
         sigma2 = 4.0
         self.exposure.setPsf(lsst.meas.algorithms.DoubleGaussianPsf(19, 19, sigma1, sigma2, .25))
-        measRecord = self.runTask("Double Gaussian Psf", "DoubleGaussian")
+        measRecord = self.runTask("Double Gaussian Psf", ["DoubleGaussian"])
         keyDoubleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["ShapeletPsfApprox"]["DoubleGaussian"]
             )
@@ -112,8 +120,8 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.assertClose(r1, sigma2, .05)
 
     def testDoubleShapelet(self):
-        self.exposure.setPsf(self.makePsf("tests/data/psfs/galsimPsf_0.5.fits"))
-        measRecord = self.runTask("Galsim Psf", "DoubleShapelet")
+        self.exposure.setPsf(self.makePsf("galsimPsf_0.5.fits", max=33))
+        measRecord = self.runTask("Galsim Psf", ["DoubleShapelet"])
         keyDoubleShapelet = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["ShapeletPsfApprox"]["DoubleShapelet"]
             )
@@ -126,8 +134,8 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.assertGreater(A0, .04)
 
     def testFull(self):
-        self.exposure.setPsf(self.makePsf("tests/data/psfs/galsimPsf_0.9.fits"))
-        measRecord = self.runTask("Galsim Psf", "Full")
+        self.exposure.setPsf(self.makePsf("galsimPsf_0.9.fits", max=33))
+        measRecord = self.runTask("Galsim Psf", ["Full"])
         keyFull = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["ShapeletPsfApprox"]["Full"]
             )
@@ -139,6 +147,32 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         # test the primary and wings to be sure we are getting something
         self.assertGreater(A2, .04)
         self.assertGreater(A1, .04)
+
+    def testSequence(self):
+        sigma1 = 2.0
+        sigma2 = 4.0
+        self.exposure.setPsf(lsst.meas.algorithms.DoubleGaussianPsf(19, 19, sigma1, sigma2, .25))
+        measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian", "DoubleGaussian",
+                                  "DoubleShapelet"])
+        keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
+            self.schema["modelfit"]["ShapeletPsfApprox"]["SingleGaussian"]
+            )
+        msfSingleGaussian = measRecord.get(keySingleGaussian)
+        self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
+        comps = msfSingleGaussian.getComponents()
+        r0 = comps[0].getEllipse().getCore().getDeterminantRadius()
+        # don't expect it to be all that close, but the DoubleGaussian should be
+        self.assertClose(r0, sigma1, .3)
+
+        keyDoubleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
+            self.schema["modelfit"]["ShapeletPsfApprox"]["DoubleGaussian"]
+            )
+        msfDoubleGaussian = measRecord.get(keyDoubleGaussian)
+        comps = msfDoubleGaussian.getComponents()
+        r0 = comps[0].getEllipse().getCore().getDeterminantRadius()
+        r1 = comps[1].getEllipse().getCore().getDeterminantRadius()
+        self.assertClose(r0, sigma1, .05)
+        self.assertClose(r1, sigma2, .05)
 
 def suite():
     """Returns a suite containing all the test cases in this module."""

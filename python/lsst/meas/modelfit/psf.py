@@ -92,9 +92,8 @@ class ShapeletPsfApproxMixin(object):
         """
         self.sequence = []
         for m in config.sequence:
-            fitter = modelfitLib.PsfFitter(config.models[m].makeControl())
-            key = fitter.addFields(schema, schema[name][m].getPrefix())
-            self.sequence.append((fitter, key))
+            fitter = modelfitLib.PsfFitterAlgorithm(config.models[m].makeControl(), schema, schema[name][m].getPrefix())
+            self.sequence.append((fitter, schema[name][m].getPrefix()))
 
     def measure(self, measRecord, exposure):
         """Fit the configured sequence of models the given Exposure's Psf, as evaluated at
@@ -105,18 +104,35 @@ class ShapeletPsfApproxMixin(object):
         psf = exposure.getPsf()
         psfImage = psf.computeKernelImage(measRecord.getCentroid())
         psfShape = psf.computeShape(measRecord.getCentroid())
+        lastError = None
+        lastModel = None
         # Fit the first element in the sequence, using the PSFs moments to initialize the parameters
-        fitter, key = self.sequence[0]
-        lastResult = fitter.apply(psfImage, psfShape)
-        lastModel = fitter.getModel()
-        measRecord.set(key, lastResult)
         # For every other element in the fitting sequence, use the previous fit to initialize the parameters
-        for fitter, key in self.sequence[1:]:
-            initial = fitter.adapt(lastResult, lastModel)
-            lastResult = fitter.apply(psfImage, initial)
-            lastModel = fitter.getModel()
-            measRecord.set(key, lastResult)
+        for fitter, name in self.sequence:
+            try:
+                if lastModel is None:
+                    fitter.measure(measRecord, psfImage, psfShape)
+                else:
+                    fitter.measure(measRecord, psfImage, fitter.adapt(lastResult, lastModel))
+                lastResult = measRecord.get(fitter.getKey())
+                lastModel = fitter.getModel()
+            except lsst.meas.base.baseMeasurement.FATAL_EXCEPTIONS:
+                raise
+            except lsst.meas.base.baseLib.MeasurementError as error:
+                fitter.fail(measRecord, error.cpp)
+                lastError = error
+            except Exception as error:
+                fitter.fail(measRecord)
+                lastError = error
+        # When we are done with all the fitters, raise the last error if there was one.
+        # This gives the calling task a chance to do whatever it wants
+        if not lastError is None:
+            raise lastError
 
+    # This plugin doesn't need to set a flag on fail, because it should have been
+    # done already by the individual fitters in the sequence
+    def fail(self, measRecord, error=None):
+        pass
 
 class ShapeletPsfApproxSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, ShapeletPsfApproxConfig):
 
@@ -144,6 +160,9 @@ class ShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, Shape
     def measure(self, measRecord, exposure):
         ShapeletPsfApproxMixin.measure(self, measRecord, exposure)
 
+    def fail(self, measRecord, error=None):
+        ShapeletPsfApproxMixin.fail(self, measRecord, error)
+
 class ShapeletPsfApproxForcedConfig(lsst.meas.base.ForcedPluginConfig, ShapeletPsfApproxConfig):
 
     def setDefaults(self):
@@ -169,3 +188,6 @@ class ShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, ShapeletPsfAppr
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
         ShapeletPsfApproxMixin.measure(self, measRecord, exposure)
+
+    def fail(self, measRecord, error=None):
+        ShapeletPsfApproxMixin.fail(self, measRecord, error)
