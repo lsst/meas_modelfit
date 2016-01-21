@@ -20,6 +20,7 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+#include "boost/array.hpp"
 
 #include "ndarray/eigen.h"
 
@@ -336,6 +337,17 @@ ComponentVector vectorizeComponents(PsfFitterControl const & ctrl) {
     return components;
 }
 
+boost::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const & getFlagDefinitions() {
+    static boost::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const flagDefs = {{
+        {"flag", "general failure flag"},
+        {"flag_max_inner_iterations", "exceeded maxInnerIterations"},
+        {"flag_max_outer_iterations", "exceeded maxOuterIterations"},
+        {"flag_exception", "exception in apply method"},
+        {"flag_contains_nan", "Nan in the Psf image"}
+    }};
+    return flagDefs;
+}
+
 } // anonymous
 
 PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
@@ -432,20 +444,22 @@ shapelet::MultiShapeletFunction PsfFitter::adapt(
 shapelet::MultiShapeletFunction PsfFitter::apply(
     afw::image::Image<Pixel> const & image,
     afw::geom::ellipses::Quadrupole const & moments,
-    Scalar noiseSigma
+    Scalar noiseSigma,
+    int * pState
 ) const {
     if (noiseSigma <= 0) {
         noiseSigma = _ctrl.defaultNoiseSigma;
     }
     shapelet::MultiShapeletFunction initial
         = boost::static_pointer_cast<PsfFitterModel>(_model)->makeInitial(moments);
-    return apply(image, initial, noiseSigma);
+    return apply(image, initial, noiseSigma, pState);
 }
 
 shapelet::MultiShapeletFunction PsfFitter::apply(
     afw::image::Image<Pixel> const & image,
     shapelet::MultiShapeletFunction const & initial,
-    Scalar noiseSigma
+    Scalar noiseSigma,
+    int * pState
 ) const {
     if (noiseSigma <= 0) {
         noiseSigma = _ctrl.defaultNoiseSigma;
@@ -465,8 +479,109 @@ shapelet::MultiShapeletFunction PsfFitter::apply(
     PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, _prior);
     Optimizer optimizer(objective, parameters, _ctrl.optimizer);
     optimizer.run();
+
     parameters.deep() = optimizer.getParameters(); // this sets nonlinear, amplitudes, because they're views
+    if (pState != NULL) {
+        *pState = optimizer.getState();
+    }
     return _model->makeShapeletFunction(nonlinear, amplitudes, fixed);
+}
+
+PsfFitterAlgorithm::PsfFitterAlgorithm(PsfFitterControl const & ctrl,
+    afw::table::Schema & schema,
+    std::string const & prefix
+) : PsfFitter(ctrl)
+{
+    _flagHandler = lsst::meas::base::FlagHandler::addFields(schema, prefix,
+                                          getFlagDefinitions().begin(), getFlagDefinitions().end());
+    _key = addFields(schema, prefix);
+}
+
+void PsfFitterAlgorithm::measure(
+    afw::table::SourceRecord & measRecord,
+    afw::image::Image<double> const & image,
+    shapelet::MultiShapeletFunction const & initial
+) const {
+    int state = 0;
+    shapelet::MultiShapeletFunction result = apply(image, initial, -1, &state);
+    measRecord.set(_key, result);
+    if (state & Optimizer::FAILED_MAX_INNER_ITERATIONS) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(MAX_INNER_ITERATIONS).doc,
+            MAX_INNER_ITERATIONS
+        );
+    }
+    if (state & Optimizer::FAILED_MAX_OUTER_ITERATIONS) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(MAX_OUTER_ITERATIONS).doc,
+            MAX_OUTER_ITERATIONS
+        );
+    }
+    if (state & Optimizer::FAILED_EXCEPTION) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(EXCEPTION).doc,
+            EXCEPTION
+        );
+    }
+    if (state & Optimizer::FAILED_NAN) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(CONTAINS_NAN).doc,
+            CONTAINS_NAN
+        );
+    }
+}
+
+void PsfFitterAlgorithm::measure(
+    afw::table::SourceRecord & measRecord,
+    afw::image::Image<double> const & image,
+    afw::geom::ellipses::Quadrupole const & moments
+) const {
+    int state = 0;
+    shapelet::MultiShapeletFunction result = apply(image, moments, -1, &state);
+    measRecord.set(_key, result);
+    if (state & Optimizer::FAILED_MAX_INNER_ITERATIONS) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(MAX_INNER_ITERATIONS).doc,
+            MAX_INNER_ITERATIONS
+        );
+    }
+    if (state & Optimizer::FAILED_MAX_OUTER_ITERATIONS) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(MAX_OUTER_ITERATIONS).doc,
+            MAX_OUTER_ITERATIONS
+        );
+    }
+    if (state & Optimizer::FAILED_EXCEPTION) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(EXCEPTION).doc,
+            EXCEPTION
+        );
+    }
+    if (state & Optimizer::FAILED_NAN) {
+        throw LSST_EXCEPT(
+            lsst::meas::base::MeasurementError,
+            _flagHandler.getDefinition(CONTAINS_NAN).doc,
+            CONTAINS_NAN
+        );
+    }
+}
+
+void PsfFitterAlgorithm::fail(
+    afw::table::SourceRecord & measRecord,
+    lsst::meas::base::MeasurementError * error
+) const {
+   if (error == NULL) {
+       _flagHandler.handleFailure(measRecord);
+   } else {
+       _flagHandler.handleFailure(measRecord, error);
+   }
 }
 
 
