@@ -152,7 +152,8 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         sigma1 = 2.0
         sigma2 = 4.0
         self.exposure.setPsf(lsst.meas.algorithms.DoubleGaussianPsf(19, 19, sigma1, sigma2, .25))
-        measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian", "DoubleGaussian", "DoubleShapelet"])
+        measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian", "DoubleGaussian",
+                                  "DoubleShapelet"])
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["ShapeletPsfApprox"]["SingleGaussian"]
             )
