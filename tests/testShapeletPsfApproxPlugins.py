@@ -24,6 +24,7 @@
 
 import unittest
 import numpy
+import os
 
 import lsst.utils.tests
 import lsst.shapelet
@@ -40,18 +41,33 @@ lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
 class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
 
+    def makeBlankConfig(self):
+        config = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
+        config.slots.centroid = None
+        config.slots.shape = None
+        config.slots.psfFlux = None
+        config.slots.apFlux = None
+        config.slots.instFlux = None
+        config.slots.modelFlux = None
+        config.slots.calibFlux = None
+        config.doReplaceWithNoise = False
+        return config
+
     def setUp(self):
         self.psfSigma = 2.0
         self.exposure = lsst.afw.image.ExposureF(41, 41)
-        self.exposure.setPsf(lsst.afw.detection.GaussianPsf(19, 19, self.psfSigma))
+        self.psf = lsst.afw.detection.GaussianPsf(19, 19, self.psfSigma)
         self.schema = lsst.afw.table.SourceTable.makeMinimalSchema()
         self.centroidKey = lsst.afw.table.Point2DKey.addFields(self.schema, "centroid", "centroid", "pixels")
         self.schema.getAliasMap().set("slot_Centroid", "centroid")
+        self.psfDir = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data", "psfs")
 
     def tearDown(self):
         del self.exposure
+        del self.psf
         del self.schema
         del self.centroidKey
+        del self.psfDir
 
     def checkResult(self, msf):
         # Because we're fitting multiple shapelets to a single Gaussian (a single 0th-order shapelet)
@@ -63,15 +79,8 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.assertClose(dataImage.getArray(), modelImage.getArray(), atol=1E-6, plotOnFailure=False)
 
     def testSingleFrame(self):
-        config = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
-        config.slots.centroid = None
-        config.slots.shape = None
-        config.slots.psfFlux = None
-        config.slots.apFlux = None
-        config.slots.instFlux = None
-        config.slots.modelFlux = None
-        config.slots.calibFlux = None
-        config.doReplaceWithNoise = False
+        self.exposure.setPsf(self.psf)
+        config = self.makeBlankConfig()
         config.plugins.names = ["modelfit_ShapeletPsfApprox"]
         config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["SingleGaussian"]
         task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
@@ -87,6 +96,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.checkResult(msfSingleGaussian)
 
     def testForced(self):
+        self.exposure.setPsf(self.psf)
         config = lsst.meas.base.ForcedMeasurementTask.ConfigClass()
         config.slots.centroid = "base_TransformedCentroid"
         config.slots.shape = None
@@ -95,6 +105,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.instFlux = None
         config.slots.modelFlux = None
         config.doReplaceWithNoise = False
+        config.slots.centroid = "base_TransformedCentroid"
         config.plugins.names = ["base_TransformedCentroid", "modelfit_ShapeletPsfApprox"]
         config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["SingleGaussian"]
         refCat = lsst.afw.table.SourceCatalog(self.schema)
@@ -112,6 +123,72 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
         self.checkResult(msfSingleGaussian)
+
+    def testNanFlag(self):
+        config = self.makeBlankConfig()
+        config.plugins.names = ["modelfit_ShapeletPsfApprox"]
+        config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["Full"]
+        task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
+        measCat = lsst.afw.table.SourceCatalog(self.schema)
+        measRecord = measCat.addNew()
+        psfImage = lsst.afw.image.ImageD(os.path.join(self.psfDir, "galsimPsf_0.9.fits"))
+        psfImage.getArray()[0,0] = numpy.nan
+        psfImage.setXY0(lsst.afw.geom.Point2I(0, 0))
+        kernel = lsst.afw.math.FixedKernel(psfImage)
+        psf = lsst.meas.algorithms.KernelPsf(kernel)
+        self.exposure.setPsf(psf)
+        center = lsst.afw.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
+        measRecord.set(self.centroidKey, center)
+        task.run(measCat, self.exposure)
+        self.assertTrue(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag"))
+        self.assertTrue(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_contains_nan"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_max_inner_iterations"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_max_outer_iterations"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_exception"))
+
+    def testInnerIterationsFlag(self):
+        config = self.makeBlankConfig()
+        config.plugins.names = ["modelfit_ShapeletPsfApprox"]
+        config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["Full"]
+        config.plugins["modelfit_ShapeletPsfApprox"].models["Full"].optimizer.maxInnerIterations = 1
+        task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
+        measCat = lsst.afw.table.SourceCatalog(self.schema)
+        measRecord = measCat.addNew()
+        psfImage = lsst.afw.image.ImageD(os.path.join(self.psfDir, "galsimPsf_0.9.fits"))
+        psfImage.setXY0(lsst.afw.geom.Point2I(0, 0))
+        kernel = lsst.afw.math.FixedKernel(psfImage)
+        psf = lsst.meas.algorithms.KernelPsf(kernel)
+        self.exposure.setPsf(psf)
+        center = lsst.afw.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
+        measRecord.set(self.centroidKey, center)
+        task.run(measCat, self.exposure)
+        self.assertTrue(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_contains_nan"))
+        self.assertTrue(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_max_inner_iterations"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_max_outer_iterations"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_exception"))
+
+    def testOuterIterationsFlag(self):
+        config = self.makeBlankConfig()
+        config.plugins.names = ["modelfit_ShapeletPsfApprox"]
+        config.plugins["modelfit_ShapeletPsfApprox"].sequence = ["Full"]
+        config.plugins["modelfit_ShapeletPsfApprox"].models["Full"].optimizer.maxOuterIterations = 1
+        task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
+        measCat = lsst.afw.table.SourceCatalog(self.schema)
+        measRecord = measCat.addNew()
+        psfImage = lsst.afw.image.ImageD(os.path.join(self.psfDir, "galsimPsf_0.9.fits"))
+        psfImage.setXY0(lsst.afw.geom.Point2I(0, 0))
+        kernel = lsst.afw.math.FixedKernel(psfImage)
+        psf = lsst.meas.algorithms.KernelPsf(kernel)
+        self.exposure.setPsf(psf)
+        center = lsst.afw.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
+        measRecord.set(self.centroidKey, center)
+        task.run(measCat, self.exposure)
+        self.assertTrue(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_contains_nan"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_max_inner_iterations"))
+        self.assertTrue(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_max_outer_iterations"))
+        self.assertFalse(measRecord.get("modelfit_ShapeletPsfApprox_Full_flag_exception"))
 
 def suite():
     """Returns a suite containing all the test cases in this module."""

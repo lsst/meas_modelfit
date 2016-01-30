@@ -27,11 +27,13 @@
 #include "boost/scoped_ptr.hpp"
 
 #include "lsst/pex/config.h"
-
 #include "lsst/shapelet/FunctorKeys.h"
 #include "lsst/meas/modelfit/Model.h"
 #include "lsst/meas/modelfit/Prior.h"
 #include "lsst/meas/modelfit/Likelihood.h"
+#include "lsst/afw/table/Source.h"
+#include "lsst/meas/base/exceptions.h"
+#include "lsst/meas/base/FlagHandler.h"
 #include "lsst/meas/modelfit/optimizer.h"
 
 namespace lsst { namespace meas { namespace modelfit {
@@ -142,8 +144,8 @@ public:
  *  as this is a very high-dimensional fit.
  */
 class PsfFitter {
-public:
 
+public:
     /// Initialize the fitter class with the given control object.
     PsfFitter(PsfFitterControl const & ctrl);
 
@@ -201,24 +203,27 @@ public:
      *
      *  @param[in]  image       The image to fit, typically the result of Psf::computeKernelImage().  The
      *                          image's xy0 should be set such that the center of the PSF is at (0,0).
-     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
-     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
      *  @param[in]  moments     Second moments of the PSF, typically result of Psf::computeShape() or running
      *                          some other adaptive moments code on the PSF image.  This will be used to
      *                          set the initial ellipses of the multishapelet model.
+     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
+     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
      *                          A default value from the control object is used if this is negative.
+     *  @param[in]  pState      Pointer to an integer which is used to return the optimizerState from apply.
      */
     shapelet::MultiShapeletFunction apply(
         afw::image::Image<Pixel> const & image,
         afw::geom::ellipses::Quadrupole const & moments,
-        Scalar noiseSigma=-1
+        Scalar noiseSigma=-1,
+        int * pState = nullptr
     ) const;
-    shapelet::MultiShapeletFunction apply(
+    shapelet::MultiShapeletFunction apply (
         afw::image::Image<double> const & image,
         afw::geom::ellipses::Quadrupole const & moments,
-        Scalar noiseSigma=-1
+        Scalar noiseSigma=-1,
+        int * pState = nullptr
     ) const {
-        return apply(afw::image::Image<float>(image, true), moments, noiseSigma);
+        return apply(afw::image::Image<float>(image, true), moments, noiseSigma, pState);
     }
     //@}
 
@@ -234,16 +239,19 @@ public:
      *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
      *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
      *                          A default value from the control object is used if this is negative.
+     *  @param[in]  pState      Pointer to an integer which is used to return the optimizerState from apply.
      */
     shapelet::MultiShapeletFunction apply(
         afw::image::Image<Pixel> const & image,
         shapelet::MultiShapeletFunction const & initial,
-        Scalar noiseSigma=-1
+        Scalar noiseSigma=-1,
+        int * pState = nullptr
     ) const;
     shapelet::MultiShapeletFunction apply(
         afw::image::Image<double> const & image,
         shapelet::MultiShapeletFunction const & initial,
-        Scalar noiseSigma=-1
+        Scalar noiseSigma=-1,
+        int * pState = nullptr
     ) const {
         return apply(afw::image::Image<float>(image, true), initial, noiseSigma);
     }
@@ -253,6 +261,49 @@ private:
     PsfFitterControl _ctrl;
     PTR(Model) _model;
     PTR(Prior) _prior;
+};
+
+class PsfFitterAlgorithm : public PsfFitter {
+public:
+
+    enum {
+        FAILURE=lsst::meas::base::FlagHandler::FAILURE,
+        MAX_INNER_ITERATIONS,
+        MAX_OUTER_ITERATIONS,
+        EXCEPTION,
+        CONTAINS_NAN,
+        N_FLAGS
+    };
+
+    PsfFitterAlgorithm(PsfFitterControl const & ctrl,
+        afw::table::Schema & schema,
+        std::string const & prefix
+    );
+
+    shapelet::MultiShapeletFunctionKey getKey() {
+        return _key;
+    }
+
+    void measure(
+        afw::table::SourceRecord & measRecord,
+        afw::image::Image<double> const & image,
+        shapelet::MultiShapeletFunction const & initial
+    ) const;
+
+    void measure(
+        afw::table::SourceRecord & measRecord,
+        afw::image::Image<double> const & image,
+        afw::geom::ellipses::Quadrupole const & moments
+    ) const;
+
+    void fail(
+        afw::table::SourceRecord & measRecord,
+        lsst::meas::base::MeasurementError * error=nullptr
+    ) const;
+
+private:
+    shapelet::MultiShapeletFunctionKey _key;
+    lsst::meas::base::FlagHandler _flagHandler;
 };
 
 /**
