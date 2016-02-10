@@ -165,7 +165,7 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
             analyticGradient = numpy.zeros(n, dtype=float)
             analyticHessian = numpy.zeros((n,n), dtype=float)
             mixture.evaluateDerivatives(point, analyticGradient, analyticHessian)
-            self.assertClose(analyticGradient, numericGradient, rtol=1E-6)
+            self.assertClose(analyticGradient, numericGradient, rtol=1.5E-6)
             self.assertClose(analyticHessian, numericHessian, rtol=1E-6)
 
         for x in numpy.random.randn(10, g.getDimension()):
