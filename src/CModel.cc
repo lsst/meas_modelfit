@@ -146,6 +146,7 @@ CModelResult::CModelResult() :
     fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
     fluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
     fracDev(std::numeric_limits<Scalar>::quiet_NaN()),
+    fitArea(std::numeric_limits<Scalar>::quiet_NaN()),
     objective(std::numeric_limits<Scalar>::quiet_NaN())
 {
     flags[FAILED] = true;
@@ -376,6 +377,13 @@ struct CModelKeys {
                 "flag set if the final cmodel fit (or any previous fit) failed"
             )
         ),
+        fitArea(
+            schema.addField<meas::base::ElementCount>(
+                schema.join(prefix, "fitArea"),
+                "final fit Area",
+                "pixels"
+            )
+        ),
         fluxInner(
             schema.addField<Scalar>(
                 schema.join(prefix, "flux", "inner"),
@@ -434,10 +442,8 @@ struct CModelKeys {
             "input centroid was not within the fit region (probably because it's not within the Footprint)"
         );
     }
-
-    // this constructor is used to get needed keys from the reference schema in forced mode
-    CModelKeys(
-        Model const & initialModel, Model const & expModel, Model const & devModel,
+// this constructor is used to get needed keys from the reference schema in forced mode
+CModelKeys( Model const & initialModel, Model const & expModel, Model const & devModel,
         afw::table::Schema const & schema,
         std::string const & prefix
     ) :
@@ -455,6 +461,9 @@ struct CModelKeys {
         record.set(flux, result.flux);
         record.set(fluxSigma, result.fluxSigma);
         record.set(fluxInner, result.fluxInner);
+        if (result.finalFitRegion) {
+            record.set(fitArea, result.finalFitRegion->getArea());
+        }
         record.set(fracDev, result.fracDev);
         record.set(objective, result.objective);
         for (int b = 0; b < CModelResult::N_FLAGS; ++b) {
@@ -499,6 +508,7 @@ struct CModelKeys {
     afw::table::Key<meas::base::FluxErrElement> fluxSigma;
     afw::table::Key<afw::table::Flag> fluxFlag;
     afw::table::Key<Scalar> fluxInner;
+    afw::table::Key<meas::base::ElementCount> fitArea;
     afw::table::Key<Scalar> fracDev;
     afw::table::Key<Scalar> objective;
     afw::table::Key<afw::table::Flag> flags[CModelResult::N_FLAGS];
@@ -1081,8 +1091,11 @@ PTR(afw::detection::Footprint) startDetermineFitRegion(
         );
     }
     if (!footprint.contains(pixel)) {
-        result.setFlag(CModelResult::BAD_CENTROID, true);
-        return region;
+        throw LSST_EXCEPT(
+            meas::base::MeasurementError,
+            "Pixel not contained in footprint",
+            CModelResult::BAD_CENTROID
+        );
     }
     region = afw::detection::growFootprint(
         footprint,

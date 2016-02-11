@@ -433,6 +433,7 @@ struct CModelResult {
 
     Scalar flux;       ///< Flux from the final linear fit
     Scalar fluxSigma;  ///< Flux uncertainty from the final linear fit
+    Scalar fitArea;    ///< Final fit area in pixels.
     Scalar fluxInner;  ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar fracDev;    ///< Fraction of flux from the final linear fit in the de Vaucouleur component
                        ///  (always between 0 and 1).

@@ -62,6 +62,24 @@ class ShapeletPsfApproxConfig(lsst.pex.config.Config):
         self.models["Full"].wings.order = 4
         self.models["Full"].outer.order = 0
 
+        self.models["Test1"] = modelfitLib.PsfFitterConfig()
+        self.models["Test1"].inner.order = 0
+        self.models["Test1"].primary.order = 6
+        self.models["Test1"].wings.order = 6
+        self.models["Test1"].outer.order = 0
+
+        self.models["Test2"] = modelfitLib.PsfFitterConfig()
+        self.models["Test2"].inner.order = 3
+        self.models["Test2"].primary.order = 4
+        self.models["Test2"].wings.order = 4
+        self.models["Test2"].outer.order = 3
+
+        self.models["Test3"] = modelfitLib.PsfFitterConfig()
+        self.models["Test3"].inner.order = 0
+        self.models["Test3"].primary.order = 3
+        self.models["Test3"].wings.order = 3
+        self.models["Test3"].outer.order = 0
+
     def validate(self):
         super(ShapeletPsfApproxConfig, self).validate()
         if len(self.sequence) < 1:
