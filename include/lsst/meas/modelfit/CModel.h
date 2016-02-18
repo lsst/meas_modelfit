@@ -196,7 +196,7 @@ struct CModelStageControl {
 
     LSST_CONTROL_FIELD(
         doRecordTime, bool,
-        "Whether to record the time spent in this stage stage"
+        "Whether to record the time spent in this stage"
     );
 
 };
