@@ -1,8 +1,12 @@
 setupRequired(afw)
 setupRequired(meas_algorithms)
 setupRequired(meas_base)
-setupRequired(shapelet)
+setupRequired(numpy)
 setupRequired(pipe_tasks)
+setupRequired(scons)
+setupRequired(sconsUtils)
+setupRequired(shapelet)
+
 setupOptional(matplotlib)
 
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
