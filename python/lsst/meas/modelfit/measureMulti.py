@@ -184,7 +184,7 @@ class MeasureMultiTask(BaseMeasureTask):
     def _makeArgumentParser(cls):
         parser = lsst.pipe.base.ArgumentParser(name=cls._DefaultName)
         parser.add_id_argument("--id", "deepCoadd",
-            help="coadd data ID, e.g. --id tract=1 patch=2,2 filter=g")
+            help="coadd data IDs, e.g. --id tract=1 patch=2,2^0,3 filter=g")
         return parser
 
     def _getConfigName(self):

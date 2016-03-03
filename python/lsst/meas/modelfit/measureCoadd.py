@@ -51,7 +51,7 @@ class MeasureCoaddTask(MeasureImageTask):
     @classmethod
     def _makeArgumentParser(cls):
         parser = lsst.pipe.base.ArgumentParser(name=cls._DefaultName)
-        parser.add_id_argument("--id", "deepCoadd", help="data ID, e.g. --id tract=12345 patch=1,2",
+        parser.add_id_argument("--id", "deepCoadd", help="data IDs, e.g. --id tract=12345 patch=1,2^0,3",
                                ContainerClass=CoaddDataIdContainer)
         return parser
 
