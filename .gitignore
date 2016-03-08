@@ -11,6 +11,7 @@ ups/*.cfgc
 doc/doxygen.conf
 doc/html/
 doc/meas_modelfit.tag
+doc/xml/
 *Lib.py
 *Lib_wrap.cc
 version.py

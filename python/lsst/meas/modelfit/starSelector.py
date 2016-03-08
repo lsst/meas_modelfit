@@ -44,6 +44,7 @@ class S13StarSelectorConfig(lsst.pex.config.Config):
 
 class S13StarSelector(object):
     ConfigClass = S13StarSelectorConfig
+    usesMatches = False # selectStars does not use its matches argument
 
     def __init__(self, config):
         self.config = config
