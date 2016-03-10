@@ -67,6 +67,15 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
 
     This class simply provides __init__ and measure methods that matched the ForcedPlugin signatures
     and delegate to CModelAlgorithm implementations.
+
+    The CModel algorithm currently cannot be run in forced mode when the measurement WCS is different
+    from the reference WCS (as is the case in CCD forced photometry).  This is a temporary limitation
+    that will be addressed on DM-5405.
+
+    CModel forced measurement when the measurement image is the same as the reference image should be
+    almost -- but not quite -- identical to unforced measurement.  The primary difference is that
+    the final fit region from the reference measurement will be used for the initial fit in forced mode
+    as well as the exp, dev, and combined exp+dev fits
     """
     ConfigClass = CModelForcedConfig
 
