@@ -38,6 +38,7 @@
 #include "lsst/meas/modelfit/Prior.h"
 #include "lsst/meas/modelfit/MixturePrior.h"
 #include "lsst/meas/modelfit/SoftenedLinearPrior.h"
+#include "lsst/meas/modelfit/SemiEmpiricalPrior.h"
 #include "lsst/meas/modelfit/integrals.h"
 #include "lsst/meas/modelfit/Model.h"
 #include "lsst/meas/modelfit/MultiModel.h"

@@ -96,10 +96,10 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         containing only a point source with no noise.
         """
         ctrl = lsst.meas.modelfit.CModelControl()
+        ctrl.initial.usePixelWeights = False
         algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
         result = algorithm.apply(
-            self.exposure, self.footprint,
-            makeMultiShapeletCircularGaussian(self.psfSigma),
+            self.exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
             self.xyPosition, self.exposure.getPsf().computeShape()
             )
         self.assertFalse(result.initial.getFlag(result.FAILED))
@@ -132,13 +132,13 @@ class CModelTestCase(lsst.utils.tests.TestCase):
             ctrl = lsst.meas.modelfit.CModelControl()
             algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
             cmodel = algorithm.apply(
-                exposure, self.footprint,
-                makeMultiShapeletCircularGaussian(self.psfSigma),
+                exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
                 self.xyPosition, self.exposure.getPsf().computeShape()
                 )
             psfFlux, psfFluxSigma = computePsfFlux(self.xyPosition, exposure)
-            self.assertClose(psfFlux, cmodel.flux, rtol=0.03)
-            self.assertClose(psfFluxSigma, cmodel.fluxSigma, rtol=0.03)
+            self.assertClose(psfFlux, cmodel.flux, rtol=0.1/fluxFactor**0.5)
+            self.assertClose(psfFluxSigma, cmodel.fluxSigma, rtol=0.1/fluxFactor**0.5)
+
 
 def suite():
     """Returns a suite containing all the test cases in this module."""

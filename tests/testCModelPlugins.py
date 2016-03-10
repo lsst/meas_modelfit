@@ -95,7 +95,10 @@ class CModelTestCase(AlgorithmTestCase):
         exposure1, catalog1 = self.dataset.realize(10.0, sfmTask.schema)
         sfmTask.run(catalog1, exposure1)
         self.checkOutputs(catalog1)
-        wcs2 = self.dataset.makePerturbedWcs(self.dataset.exposure.getWcs())
+        if False:  # this line should be re-enabled on DM-5405
+            wcs2 = self.dataset.makePerturbedWcs(self.dataset.exposure.getWcs())
+        else:
+            wcs2 = self.dataset.exposure.getWcs()
         dataset2 = self.dataset.transform(wcs2)
         # catalog2 will contain only the truth catalog for sources in exposure 1; the structure of
         # ForcedMeasurementTask means we can't put the outputs in the same catalog.

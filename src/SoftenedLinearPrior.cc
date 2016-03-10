@@ -21,8 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "Eigen/LU"
-
 #include "ndarray/eigen.h"
 
 #define LSST_MAX_DEBUG 10
@@ -30,90 +28,12 @@
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/modelfit/SoftenedLinearPrior.h"
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
+#include "lsst/meas/modelfit/detail/polynomials.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
 //------------- SoftenedLinearPrior -------------------------------------------------------------------------
 
-// Numerics here are neither as robust as they could be (i.e. we use regular polynomials, not orthogonal ones,
-// and don't take pains to keep arguments small), nor as efficient as they could be (not-very-clever integer
-// powers, etc), but we don't really need a lot of robustness or efficiency here, so hopefully going for
-// clarity here is better.
-namespace {
-
-// Class that computes rows of the Vandermonde matrix and related matrices;
-// the dot product of these row vectors with the polynomial coefficient
-// vectors evaluates the polynomial (or computes a derivative).
-template <int N>
-struct Vandermonde {
-
-    typedef Eigen::Matrix<double,1,N> RowVector;
-
-    // row vector to evaluate a polynomial
-    static RowVector eval(double x) {
-        RowVector z = RowVector::Zero();
-        double y = 1.0;
-        for (int i = 0; i < N; ++i, y *= x) {
-            z[i] = y;
-        }
-        return z;
-    }
-
-    // row vector to compute the first derivative of a polynomial
-    static RowVector differentiate1(double x) {
-        RowVector z = RowVector::Zero();
-        double y = 1.0;
-        for (int i = 1; i < N; ++i, y *= x) {
-            z[i] = i*y;
-        }
-        return z;
-    }
-
-    // row vector to compute the first derivative of a polynomial
-    static RowVector differentiate2(double x) {
-        RowVector z = RowVector::Zero();
-        double y = 1.0;
-        for (int i = 2; i < N; ++i, y *= x) {
-            z[i] = i*(i-1)*y;
-        }
-        return z;
-    }
-
-    // row vector to compute the integral of p(x) x^m dx from x0 to x1
-    static RowVector moment(double x0, double x1, int m=0) {
-        RowVector z = RowVector::Zero();
-        double y0 = x0;
-        double y1 = x1;
-        for (int j = 0; j < m; ++j, y0 *= x0, y1 *= x1);
-        for (int i = 0; i < N; ++i, y0 *= x0, y1 *= x1) {
-            z[i] = (y1 / (i+m+1)) - (y0 / (i+m+1));
-        }
-        return z;
-    }
-
-};
-
-Eigen::Vector4d solveRampPoly(double v0, double v1, double x0, double x1, double s0, double s1) {
-    // Solve for the coefficients of a cubic polynomial p(x) that goes from
-    // p(x0)=0 to p(x1)=v, with p'(x0)=0 and p'(x1)=s.
-    Eigen::Vector4d b;
-    Eigen::Matrix4d m;
-    // p(x0) = v0
-    m.row(0) = Vandermonde<4>::eval(x0);
-    b[0] = v0;
-    // p(x1) = v1
-    m.row(1) = Vandermonde<4>::eval(x1);
-    b[1] = v1;
-    // p'(x0) = s0
-    m.row(2) = Vandermonde<4>::differentiate1(x0);
-    b[2] = s0;
-    // p'(x1) = s1
-    m.row(3) = Vandermonde<4>::differentiate1(x1);
-    b[3] = s1;
-    return m.fullPivLu().solve(b);
-}
-
-} // anonymous
 
 SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
     _ctrl(ctrl),
@@ -121,12 +41,15 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
     _logRadiusP1(ctrl.logRadiusMinMaxRatio),
     _logRadiusSlope((1.0 - ctrl.logRadiusMinMaxRatio) / (ctrl.logRadiusMaxInner - ctrl.logRadiusMinInner)),
     _logRadiusPoly1(
-        solveRampPoly(0.0, _logRadiusP1, ctrl.logRadiusMinOuter, ctrl.logRadiusMinInner, 0.0, _logRadiusSlope)
+        detail::solveRampPoly(0.0, _logRadiusP1, ctrl.logRadiusMinOuter,
+                              ctrl.logRadiusMinInner, 0.0, _logRadiusSlope)
     ),
     _logRadiusPoly2(
-        solveRampPoly(1.0, 0.0, ctrl.logRadiusMaxInner, ctrl.logRadiusMaxOuter, _logRadiusSlope, 0.0)
+        detail::solveRampPoly(1.0, 0.0, ctrl.logRadiusMaxInner, ctrl.logRadiusMaxOuter, _logRadiusSlope, 0.0)
     ),
-    _ellipticityPoly(solveRampPoly(1.0, 0.0, ctrl.ellipticityMaxInner, ctrl.ellipticityMaxOuter, 0.0, 0.0))
+    _ellipticityPoly(
+        detail::solveRampPoly(1.0, 0.0, ctrl.ellipticityMaxInner, ctrl.ellipticityMaxOuter, 0.0, 0.0)
+    )
 {
     if (ctrl.logRadiusMinMaxRatio <= 0) {
         throw LSST_EXCEPT(
@@ -177,10 +100,10 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
         * 0.5*(_logRadiusP1 + 1.0);
     // ...the softening cubic on the minimum side:
     double logRadiusMinRampIntegral
-        = Vandermonde<4>::moment(ctrl.logRadiusMinOuter, ctrl.logRadiusMinInner).dot(_logRadiusPoly1);
+        = detail::Vandermonde<4>::moment(ctrl.logRadiusMinOuter, ctrl.logRadiusMinInner).dot(_logRadiusPoly1);
     // ...and the softening cubic on the maximum side:
     double logRadiusMaxRampIntegral
-        = Vandermonde<4>::moment(ctrl.logRadiusMaxInner, ctrl.logRadiusMaxOuter).dot(_logRadiusPoly2);
+        = detail::Vandermonde<4>::moment(ctrl.logRadiusMaxInner, ctrl.logRadiusMaxOuter).dot(_logRadiusPoly2);
     double logRadiusIntegral = logRadiusCoreIntegral + logRadiusMinRampIntegral + logRadiusMaxRampIntegral;
     _logRadiusMinRampFraction = logRadiusMinRampIntegral / logRadiusIntegral;
     _logRadiusMaxRampFraction = logRadiusMaxRampIntegral / logRadiusIntegral;
@@ -192,7 +115,7 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
     double ellipticityCoreIntegral = M_PI*ctrl.ellipticityMaxInner*ctrl.ellipticityMaxInner;
     // ...and now the softened annulus.  Note that we use moments(..., ..., 1) to compute
     // the integral of [p(e) e de], not just [p(e) de].
-    double ellipticityMaxRampIntegral = 2.0*M_PI*Vandermonde<4>::moment(
+    double ellipticityMaxRampIntegral = 2.0*M_PI*detail::Vandermonde<4>::moment(
         ctrl.ellipticityMaxInner,
         ctrl.ellipticityMaxOuter,
         1
@@ -260,19 +183,19 @@ void SoftenedLinearPrior::evaluateDerivatives(
     Scalar d2pr = 0.0;
 
     if (ellipticity > _ctrl.ellipticityMaxInner) { // on ellipticity ramp
-        pe = _ellipticityPoly.dot(Vandermonde<4>::eval(ellipticity));
-        dpe = _ellipticityPoly.dot(Vandermonde<4>::differentiate1(ellipticity));
-        d2pe = _ellipticityPoly.dot(Vandermonde<4>::differentiate2(ellipticity));
+        pe = _ellipticityPoly.dot(detail::Vandermonde<4>::eval(ellipticity));
+        dpe = _ellipticityPoly.dot(detail::Vandermonde<4>::differentiate1(ellipticity));
+        d2pe = _ellipticityPoly.dot(detail::Vandermonde<4>::differentiate2(ellipticity));
     }
 
     if (logRadius < _ctrl.logRadiusMinInner) { // on logRadius min ramp
-        pr = _logRadiusPoly1.dot(Vandermonde<4>::eval(logRadius));
-        dpr = _logRadiusPoly1.dot(Vandermonde<4>::differentiate1(logRadius));
-        d2pr = _logRadiusPoly1.dot(Vandermonde<4>::differentiate2(logRadius));
+        pr = _logRadiusPoly1.dot(detail::Vandermonde<4>::eval(logRadius));
+        dpr = _logRadiusPoly1.dot(detail::Vandermonde<4>::differentiate1(logRadius));
+        d2pr = _logRadiusPoly1.dot(detail::Vandermonde<4>::differentiate2(logRadius));
     } else if (logRadius > _ctrl.logRadiusMaxInner) { // on logRadius max ramp
-        pr = _logRadiusPoly2.dot(Vandermonde<4>::eval(logRadius));
-        dpr = _logRadiusPoly2.dot(Vandermonde<4>::differentiate1(logRadius));
-        d2pr = _logRadiusPoly2.dot(Vandermonde<4>::differentiate2(logRadius));
+        pr = _logRadiusPoly2.dot(detail::Vandermonde<4>::eval(logRadius));
+        dpr = _logRadiusPoly2.dot(detail::Vandermonde<4>::differentiate1(logRadius));
+        d2pr = _logRadiusPoly2.dot(detail::Vandermonde<4>::differentiate2(logRadius));
     }
 
     // Make ellipticity nonzero if isn't already, so we can divide by it safely (note that if it is
@@ -345,15 +268,15 @@ Scalar SoftenedLinearPrior::_evaluate(
 
     Scalar p = 0.0;
     if (logRadius < _ctrl.logRadiusMinInner) {
-        p = _logRadiusPoly1.dot(Vandermonde<4>::eval(logRadius));
+        p = _logRadiusPoly1.dot(detail::Vandermonde<4>::eval(logRadius));
     } else if (logRadius > _ctrl.logRadiusMaxInner) {
-        p = _logRadiusPoly2.dot(Vandermonde<4>::eval(logRadius));
+        p = _logRadiusPoly2.dot(detail::Vandermonde<4>::eval(logRadius));
     } else {
         p = _logRadiusP1 + (logRadius - _ctrl.logRadiusMinInner) * _logRadiusSlope;
     }
 
     if (ellipticity > _ctrl.ellipticityMaxInner) {
-        p *= _ellipticityPoly.dot(Vandermonde<4>::eval(ellipticity));
+        p *= _ellipticityPoly.dot(detail::Vandermonde<4>::eval(ellipticity));
     }
 
     return p;
