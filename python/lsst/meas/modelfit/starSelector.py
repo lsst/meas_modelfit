@@ -21,47 +21,32 @@
 #
 
 import lsst.pex.config
-import lsst.meas.algorithms
-from lsst.meas.algorithms.starSelectorRegistry import starSelectorRegistry
+from lsst.afw.table import SourceCatalog
+from lsst.pipe.base import Struct
+from lsst.meas.algorithms import StarSelectorTask
 
-class S13StarSelectorConfig(lsst.pex.config.Config):
+__all__ = ["S13StarSelectorConfig", "S13StarSelectorTask"]
+
+class S13StarSelectorConfig(StarSelectorTask.ConfigClass):
     fluxMin = lsst.pex.config.Field(
         doc = "specify the minimum apFlux for good PsfCandidates",
         dtype = float,
         default = 50000,
         check = lambda x: x >= 0.0,
     )
-    kernelSize = lsst.pex.config.Field(
-        doc = "size of the Psf kernel to create",
-        dtype = int,
-        default = 21,
-    )
-    borderWidth = lsst.pex.config.Field(
-        doc = "number of pixels to ignore around the edge of PSF candidate postage stamps",
-        dtype = int,
-        default = 0,
-    )
 
-class S13StarSelector(object):
+class S13StarSelectorTask(StarSelectorTask):
     ConfigClass = S13StarSelectorConfig
     usesMatches = False # selectStars does not use its matches argument
 
-    def __init__(self, config):
-        self.config = config
-
-    def selectStars(self, exposure, catalog, matches=None):
-        psfCandidateList = []
-        for source in catalog:
+    def selectStars(self, exposure, sourceCat, matches=None):
+        starCat = SourceCatalog(sourceCat.schema)
+        for source in sourceCat:
             if source.getApFluxFlag():
                 continue
             if source.getApFlux() < self.config.fluxMin:
                 continue
-            psfCandidate = lsst.meas.algorithms.makePsfCandidate(source, exposure)
-            if psfCandidate.getWidth() == 0:
-                psfCandidate.setBorderWidth(self.config.borderWidth)
-                psfCandidate.setWidth(self.config.kernelSize + 2*self.config.borderWidth)
-                psfCandidate.setHeight(self.config.kernelSize + 2*self.config.borderWidth)
-            psfCandidateList.append(psfCandidate)
-        return psfCandidateList
-
-starSelectorRegistry.register("s13", S13StarSelector)
+            starCat.append(source)
+        return Struct(
+            starCat = starCat,
+        )
