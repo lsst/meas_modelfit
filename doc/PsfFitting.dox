@@ -1,0 +1,13 @@
+// -*- lsst-c++ -*-
+
+namespace lsst { namespace meas { namespace modelfit {
+
+/**
+
+@page modelfitPsfFitting PSF Approximation via Expectation-Maximization
+
+
+
+*/
+
+ }}} // namespace lsst::meas::modelfit

@@ -24,17 +24,11 @@
 #ifndef LSST_MEAS_MODELFIT_psf_h_INCLUDED
 #define LSST_MEAS_MODELFIT_psf_h_INCLUDED
 
-#include "boost/scoped_ptr.hpp"
-
 #include "lsst/pex/config.h"
 #include "lsst/shapelet/FunctorKeys.h"
-#include "lsst/meas/modelfit/Model.h"
-#include "lsst/meas/modelfit/Prior.h"
-#include "lsst/meas/modelfit/Likelihood.h"
 #include "lsst/afw/table/Source.h"
 #include "lsst/meas/base/exceptions.h"
-#include "lsst/meas/base/FlagHandler.h"
-#include "lsst/meas/modelfit/optimizer.h"
+#include "lsst/meas/modelfit/common.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
@@ -44,24 +38,15 @@ namespace lsst { namespace meas { namespace modelfit {
 class PsfFitterComponentControl {
 public:
 
-    PsfFitterComponentControl(int order_=0, double radiusFactor_=1.0) :
-        order(order_), positionPriorSigma(0.1), ellipticityPriorSigma(0.3),
-        radiusFactor(radiusFactor_), radiusPriorSigma(0.5)
+    PsfFitterComponentControl(int order_=0, double radiusFactor_=1.0, double radiusMin_=0.25) :
+        order(order_), radiusFactor(radiusFactor_), radiusMin(radiusMin_)
     {}
 
     LSST_CONTROL_FIELD(
         order, int,
         "shapelet order for this component; negative to disable this component completely"
     );
-    LSST_CONTROL_FIELD(
-        positionPriorSigma, double,
-        "sigma (in pixels) in an isotropic 2-d Gaussian prior on the center of this shapelet component, "
-        "relative to the center of the PSF image"
-    );
-    LSST_CONTROL_FIELD(
-        ellipticityPriorSigma, double,
-        "sigma in an isotropic 2-d Gaussian prior on the conformal-shear ellipticity eta"
-    );
+
     LSST_CONTROL_FIELD(
         radiusFactor, double,
         "Sets the fiducial radius of this component relative to the 'primary radius' of the PSF: either "
@@ -69,9 +54,10 @@ public:
         "component in a previous fit.  Ignored if the previous fit included this component (as then we "
         "can just use that radius)."
     );
+
     LSST_CONTROL_FIELD(
-        radiusPriorSigma, double,
-        "sigma in a Gaussian prior on ln(radius/fiducialRadius)"
+        radiusMin, double,
+        "Require ellipses to be at least this large in all directions (in pixels)."
     );
 
 };
@@ -88,7 +74,10 @@ class PsfFitterControl {
 public:
 
     PsfFitterControl() :
-        inner(-1, 0.5), primary(0, 1.0), wings(0, 2.0), outer(-1, 4.0), defaultNoiseSigma(0.001)
+        inner(-1, 0.5), primary(0, 1.0), wings(0, 2.0), outer(-1, 4.0),
+        maxIterations(20),
+        absTol(1E-6),
+        relTol(1E-6)
     {}
 
     LSST_NESTED_CONTROL_FIELD(
@@ -111,13 +100,21 @@ public:
         "Outermost shapelet expansion, used to fit PSFs with very broad wings"
     );
 
-    LSST_NESTED_CONTROL_FIELD(
-        optimizer, lsst.meas.modelfit.modelfitLib, OptimizerControl,
-        "Configuration of the optimizer used to do the fitting"
+    LSST_CONTROL_FIELD(
+        maxIterations, int,
+        "Maximum number of expectation-maximization iterations"
     );
 
     LSST_CONTROL_FIELD(
-        defaultNoiseSigma, double, "Default value for the noiseSigma parameter in PsfFitter.apply()"
+        absTol, double,
+        "Absolute tolerance for expectation-maximization convergence: best-fit linear coefficients "
+        "must not change more than this to declare convergence."
+    );
+
+    LSST_CONTROL_FIELD(
+        relTol, double,
+        "Relative tolerance for expectation-maximization convergence: best-fit linear coefficients "
+        "must not change more than this to declare convergence (relative to mean of absolute values)."
     );
 
 };
@@ -130,24 +127,12 @@ public:
  *  also named; this allows us to map different fits with some expansions disabled to each other, in order
  *  to first fit an approximate model and follow this up with a more complete model, using the approximate
  *  model as a starting point.
- *
- *  The configuration also defines a simple Bayesian prior for the fit, defined using simple independent
- *  Gaussians for the ellipse parameters of each component.  The priors can be disabled by setting their
- *  width (xxPriorSigma in the control object) to infinity, and those parameters can be held fixed at
- *  their input values by setting the prior width to zero.  The priors are always centered at the input
- *  value, meaning that it may be more appropriate to think of the priors as a form of regularization,
- *  rather than a rigorous prior.  In fact, it's impossible to use a prior here rigorously without a
- *  noise model for the PSF image, which is something the LSST Psf class doesn't provide, and here is
- *  just provided as a constant noise sigma to be provided by the user (who generally just has to chose
- *  a small number arbitrarily).  Decreasing the noise sigma will of course decrease the effect of the
- *  priors (and vice versa).  In any case, having some sort of regularization is probably a good idea,
- *  as this is a very high-dimensional fit.
  */
 class PsfFitter {
-
 public:
+
     /// Initialize the fitter class with the given control object.
-    PsfFitter(PsfFitterControl const & ctrl);
+    explicit PsfFitter(PsfFitterControl const & ctrl);
 
     /**
      *  Add fields to a Schema that can be used to store the MultiShapeletFunction returned by apply().
@@ -157,35 +142,17 @@ public:
      *  @return a FunctorKey that can get/set MultiShapeletFunctions that match the configuration of this
      *          fitter on a record.
      */
-    shapelet::MultiShapeletFunctionKey addFields(
+    shapelet::MultiShapeletFunctionKey addModelFields(
         afw::table::Schema & schema,
         std::string const & prefix
     ) const;
 
     /**
-     *  Return the Model object that corresponds to the configuration.
-     *
-     *  In addition to the shapelet coefficients (stored in the "amplitudes" array), this Model
-     *  stores all the initial ellipse parameters in the "fixed" array, as these are used to
-     *  define the center of the prior; the "nonlinear" parameters are the free-to-vary ellipse
-     *  parameters minus the corresponding initial values.
-     */
-    PTR(Model) getModel() const { return _model; }
-
-    /**
-     *  Return the Prior object that corresponds to the configuration.
-     *
-     *  This Prior class only supports evaluate() and evaluateDerivatives(), reflecting the fact
-     *  that we only intend to use it with a Optimizer, not a Sampler.
-     */
-    PTR(Prior) getPrior() const { return _prior; }
-
-    /**
      *  Adapt a differently-configured previous fit to be used as an starting point for this PsfFitter.
      *
-     *  @param[in] previousFit     The return value of apply() from a differently-configured
-     *                             instance of PsfFitter.
-     *  @param[in] previousModel   The Model associated with the PsfFitter used to create previousFit.
+     *  @param[in] previous          The return value of apply() from a differently-configured
+     *                               instance of PsfFitter.
+     *  @param[in] previousFitter    The PsfFitter used to create previous.
      *
      *  @return a new MultiShapelet function that may be passed directly to apply().  When possible,
      *  the ellipse and shapelet coefficeints will be copied from previousFit; higher-order coefficients
@@ -193,145 +160,70 @@ public:
      *  ellipses set relative to the previous fit's "primary" component.
      */
     shapelet::MultiShapeletFunction adapt(
-        shapelet::MultiShapeletFunction const & previousFit,
-        PTR(Model) previousModel
+        shapelet::MultiShapeletFunction const & previous,
+        PsfFitter const & previousFitter
     ) const;
 
-    //@{
     /**
-     *  Perform an initial fit to a PSF image.
-     *
-     *  @param[in]  image       The image to fit, typically the result of Psf::computeKernelImage().  The
-     *                          image's xy0 should be set such that the center of the PSF is at (0,0).
+     *  Guess an initial model for the PSF shapelet approximation from just the moments of the PSF image.
+    *
      *  @param[in]  moments     Second moments of the PSF, typically result of Psf::computeShape() or running
-     *                          some other adaptive moments code on the PSF image.  This will be used to
-     *                          set the initial ellipses of the multishapelet model.
-     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
-     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
-     *                          A default value from the control object is used if this is negative.
-     *  @param[in]  pState      Pointer to an integer which is used to return the optimizerState from apply.
+     *                          some other adaptive moments code on the PSF image.
      */
-    shapelet::MultiShapeletFunction apply(
-        afw::image::Image<Pixel> const & image,
-        afw::geom::ellipses::Quadrupole const & moments,
-        Scalar noiseSigma=-1,
-        int * pState = nullptr
-    ) const;
-    shapelet::MultiShapeletFunction apply (
-        afw::image::Image<double> const & image,
-        afw::geom::ellipses::Quadrupole const & moments,
-        Scalar noiseSigma=-1,
-        int * pState = nullptr
-    ) const {
-        return apply(afw::image::Image<float>(image, true), moments, noiseSigma, pState);
-    }
-    //@}
+    shapelet::MultiShapeletFunction makeInitial(afw::geom::ellipses::Quadrupole const & moments) const;
 
     //@{
     /**
      *  Perform a fit to a PSF image, using a previous fit as a starting point
      *
-     *  @param[in]  image       The image to fit, typically the result of Psf::computeKernelImage().  The
+     *  @param[in,out]  model   The model to fit, with configuration (number of components and orders)
+     *                          already consistent with this fitter.  Also used to set initial ellipses
+     *                          for the fit.
+     *  @param[in]  image       The image to fit to, typically the result of Psf::computeKernelImage().  The
      *                          image's xy0 should be set such that the center of the PSF is at (0,0).
-     *  @param[in]  initial     The result of a previous call to apply(), using an identically-configured
-     *                          PsfFitter instance.  To use a result from a differently-configured PsfFitter,
-     *                          use adapt().
-     *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
-     *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
-     *                          A default value from the control object is used if this is negative.
-     *  @param[in]  pState      Pointer to an integer which is used to return the optimizerState from apply.
+     *
+     *  @return The number of iterations of the expectation-maximization algorithm.  If equal to
+     *          maxIterations, the fitter did not converge.
      */
-    shapelet::MultiShapeletFunction apply(
-        afw::image::Image<Pixel> const & image,
-        shapelet::MultiShapeletFunction const & initial,
-        Scalar noiseSigma=-1,
-        int * pState = nullptr
+    int apply(
+        shapelet::MultiShapeletFunction & model,
+        afw::image::Image<Pixel> const & image
     ) const;
-    shapelet::MultiShapeletFunction apply(
-        afw::image::Image<double> const & image,
-        shapelet::MultiShapeletFunction const & initial,
-        Scalar noiseSigma=-1,
-        int * pState = nullptr
+    int apply(
+        shapelet::MultiShapeletFunction & model,
+        afw::image::Image<double> const & image
     ) const {
-        return apply(afw::image::Image<float>(image, true), initial, noiseSigma);
+        return apply(model, afw::image::Image<float>(image, true));
     }
     //@}
 
-private:
-    PsfFitterControl _ctrl;
-    PTR(Model) _model;
-    PTR(Prior) _prior;
-};
+    int getComponentCount() const { return _ctrls.size(); }
 
-class PsfFitterAlgorithm : public PsfFitter {
-public:
+    int getMaxIterations() const { return _maxIterations; }
 
-    enum {
-        FAILURE=lsst::meas::base::FlagHandler::FAILURE,
-        MAX_INNER_ITERATIONS,
-        MAX_OUTER_ITERATIONS,
-        EXCEPTION,
-        CONTAINS_NAN,
-        N_FLAGS
-    };
-
-    PsfFitterAlgorithm(PsfFitterControl const & ctrl,
-        afw::table::Schema & schema,
-        std::string const & prefix
-    );
-
-    shapelet::MultiShapeletFunctionKey getKey() {
-        return _key;
-    }
-
-    void measure(
-        afw::table::SourceRecord & measRecord,
-        afw::image::Image<double> const & image,
-        shapelet::MultiShapeletFunction const & initial
-    ) const;
-
-    void measure(
-        afw::table::SourceRecord & measRecord,
-        afw::image::Image<double> const & image,
-        afw::geom::ellipses::Quadrupole const & moments
-    ) const;
-
-    void fail(
-        afw::table::SourceRecord & measRecord,
-        lsst::meas::base::MeasurementError * error=nullptr
-    ) const;
+    ~PsfFitter();
 
 private:
-    shapelet::MultiShapeletFunctionKey _key;
-    lsst::meas::base::FlagHandler _flagHandler;
-};
 
-/**
- *  Likelihood object used to fit multishapelet models to PSF model images; mostly for internal use
- *  by PsfFitter.
- */
-class MultiShapeletPsfLikelihood : public Likelihood {
-public:
-
-    MultiShapeletPsfLikelihood(
-        ndarray::Array<Pixel const,2,1> const & image,
-        afw::geom::Point2I const & xy0,
-        PTR(Model) model,
-        Scalar sigma,
-        ndarray::Array<Scalar const,1,1> const & fixed
-    );
-
-    virtual void computeModelMatrix(
-        ndarray::Array<Pixel,2,-1> const & modelMatrix,
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        bool doApplyWeights=true
-    ) const;
-
-    virtual ~MultiShapeletPsfLikelihood();
-
-private:
     class Impl;
-    boost::scoped_ptr<Impl> _impl;
+
+    void adaptComponent(
+        shapelet::MultiShapeletFunction & current,
+        shapelet::MultiShapeletFunction const & previous,
+        PsfFitter const & previousFitter,
+        int currentIndex,
+        int previousIndex
+    ) const;
+
+    int _maxIterations;
+    double _absTol;
+    double _relTol;
+    int _innerIndex;
+    int _primaryIndex;
+    int _wingsIndex;
+    int _outerIndex;
+    std::vector<PsfFitterComponentControl> _ctrls;
+    mutable PTR(Impl) _impl;  // holds state specific to a certain PSF size; will be reset if that changes.
 };
 
 }}} // namespace lsst::meas::modelfit

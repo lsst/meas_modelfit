@@ -38,9 +38,6 @@ import lsst.meas.algorithms
 
 numpy.random.seed(500)
 
-lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
-lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
-
 class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):

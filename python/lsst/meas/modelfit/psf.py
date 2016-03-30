@@ -79,11 +79,6 @@ class ShapeletPsfApproxMixin(object):
     it holds sequence of these corresponding to different models (generally with increasing complexity).
     Each PsfFitter starts with the result of the previous one as an input, using PsfFitter::adapt to
     hopefully allow these previous fits to reduce the time spent on the next one.
-
-    At present, this plugin does not define any failure flags, which will almost certainly
-    have to be changed in the future.  So far, however, I haven't actually seen it fail on
-    any PSFs I've given it, so I'll wait until we can run on large enough data volumes to
-    see what the actual failure modes are, instead of trying to guess them in advance.
     """
 
     def __init__(self, config, name, schema):
@@ -92,8 +87,13 @@ class ShapeletPsfApproxMixin(object):
         """
         self.sequence = []
         for m in config.sequence:
-            fitter = modelfitLib.PsfFitterAlgorithm(config.models[m].makeControl(), schema, schema[name][m].getPrefix())
-            self.sequence.append((fitter, schema[name][m].getPrefix()))
+            fitter = modelfitLib.PsfFitter(config.models[m].makeControl())
+            modelKey = fitter.addModelFields(schema, schema.join(name, m))
+            flagKey = schema.addField(schema.join(name, m, "flag"), type="Flag",
+                                      doc="General failure flag set if anything goes wrong.")
+            nIterKey = schema.addField(schema.join(name, m, "nIterations"), type=int,
+                                       doc="Number of E-M steps taken by the fitter.")
+            self.sequence.append((fitter, name, modelKey, flagKey, nIterKey))
 
     def measure(self, measRecord, exposure):
         """Fit the configured sequence of models the given Exposure's Psf, as evaluated at
@@ -104,33 +104,29 @@ class ShapeletPsfApproxMixin(object):
         psf = exposure.getPsf()
         psfImage = psf.computeKernelImage(measRecord.getCentroid())
         psfShape = psf.computeShape(measRecord.getCentroid())
-        lastError = None
-        lastModel = None
+        model = None
+        lastFitter = None
         # Fit the first element in the sequence, using the PSFs moments to initialize the parameters
         # For every other element in the fitting sequence, use the previous fit to initialize the parameters
-        for fitter, name in self.sequence:
+        for fitter, name, modelKey, flagKey, nIterKey in self.sequence:
             try:
-                if lastModel is None:
-                    fitter.measure(measRecord, psfImage, psfShape)
+                if model is None:
+                    model = fitter.makeInitial(psfShape)
                 else:
-                    fitter.measure(measRecord, psfImage, fitter.adapt(lastResult, lastModel))
-                lastResult = measRecord.get(fitter.getKey())
-                lastModel = fitter.getModel()
-            except lsst.meas.base.baseMeasurement.FATAL_EXCEPTIONS:
+                    model = fitter.adapt(model, lastFitter)
+                lastFitter = fitter
+                nIterations = fitter.apply(model, psfImage)
+                measRecord.set(modelKey, model)
+                measRecord.set(nIterKey, nIterations)
+                if nIterations == fitter.getMaxIterations():
+                    measRecord.set(flagKey, True)
+            except Exception:
+                # Since this is an unexpected failure mode, we throw now and do not proceed to the next fit.
+                measRecord.set(flagKey, True)
                 raise
-            except lsst.meas.base.baseLib.MeasurementError as error:
-                fitter.fail(measRecord, error.cpp)
-                lastError = error
-            except Exception as error:
-                fitter.fail(measRecord)
-                lastError = error
-        # When we are done with all the fitters, raise the last error if there was one.
-        # This gives the calling task a chance to do whatever it wants
-        if not lastError is None:
-            raise lastError
 
-    # This plugin doesn't need to set a flag on fail, because it should have been
-    # done already by the individual fitters in the sequence
+    # This plugin doesn't need to set a flag in fail(), because it should have been
+    # done already by the try/except in measure().
     def fail(self, measRecord, error=None):
         pass
 

@@ -22,8 +22,6 @@
  */
 
 
-%include "lsst/meas/modelfit/optimizer.i"
-
 %{
 #include "lsst/meas/modelfit/psf.h"
 %}

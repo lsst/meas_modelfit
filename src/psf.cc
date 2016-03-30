@@ -20,403 +20,323 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#include "boost/array.hpp"
 
 #include "ndarray/eigen.h"
 
 #include "lsst/pex/exceptions.h"
+#define LSST_MAX_DEBUG 0
+#include "lsst/pex/logging/Debug.h"
+#include "lsst/afw/math/LeastSquares.h"
 #include "lsst/shapelet/MatrixBuilder.h"
-#include "lsst/shapelet/MultiShapeletBasis.h"
 #include "lsst/meas/modelfit/psf.h"
+#define LSST_DEBUG_DUMP
+#include "lsst/meas/modelfit/DebugDump.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
-typedef std::pair<std::string,PsfFitterComponentControl> Component;
-typedef std::vector<Component> ComponentVector;
-typedef ComponentVector::const_iterator ComponentIterator;
-
-struct ComponentNameIs {
-
-    explicit ComponentNameIs(std::string const & target) : _target(target) {}
-
-    bool operator()(Component const & a) const {
-        return a.first == _target;
-    }
-
-private:
-    std::string _target;
-};
-
-static afw::geom::ellipses::SeparableConformalShearLogTraceRadius psfFitterEllipseCore;
-
-class PsfFitterModel : public Model {
-public:
-
-    PsfFitterModel(
-        BasisVector basisVector,
-        NameVector nonlinearNames,
-        NameVector amplitudeNames,
-        NameVector fixedNames,
-        ComponentVector components
-    ) : Model(basisVector, nonlinearNames, amplitudeNames, fixedNames), _components(components) {}
-
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
-        if (prior->getTag() != "PSF") {
-            throw LSST_EXCEPT(pex::exceptions::LogicError, "Invalid prior for this model");
-        }
-        return prior;
-    }
-
-    virtual EllipseVector makeEllipseVector() const {
-        return EllipseVector(getBasisCount(), afw::geom::ellipses::Ellipse(psfFitterEllipseCore));
-    }
-
-    virtual void writeEllipses(
-        Scalar const * nonlinearIter, Scalar const * fixedIter, EllipseIterator ellipseIter
-    ) const {
-        for (ComponentIterator i = _components.begin(); i != _components.end(); ++i, ++ellipseIter) {
-            afw::geom::ellipses::Ellipse::ParameterVector v;
-            // we always store fiducial values in the fixed parameter array; if a parameter is allowed
-            // to vary, we store the offset from the fiducial value in the nonlinear parameter array.
-            for (int n = 0; n < 5; ++n, ++fixedIter) {
-                v[n] = *fixedIter;
-            }
-            if (i->second.ellipticityPriorSigma > 0.0) {
-                v[0] += *(nonlinearIter++);
-                v[1] += *(nonlinearIter++);
-            }
-            if (i->second.radiusPriorSigma > 0.0) {
-                v[2] += *(nonlinearIter++);
-            }
-            if (i->second.positionPriorSigma > 0.0) {
-                v[3] += *(nonlinearIter++);
-                v[4] += *(nonlinearIter++);
-            }
-            ellipseIter->setParameterVector(v);
-        }
-    }
-
-    virtual void readEllipses(
-        EllipseConstIterator ellipseIter, Scalar * nonlinearIter, Scalar * fixedIter
-    ) const {
-        for (ComponentIterator i = _components.begin(); i != _components.end(); ++i, ++ellipseIter) {
-            afw::geom::ellipses::Ellipse::ParameterVector v = ellipseIter->getParameterVector();
-            // We always store fiducial values in the fixed parameter array; if a parameter is allowed
-            // to vary, we store the offset from the fiducial value in the nonlinear parameter array.
-            // When reading ellipses, we only update the fixed array, and set the offsets in the
-            // nonlinear array to zero.
-            // I'm a little concerned that this means we can't round-trip parameter vectors through
-            // ellipses with this model, but I can't think of a concrete case where that would cause
-            // problems.
-            for (int n = 0; n < 5; ++n, ++fixedIter) {
-                *fixedIter = v[n];
-            }
-            if (i->second.ellipticityPriorSigma > 0.0) {
-                *(nonlinearIter++) = 0;
-                *(nonlinearIter++) = 0;
-            }
-            if (i->second.radiusPriorSigma > 0.0) {
-                *(nonlinearIter++) = 0;
-            }
-            if (i->second.positionPriorSigma > 0.0) {
-                *(nonlinearIter++) = 0;
-                *(nonlinearIter++) = 0;
-            }
-        }
-    }
-
-    std::size_t findComponentIndex(std::string const & name) const {
-        ComponentIterator i = std::find_if(_components.begin(), _components.end(), ComponentNameIs(name));
-        return i - _components.begin();
-    }
-
-    shapelet::MultiShapeletFunction adapt(
-        shapelet::MultiShapeletFunction const & previousFit,
-        PsfFitterModel const & previousModel
-    ) const {
-        shapelet::MultiShapeletFunction result;
-        shapelet::ShapeletFunction const & previousPrimary
-            = previousFit.getComponents()[previousModel.findComponentIndex("primary")];
-        for (ComponentIterator i = _components.begin(); i != _components.end(); ++i) {
-            result.getComponents().push_back(shapelet::ShapeletFunction(i->second.order, shapelet::HERMITE));
-            shapelet::ShapeletFunction & current = result.getComponents().back();
-            std::size_t n = previousModel.findComponentIndex(i->first);
-            if (n >= previousFit.getComponents().size()) {
-                // previous didn't include the component we're setting up now, so we base its parameters
-                // off the previous primary component (but we initialize the coefficients to zero).
-                current.setEllipse(previousPrimary.getEllipse());
-                current.getEllipse().getCore().scale(i->second.radiusFactor);
-            } else {
-                // previous did include the component we're setting up now, so we copy it over,
-                // including as many coeffients as possible.
-                shapelet::ShapeletFunction const & previousComponent = previousFit.getComponents()[n];
-                current.setEllipse(previousComponent.getEllipse());
-                int minOrder = std::min(current.getOrder(), previousComponent.getOrder());
-                int minSize = shapelet::computeSize(minOrder);
-                current.getCoefficients()[ndarray::view(0, minSize)]
-                    = previousComponent.getCoefficients()[ndarray::view(0, minSize)];
-            }
-        }
-        return result;
-    }
-
-    shapelet::MultiShapeletFunction makeInitial(afw::geom::ellipses::Quadrupole const & moments) const {
-        shapelet::MultiShapeletFunction result;
-        for (ComponentIterator i = _components.begin(); i != _components.end(); ++i) {
-            result.getComponents().push_back(shapelet::ShapeletFunction(i->second.order, shapelet::HERMITE));
-            shapelet::ShapeletFunction & current = result.getComponents().back();
-            current.getEllipse().setCore(moments);
-            current.getEllipse().getCore().scale(i->second.radiusFactor);
-            if (i->first == "primary") {
-                current.getCoefficients()[0] = 1.0 / shapelet::ShapeletFunction::FLUX_FACTOR;
-            }
-        }
-        return result;
-    }
-
-    void fillParameters(
-        shapelet::MultiShapeletFunction const & input,
-        ndarray::Array<Scalar,1,1> const & nonlinear,
-        ndarray::Array<Scalar,1,1> const & amplitudes,
-        ndarray::Array<Scalar,1,1> const & fixed
-    ) const {
-        EllipseVector ellipses = makeEllipseVector();
-        LSST_THROW_IF_NE(
-            input.getComponents().size(), ellipses.size(),
-            pex::exceptions::LengthError,
-            "Number of elements in input multishapelet (%d) does not match expected number of elements (%d)"
-        );
-        assert(ellipses.size() == _components.size()); // should be guaranteed by construction
-        ndarray::Array<Scalar,1,1>::Iterator amplitudeIter = amplitudes.begin();
-        for (std::size_t n = 0; n < ellipses.size(); ++n) {
-            shapelet::ShapeletFunction const & current = input.getComponents()[n];
-            if (current.getOrder() != _components[n].second.order) {
-                throw LSST_EXCEPT(
-                    pex::exceptions::LengthError,
-                    (boost::format("Shapelet order of component %d has order %d, not %d")
-                     % n % current.getOrder() % _components[n].second.order).str()
-                );
-            }
-            ellipses[n] = current.getEllipse();
-            std::copy(current.getCoefficients().begin(), current.getCoefficients().end(), amplitudeIter);
-            amplitudeIter += current.getCoefficients().getSize<0>();
-        }
-        readEllipses(ellipses.begin(), nonlinear.begin(), fixed.begin());
-    }
-
-private:
-    ComponentVector _components;
-};
-
-class PsfFitterPrior : public Prior {
-public:
-
-    PsfFitterPrior(ComponentVector components) : Prior("PSF"), _components(components) {}
-
-    Scalar square(Scalar x) const { return x*x; }
-
-    virtual Scalar evaluate(
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        ndarray::Array<Scalar const,1,1> const & amplitudes
-    ) const {
-        Scalar z = 0;
-        ndarray::Array<Scalar const,1,1>::Iterator nonlinearIter = nonlinear.begin();
-        for (ComponentIterator i = _components.begin(); i != _components.end(); ++i) {
-            // If we have a non-delta-fn prior, it's gaussian with zero mean in the nonlinear parameter,
-            // as we've defined that as the offset between the actual ellipse parameter and the
-            // fiducial value.
-            if (i->second.ellipticityPriorSigma > 0.0) {
-                z += square(*(nonlinearIter++) / i->second.ellipticityPriorSigma);
-                z += square(*(nonlinearIter++) / i->second.ellipticityPriorSigma);
-            }
-            if (i->second.radiusPriorSigma > 0.0) {
-                z += square(*(nonlinearIter++) / i->second.radiusPriorSigma);
-            }
-            if (i->second.positionPriorSigma > 0.0) {
-                z += square(*(nonlinearIter++) / i->second.positionPriorSigma);
-                z += square(*(nonlinearIter++) / i->second.positionPriorSigma);
-            }
-        }
-        assert(nonlinearIter == nonlinear.end());
-        return std::exp(-0.5*z);
-    }
-
-    virtual void evaluateDerivatives(
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        ndarray::Array<Scalar const,1,1> const & amplitudes,
-        ndarray::Array<Scalar,1,1> const & nonlinearGradient,
-        ndarray::Array<Scalar,1,1> const & amplitudeGradient,
-        ndarray::Array<Scalar,2,1> const & nonlinearHessian,
-        ndarray::Array<Scalar,2,1> const & amplitudeHessian,
-        ndarray::Array<Scalar,2,1> const & crossHessian
-    ) const {
-        Scalar p = evaluate(nonlinear, amplitudes);
-        int n = 0;
-        nonlinearHessian.deep() = 0.0;
-        for (ComponentIterator i = _components.begin(); i != _components.end(); ++i) {
-            if (i->second.ellipticityPriorSigma > 0.0) {
-                Scalar sigmaSqrInv = square(1.0/i->second.ellipticityPriorSigma);
-                for (int k = 0; k < 2; ++k, ++n) {
-                    nonlinearGradient[n] = -nonlinear[n]*sigmaSqrInv;
-                    nonlinearHessian[n][n] = -sigmaSqrInv;
-                }
-            }
-            if (i->second.radiusPriorSigma > 0.0) {
-                Scalar sigmaSqrInv = square(1.0/i->second.radiusPriorSigma);
-                for (int k = 0; k < 1; ++k, ++n) {
-                    nonlinearGradient[n] = -nonlinear[n]*sigmaSqrInv;
-                    nonlinearHessian[n][n] = -sigmaSqrInv;
-                }
-            }
-            if (i->second.positionPriorSigma > 0.0) {
-                Scalar sigmaSqrInv = square(1.0/i->second.positionPriorSigma);
-                for (int k = 0; k < 2; ++k, ++n) {
-                    nonlinearGradient[n] = -nonlinear[n]*sigmaSqrInv;
-                    nonlinearHessian[n][n] = -sigmaSqrInv;
-                }
-            }
-        }
-        nonlinearHessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(nonlinearGradient.asEigen());
-        nonlinearHessian.asEigen() = nonlinearHessian.asEigen().selfadjointView<Eigen::Lower>();
-        nonlinearGradient.asEigen() *= p;
-        nonlinearHessian.asEigen() *= p;
-        amplitudeGradient.deep() = 0.0;
-        amplitudeHessian.deep() = 0.0;
-        crossHessian.deep() = 0.0;
-    }
-
-    virtual Scalar marginalize(
-        Vector const & gradient, Matrix const & hessian,
-        ndarray::Array<Scalar const,1,1> const & nonlinear
-    ) const {
-        // Don't need this unless we want to sample PSF models
-        throw LSST_EXCEPT(pex::exceptions::LogicError, "Not Implemented");
-    }
-
-    virtual Scalar maximize(
-        Vector const & gradient, Matrix const & hessian,
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        ndarray::Array<Scalar,1,1> const & amplitudes
-    ) const {
-        // Don't need this unless we want to sample PSF models
-        throw LSST_EXCEPT(pex::exceptions::LogicError, "Not Implemented");
-    }
-
-    virtual void drawAmplitudes(
-        Vector const & gradient, Matrix const & fisher,
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        afw::math::Random & rng,
-        ndarray::Array<Scalar,2,1> const & amplitudes,
-        ndarray::Array<Scalar,1,1> const & weights,
-        bool multiplyWeights=false
-    ) const {
-        // Don't need this unless we want to sample PSF models
-        throw LSST_EXCEPT(pex::exceptions::LogicError, "Not Implemented");
-    }
-
-private:
-    ComponentVector _components;
-};
-
-ComponentVector vectorizeComponents(PsfFitterControl const & ctrl) {
-    ComponentVector components;
-    if (ctrl.inner.order >= 0) {
-        components.push_back(Component("inner", ctrl.inner));
-    }
-    if (ctrl.primary.order >= 0) {
-        components.push_back(Component("primary", ctrl.primary));
-    }
-    if (ctrl.wings.order >= 0) {
-        components.push_back(Component("wings", ctrl.wings));
-    }
-    if (ctrl.outer.order >= 0) {
-        components.push_back(Component("outer", ctrl.outer));
-    }
-    return components;
-}
-
-boost::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const & getFlagDefinitions() {
-    static boost::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const flagDefs = {{
-        {"flag", "general failure flag"},
-        {"flag_max_inner_iterations", "exceeded maxInnerIterations"},
-        {"flag_max_outer_iterations", "exceeded maxOuterIterations"},
-        {"flag_exception", "exception in apply method"},
-        {"flag_contains_nan", "Nan in the Psf image"}
-    }};
-    return flagDefs;
+// Create a column-major matrix (ndarray creates row-major matrices directly)
+ndarray::Array<Pixel,2,-2> makeMatrix(int nRows, int nCols) {
+    return ndarray::Array<Pixel,2,2>(ndarray::allocate(nCols, nRows)).transpose();
 }
 
 } // anonymous
 
+class PsfFitter::Impl {
+public:
+
+    Impl(afw::geom::Box2I const & bbox, std::vector<PsfFitterComponentControl> const & ctrls) :
+        bbox(bbox),
+        _x(ndarray::allocate(bbox.getArea())),
+        _y(ndarray::allocate(bbox.getArea()))
+    {
+        int const width = bbox.getWidth();
+        int const height = bbox.getHeight();
+
+        // Fill flattened 1-d arrays with positions
+        auto xIter = _x.begin();
+        auto yIter = _y.begin();
+        for (int i = 0, y = bbox.getMinY(); i < height; ++i, ++y) {
+            for (int j = 0, x = bbox.getMinX(); j < width; ++j, ++x) {
+                *xIter = x;
+                *yIter = y;
+                ++xIter;
+                ++yIter;
+            }
+        }
+
+        // Create factories for builders that evaluate Gaussian and Shapelet functions.
+        // We construct all the factories first so we can compute the workspace needed
+        // by the builders, so the builders can share that workspace.
+        // See shapelet::MatrixBuilderFactory for more info.
+        std::vector<shapelet::MatrixBuilderFactory<Pixel>> factories;
+        factories.reserve(ctrls.size() + 1);
+        factories.push_back(shapelet::MatrixBuilderFactory<Pixel>(_x, _y, 0));
+        int workspaceSize = factories.back().computeWorkspace();
+        for (auto const & ctrl : ctrls) {
+            factories.push_back(shapelet::MatrixBuilderFactory<Pixel>(_x, _y, ctrl.order));
+            workspaceSize = std::max(workspaceSize, factories.back().computeWorkspace());
+        }
+        // Construct the shared workspace.
+        shapelet::MatrixBuilderWorkspace<Pixel> workspace(workspaceSize);
+        // Construct the builders using the shared workspace.
+        _builders.reserve(factories.size());
+        for (auto const & factory : factories) {
+            shapelet::MatrixBuilderWorkspace<Pixel> wsCopy(workspaceSize);
+            _builders.push_back(factory(wsCopy));
+        }
+    }
+
+    void evaluateGaussian(
+        ndarray::Array<Pixel,2,-1> const & matrix,
+        afw::geom::ellipses::Ellipse const & ellipse
+    ) const {
+        matrix.deep() = 0.0;
+        return _builders.front()(matrix, ellipse);
+    }
+
+    void evaluateShapelet(
+        ndarray::Array<Pixel,2,-1> const & matrix,
+        afw::geom::ellipses::Ellipse const & ellipse,
+        int index
+    ) const {
+        matrix.deep() = 0.0;
+        return _builders[index + 1](matrix, ellipse);
+    }
+
+    // Create an ellipse core, after fudging it to make sure it isn't singular.
+    afw::geom::ellipses::Quadrupole makeSafeEllipse(double ixx, double iyy, double ixy, double rMin) const {
+        // We start by "deconvolving" a circle with the min radius (subtracting it in quadrature).
+        ixx -= rMin*rMin;
+        iyy -= rMin*rMin;
+        // Now we "clip" the ellipse - set ixx and iyy and the determinant to zero if negative.
+        ixx = std::max(ixx, 0.0);
+        iyy = std::max(ixx, 0.0);
+        if (ixx*iyy < ixy*ixy) {
+            ixy = std::sqrt(ixx*iyy);
+        }
+        // We now "convolve" by a circle with the min radius.  The result is a no-op if the
+        // ellipse was already strictly larger than the min radius circle, and a well-behaved
+        // similar ellipse if it wasn't.
+        ixx += rMin*rMin;
+        iyy += rMin*rMin;
+        return afw::geom::ellipses::Quadrupole(ixx, iyy, ixy);
+    }
+
+    int fitEM(
+        shapelet::MultiShapeletFunction & result,
+        ndarray::Array<Pixel const ,1,1> const & data,
+        std::vector<PsfFitterComponentControl> const & ctrls,
+        int maxIterations,
+        double absTol,
+        double relTol
+    ) const {
+
+        pex::logging::Debug log("meas.modelfit.PsfFitter");
+        DebugDump dump("psf.fitEM");
+
+        std::size_t const nComponents = result.getComponents().size();
+        std::size_t const nPix = data.getSize<0>();
+
+        ndarray::Array<Pixel,2,-2> matrix = makeMatrix(nPix, nComponents);
+        Eigen::Matrix<Pixel,Eigen::Dynamic,1> model(nPix);
+        Eigen::Array<Pixel,Eigen::Dynamic,1> weighted(nPix);
+        Eigen::Array<Pixel,Eigen::Dynamic,1> dx(nPix);
+        Eigen::Array<Pixel,Eigen::Dynamic,1> dy(nPix);
+
+        // Best-fit coefficients of the linear fit from last iteration.
+        // Initialize with the 0th-order coefficients from the input MultiShapeletFunction.
+        ndarray::Array<double,1,1> lastCoeff = ndarray::allocate(nComponents);
+        for (std::size_t n = 0; n < nComponents; ++n) {
+            lastCoeff[n] = result.getComponents()[n].getCoefficients()[0];
+
+            log.debug<7>(
+                "Initial state for component %d: coefficient=%g, moments=(%g, %g, %g), center=(%g, %g)",
+                n, lastCoeff[n],
+                afw::geom::ellipses::Quadrupole(result.getComponents()[n].getEllipse().getCore()).getIxx(),
+                afw::geom::ellipses::Quadrupole(result.getComponents()[n].getEllipse().getCore()).getIyy(),
+                afw::geom::ellipses::Quadrupole(result.getComponents()[n].getEllipse().getCore()).getIxy(),
+                result.getComponents()[n].getEllipse().getCenter().getX(),
+                result.getComponents()[n].getEllipse().getCenter().getY()
+            );
+
+        }
+
+        // Initialize a nonlinear least squares fitter so we can reuse it within the loop.
+        afw::math::LeastSquares lstsq(afw::math::LeastSquares::NORMAL_EIGENSYSTEM, nComponents);
+
+        // Expectation-Maximization loop.  We update the ellipses of the result MultiShapeletFunction in-place,
+        // but don't do anything with the coefficients yet, as whatever we might have done would have been
+        // totally overwritten by the final linear fit.
+        for (int iteration = 0; iteration < maxIterations; ++iteration) {
+
+            // ----------------------------------------------------------------------------------------------
+            // Expectation
+            // Do a linear fit (holding ellipses fixed) of a set of Gaussians (one for each shapelet
+            // component) to the image.
+            // ----------------------------------------------------------------------------------------------
+
+            // Evaluate the model matrix, column by column.  Each column is a Gaussian corresponding
+            // to one of the component ellipses, normalized to the ShapeletFunction convention.
+            for (std::size_t n = 0; n < nComponents; ++n) {
+                evaluateGaussian(matrix[ndarray::view()(n,n+1)], result.getComponents()[n].getEllipse());
+                log.debug<7>(
+                    "Iteration %d for component %d: matrix column norm is %g",
+                    iteration, n, matrix[ndarray::view()(n)].asEigen().norm()
+                );
+            }
+            dump.copy((boost::format("iter=%05d:matrix") % iteration).str(), matrix);
+
+            // Solve for the best-fit linear combination of components.
+            lstsq.setDesignMatrix(matrix, data);
+
+            dump.copy((boost::format("iter=%05d:solution") % iteration).str(), lstsq.getSolution());
+
+            // Compute the model corresponding to the best fit solution.
+            model = matrix.asEigen() * lstsq.getSolution().asEigen().cast<Pixel>();  // vector = matrix*vector
+
+            dump((boost::format("iter=%05d:model") % iteration).str(), model);
+
+            // ----------------------------------------------------------------------------------------------
+            // Maximization
+            // ----------------------------------------------------------------------------------------------
+
+            for (std::size_t n = 0; n < nComponents; ++n) {
+                // Weight the data image by relative contribution of each component to each pixel in the
+                // best-fit model
+                if (lstsq.getSolution()[n] < 0) {
+                    // Negative components aren't allowed to contribute; we just don't update the ellipse
+                    continue;
+                }
+                weighted =
+                    data.asEigen<Eigen::ArrayXpr>()
+                    * lstsq.getSolution()[n]
+                    * matrix.asEigen<Eigen::ArrayXpr>().col(n)
+                    / model.array();
+                // Compute moments and update the ellipse
+                dx = _x.asEigen<Eigen::ArrayXpr>();
+                dy = _y.asEigen<Eigen::ArrayXpr>();
+                double i0 = weighted.sum();
+                double ix = (weighted * dx).sum() / i0;
+                double iy = (weighted * dy).sum() / i0;
+                result.getComponents()[n].getEllipse().setCenter(afw::geom::Point2D(ix, iy));
+                dx -= ix;
+                dy -= iy;
+                double ixx = (weighted * dx.square()).sum() / i0;
+                double iyy = (weighted * dy.square()).sum() / i0;
+                double ixy = (weighted * dx * dy).sum() / i0;
+                result.getComponents()[n].getEllipse().setCore(
+                    makeSafeEllipse(ixx, iyy, ixy, ctrls[n].radiusMin)
+                );
+                log.debug<7>(
+                    "Iteration %d for component %d: coefficient=%g, moments=(%g, %g, %g), center=(%g, %g)",
+                    iteration, n, lstsq.getSolution()[n], ixx, iyy, ixy, ix, iy
+                );
+            }
+
+            // Check whether the linear fit results changed significantly in the last iteration; if not,
+            // declare convergence and quit.
+            bool converged = true;
+            for (std::size_t n = 0; n < nComponents; ++n) {
+                double absDiff = std::abs(lstsq.getSolution()[n] - lastCoeff[n]);
+                double absMean = 0.5*(std::abs(lstsq.getSolution()[n]) + std::abs(lastCoeff[n]));
+                if (absDiff > absTol || absDiff > absMean*relTol) {
+                    converged = false;
+                    break;
+                }
+            }
+            if (converged) return iteration;
+        }
+        return maxIterations;
+    }
+
+    void fitShapelets(
+        shapelet::MultiShapeletFunction & result,
+        ndarray::Array<Pixel const ,1,1> const & data
+    ) const {
+        std::size_t const nComponents = result.getComponents().size();
+        std::size_t const nPix = data.getSize<0>();
+
+        // Figure out how big the matrix will need to be.
+        std::size_t nTotalCoefficients = 0;
+        for (std::size_t n = 0; n < nComponents; ++n) {
+            nTotalCoefficients += result.getComponents()[n].getCoefficients().size();
+        }
+        ndarray::Array<Pixel,2,-2> matrix = makeMatrix(nPix, nTotalCoefficients);
+        // Evaluate the model matrix, in chunks of columns corresponding to a single shapelet component.
+        std::size_t offset = 0;
+        for (std::size_t n = 0; n < nComponents; ++n) {
+            int nCols = result.getComponents()[n].getCoefficients().getSize<0>();
+            evaluateShapelet(matrix[ndarray::view()(offset, offset + nCols)],
+                             result.getComponents()[n].getEllipse(), n);
+            offset += nCols;
+        }
+        // Do the actual fit.
+        auto lstsq = afw::math::LeastSquares::fromDesignMatrix(matrix, data);
+        // Put the fit results back into the MultiShapeletFunction.
+        offset = 0;
+        for (std::size_t n = 0; n < nComponents; ++n) {
+            int nCols = result.getComponents()[n].getCoefficients().getSize<0>();
+            result.getComponents()[n].getCoefficients().deep()
+                = lstsq.getSolution()[ndarray::view(offset, offset+nCols)];
+            offset += nCols;
+        }
+    }
+
+    afw::geom::Box2I const bbox;
+
+private:
+    ndarray::Array<Pixel,1,1> _x;
+    ndarray::Array<Pixel,1,1> _y;
+    std::vector<shapelet::MatrixBuilder<Pixel>> _builders;
+};
+
 PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
-    _ctrl(ctrl)
+    _maxIterations(ctrl.maxIterations),
+    _absTol(ctrl.absTol),
+    _relTol(ctrl.relTol),
+    _innerIndex(-1),
+    _primaryIndex(-1),
+    _wingsIndex(-1),
+    _outerIndex(-1)
 {
-    if (_ctrl.primary.order < 0) {
+    int n = 0;
+    if (ctrl.inner.order >= 0) {
+        _ctrls.push_back(ctrl.inner);
+        _innerIndex = n;
+        ++n;
+    }
+    if (ctrl.primary.order >= 0) {
+        _ctrls.push_back(ctrl.primary);
+        _primaryIndex = n;
+        ++n;
+    } else {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterError,
             "PsfFitter control must have a primary component with nonnegative order"
         );
     }
-    ComponentVector components = vectorizeComponents(_ctrl);
-
-    _prior = boost::make_shared<PsfFitterPrior>(components);
-
-    Model::BasisVector basisVector;
-    Model::NameVector nonlinearNames;
-    Model::NameVector amplitudeNames;
-    Model::NameVector fixedNames;
-
-    for (ComponentIterator i = components.begin(); i != components.end(); ++i) {
-
-        // Construct a MultiShapeletBasis with a single shapelet basis with this component
-        int dim = shapelet::computeSize(i->second.order);
-        PTR(shapelet::MultiShapeletBasis) basis = boost::make_shared<shapelet::MultiShapeletBasis>(dim);
-        ndarray::Array<double,2,2> matrix = ndarray::allocate(dim, dim);
-        matrix.asEigen().setIdentity();
-        basis->addComponent(1.0, i->second.order, matrix);
-        basisVector.push_back(basis);
-
-        // Append to the name vectors for this component; all of this has to be consistent with the
-        // iteration that happens in PsfFitterModel and PsfFitterPrior
-        for (shapelet::PackedIndex s; s.getOrder() <= i->second.order; ++s) {
-            amplitudeNames.push_back(
-                (boost::format("%s.alpha[%d,%d]") % i->first % s.getX() % s.getY()).str()
-            );
-        }
-        fixedNames.push_back(i->first + ".fiducial.eta1");
-        fixedNames.push_back(i->first + ".fiducial.eta2");
-        fixedNames.push_back(i->first + ".fiducial.logR");
-        fixedNames.push_back(i->first + ".fiducial.x");
-        fixedNames.push_back(i->first + ".fiducial.y");
-        if (i->second.ellipticityPriorSigma > 0.0) {
-            nonlinearNames.push_back(i->first + ".eta1");
-            nonlinearNames.push_back(i->first + ".eta2");
-        }
-        if (i->second.radiusPriorSigma > 0.0) {
-            nonlinearNames.push_back(i->first + ".logR");
-        }
-        if (i->second.positionPriorSigma > 0.0) {
-            nonlinearNames.push_back(i->first + ".x");
-            nonlinearNames.push_back(i->first + ".y");
-        }
-
+    if (ctrl.wings.order >= 0) {
+        _ctrls.push_back(ctrl.wings);
+        _wingsIndex = n;
+        ++n;
     }
-
-    _model = boost::make_shared<PsfFitterModel>(
-        basisVector, nonlinearNames, amplitudeNames, fixedNames, components
-    );
+    if (ctrl.outer.order >= 0) {
+        _ctrls.push_back(ctrl.outer);
+        _outerIndex = n;
+    }
+    // _impl is constructed on first use
 }
 
-shapelet::MultiShapeletFunctionKey PsfFitter::addFields(
+shapelet::MultiShapeletFunctionKey PsfFitter::addModelFields(
     afw::table::Schema & schema,
     std::string const & prefix
 ) const {
-    ComponentVector components = vectorizeComponents(_ctrl);
-    std::vector<int> orders(components.size());
-    for (std::size_t i = 0; i < components.size(); ++i) {
-        orders[i] = components[i].second.order;
+    std::vector<int> orders;
+    orders.reserve(_ctrls.size());
+    for (auto const & ctrl : _ctrls) {
+        orders.push_back(ctrl.order);
     }
     return shapelet::MultiShapeletFunctionKey::addFields(
         schema, prefix, "multi-Shapelet approximation to the PSF model",
@@ -426,256 +346,100 @@ shapelet::MultiShapeletFunctionKey PsfFitter::addFields(
     );
 }
 
+
+void PsfFitter::adaptComponent(
+    shapelet::MultiShapeletFunction & current,
+    shapelet::MultiShapeletFunction const & previous,
+    PsfFitter const & previousFitter,
+    int currentIndex,
+    int previousIndex
+) const {
+    if (currentIndex < 0) return;
+    shapelet::ShapeletFunction currentComponent(_ctrls[currentIndex].order, shapelet::HERMITE);
+    if (previousIndex < 0) {
+        auto const & previousPrimary = previous.getComponents()[previousFitter._primaryIndex];
+        // previous didn't include the component we're setting up now, so we base its parameters
+        // off the previous primary component (but we initialize the coefficients to zero).
+        currentComponent.setEllipse(previousPrimary.getEllipse());
+        currentComponent.getEllipse().getCore().scale(_ctrls[currentIndex].radiusFactor);
+    } else {
+        // previous did include the component we're setting up now, so we copy it over,
+        // including as many coeffients as possible.
+        auto const & previousComponent = previous.getComponents()[previousIndex];
+        currentComponent.setEllipse(previousComponent.getEllipse());
+        int minOrder = std::min(previousFitter._ctrls[previousIndex].order, _ctrls[currentIndex].order);
+        int minSize = shapelet::computeSize(minOrder);
+        currentComponent.getCoefficients()[ndarray::view(0, minSize)]
+            = previousComponent.getCoefficients()[ndarray::view(0, minSize)];
+    }
+    current.getComponents().push_back(std::move(currentComponent));
+}
+
 shapelet::MultiShapeletFunction PsfFitter::adapt(
-    shapelet::MultiShapeletFunction const & previousFit,
-    PTR(Model) previousModel
+    shapelet::MultiShapeletFunction const & previous,
+    PsfFitter const & previousFitter
 ) const {
-    PTR(PsfFitterModel) m = boost::dynamic_pointer_cast<PsfFitterModel>(previousModel);
-    if (!m) {
-        throw LSST_EXCEPT(
-            pex::exceptions::InvalidParameterError,
-            "Model passed to PsfFitter::adapt must have been constructed by PsfFitter"
-        );
-    }
-    return boost::static_pointer_cast<PsfFitterModel>(_model)->adapt(previousFit, *m);
+    shapelet::MultiShapeletFunction current;
+    adaptComponent(current, previous, previousFitter, _innerIndex, previousFitter._innerIndex);
+    adaptComponent(current, previous, previousFitter, _primaryIndex, previousFitter._primaryIndex);
+    adaptComponent(current, previous, previousFitter, _wingsIndex, previousFitter._wingsIndex);
+    adaptComponent(current, previous, previousFitter, _outerIndex, previousFitter._outerIndex);
+    return current;
 }
 
 
-shapelet::MultiShapeletFunction PsfFitter::apply(
-    afw::image::Image<Pixel> const & image,
-    afw::geom::ellipses::Quadrupole const & moments,
-    Scalar noiseSigma,
-    int * pState
-) const {
-    if (noiseSigma <= 0) {
-        noiseSigma = _ctrl.defaultNoiseSigma;
-    }
-    shapelet::MultiShapeletFunction initial
-        = boost::static_pointer_cast<PsfFitterModel>(_model)->makeInitial(moments);
-    return apply(image, initial, noiseSigma, pState);
-}
-
-shapelet::MultiShapeletFunction PsfFitter::apply(
-    afw::image::Image<Pixel> const & image,
-    shapelet::MultiShapeletFunction const & initial,
-    Scalar noiseSigma,
-    int * pState
-) const {
-    if (noiseSigma <= 0) {
-        noiseSigma = _ctrl.defaultNoiseSigma;
-    }
-    int const parameterDim = _model->getNonlinearDim() + _model->getAmplitudeDim();
-    ndarray::Array<Scalar,1,1> parameters = ndarray::allocate(parameterDim);
-    ndarray::Array<Scalar,1,1> nonlinear = parameters[ndarray::view(0, _model->getNonlinearDim())];
-    ndarray::Array<Scalar,1,1> amplitudes
-        = parameters[ndarray::view(_model->getNonlinearDim(), parameterDim)];
-    ndarray::Array<Scalar,1,1> fixed = ndarray::allocate(_model->getFixedDim());
-
-    boost::static_pointer_cast<PsfFitterModel>(_model)->fillParameters(initial, nonlinear, amplitudes, fixed);
-
-    PTR(Likelihood) likelihood = boost::make_shared<MultiShapeletPsfLikelihood>(
-        image.getArray(), image.getXY0(), _model, noiseSigma, fixed
-    );
-    PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, _prior);
-    Optimizer optimizer(objective, parameters, _ctrl.optimizer);
-    optimizer.run();
-
-    parameters.deep() = optimizer.getParameters(); // this sets nonlinear, amplitudes, because they're views
-    if (pState != nullptr) {
-        *pState = optimizer.getState();
-    }
-    return _model->makeShapeletFunction(nonlinear, amplitudes, fixed);
-}
-
-PsfFitterAlgorithm::PsfFitterAlgorithm(PsfFitterControl const & ctrl,
-    afw::table::Schema & schema,
-    std::string const & prefix
-) : PsfFitter(ctrl)
-{
-    _flagHandler = lsst::meas::base::FlagHandler::addFields(schema, prefix,
-                                          getFlagDefinitions().begin(), getFlagDefinitions().end());
-    _key = addFields(schema, prefix);
-}
-
-void PsfFitterAlgorithm::measure(
-    afw::table::SourceRecord & measRecord,
-    afw::image::Image<double> const & image,
-    shapelet::MultiShapeletFunction const & initial
-) const {
-    int state = 0;
-    shapelet::MultiShapeletFunction result = apply(image, initial, -1, &state);
-    measRecord.set(_key, result);
-    if (state & Optimizer::FAILED_MAX_INNER_ITERATIONS) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_INNER_ITERATIONS).doc,
-            MAX_INNER_ITERATIONS
-        );
-    }
-    if (state & Optimizer::FAILED_MAX_OUTER_ITERATIONS) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_OUTER_ITERATIONS).doc,
-            MAX_OUTER_ITERATIONS
-        );
-    }
-    if (state & Optimizer::FAILED_EXCEPTION) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(EXCEPTION).doc,
-            EXCEPTION
-        );
-    }
-    if (state & Optimizer::FAILED_NAN) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(CONTAINS_NAN).doc,
-            CONTAINS_NAN
-        );
-    }
-}
-
-void PsfFitterAlgorithm::measure(
-    afw::table::SourceRecord & measRecord,
-    afw::image::Image<double> const & image,
+shapelet::MultiShapeletFunction PsfFitter::makeInitial(
     afw::geom::ellipses::Quadrupole const & moments
 ) const {
-    int state = 0;
-    shapelet::MultiShapeletFunction result = apply(image, moments, -1, &state);
-    measRecord.set(_key, result);
-    if (state & Optimizer::FAILED_MAX_INNER_ITERATIONS) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_INNER_ITERATIONS).doc,
-            MAX_INNER_ITERATIONS
-        );
+    shapelet::MultiShapeletFunction result;
+    for (auto const & ctrl : _ctrls) {
+        result.getComponents().push_back(shapelet::ShapeletFunction(ctrl.order, shapelet::HERMITE));
+        shapelet::ShapeletFunction & current = result.getComponents().back();
+        current.getEllipse().setCore(moments);
+        current.getEllipse().getCore().scale(ctrl.radiusFactor);
     }
-    if (state & Optimizer::FAILED_MAX_OUTER_ITERATIONS) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_OUTER_ITERATIONS).doc,
-            MAX_OUTER_ITERATIONS
-        );
-    }
-    if (state & Optimizer::FAILED_EXCEPTION) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(EXCEPTION).doc,
-            EXCEPTION
-        );
-    }
-    if (state & Optimizer::FAILED_NAN) {
-        throw LSST_EXCEPT(
-            lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(CONTAINS_NAN).doc,
-            CONTAINS_NAN
-        );
-    }
+    result.getComponents()[_primaryIndex].getCoefficients()[0] = 1.0 / shapelet::ShapeletFunction::FLUX_FACTOR;
+    return result;
 }
 
-void PsfFitterAlgorithm::fail(
-    afw::table::SourceRecord & measRecord,
-    lsst::meas::base::MeasurementError * error
+namespace {
+
+// Create a 1-d array from an image by flattening over columns and then rows.
+ndarray::Array<Pixel const,1,1> flattenImage(afw::image::Image<Pixel> const & image) {
+    // If the image is already contiguous, we can just make a view with different shape and strides.
+    ndarray::Array<Pixel const,2,2> contiguous = ndarray::dynamic_dimension_cast<2>(image.getArray());
+    if (contiguous.isEmpty()) { // If it isn't contiguous, we have to deep-copy.
+        contiguous = ndarray::copy(image.getArray());
+    }
+    return ndarray::flatten<1>(contiguous);
+}
+
+} // anonymous
+
+int PsfFitter::apply(
+    shapelet::MultiShapeletFunction & model,
+    afw::image::Image<Pixel> const & image
 ) const {
-   if (error == nullptr) {
-       _flagHandler.handleFailure(measRecord);
-   } else {
-       _flagHandler.handleFailure(measRecord, error);
-   }
-}
 
-
-class MultiShapeletPsfLikelihood::Impl {
-public:
-
-    explicit Impl(
-        ndarray::Array<Pixel const,1,1> const & x,
-        ndarray::Array<Pixel const,1,1> const & y,
-        Model::EllipseVector const & ellipses,
-        Model::BasisVector const & basisVector,
-        Scalar sigma
-    ) : _ellipses(ellipses),
-        _builders(),
-        _sigma(sigma)
-    {
-        FactoryVector factories;
-        factories.reserve(basisVector.size());
-        _builders.reserve(basisVector.size());
-        int workspaceSize = 0;
-        for (Model::BasisVector::const_iterator i = basisVector.begin(); i != basisVector.end(); ++i) {
-            factories.push_back(shapelet::MatrixBuilderFactory<Pixel>(x, y, **i));
-            workspaceSize = std::max(workspaceSize, factories.back().computeWorkspace());
-        }
-        shapelet::MatrixBuilderWorkspace<Pixel> workspace(workspaceSize);
-        for (FactoryVector::const_iterator i = factories.begin(); i != factories.end(); ++i) {
-            shapelet::MatrixBuilderWorkspace<Pixel> wsCopy(workspace); // share workspace between builders
-            _builders.push_back((*i)(wsCopy));
-        }
+    // Construct an Impl object for cached PSF-bbox-dependent state if necessary.
+    if (!_impl || _impl->bbox != image.getBBox()) {
+        _impl.reset(new Impl(image.getBBox(), _ctrls));
     }
 
-    void computeModelMatrix(
-        ndarray::Array<Pixel,2,-1> const & modelMatrix,
-        ndarray::Array<Scalar const,1,1> const & nonlinear,
-        ndarray::Array<Scalar const,1,1> const & fixed,
-        Model const & model
-    ) {
-        model.writeEllipses(nonlinear.begin(), fixed.begin(), _ellipses.begin());
-        modelMatrix.deep() = 0.0;
-        Model::BasisVector const & basisVector = model.getBasisVector();
-        int amplitudeOffset = 0;
-        for (std::size_t i = 0; i < basisVector.size(); ++i) {
-            int amplitudeEnd = amplitudeOffset + _builders[i].getBasisSize();
-            _builders[i](modelMatrix[ndarray::view()(amplitudeOffset, amplitudeEnd)], _ellipses[i]);
-            amplitudeOffset = amplitudeEnd;
-        }
-        modelMatrix.asEigen() /= _sigma;
-    }
+    // View or copy of the image in 1-d, shape=(height*width)
+    ndarray::Array<Pixel const,1,1> data1d = flattenImage(image);
 
-private:
-    typedef std::vector< shapelet::MatrixBuilder<Pixel> > BuilderVector;
-    typedef std::vector< shapelet::MatrixBuilderFactory<Pixel> > FactoryVector;
+    // Expectation-Maximization loop.  We update the ellipses of the result MultiShapeletFunction in-place,
+    // but don't do anything with the coefficients yet, as whatever we might have done would have been
+    // totally overwritten by the final linear fit.
+    int nIterations = _impl->fitEM(model, data1d, _ctrls, _maxIterations, _absTol, _relTol);
 
-    Model::EllipseVector _ellipses;
-    BuilderVector _builders;
-    Scalar _sigma;
-};
+    // Do a final linear fit with all shapelet terms active.
+    _impl->fitShapelets(model, data1d);
 
-MultiShapeletPsfLikelihood::MultiShapeletPsfLikelihood(
-    ndarray::Array<Pixel const,2,1> const & image,
-    afw::geom::Point2I const & xy0,
-    PTR(Model) model,
-    Scalar sigma,
-    ndarray::Array<Scalar const,1,1> const & fixed
-) :
-    Likelihood(model, fixed)
-{
-    int nx = image.getSize<1>();
-    int ny = image.getSize<0>();
-    int nTot = nx*ny;
-    ndarray::Array<Pixel,1,1> x = ndarray::allocate(nTot);
-    ndarray::Array<Pixel,1,1> y = ndarray::allocate(nTot);
-    int j = 0;
-    for (int iy = xy0.getY(), yEnd = xy0.getY() + ny; iy < yEnd; ++iy) {
-        for (int ix = xy0.getX(), xEnd = xy0.getX() + nx; ix < xEnd; ++ix, ++j) {
-            x[j] = ix;
-            y[j] = iy;
-        }
-    }
-    _impl.reset(new Impl(x, y, model->makeEllipseVector(), model->getBasisVector(), sigma));
-    _data = ndarray::flatten<1>(ndarray::copy(image));
-    _data.deep() /= sigma;
-    _weights = ndarray::allocate(_data.getShape());
-    _weights.deep() = 1.0;
+    return nIterations;
 }
 
-void MultiShapeletPsfLikelihood::computeModelMatrix(
-    ndarray::Array<Pixel,2,-1> const & modelMatrix,
-    ndarray::Array<Scalar const,1,1> const & nonlinear,
-    bool doApplyWeights
-) const {
-    return _impl->computeModelMatrix(modelMatrix, nonlinear, _fixed, *getModel());
-}
-
-MultiShapeletPsfLikelihood::~MultiShapeletPsfLikelihood() {}
+PsfFitter::~PsfFitter() {} // needs to be in .cc for forward-declared Impl
 
 }}} // namespace lsst::meas::modelfit

@@ -293,3 +293,5 @@ typedef lsst::afw::table::SortedCatalogT<ModelFitRecord> ModelFitCatalog;
 %include "lsst/meas/modelfit/MarginalSamplingInterpreter.h"
 %include "lsst/meas/modelfit/psf.i"
 %include "lsst/meas/modelfit/CModel.i"
+
+%include "lsst/meas/modelfit/debug.i"
