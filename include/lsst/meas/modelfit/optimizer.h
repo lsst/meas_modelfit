@@ -139,6 +139,13 @@ public:
         ndarray::Array<Scalar,1,1> const & residuals
     ) const = 0;
 
+    virtual bool differentiateResiduals(
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        ndarray::Array<Scalar,2,-2> const & derivatives
+    ) const {
+        return false;
+    }
+
     virtual bool hasPrior() const { return false; }
 
     virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const;
@@ -490,7 +497,7 @@ private:
     ndarray::Array<Scalar,1,1> _step;
     ndarray::Array<Scalar,1,1> _gradient;
     ndarray::Array<Scalar,2,2> _hessian;
-    Matrix _jacobian;
+    ndarray::Array<Scalar,2,-2> _residualDerivative;
     Matrix _sr1b;
     Vector _sr1v;
     Vector _sr1jtr;
