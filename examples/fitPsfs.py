@@ -62,8 +62,8 @@ def fitPsfImage(image, fitters):
     printResidualStatistics(image, msf, n)
 
 ctrls = [
-    lsst.meas.modelfit.PsfFitterControl(),
-    lsst.meas.modelfit.PsfFitterControl(),
+    lsst.meas.modelfit.GeneralPsfFitterControl(),
+    lsst.meas.modelfit.GeneralPsfFitterControl(),
     ]
 ctrls[0].primary.ellipticityPriorSigma = 0.3
 ctrls[0].primary.radiusPriorSigma = 0.5
@@ -87,7 +87,7 @@ ctrls[1].outer.radiusPriorSigma = 0.5
 ctrls[1].outer.positionPriorSigma = 0.1
 
 def main(filenames):
-    fitters = [lsst.meas.modelfit.PsfFitter(ctrl) for ctrl in ctrls]
+    fitters = [lsst.meas.modelfit.GeneralPsfFitter(ctrl) for ctrl in ctrls]
     for filename in filenames:
         image = lsst.afw.image.ImageD(filename)
         image.getArray()[:,:] /= image.getArray()[:,:].max()

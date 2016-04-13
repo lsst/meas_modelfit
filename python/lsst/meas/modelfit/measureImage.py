@@ -158,7 +158,7 @@ class MeasureImageTask(BaseMeasureTask):
         The MeasureImage implementation creates a UnitTransformedLikelihood with data from a single
         exposure.
         """
-        psfFitter = modelfitLib.PsfFitter(self.config.psf.makeControl())
+        psfFitter = modelfitLib.GeneralPsfFitter(self.config.psf.makeControl())
         center = record.get(self.keys["center"])
         psfImage = inputs.exposure.getPsf().computeImage(center).convertF()
         psfMoments = inputs.exposure.getPsf().computeShape(center)

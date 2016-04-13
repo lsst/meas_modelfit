@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MODELFIT_psf_h_INCLUDED
-#define LSST_MEAS_MODELFIT_psf_h_INCLUDED
+#ifndef LSST_MEAS_MODELFIT_GeneralPsfFitter_h_INCLUDED
+#define LSST_MEAS_MODELFIT_GeneralPsfFitter_h_INCLUDED
 
 #include <memory>
 
@@ -39,12 +39,12 @@
 namespace lsst { namespace meas { namespace modelfit {
 
 /**
- *  Control object used to define one piece of multishapelet fit to a PSF model; see PsfFitterControl
+ *  Control object used to define one piece of multishapelet fit to a PSF model; see GeneralPsfFitterControl
  */
-class PsfFitterComponentControl {
+class GeneralPsfFitterComponentControl {
 public:
 
-    PsfFitterComponentControl(int order_=0, double radiusFactor_=1.0) :
+    GeneralPsfFitterComponentControl(int order_=0, double radiusFactor_=1.0) :
         order(order_), positionPriorSigma(0.1), ellipticityPriorSigma(0.3),
         radiusFactor(radiusFactor_), radiusPriorSigma(0.5)
     {}
@@ -77,37 +77,37 @@ public:
 };
 
 /**
- * Control object used to configure a multishapelet fit to a PSF model; see PsfFitter.
+ * Control object used to configure a multishapelet fit to a PSF model; see GeneralPsfFitter.
  *
  *  The default configuration corresponds to fitting an elliptical double-Gaussian, in which each component
  *  can have different radii, positions, and ellipticities.  While the fitter can support much more complex
  *  models, at present, fitting these is prohibitively slow, and is not recommended in production
  *  environments.
  */
-class PsfFitterControl {
+class GeneralPsfFitterControl {
 public:
 
-    PsfFitterControl() :
+    GeneralPsfFitterControl() :
         inner(-1, 0.5), primary(0, 1.0), wings(0, 2.0), outer(-1, 4.0), defaultNoiseSigma(0.001)
     {}
 
     LSST_NESTED_CONTROL_FIELD(
-        inner, lsst.meas.modelfit.modelfitLib, PsfFitterComponentControl,
+        inner, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
         "Innermost shapelet expansion, used to fit PSFs with very sharp cores"
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        primary, lsst.meas.modelfit.modelfitLib, PsfFitterComponentControl,
+        primary, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
         "Primary shapelet expansion, typically used to fit the bulk of the PSF "
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        wings, lsst.meas.modelfit.modelfitLib, PsfFitterComponentControl,
+        wings, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
         "Wing shapelet expansion (between primary and outer), typically used to fit the wings of the PSF"
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        outer, lsst.meas.modelfit.modelfitLib, PsfFitterComponentControl,
+        outer, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
         "Outermost shapelet expansion, used to fit PSFs with very broad wings"
     );
 
@@ -117,7 +117,7 @@ public:
     );
 
     LSST_CONTROL_FIELD(
-        defaultNoiseSigma, double, "Default value for the noiseSigma parameter in PsfFitter.apply()"
+        defaultNoiseSigma, double, "Default value for the noiseSigma parameter in GeneralPsfFitter.apply()"
     );
 
 };
@@ -143,11 +143,11 @@ public:
  *  priors (and vice versa).  In any case, having some sort of regularization is probably a good idea,
  *  as this is a very high-dimensional fit.
  */
-class PsfFitter {
+class GeneralPsfFitter {
 
 public:
     /// Initialize the fitter class with the given control object.
-    PsfFitter(PsfFitterControl const & ctrl);
+    GeneralPsfFitter(GeneralPsfFitterControl const & ctrl);
 
     /**
      *  Add fields to a Schema that can be used to store the MultiShapeletFunction returned by apply().
@@ -181,11 +181,11 @@ public:
     PTR(Prior) getPrior() const { return _prior; }
 
     /**
-     *  Adapt a differently-configured previous fit to be used as an starting point for this PsfFitter.
+     *  Adapt a differently-configured previous fit to be used as an starting point for this GeneralPsfFitter.
      *
      *  @param[in] previousFit     The return value of apply() from a differently-configured
-     *                             instance of PsfFitter.
-     *  @param[in] previousModel   The Model associated with the PsfFitter used to create previousFit.
+     *                             instance of GeneralPsfFitter.
+     *  @param[in] previousModel   The Model associated with the GeneralPsfFitter used to create previousFit.
      *
      *  @return a new MultiShapelet function that may be passed directly to apply().  When possible,
      *  the ellipse and shapelet coefficeints will be copied from previousFit; higher-order coefficients
@@ -234,7 +234,7 @@ public:
      *  @param[in]  image       The image to fit, typically the result of Psf::computeKernelImage().  The
      *                          image's xy0 should be set such that the center of the PSF is at (0,0).
      *  @param[in]  initial     The result of a previous call to apply(), using an identically-configured
-     *                          PsfFitter instance.  To use a result from a differently-configured PsfFitter,
+     *                          GeneralPsfFitter instance.  To use a result from a differently-configured GeneralPsfFitter,
      *                          use adapt().
      *  @param[in]  noiseSigma  An estimate of the noise in the image.  As LSST PSF images are generally
      *                          assumed to be noise-free, this is really just a fiddle-factor for the user.
@@ -258,12 +258,12 @@ public:
     //@}
 
 private:
-    PsfFitterControl _ctrl;
+    GeneralPsfFitterControl _ctrl;
     PTR(Model) _model;
     PTR(Prior) _prior;
 };
 
-class PsfFitterAlgorithm : public PsfFitter {
+class GeneralPsfFitterAlgorithm : public GeneralPsfFitter {
 public:
 
     enum {
@@ -275,7 +275,7 @@ public:
         N_FLAGS
     };
 
-    PsfFitterAlgorithm(PsfFitterControl const & ctrl,
+    GeneralPsfFitterAlgorithm(GeneralPsfFitterControl const & ctrl,
         afw::table::Schema & schema,
         std::string const & prefix
     );
@@ -308,7 +308,7 @@ private:
 
 /**
  *  Likelihood object used to fit multishapelet models to PSF model images; mostly for internal use
- *  by PsfFitter.
+ *  by GeneralPsfFitter.
  */
 class MultiShapeletPsfLikelihood : public Likelihood {
 public:
@@ -336,4 +336,4 @@ private:
 
 }}} // namespace lsst::meas::modelfit
 
-#endif // !LSST_MEAS_MODELFIT_psf_h_INCLUDED
+#endif // !LSST_MEAS_MODELFIT_GeneralPsfFitter_h_INCLUDED

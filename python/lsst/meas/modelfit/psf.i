@@ -25,16 +25,16 @@
 %include "lsst/meas/modelfit/optimizer.i"
 
 %{
-#include "lsst/meas/modelfit/psf.h"
+#include "lsst/meas/modelfit/GeneralPsfFitter.h"
 %}
 
-%include "lsst/meas/modelfit/psf.h"
+%include "lsst/meas/modelfit/GeneralPsfFitter.h"
 
 %pythoncode %{
 import lsst.pex.config
 import lsst.meas.algorithms
 
-PsfFitterComponentConfig = lsst.pex.config.makeConfigClass(PsfFitterComponentControl)
-PsfFitterConfig = lsst.pex.config.makeConfigClass(PsfFitterControl)
-PsfFitter.ConfigClass = PsfFitterConfig
+GeneralPsfFitterComponentConfig = lsst.pex.config.makeConfigClass(GeneralPsfFitterComponentControl)
+GeneralPsfFitterConfig = lsst.pex.config.makeConfigClass(GeneralPsfFitterControl)
+GeneralPsfFitter.ConfigClass = GeneralPsfFitterConfig
 %}

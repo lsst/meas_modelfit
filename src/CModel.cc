@@ -323,7 +323,7 @@ struct CModelKeys {
         dev(devModel, schema, schema.join(prefix, "dev"), "de Vaucouleur", isForced, ctrl.dev),
         // Unlike all the other keys, we expect the psf keys to already be present in the schema,
         // and we just retrieve them, because they're created and filled by the ShapeletPsfApprox plugin.
-        psf(schema["modelfit"]["ShapeletPsfApprox"][ctrl.psfName]),
+        psf(schema["modelfit"]["GeneralShapeletPsfApprox"][ctrl.psfName]),
         flux(
             schema.addField<meas::base::Flux>(
                 schema.join(prefix, "flux"),

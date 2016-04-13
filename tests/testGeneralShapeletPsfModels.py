@@ -41,7 +41,7 @@ numpy.random.seed(500)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
-class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
+class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         self.exposure = lsst.afw.image.ExposureF(41, 41)
@@ -76,8 +76,8 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.modelFlux = None
         config.slots.calibFlux = None
         config.doReplaceWithNoise = False
-        config.plugins.names = ["modelfit_ShapeletPsfApprox"]
-        config.plugins["modelfit_ShapeletPsfApprox"].sequence = sequence
+        config.plugins.names = ["modelfit_GeneralShapeletPsfApprox"]
+        config.plugins["modelfit_GeneralShapeletPsfApprox"].sequence = sequence
         task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
@@ -91,7 +91,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.exposure.setPsf(lsst.afw.detection.GaussianPsf(19, 19, sigma1))
         measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian"])
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
-            self.schema["modelfit"]["ShapeletPsfApprox"]["SingleGaussian"]
+            self.schema["modelfit"]["GeneralShapeletPsfApprox"]["SingleGaussian"]
             )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
@@ -105,14 +105,14 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.exposure.setPsf(lsst.meas.algorithms.DoubleGaussianPsf(19, 19, sigma1, sigma2, .25))
         measRecord = self.runTask("Double Gaussian Psf", ["DoubleGaussian"])
         keyDoubleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
-            self.schema["modelfit"]["ShapeletPsfApprox"]["DoubleGaussian"]
+            self.schema["modelfit"]["GeneralShapeletPsfApprox"]["DoubleGaussian"]
             )
         msf = measRecord.get(keyDoubleGaussian)
         comps = msf.getComponents()
         self.assertEqual(len(comps), 2)
         #  amplitudes are equal by construction
-        A0 = measRecord.get("modelfit_ShapeletPsfApprox_DoubleGaussian_0_0")
-        A1 = measRecord.get("modelfit_ShapeletPsfApprox_DoubleGaussian_1_0")
+        A0 = measRecord.get("modelfit_GeneralShapeletPsfApprox_DoubleGaussian_0_0")
+        A1 = measRecord.get("modelfit_GeneralShapeletPsfApprox_DoubleGaussian_1_0")
         self.assertClose(A0, A1, .05)
         r0 = comps[0].getEllipse().getCore().getDeterminantRadius()
         r1 = comps[1].getEllipse().getCore().getDeterminantRadius()
@@ -123,13 +123,13 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.exposure.setPsf(self.makePsf("galsimPsf_0.5.fits", max=33))
         measRecord = self.runTask("Galsim Psf", ["DoubleShapelet"])
         keyDoubleShapelet = lsst.shapelet.MultiShapeletFunctionKey(
-            self.schema["modelfit"]["ShapeletPsfApprox"]["DoubleShapelet"]
+            self.schema["modelfit"]["GeneralShapeletPsfApprox"]["DoubleShapelet"]
             )
         msf = measRecord.get(keyDoubleShapelet)
         comps = msf.getComponents()
         self.assertEqual(len(comps), 2)
-        A0 = measRecord.get("modelfit_ShapeletPsfApprox_DoubleShapelet_0_0")
-        A1 = measRecord.get("modelfit_ShapeletPsfApprox_DoubleShapelet_1_0")
+        A0 = measRecord.get("modelfit_GeneralShapeletPsfApprox_DoubleShapelet_0_0")
+        A1 = measRecord.get("modelfit_GeneralShapeletPsfApprox_DoubleShapelet_1_0")
         self.assertGreater(A1, .04)
         self.assertGreater(A0, .04)
 
@@ -137,13 +137,13 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.exposure.setPsf(self.makePsf("galsimPsf_0.9.fits", max=33))
         measRecord = self.runTask("Galsim Psf", ["Full"])
         keyFull = lsst.shapelet.MultiShapeletFunctionKey(
-            self.schema["modelfit"]["ShapeletPsfApprox"]["Full"]
+            self.schema["modelfit"]["GeneralShapeletPsfApprox"]["Full"]
             )
         msf = measRecord.get(keyFull)
         comps = msf.getComponents()
         self.assertEqual(len(comps), 4)
-        A1 = measRecord.get("modelfit_ShapeletPsfApprox_Full_1_0")
-        A2 = measRecord.get("modelfit_ShapeletPsfApprox_Full_2_0")
+        A1 = measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_1_0")
+        A2 = measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_2_0")
         # test the primary and wings to be sure we are getting something
         self.assertGreater(A2, .04)
         self.assertGreater(A1, .04)
@@ -155,7 +155,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian", "DoubleGaussian",
                                   "DoubleShapelet"])
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
-            self.schema["modelfit"]["ShapeletPsfApprox"]["SingleGaussian"]
+            self.schema["modelfit"]["GeneralShapeletPsfApprox"]["SingleGaussian"]
             )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
@@ -165,7 +165,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.assertClose(r0, sigma1, .3)
 
         keyDoubleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
-            self.schema["modelfit"]["ShapeletPsfApprox"]["DoubleGaussian"]
+            self.schema["modelfit"]["GeneralShapeletPsfApprox"]["DoubleGaussian"]
             )
         msfDoubleGaussian = measRecord.get(keyDoubleGaussian)
         comps = msfDoubleGaussian.getComponents()
@@ -180,7 +180,7 @@ def suite():
     lsst.utils.tests.init()
 
     suites = []
-    suites += unittest.makeSuite(ShapeletPsfApproxPluginsTestCase)
+    suites += unittest.makeSuite(GeneralShapeletPsfApproxPluginsTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
 

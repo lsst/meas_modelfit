@@ -50,21 +50,21 @@ def computeMoments(image):
         )
     return result.getShape()
 
-class PsfFitterTestCase(lsst.utils.tests.TestCase):
+class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         self.configs = {}
-        self.configs['fixed'] = lsst.meas.modelfit.PsfFitterConfig()
+        self.configs['fixed'] = lsst.meas.modelfit.GeneralPsfFitterConfig()
         self.configs['fixed'].primary.ellipticityPriorSigma = 0.0
         self.configs['fixed'].primary.radiusPriorSigma = 0.0
         self.configs['fixed'].primary.positionPriorSigma = 0.0
         self.configs['fixed'].wings.ellipticityPriorSigma = 0.0
         self.configs['fixed'].wings.radiusPriorSigma = 0.0
         self.configs['fixed'].wings.positionPriorSigma = 0.0
-        self.configs['ellipse'] = lsst.meas.modelfit.PsfFitterConfig()
+        self.configs['ellipse'] = lsst.meas.modelfit.GeneralPsfFitterConfig()
         self.configs['ellipse'].primary.positionPriorSigma = 0.0
         self.configs['ellipse'].wings.positionPriorSigma = 0.0
-        self.configs['full'] = lsst.meas.modelfit.PsfFitterConfig()
+        self.configs['full'] = lsst.meas.modelfit.GeneralPsfFitterConfig()
         self.configs['full'].inner.order = 0
         self.configs['full'].primary.order = 4
         self.configs['full'].wings.order = 4
@@ -86,7 +86,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         del self.configs
 
     def testFixedModel(self):
-        fitter = lsst.meas.modelfit.PsfFitter(self.configs['fixed'].makeControl())
+        fitter = lsst.meas.modelfit.GeneralPsfFitter(self.configs['fixed'].makeControl())
         model = fitter.getModel()
 
         # check that we have the right numbers and names for parameters
@@ -123,7 +123,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
             self.assertClose(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients())
 
     def testEllipseModel(self):
-        fitter = lsst.meas.modelfit.PsfFitter(self.configs['ellipse'].makeControl())
+        fitter = lsst.meas.modelfit.GeneralPsfFitter(self.configs['ellipse'].makeControl())
         model = fitter.getModel()
 
         # check that we have the right numbers and names for parameters
@@ -174,7 +174,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertClose(fixed.reshape(2,5)[:,3:], ellipseParameters[:,3:], rtol=1E-8)
 
     def testFullModel(self):
-        fitter = lsst.meas.modelfit.PsfFitter(self.configs['full'].makeControl())
+        fitter = lsst.meas.modelfit.GeneralPsfFitter(self.configs['full'].makeControl())
         model = fitter.getModel()
 
         # check that we have the right numbers and names for parameters
@@ -246,7 +246,7 @@ class PsfFitterTestCase(lsst.utils.tests.TestCase):
             kernelImage = lsst.afw.image.ImageD(filename)
             shape = computeMoments(kernelImage)
             for configKey in ["full", "ellipse", "fixed"]:
-                fitter = lsst.meas.modelfit.PsfFitter(self.configs[configKey].makeControl())
+                fitter = lsst.meas.modelfit.GeneralPsfFitter(self.configs[configKey].makeControl())
                 multiShapeletFit = fitter.apply(kernelImage, shape, 0.01)
                 modelImage = lsst.afw.image.ImageD(kernelImage.getBBox(lsst.afw.image.PARENT))
                 multiShapeletFit.evaluate().addToImage(modelImage)
@@ -260,7 +260,7 @@ def suite():
     lsst.utils.tests.init()
 
     suites = []
-    suites += unittest.makeSuite(PsfFitterTestCase)
+    suites += unittest.makeSuite(GeneralPsfFitterTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
 

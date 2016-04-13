@@ -161,7 +161,7 @@ class MeasureMultiTask(BaseMeasureTask):
 
             sourceCalexpPos = calexp.getWcs().skyToPixel(record.getCoord())
 
-            psfFitter = modelfitLib.PsfFitter(self.config.psf.makeControl())
+            psfFitter = modelfitLib.GeneralPsfFitter(self.config.psf.makeControl())
             psfImage = calexp.getPsf().computeImage(sourceCalexpPos).convertF()
             psfMoments = calexp.getPsf().computeShape(center)
             psf = psfFitter.apply(psfImage, psfMoments)
