@@ -24,7 +24,13 @@
 import lsst.pex.config
 import lsst.meas.base
 from . import modelfitLib
+from . import optimizer   # needed to declare OptimizerConfig
 
+lsst.meas.base.wrapSimpleAlgorithm(
+    modelfitLib.DoubleShapeletPsfApproxAlgorithm,
+    Control=modelfitLib.DoubleShapeletPsfApproxControl,
+    executionOrder=lsst.meas.base.BasePlugin.SHAPE_ORDER
+)
 
 class GeneralShapeletPsfApproxConfig(lsst.pex.config.Config):
     models = lsst.pex.config.ConfigDictField(

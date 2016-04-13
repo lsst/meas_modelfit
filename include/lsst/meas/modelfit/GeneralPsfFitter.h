@@ -82,7 +82,7 @@ public:
  *  The default configuration corresponds to fitting an elliptical double-Gaussian, in which each component
  *  can have different radii, positions, and ellipticities.  While the fitter can support much more complex
  *  models, at present, fitting these is prohibitively slow, and is not recommended in production
- *  environments.
+ *  environments (use DoubleShapeletPsfApprox instead).
  */
 class GeneralPsfFitterControl {
 public:

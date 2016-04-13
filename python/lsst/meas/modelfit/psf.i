@@ -26,9 +26,11 @@
 
 %{
 #include "lsst/meas/modelfit/GeneralPsfFitter.h"
+#include "lsst/meas/modelfit/DoubleShapeletPsfApprox.h"
 %}
 
 %include "lsst/meas/modelfit/GeneralPsfFitter.h"
+%include "lsst/meas/modelfit/DoubleShapeletPsfApprox.h"
 
 %pythoncode %{
 import lsst.pex.config

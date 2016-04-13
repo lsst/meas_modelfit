@@ -38,7 +38,10 @@ Basic routines to talk to lsst::meas::modelfit classes
 #include "lsst/afw/table.h"
 #include "lsst/afw/cameraGeom.h"
 #include "lsst/afw/image.h"
+#include "lsst/afw/math.h"
+#include "lsst/afw/detection.h"
 #include "lsst/shapelet.h"
+#include "lsst/meas/base.h"
 #include "lsst/meas/modelfit.h"
 %}
 
@@ -63,6 +66,7 @@ Basic routines to talk to lsst::meas::modelfit classes
 %import "lsst/afw/image/imageLib.i"
 %import "lsst/afw/math/random.i"
 %import "lsst/shapelet/shapeletLib.i"
+%import "lsst/meas/base/baseLib.i"
 %import "lsst/pex/config.h"
 
 %template(EpochFootprintVector) std::vector<PTR(lsst::meas::modelfit::EpochFootprint)>;
