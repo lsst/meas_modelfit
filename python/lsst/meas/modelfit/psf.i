@@ -32,7 +32,6 @@
 
 %pythoncode %{
 import lsst.pex.config
-import lsst.meas.algorithms
 
 GeneralPsfFitterComponentConfig = lsst.pex.config.makeConfigClass(GeneralPsfFitterComponentControl)
 GeneralPsfFitterConfig = lsst.pex.config.makeConfigClass(GeneralPsfFitterControl)
