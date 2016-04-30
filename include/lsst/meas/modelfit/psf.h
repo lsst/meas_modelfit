@@ -331,7 +331,7 @@ public:
 
 private:
     class Impl;
-    boost::scoped_ptr<Impl> _impl;
+    std::unique_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::meas::modelfit
