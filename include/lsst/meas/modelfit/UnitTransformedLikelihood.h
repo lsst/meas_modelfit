@@ -25,7 +25,7 @@
 #define LSST_MEAS_MODELFIT_UnitTransformedLikelihood_h_INCLUDED
 
 #include <vector>
-#include "boost/scoped_ptr.hpp"
+#include <memory>
 
 #include "ndarray.h"
 

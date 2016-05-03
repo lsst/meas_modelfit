@@ -90,7 +90,7 @@ void OptimizerInterpreter::attachPdf(ModelFitRecord & record, Optimizer const & 
     components.push_back(
         Mixture::Component(1.0, optimizer.getParameters().asEigen(), sigma)
     );
-    record.setPdf(boost::make_shared<Mixture>(s.size(), boost::ref(components)));
+    record.setPdf(std::make_shared<Mixture>(s.size(), boost::ref(components)));
 }
 
 ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeParameterQuantiles(
@@ -268,7 +268,7 @@ PTR(OptimizerObjective) OptimizerObjective::makeFromLikelihood(
     PTR(Likelihood) likelihood,
     PTR(Prior) prior
 ) {
-    return boost::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
+    return std::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
 }
 
 Scalar OptimizerObjective::computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {

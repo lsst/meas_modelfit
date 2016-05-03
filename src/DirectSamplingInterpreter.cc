@@ -131,7 +131,7 @@ PTR(SamplingObjective) DirectSamplingInterpreter::makeObjective(
     PTR(SamplingInterpreter) self,
     PTR(Likelihood) likelihood
 ) const {
-    return boost::make_shared<DirectSamplingObjective>(self, likelihood);
+    return std::make_shared<DirectSamplingObjective>(self, likelihood);
 }
 
 void DirectSamplingInterpreter::_packParameters(

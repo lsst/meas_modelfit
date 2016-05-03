@@ -392,11 +392,11 @@ PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, Cen
             }
         }
         if (center == FIXED_CENTER) {
-            return boost::make_shared<FixedCenterModel>(basisVector, nonlinearNames, amplitudeNames);
+            return std::make_shared<FixedCenterModel>(basisVector, nonlinearNames, amplitudeNames);
         } else {
             nonlinearNames.push_back("x");
             nonlinearNames.push_back("y");
-            return boost::make_shared<SingleCenterModel>(basisVector, nonlinearNames, amplitudeNames);
+            return std::make_shared<SingleCenterModel>(basisVector, nonlinearNames, amplitudeNames);
         }
     } else if (center == MULTI_CENTER) {
         for (std::size_t i = 0, n = basisVector.size(); i < n; ++i) {
@@ -413,7 +413,7 @@ PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, Cen
             nonlinearNames.push_back(prefixes[i] + "x");
             nonlinearNames.push_back(prefixes[i] + "y");
         }
-        return boost::make_shared<MultiCenterModel>(basisVector, nonlinearNames, amplitudeNames);
+        return std::make_shared<MultiCenterModel>(basisVector, nonlinearNames, amplitudeNames);
     }
     throw LSST_EXCEPT(
         pex::exceptions::LogicError,
@@ -434,12 +434,12 @@ PTR(Model) Model::make(PTR(shapelet::MultiShapeletBasis) basis, CenterEnum cente
     }
     if (center == FIXED_CENTER) {
         BasisVector basisVector(1, basis);
-        return boost::make_shared<FixedCenterModel>(basisVector, nonlinearNames, amplitudeNames);
+        return std::make_shared<FixedCenterModel>(basisVector, nonlinearNames, amplitudeNames);
     } else if (center == SINGLE_CENTER || center == MULTI_CENTER) {
         nonlinearNames.push_back("x");
         nonlinearNames.push_back("y");
         BasisVector basisVector(1, basis);
-        return boost::make_shared<SingleCenterModel>(basisVector, nonlinearNames, amplitudeNames);
+        return std::make_shared<SingleCenterModel>(basisVector, nonlinearNames, amplitudeNames);
     }
     throw LSST_EXCEPT(
         pex::exceptions::LogicError,
@@ -448,7 +448,7 @@ PTR(Model) Model::make(PTR(shapelet::MultiShapeletBasis) basis, CenterEnum cente
 }
 
 PTR(Model) Model::makeGaussian(CenterEnum center, double radius) {
-    PTR(shapelet::MultiShapeletBasis) basis = boost::make_shared<shapelet::MultiShapeletBasis>(1);
+    PTR(shapelet::MultiShapeletBasis) basis = std::make_shared<shapelet::MultiShapeletBasis>(1);
     ndarray::Array<double,2,2> matrix = ndarray::allocate(1, 1);
     matrix[0][0] = 1.0;
     basis->addComponent(radius, 0, matrix);

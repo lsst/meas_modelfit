@@ -62,11 +62,11 @@ public:
 private:
 
     virtual PTR(afw::table::BaseTable) _clone() const {
-        return boost::make_shared<ModelFitTableImpl>(*this);
+        return std::make_shared<ModelFitTableImpl>(*this);
     }
 
     virtual PTR(afw::table::BaseRecord) _makeRecord() {
-        return boost::make_shared<ModelFitRecordImpl>(getSelf<ModelFitTableImpl>());
+        return std::make_shared<ModelFitRecordImpl>(getSelf<ModelFitTableImpl>());
     }
 
 };
@@ -116,7 +116,7 @@ PTR(ModelFitTable) ModelFitTable::make(
             "Schema for ModelFit must contain at least the keys defined by makeMinimalSchema()."
         );
     }
-    return boost::make_shared<ModelFitTableImpl>(schema, sampleTable, interpreter);
+    return std::make_shared<ModelFitTableImpl>(schema, sampleTable, interpreter);
 }
 
 ModelFitTable::ModelFitTable(

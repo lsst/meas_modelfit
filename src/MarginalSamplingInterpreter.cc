@@ -161,7 +161,7 @@ PTR(SamplingObjective) MarginalSamplingInterpreter::makeObjective(
     PTR(SamplingInterpreter) self,
     PTR(Likelihood) likelihood
 ) const {
-    return boost::make_shared<MarginalSamplingObjective>(self, likelihood);
+    return std::make_shared<MarginalSamplingObjective>(self, likelihood);
 }
 
 void MarginalSamplingInterpreter::_packParameters(
@@ -321,7 +321,7 @@ void UnnestMarginalSamples::apply(
         directSigma.bottomRightCorner(amplitudeDim, amplitudeDim) = amplitudeSigma.asEigen();
         directComponents.push_back(Mixture::Component(marginalIter->weight, directMu, directSigma));
     }
-    PTR(Mixture) directPdf = boost::make_shared<Mixture>(
+    PTR(Mixture) directPdf = std::make_shared<Mixture>(
         parameterDim, boost::ref(directComponents), marginalPdf->getDegreesOfFreedom()
     );
     afw::table::BaseColumnView columns = directRecord.getSamples().getColumnView();

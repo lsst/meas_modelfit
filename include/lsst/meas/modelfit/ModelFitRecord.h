@@ -55,7 +55,7 @@ public:
     typedef afw::table::SortedCatalogT<ModelFitRecord const> ConstCatalog;
 
     CONST_PTR(ModelFitTable) getTable() const {
-        return boost::static_pointer_cast<ModelFitTable const>(afw::table::BaseRecord::getTable());
+        return std::static_pointer_cast<ModelFitTable const>(afw::table::BaseRecord::getTable());
     }
 
     PTR(Interpreter) getInterpreter() const;
@@ -123,14 +123,14 @@ public:
     void setInterpreter(PTR(Interpreter) interpreter) { _interpreter = interpreter; }
 
     /// @copydoc afw::table::BaseTable::clone
-    PTR(ModelFitTable) clone() const { return boost::static_pointer_cast<ModelFitTable>(_clone()); }
+    PTR(ModelFitTable) clone() const { return std::static_pointer_cast<ModelFitTable>(_clone()); }
 
     /// @copydoc afw::table::BaseTable::makeRecord
-    PTR(ModelFitRecord) makeRecord() { return boost::static_pointer_cast<ModelFitRecord>(_makeRecord()); }
+    PTR(ModelFitRecord) makeRecord() { return std::static_pointer_cast<ModelFitRecord>(_makeRecord()); }
 
     /// @copydoc afw::table::BaseTable::copyRecord
     PTR(ModelFitRecord) copyRecord(afw::table::BaseRecord const & other) {
-        return boost::static_pointer_cast<ModelFitRecord>(SimpleTable::copyRecord(other));
+        return std::static_pointer_cast<ModelFitRecord>(SimpleTable::copyRecord(other));
     }
 
     /// @copydoc afw::table::BaseTable::copyRecord
@@ -138,7 +138,7 @@ public:
         afw::table::BaseRecord const & other,
         afw::table::SchemaMapper const & mapper
     ) {
-        return boost::static_pointer_cast<ModelFitRecord>(afw::table::SimpleTable::copyRecord(other, mapper));
+        return std::static_pointer_cast<ModelFitRecord>(afw::table::SimpleTable::copyRecord(other, mapper));
     }
 
 protected:

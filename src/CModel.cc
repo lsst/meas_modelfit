@@ -81,11 +81,11 @@ PTR(Prior) CModelStageControl::getPrior() const {
             / boost::filesystem::path("data")
             / boost::filesystem::path(priorName + ".fits");
         PTR(Mixture) mixture = Mixture::readFits(priorPath.string());
-        return boost::make_shared<MixturePrior>(mixture, "single-ellipse");
+        return std::make_shared<MixturePrior>(mixture, "single-ellipse");
     } else if (priorSource == "LINEAR") {
-        return boost::make_shared<SoftenedLinearPrior>(linearPriorConfig);
+        return std::make_shared<SoftenedLinearPrior>(linearPriorConfig);
     } else if (priorSource == "EMPIRICAL") {
-        return boost::make_shared<SemiEmpiricalPrior>(empiricalPriorConfig);
+        return std::make_shared<SemiEmpiricalPrior>(empiricalPriorConfig);
     } else {
         throw LSST_EXCEPT(
             meas::base::FatalAlgorithmError,
@@ -713,7 +713,7 @@ public:
         if (ctrl.doRecordTime) {
             startTime = daf::base::DateTime::now().nsecs();
         }
-        result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
+        result.likelihood = std::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
             exposure, footprint, data.psf, UnitTransformedLikelihoodControl(ctrl.usePixelWeights)
         );
@@ -796,7 +796,7 @@ public:
         CModelStageControl const & ctrl, CModelStageResult & result, CModelStageData const & data,
         afw::image::Exposure<Pixel> const & exposure, afw::detection::Footprint const & footprint
     ) const {
-        result.likelihood = boost::make_shared<UnitTransformedLikelihood>(
+        result.likelihood = std::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
             exposure, footprint, data.psf, UnitTransformedLikelihoodControl(ctrl.usePixelWeights)
         );
@@ -848,7 +848,7 @@ public:
         Model::NameVector prefixes(2);
         prefixes[0] = "exp";
         prefixes[1] = "dev";
-        model = boost::make_shared<MultiModel>(components, prefixes);
+        model = std::make_shared<MultiModel>(components, prefixes);
     }
 
     // Create a blank result object, filling in only the things that don't change
@@ -1007,7 +1007,7 @@ CModelAlgorithm::CModelAlgorithm(
     afw::table::Schema & schema
 ) : _ctrl(ctrl), _impl(new Impl(ctrl))
 {
-    _impl->keys = boost::make_shared<CModelKeys>(
+    _impl->keys = std::make_shared<CModelKeys>(
         *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
         boost::ref(schema), name, false, ctrl
     );
@@ -1019,11 +1019,11 @@ CModelAlgorithm::CModelAlgorithm(
     afw::table::SchemaMapper & schemaMapper
 ) : _ctrl(ctrl), _impl(new Impl(ctrl))
 {
-    _impl->keys = boost::make_shared<CModelKeys>(
+    _impl->keys = std::make_shared<CModelKeys>(
         *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
         boost::ref(schemaMapper.editOutputSchema()), name, true, ctrl
     );
-    _impl->refKeys = boost::make_shared<CModelKeys>(
+    _impl->refKeys = std::make_shared<CModelKeys>(
         *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
         schemaMapper.getInputSchema(), name
     );
