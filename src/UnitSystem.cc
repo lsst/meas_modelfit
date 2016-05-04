@@ -22,7 +22,7 @@
  */
 
 #include "boost/format.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 
 #include "lsst/meas/modelfit/UnitSystem.h"
 

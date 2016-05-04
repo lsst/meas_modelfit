@@ -23,7 +23,7 @@
 #include <cstdlib>
 
 #include "boost/filesystem/path.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 
 #include "ndarray/eigen.h"
 

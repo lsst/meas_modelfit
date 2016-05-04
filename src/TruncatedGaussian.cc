@@ -32,7 +32,7 @@
 //
 
 #include "boost/math/special_functions/erf.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 #include "Eigen/Eigenvalues"
 #include "Eigen/LU"
 
