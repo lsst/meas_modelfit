@@ -20,7 +20,7 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#include "boost/array.hpp"
+#include <array>
 
 #include "ndarray/eigen.h"
 
@@ -337,8 +337,8 @@ ComponentVector vectorizeComponents(PsfFitterControl const & ctrl) {
     return components;
 }
 
-boost::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const & getFlagDefinitions() {
-    static boost::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const flagDefs = {{
+std::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const & getFlagDefinitions() {
+    static std::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const flagDefs = {{
         {"flag", "general failure flag"},
         {"flag_max_inner_iterations", "exceeded maxInnerIterations"},
         {"flag_max_outer_iterations", "exceeded maxOuterIterations"},
