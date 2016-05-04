@@ -32,7 +32,7 @@
 //
 
 #include "boost/math/special_functions/erf.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 #include "Eigen/Eigenvalues"
 #include "Eigen/LU"
 
@@ -84,7 +84,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
              % n % hessian.rows() % hessian.cols()).str()
         );
     }
-    PTR(Impl) impl = boost::make_shared<Impl>(n);
+    PTR(Impl) impl = std::make_shared<Impl>(n);
     if (n == 1) {
         Scalar g = gradient[0];
         Scalar H = hessian(0,0);
@@ -200,7 +200,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
              % n % covariance.rows() % covariance.cols()).str()
         );
     }
-    PTR(Impl) impl = boost::make_shared<Impl>(n);
+    PTR(Impl) impl = std::make_shared<Impl>(n);
     if (n == 1) {
         Scalar mu = mean[0];
         Scalar Sigma = covariance(0,0);
@@ -495,13 +495,13 @@ TruncatedGaussianSampler::TruncatedGaussianSampler(
     if (parent.getDim() == 1) {
         switch (strategy) {
         case TruncatedGaussian::DIRECT_WITH_REJECTION:
-            _impl = boost::make_shared<SamplerImplDWR1>(
+            _impl = std::make_shared<SamplerImplDWR1>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
             debugLog.debug<8>("Sampler: using DWR1");
             break;
         case TruncatedGaussian::ALIGN_AND_WEIGHT:
-            _impl = boost::make_shared<SamplerImplAAW1>(
+            _impl = std::make_shared<SamplerImplAAW1>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
             debugLog.debug<8>("Sampler: using AAW1");
@@ -510,13 +510,13 @@ TruncatedGaussianSampler::TruncatedGaussianSampler(
     } else {
         switch (strategy) {
         case TruncatedGaussian::DIRECT_WITH_REJECTION:
-            _impl = boost::make_shared<SamplerImplDWR>(
+            _impl = std::make_shared<SamplerImplDWR>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
             debugLog.debug<8>("Sampler: using DWR");
             break;
         case TruncatedGaussian::ALIGN_AND_WEIGHT:
-            _impl = boost::make_shared<SamplerImplAAW>(
+            _impl = std::make_shared<SamplerImplAAW>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
             debugLog.debug<8>("Sampler: using AAW");

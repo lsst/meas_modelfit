@@ -22,7 +22,7 @@
  */
 
 #include "boost/format.hpp"
-#include "boost/make_shared.hpp"
+#include <memory>
 
 #include "lsst/meas/modelfit/UnitSystem.h"
 
@@ -31,7 +31,7 @@ namespace lsst { namespace meas { namespace modelfit {
 UnitSystem::UnitSystem(afw::coord::Coord const & position, Scalar mag) {
     double cdelt = (1.0*lsst::afw::geom::arcseconds).asDegrees();
     wcs = afw::image::makeWcs(position, afw::geom::Point2D(0.0, 0.0), cdelt, 0.0, 0.0, cdelt);
-    PTR(afw::image::Calib) calib_ = boost::make_shared<afw::image::Calib>();
+    PTR(afw::image::Calib) calib_ = std::make_shared<afw::image::Calib>();
     calib_->setFluxMag0(std::pow(10.0, mag/2.5));
     calib = calib_;
 }

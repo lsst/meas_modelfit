@@ -157,7 +157,7 @@ bool PixelFitRegion::applyEllipse(
 
 void PixelFitRegion::applyMask(afw::image::Mask<> const & mask, afw::geom::Point2D const & center) {
     Scalar originalArea = ellipse.getArea();
-    footprint = boost::make_shared<afw::detection::Footprint>(
+    footprint = std::make_shared<afw::detection::Footprint>(
         afw::geom::ellipses::Ellipse(ellipse, center),
         mask.getBBox(lsst::afw::image::PARENT)
     );

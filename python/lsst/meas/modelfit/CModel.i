@@ -36,8 +36,8 @@
 %extend lsst::meas::modelfit::CModelStageResult {
 
     // An alternative accessor for ellipse
-    boost::shared_ptr<lsst::afw::geom::ellipses::Quadrupole> getEllipse() const {
-        return boost::make_shared<lsst::afw::geom::ellipses::Quadrupole>($self->ellipse);
+    std::shared_ptr<lsst::afw::geom::ellipses::Quadrupole> getEllipse() const {
+        return std::make_shared<lsst::afw::geom::ellipses::Quadrupole>($self->ellipse);
     }
 
 %pythoncode %{

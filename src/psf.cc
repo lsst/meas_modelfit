@@ -361,7 +361,7 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
     }
     ComponentVector components = vectorizeComponents(_ctrl);
 
-    _prior = boost::make_shared<PsfFitterPrior>(components);
+    _prior = std::make_shared<PsfFitterPrior>(components);
 
     Model::BasisVector basisVector;
     Model::NameVector nonlinearNames;
@@ -372,7 +372,7 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
 
         // Construct a MultiShapeletBasis with a single shapelet basis with this component
         int dim = shapelet::computeSize(i->second.order);
-        PTR(shapelet::MultiShapeletBasis) basis = boost::make_shared<shapelet::MultiShapeletBasis>(dim);
+        PTR(shapelet::MultiShapeletBasis) basis = std::make_shared<shapelet::MultiShapeletBasis>(dim);
         ndarray::Array<double,2,2> matrix = ndarray::allocate(dim, dim);
         matrix.asEigen().setIdentity();
         basis->addComponent(1.0, i->second.order, matrix);
@@ -404,7 +404,7 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
 
     }
 
-    _model = boost::make_shared<PsfFitterModel>(
+    _model = std::make_shared<PsfFitterModel>(
         basisVector, nonlinearNames, amplitudeNames, fixedNames, components
     );
 }
@@ -430,14 +430,14 @@ shapelet::MultiShapeletFunction PsfFitter::adapt(
     shapelet::MultiShapeletFunction const & previousFit,
     PTR(Model) previousModel
 ) const {
-    PTR(PsfFitterModel) m = boost::dynamic_pointer_cast<PsfFitterModel>(previousModel);
+    PTR(PsfFitterModel) m = std::dynamic_pointer_cast<PsfFitterModel>(previousModel);
     if (!m) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterError,
             "Model passed to PsfFitter::adapt must have been constructed by PsfFitter"
         );
     }
-    return boost::static_pointer_cast<PsfFitterModel>(_model)->adapt(previousFit, *m);
+    return std::static_pointer_cast<PsfFitterModel>(_model)->adapt(previousFit, *m);
 }
 
 
@@ -451,7 +451,7 @@ shapelet::MultiShapeletFunction PsfFitter::apply(
         noiseSigma = _ctrl.defaultNoiseSigma;
     }
     shapelet::MultiShapeletFunction initial
-        = boost::static_pointer_cast<PsfFitterModel>(_model)->makeInitial(moments);
+        = std::static_pointer_cast<PsfFitterModel>(_model)->makeInitial(moments);
     return apply(image, initial, noiseSigma, pState);
 }
 
@@ -471,9 +471,9 @@ shapelet::MultiShapeletFunction PsfFitter::apply(
         = parameters[ndarray::view(_model->getNonlinearDim(), parameterDim)];
     ndarray::Array<Scalar,1,1> fixed = ndarray::allocate(_model->getFixedDim());
 
-    boost::static_pointer_cast<PsfFitterModel>(_model)->fillParameters(initial, nonlinear, amplitudes, fixed);
+    std::static_pointer_cast<PsfFitterModel>(_model)->fillParameters(initial, nonlinear, amplitudes, fixed);
 
-    PTR(Likelihood) likelihood = boost::make_shared<MultiShapeletPsfLikelihood>(
+    PTR(Likelihood) likelihood = std::make_shared<MultiShapeletPsfLikelihood>(
         image.getArray(), image.getXY0(), _model, noiseSigma, fixed
     );
     PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, _prior);

@@ -24,7 +24,7 @@
 #ifndef LSST_MEAS_MODELFIT_psf_h_INCLUDED
 #define LSST_MEAS_MODELFIT_psf_h_INCLUDED
 
-#include "boost/scoped_ptr.hpp"
+#include <memory>
 
 #include "lsst/pex/config.h"
 #include "lsst/shapelet/FunctorKeys.h"
@@ -331,7 +331,7 @@ public:
 
 private:
     class Impl;
-    boost::scoped_ptr<Impl> _impl;
+    std::unique_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::meas::modelfit

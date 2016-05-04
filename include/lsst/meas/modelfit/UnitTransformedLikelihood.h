@@ -25,7 +25,7 @@
 #define LSST_MEAS_MODELFIT_UnitTransformedLikelihood_h_INCLUDED
 
 #include <vector>
-#include "boost/scoped_ptr.hpp"
+#include <memory>
 
 #include "ndarray.h"
 
@@ -151,7 +151,7 @@ public:
 
 private:
     class Impl;
-    boost::scoped_ptr<Impl> _impl;
+    std::unique_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::meas::modelfit
