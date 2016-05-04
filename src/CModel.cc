@@ -21,9 +21,9 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #include <cstdlib>
+#include <memory>
 
 #include "boost/filesystem/path.hpp"
-#include <memory>
 
 #include "ndarray/eigen.h"
 
