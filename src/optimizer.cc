@@ -20,6 +20,7 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+#include <cmath>
 
 #include "Eigen/Eigenvalues"
 #include "boost/math/special_functions/erf.hpp"
@@ -28,7 +29,6 @@
 
 #define LSST_MAX_DEBUG 10
 #include "lsst/pex/logging/Debug.h"
-#include "lsst/utils/ieee.h"
 #include "lsst/afw/table/Catalog.h"
 #include "lsst/afw/table/BaseTable.h"
 #include "lsst/afw/table/BaseRecord.h"
@@ -196,7 +196,7 @@ void OptimizerObjective::fillObjectiveValueGrid(
         if (hasPrior()) {
             Scalar prior = computePrior(grid[i]);
             output[i] -= std::log(prior);
-            if (utils::isnan(output[i])) {
+            if (std::isnan(output[i])) {
                 output[i] = std::numeric_limits<Scalar>::infinity();
             }
         }
@@ -577,7 +577,7 @@ bool Optimizer::_stepImpl(
         );
         _next.parameters.asEigen() = _current.parameters.asEigen() + _step.asEigen();
         double stepLength = _step.asEigen().norm();
-        if (utils::isnan(stepLength)) {
+        if (std::isnan(stepLength)) {
             log.debug<7>("NaN encountered in step length");
             _state |= FAILED_NAN;
             return false;
@@ -586,7 +586,7 @@ bool Optimizer::_stepImpl(
         if (_objective->hasPrior()) {
             _next.priorValue = _objective->computePrior(_next.parameters);
             _next.objectiveValue = -std::log(_next.priorValue);
-            if (_next.priorValue <= 0.0 || utils::isnan(_next.objectiveValue)) {
+            if (_next.priorValue <= 0.0 || std::isnan(_next.objectiveValue)) {
                 _next.objectiveValue = std::numeric_limits<Scalar>::infinity();
                 log.debug<10>("Rejecting step due to zero prior");
                 if (stepLength < _trustRadius) {
@@ -617,7 +617,7 @@ bool Optimizer::_stepImpl(
             _gradient.asEigen() + 0.5*_hessian.asEigen()*_step.asEigen()
         );
         double rho = actualChange / predictedChange;
-        if (utils::isnan(rho)) {
+        if (std::isnan(rho)) {
             log.debug<10>("NaN encountered in rho");
             _state |= FAILED_NAN;
             return false;
