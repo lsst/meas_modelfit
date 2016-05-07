@@ -117,7 +117,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         self.schema = modelfitLib.ModelFitTable.makeMinimalSchema()
         self.keys = {}
         self.keys["center"] = lsst.afw.table.Point2DKey.addFields(
-            self.schema, "center", "input centroid of the object in image coordinates", "pixels"
+            self.schema, "center", "input centroid of the object in image coordinates", "pixel"
             )
         self.keys["initial.nonlinear"] = self.schema.addField(
             "initial.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),

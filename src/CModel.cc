@@ -138,14 +138,14 @@ struct CModelStageKeys {
             schema.addField<meas::base::Flux>(
                 schema.join(prefix, "flux"),
                 "flux from the " + stage + " fit",
-                "dn"
+                "count"
             )
         ),
         fluxSigma(
             schema.addField<meas::base::FluxErrElement>(
                 schema.join(prefix, "fluxSigma"),
                 "flux uncertainty from the " + stage + " fit",
-                "dn"
+                "count"
             )
         ),
         fluxFlag(

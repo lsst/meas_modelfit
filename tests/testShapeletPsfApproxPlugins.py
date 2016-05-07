@@ -58,7 +58,7 @@ class ShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.exposure = lsst.afw.image.ExposureF(41, 41)
         self.psf = lsst.afw.detection.GaussianPsf(19, 19, self.psfSigma)
         self.schema = lsst.afw.table.SourceTable.makeMinimalSchema()
-        self.centroidKey = lsst.afw.table.Point2DKey.addFields(self.schema, "centroid", "centroid", "pixels")
+        self.centroidKey = lsst.afw.table.Point2DKey.addFields(self.schema, "centroid", "centroid", "pixel")
         self.schema.getAliasMap().set("slot_Centroid", "centroid")
         self.psfDir = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data", "psfs")
 

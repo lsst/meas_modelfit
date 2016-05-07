@@ -79,7 +79,7 @@ namespace lsst { namespace meas { namespace modelfit {
  *
  *  Unlike most measurement algorithms, CModel requires the Exposure it is given to have both a Wcs and
  *  a Calib.  This is because it makes use of Bayesian priors, and hence it has to know the relationship
- *  between the raw units of the image (pixels and dn) and the global units in which the priors are defined.
+ *  between the raw units of the image (pixel and count) and the global units in which the priors are defined.
  *
  *  In fact, all of the nonlinear fits in CModel are done in a special, local coordinate system, defined
  *  by a Wcs in which the "pixels" have units of arcseconds (because we never create an image in this system,
