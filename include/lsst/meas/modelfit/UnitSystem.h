@@ -48,11 +48,13 @@ struct UnitSystem {
      *  set such that unit flux is the given magnitude.  See @ref modelfitUnits for an explanation
      *  of why we frequently use this system.
      */
+    UnitSystem(afw::coord::Coord const & position, std::shared_ptr<const lsst::afw::image::Calib> calibIn,
+               double flux);
     UnitSystem(afw::coord::Coord const & position, Scalar mag);
 
     /// Construct a UnitSystem from a give Wcs and Calib
     UnitSystem(PTR(afw::image::Wcs const) wcs_, PTR(afw::image::Calib const) calib_) :
-        wcs(wcs_), calib(calib_)
+        wcs(wcs_), calib(validateCalib(calib_))
     {}
 
 // work around a bug in SWIG 3.0.2: mis-handling templated constructors
@@ -61,17 +63,21 @@ struct UnitSystem {
     /// Construct a UnitSystem by extracting the Wcs and Calib from an Exposure (implicit)
     template <typename T>
     UnitSystem(afw::image::Exposure<T> const & exposure) :
-        wcs(exposure.getWcs()), calib(exposure.getCalib())
+        wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib()))
     {}
 #else
     UnitSystem(afw::image::Exposure<float> const & exposure) :
-        wcs(exposure.getWcs()), calib(exposure.getCalib())
+        wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib()))
     {}
     UnitSystem(afw::image::Exposure<double> const & exposure) :
-        wcs(exposure.getWcs()), calib(exposure.getCalib())
+        wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib()))
     {}
-
 #endif
+
+private:
+    std::shared_ptr<const lsst::afw::image::Calib> validateCalib(
+        std::shared_ptr<const lsst::afw::image::Calib> calib_);
+    static std::shared_ptr<const lsst::afw::image::Calib> getDefaultCalib();
 };
 
 /**
