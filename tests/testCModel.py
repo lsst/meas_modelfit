@@ -47,7 +47,7 @@ def makeMultiShapeletCircularGaussian(sigma):
 
 def computePsfFlux(centroid, exposure):
     schema = lsst.afw.table.SourceTable.makeMinimalSchema()
-    pointKey = lsst.afw.table.Point2DKey.addFields(schema, "centroid", "known input centroid", "pixels")
+    pointKey = lsst.afw.table.Point2DKey.addFields(schema, "centroid", "known input centroid", "pixel")
     schema.getAliasMap().set("slot_Centroid", "centroid")
     algorithm = lsst.meas.base.PsfFluxAlgorithm(lsst.meas.base.PsfFluxControl(), "base_PsfFlux", schema)
     table = lsst.afw.table.SourceTable.make(schema)

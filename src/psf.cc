@@ -420,7 +420,7 @@ shapelet::MultiShapeletFunctionKey PsfFitter::addFields(
     }
     return shapelet::MultiShapeletFunctionKey::addFields(
         schema, prefix, "multi-Shapelet approximation to the PSF model",
-        "pixels", // ellipse units
+        "pixel", // ellipse units
         "",       // coefficient units (unitless)
         orders
     );
