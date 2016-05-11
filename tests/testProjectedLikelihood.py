@@ -22,10 +22,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-import os
 import unittest
 import numpy
-import matplotlib
 
 import lsst.pex.logging
 import lsst.utils.tests
@@ -37,7 +35,6 @@ import lsst.afw.detection
 import lsst.meas.multifit
 import lsst.meas.multifit.display
 import lsst.afw.display.ds9
-from lsst.meas.extensions.multiShapelet import FitPsfAlgorithm
 
 numpy.random.seed(500)
 
@@ -61,7 +58,7 @@ def addGaussian(exposure, ellipse, flux, psf=None):
     if psf is not None:
         s = s.convolve(psf)
     imageF = exposure.getMaskedImage().getImage()
-    imageD = lsst.afw.image.ImageD(imageF.getBBox(lsst.afw.image.PARENT))
+    imageD = lsst.afw.image.ImageD(imageF.getBBox())
     s.evaluate().addToImage(imageD)
     imageF += imageD.convertF()
 

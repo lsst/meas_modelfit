@@ -52,6 +52,6 @@ def setupFitRegion(config, exposure, source):
     we don't anticipate needing any of that for S13.
     """
     fp = lsst.afw.detection.growFootprint(source.getFootprint(), config.nGrow, config.growIsotropic)
-    fp.clipTo(exposure.getBBox(lsst.afw.image.PARENT))
+    fp.clipTo(exposure.getBBox())
     return fp
 setupFitRegion.ConfigClass = FitRegionConfig

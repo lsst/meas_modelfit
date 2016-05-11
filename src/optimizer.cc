@@ -620,7 +620,7 @@ bool Optimizer::_stepImpl(
             return false;
         }
         log.debug<10>("Reduction ratio rho=%g; actual=%g, predicted=%g", rho, actualChange, predictedChange);
-        if (rho > _ctrl.stepAcceptThreshold) {
+        if (rho > _ctrl.stepAcceptThreshold && actualChange < 0.0) {
             log.debug<10>("Step accepted; new objective=%g, old was %g",
                           _next.objectiveValue, _current.objectiveValue);
             _state |= STATUS_STEP_ACCEPTED;
