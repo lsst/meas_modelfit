@@ -20,12 +20,12 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+#include <cmath>
 
 #include "ndarray/eigen.h"
 
 #define LSST_MAX_DEBUG 10
 #include "lsst/pex/logging/Debug.h"
-#include "lsst/utils/ieee.h"
 #include "lsst/afw/table/BaseRecord.h"
 #include "lsst/afw/table/Catalog.h"
 #include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
@@ -133,7 +133,7 @@ void AdaptiveImportanceSampler::run(
             for (int k = 0; k < ctrl.nSamples; ++k) {
                 PTR(afw::table::BaseRecord) record = samples.addNew();
                 double objectiveValue = objective(parameters[k], *record);
-                if (utils::isfinite(objectiveValue)) {
+                if (std::isfinite(objectiveValue)) {
                     subSamples.push_back(record);
                     record->set(_parametersKey, parameters[k]);
                     record->set(_objectiveKey, objectiveValue);
@@ -157,7 +157,7 @@ void AdaptiveImportanceSampler::run(
             }
             computeRobustWeights(subSamples, _weightKey);
             perplexity = computeNormalizedPerplexity(subSamples);
-            if (!lsst::utils::isfinite(perplexity)) {
+            if (!std::isfinite(perplexity)) {
                 throw LSST_EXCEPT(
                     pex::exceptions::LogicError,
                     "Normalized perplexity is non-finite."

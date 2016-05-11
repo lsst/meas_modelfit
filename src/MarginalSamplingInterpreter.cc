@@ -20,8 +20,7 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#include "boost/math/special_functions/round.hpp"
+#include <cmath>
 
 #include "ndarray/eigen.h"
 
@@ -255,7 +254,7 @@ void UnnestMarginalSamples::apply(
         marginalIter != marginalRecord.getSamples().end();
         ++marginalIter
     ) {
-        nNewSamplesTotal += boost::math::iround(
+        nNewSamplesTotal += std::lround(
             _multiplier
             * marginalRecord.getSamples().size()
             * marginalIter->get(_marginalInterpreter->getWeightKey())
@@ -276,7 +275,7 @@ void UnnestMarginalSamples::apply(
         ++marginalIter
     ) {
         Scalar marginalWeight = marginalIter->get(_marginalInterpreter->getWeightKey());
-        int nNewSamples = boost::math::iround(
+        int nNewSamples = std::lround(
             _multiplier * marginalRecord.getSamples().size() * marginalWeight
         );
         if (nNewSamples == 0) continue;

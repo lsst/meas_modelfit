@@ -987,7 +987,7 @@ public:
         keys->checkBadReferenceFlag(record);
         // Check for unflagged NaNs.  Warn if we see any so we can fix the underlying problem, and
         // then flag them anyway.
-        if (lsst::utils::isnan(record.get(keys->flux)) && !record.get(keys->flags[CModelResult::FAILED])) {
+        if (std::isnan(record.get(keys->flux)) && !record.get(keys->flags[CModelResult::FAILED])) {
             // We throw a non-MeasurementError exception so the measurement error *will* log a warning.
             throw LSST_EXCEPT(
                 pex::exceptions::LogicError,

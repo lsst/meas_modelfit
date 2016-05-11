@@ -20,9 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+#include <cmath>
 
 #include "lsst/meas/modelfit/PixelFitRegion.h"
-#include "lsst/utils/ieee.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
