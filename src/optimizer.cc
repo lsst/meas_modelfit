@@ -271,19 +271,6 @@ PTR(OptimizerObjective) OptimizerObjective::makeFromLikelihood(
     return std::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
 }
 
-Scalar OptimizerObjective::computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {
-    return 1.0;
-}
-
-void OptimizerObjective::differentiatePrior(
-    ndarray::Array<Scalar const,1,1> const & parameters,
-    ndarray::Array<Scalar,1,1> const & gradient,
-    ndarray::Array<Scalar,2,1> const & hessian
-) const {
-    gradient.deep() = 0.0;
-    hessian.deep() = 0.0;
-}
-
 // ----------------- OptimizerIterationData -----------------------------------------------------------------
 
 OptimizerIterationData::OptimizerIterationData(int dataSize, int parameterSize) :

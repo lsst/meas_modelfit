@@ -120,25 +120,77 @@ public:
     int const dataSize;
     int const parameterSize;
 
+    /**
+     *  Return a concrete Objective object built from a Likelihood and Prior.
+     *
+     *  Most fitting problems that can be formulated in terms of
+     *  (multi-shapelet) Models, Likelihoods, and Priors can just use this
+     *  Objective.  The returned Objective relies on numerical derivatives,
+     *  however, so simple problems where analytic derivatives are easy to
+     *  implement may merit a custom OptimizerObjective.
+     */
     static PTR(OptimizerObjective) makeFromLikelihood(
         PTR(Likelihood) likelihood,
         PTR(Prior) prior = PTR(Prior)()
     );
 
+    /**
+     *  Base class constructor; must be called by all subclasses.
+     */
     OptimizerObjective(int dataSize_, int parameterSize_) :
         dataSize(dataSize_), parameterSize(parameterSize_)
     {}
 
+    /**
+     *  Evaluate the Objective on a 1-d grid.
+     *
+     *  This delegates to computeResiduals, and hence need not be reimplemented
+     *  by derived classes.  It is intended mostly for diagnostic purposes;
+     *  when investigating the behavior of the optimizer, it is frequently
+     *  valuable to plot its path against the gridded objective function.
+     *
+     *  @param[in]  parameters    An array with shape (gridSize, parameterSize),
+     *                            specifying the parameter vector at points on
+     *                            the grid.
+     *  @param[out] output        Output array for objective values with shape
+     *                            (gridSize).  Must be allocated, but need not
+     *                            be initialized.
+     *
+     *  Frequently, the arguments to this function will be flattened views into
+     *  higher dimensional arrays, allowing it to be used to construct N-d
+     *  grids despite taking only a 1-d sequence of grid points.
+     */
     void fillObjectiveValueGrid(
         ndarray::Array<Scalar const,2,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & output
     ) const;
 
+    /**
+     *  Evaluate the residuals of the model for a given parameter vector.
+     *
+     *  @param[in]  parameters    An array of parameters with shape (parameterSize).
+     *  @param[out] residuals     Output array that will contain (model - data) on
+     *                            return.  Must be allocated to shape (dataSize),
+     *                            but need not be initialized.
+     */
     virtual void computeResiduals(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & residuals
     ) const = 0;
 
+    /**
+     *  Evaluate analytic derivatives of the model or signal that they are not available.
+     *
+     *  Subclasses that provide analytic derivatives should implement this method and
+     *  return true.  Subclasses that do not should return false to indicate to the optimizer
+     *  that numeric derivatives must be used instead.  Subclasses that can only sometimes
+     *  compute analytic derivatives are not supported.
+     *
+     *  @param[in]  parameters    An array of parameters with shape (parameterSize).
+     *  @param[out] derivatives   Output array that will contain d(model - data)/d(parameters) on
+     *                            return.  Must be allocated to shape (dataSize, parameterSize),
+     *                            but need not be initialized.
+     */
     virtual bool differentiateResiduals(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,2,-2> const & derivatives
@@ -146,15 +198,44 @@ public:
         return false;
     }
 
+
+    /**
+     *  Return true if the Objective has a Bayesian prior as well as a likelihood.
+     *
+     *  The default implementation returns false.
+     */
     virtual bool hasPrior() const { return false; }
 
-    virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const;
+    /**
+     *  Compute the value of the Bayesian prior for the given parameter vector.
+     *
+     *  The default implementation simply returns 1.0 (appropriate for an unnormalized constant prior,
+     *  which is mathematically equivalent to no prior).
+     */
+    virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const { return 1.0; }
 
+    /**
+     *  Compute the first and second derivatives of the Bayesian prior with respect to the parameters.
+     *
+     *  The default implementation simply sets the output arrays to 0.0 (appropriate for an constant prior,
+     *  which is mathematically equivalent to no prior).
+     *
+     *  @param[in]  parameters    An array of parameters with shape (parameterSize).
+     *  @param[out] gradient      First derivative of the prior with respect to the parameters.
+     *                            Must be allocated to shape (parameterSize), but need not be initialized.
+     *  @param[out] hessian       Second derivative of the prior with respect to the parameters.
+     *                            Must be allocated to shape (parameterSize, parameterSize), but need
+     *                            not be initialized.  This is a symmetric matrix, and only the lower
+     *                            triangle is used.
+     */
     virtual void differentiatePrior(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & gradient,
         ndarray::Array<Scalar,2,1> const & hessian
-    ) const;
+    ) const {
+        gradient.deep() = 0.0;
+        hessian.deep() = 0.0;
+    }
 
     virtual ~OptimizerObjective() {}
 };
