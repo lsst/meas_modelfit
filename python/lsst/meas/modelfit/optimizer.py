@@ -29,10 +29,12 @@ import lsst.afw.table
 
 from . import modelfitLib
 
-__all__ = ("OptimizerConfig", "OptimizerTask")
+__all__ = ("OptimizerTaskConfig", "OptimizerTask")
 
-@lsst.pex.config.wrap(modelfitLib.OptimizerControl)
-class OptimizerConfig(lsst.pex.config.Config):
+class OptimizerTaskConfig(lsst.pex.config.Config):
+    optimizer = lsst.pex.config.ConfigField(
+        dtype=modelfitLib.OptimizerConfig, doc="Configuration for the optimizer itself."
+    )
     doRecordHistory = lsst.pex.config.Field(
         dtype=bool, default=False,
         doc="Whether to save optimizer tracks in the samples table"
@@ -46,7 +48,7 @@ class OptimizerTask(lsst.pipe.base.Task):
     """A 'fitter' subtask for Measure tasks that uses a greedy optimizer.
     """
 
-    ConfigClass = OptimizerConfig
+    ConfigClass = OptimizerTaskConfig
 
     def __init__(self, schema, keys, model, prior, previous=None, **kwds):
         lsst.pipe.base.Task.__init__(self, **kwds)
@@ -98,7 +100,7 @@ class OptimizerTask(lsst.pipe.base.Task):
                                         record[self.keys["initial.amplitudes"]],
                                         parameters)
         objective = modelfitLib.OptimizerObjective.makeFromLikelihood(likelihood, self.interpreter.getPrior())
-        optimizer = modelfitLib.Optimizer(objective, parameters, self.config.makeControl())
+        optimizer = modelfitLib.Optimizer(objective, parameters, self.config.optimizer.makeControl())
         if self.recorder:
             optimizer.run(self.recorder, record.getSamples())
         else:

@@ -222,7 +222,7 @@ struct CModelStageControl {
 struct CModelControl {
 
     CModelControl() :
-        psfName("DoubleShapelet"),
+        psfName("modelfit_DoubleShapeletPsfApprox"),
         minInitialRadius(0.1),
         fallbackInitialMomentsPsfFactor(1.5)
     {
@@ -238,8 +238,8 @@ struct CModelControl {
     LSST_CONTROL_FIELD(
         psfName,
         std::string,
-        "Name of the ShapeletPsfApprox model (one of the keys in the ShapeletPsfApproxConfig.model dict) "
-        "used to convolve the galaxy model."
+        "Field name prefix of the Shapelet PSF approximation used to convolve the galaxy model; "
+        "must contain a set of fields matching the schema defined by shapelet.MultiShapeletFunctionKey."
     );
 
     LSST_NESTED_CONTROL_FIELD(

@@ -58,7 +58,7 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         doc="Show progress log message every [progressChunk] objects"
     )
     psf = lsst.pex.config.ConfigField(
-        dtype=modelfitLib.PsfFitterConfig,
+        dtype=modelfitLib.GeneralPsfFitterConfig,
         doc="Config options for approximating the PSF using shapelets"
     )
     prepOnly = lsst.pex.config.Field(

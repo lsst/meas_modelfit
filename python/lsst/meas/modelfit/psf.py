@@ -24,12 +24,18 @@
 import lsst.pex.config
 import lsst.meas.base
 from . import modelfitLib
+from . import optimizer   # needed to declare OptimizerConfig
 
+lsst.meas.base.wrapSimpleAlgorithm(
+    modelfitLib.DoubleShapeletPsfApproxAlgorithm,
+    Control=modelfitLib.DoubleShapeletPsfApproxControl,
+    executionOrder=lsst.meas.base.BasePlugin.SHAPE_ORDER
+)
 
-class ShapeletPsfApproxConfig(lsst.pex.config.Config):
+class GeneralShapeletPsfApproxConfig(lsst.pex.config.Config):
     models = lsst.pex.config.ConfigDictField(
         keytype=str,
-        itemtype=modelfitLib.PsfFitterConfig,
+        itemtype=modelfitLib.GeneralPsfFitterConfig,
         doc="a dictionary of models that can be used to fit the PSF",
         default={} # populated in setDefaults; can't do it on a single line here
         )
@@ -40,44 +46,44 @@ class ShapeletPsfApproxConfig(lsst.pex.config.Config):
         )
 
     def setDefaults(self):
-        super(ShapeletPsfApproxConfig, self).setDefaults()
-        self.models["SingleGaussian"] = modelfitLib.PsfFitterConfig()
+        super(GeneralShapeletPsfApproxConfig, self).setDefaults()
+        self.models["SingleGaussian"] = modelfitLib.GeneralPsfFitterConfig()
         self.models["SingleGaussian"].inner.order = -1
         self.models["SingleGaussian"].primary.order = 0
         self.models["SingleGaussian"].wings.order = -1
         self.models["SingleGaussian"].outer.order = -1
-        self.models["DoubleGaussian"] = modelfitLib.PsfFitterConfig()
+        self.models["DoubleGaussian"] = modelfitLib.GeneralPsfFitterConfig()
         self.models["DoubleGaussian"].inner.order = -1
         self.models["DoubleGaussian"].primary.order = 0
         self.models["DoubleGaussian"].wings.order = 0
         self.models["DoubleGaussian"].outer.order = -1
-        self.models["DoubleShapelet"] = modelfitLib.PsfFitterConfig()
+        self.models["DoubleShapelet"] = modelfitLib.GeneralPsfFitterConfig()
         self.models["DoubleShapelet"].inner.order = -1
         self.models["DoubleShapelet"].primary.order = 2
         self.models["DoubleShapelet"].wings.order = 1
         self.models["DoubleShapelet"].outer.order = -1
-        self.models["Full"] = modelfitLib.PsfFitterConfig()
+        self.models["Full"] = modelfitLib.GeneralPsfFitterConfig()
         self.models["Full"].inner.order = 0
         self.models["Full"].primary.order = 4
         self.models["Full"].wings.order = 4
         self.models["Full"].outer.order = 0
 
     def validate(self):
-        super(ShapeletPsfApproxConfig, self).validate()
+        super(GeneralShapeletPsfApproxConfig, self).validate()
         if len(self.sequence) < 1:
             raise ValueError("sequence must have at least one element")
         for m in self.sequence:
             if m not in self.models:
                 raise KeyError("All elements in sequence must be keys in models dict")
 
-class ShapeletPsfApproxMixin(object):
+class GeneralShapeletPsfApproxMixin(object):
     """Mixin base class for fitting shapelet approximations to the PSF model
 
-    This class does almost all of the work for its two derived classes, ShapeletPsfApproxSingleFramePlugin
-    and ShapeletPsfApproxForcedPlugin, which simply adapt it to the slightly different interfaces for
-    single-frame and forced measurement.  It in turn delegates its work to the C++ PsfFitter class;
+    This class does almost all of the work for its two derived classes, GeneralShapeletPsfApproxSingleFramePlugin
+    and GeneralShapeletPsfApproxForcedPlugin, which simply adapt it to the slightly different interfaces for
+    single-frame and forced measurement.  It in turn delegates its work to the C++ GeneralPsfFitter class;
     it holds sequence of these corresponding to different models (generally with increasing complexity).
-    Each PsfFitter starts with the result of the previous one as an input, using PsfFitter::adapt to
+    Each GeneralPsfFitter starts with the result of the previous one as an input, using GeneralPsfFitter::adapt to
     hopefully allow these previous fits to reduce the time spent on the next one.
 
     At present, this plugin does not define any failure flags, which will almost certainly
@@ -87,12 +93,12 @@ class ShapeletPsfApproxMixin(object):
     """
 
     def __init__(self, config, name, schema):
-        """Initialize the plugin, creating a sequence of PsfFitter instances to do the fitting and
+        """Initialize the plugin, creating a sequence of GeneralPsfFitter instances to do the fitting and
         MultiShapeletFunctionKey instances to save the results to a record.
         """
         self.sequence = []
         for m in config.sequence:
-            fitter = modelfitLib.PsfFitterAlgorithm(config.models[m].makeControl(), schema, schema[name][m].getPrefix())
+            fitter = modelfitLib.GeneralPsfFitterAlgorithm(config.models[m].makeControl(), schema, schema[name][m].getPrefix())
             self.sequence.append((fitter, schema[name][m].getPrefix()))
 
     def measure(self, measRecord, exposure):
@@ -100,7 +106,7 @@ class ShapeletPsfApproxMixin(object):
         measRecord.getCentroid(), then save the results to measRecord.
         """
         if not exposure.hasPsf():
-            raise lsst.meas.base.FatalAlgorithmError("ShapeletPsfApprox requires Exposure to have a Psf")
+            raise lsst.meas.base.FatalAlgorithmError("GeneralShapeletPsfApprox requires Exposure to have a Psf")
         psf = exposure.getPsf()
         psfImage = psf.computeKernelImage(measRecord.getCentroid())
         psfShape = psf.computeShape(measRecord.getCentroid())
@@ -134,60 +140,60 @@ class ShapeletPsfApproxMixin(object):
     def fail(self, measRecord, error=None):
         pass
 
-class ShapeletPsfApproxSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, ShapeletPsfApproxConfig):
+class GeneralShapeletPsfApproxSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, GeneralShapeletPsfApproxConfig):
 
     def setDefaults(self):
         lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
-        ShapeletPsfApproxConfig.setDefaults(self)
+        GeneralShapeletPsfApproxConfig.setDefaults(self)
 
-@lsst.meas.base.register("modelfit_ShapeletPsfApprox")
-class ShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, ShapeletPsfApproxMixin):
-    """Minimal subclass of ShapeletPsfApproxMixin to conform to the single-frame measurement API.
+@lsst.meas.base.register("modelfit_GeneralShapeletPsfApprox")
+class GeneralShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, GeneralShapeletPsfApproxMixin):
+    """Minimal subclass of GeneralShapeletPsfApproxMixin to conform to the single-frame measurement API.
 
     This class simply provides __init__ and measure methods that matched the SingleFramePlugin signatures
-    and delegate to the ShapeletPsfApproxMixin's implmeentations.
+    and delegate to the GeneralShapeletPsfApproxMixin's implementations.
     """
-    ConfigClass = ShapeletPsfApproxSingleFrameConfig
+    ConfigClass = GeneralShapeletPsfApproxSingleFrameConfig
 
     @staticmethod
     def getExecutionOrder():
         return 1.0
 
     def __init__(self, config, name, schema, metadata):
-        ShapeletPsfApproxMixin.__init__(self, config, name, schema)
+        GeneralShapeletPsfApproxMixin.__init__(self, config, name, schema)
         lsst.meas.base.SingleFramePlugin.__init__(self, config, name, schema, metadata)
 
     def measure(self, measRecord, exposure):
-        ShapeletPsfApproxMixin.measure(self, measRecord, exposure)
+        GeneralShapeletPsfApproxMixin.measure(self, measRecord, exposure)
 
     def fail(self, measRecord, error=None):
-        ShapeletPsfApproxMixin.fail(self, measRecord, error)
+        GeneralShapeletPsfApproxMixin.fail(self, measRecord, error)
 
-class ShapeletPsfApproxForcedConfig(lsst.meas.base.ForcedPluginConfig, ShapeletPsfApproxConfig):
+class GeneralShapeletPsfApproxForcedConfig(lsst.meas.base.ForcedPluginConfig, GeneralShapeletPsfApproxConfig):
 
     def setDefaults(self):
         lsst.meas.base.ForcedPluginConfig.setDefaults(self)
-        ShapeletPsfApproxConfig.setDefaults(self)
+        GeneralShapeletPsfApproxConfig.setDefaults(self)
 
-@lsst.meas.base.register("modelfit_ShapeletPsfApprox")
-class ShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, ShapeletPsfApproxMixin):
-    """Minimal subclass of ShapeletPsfApproxMixin to conform to the forced measurement API.
+@lsst.meas.base.register("modelfit_GeneralShapeletPsfApprox")
+class GeneralShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, GeneralShapeletPsfApproxMixin):
+    """Minimal subclass of GeneralShapeletPsfApproxMixin to conform to the forced measurement API.
 
     This class simply provides __init__ and measure methods that matched the ForcedPlugin signatures
-    and delegate to the ShapeletPsfApproxMixin's implmeentations.
+    and delegate to the GeneralShapeletPsfApproxMixin's implementations.
     """
-    ConfigClass = ShapeletPsfApproxForcedConfig
+    ConfigClass = GeneralShapeletPsfApproxForcedConfig
 
     @staticmethod
     def getExecutionOrder():
         return 1.0
 
     def __init__(self, config, name, schemaMapper, metadata):
-        ShapeletPsfApproxMixin.__init__(self, config, name, schemaMapper.editOutputSchema())
+        GeneralShapeletPsfApproxMixin.__init__(self, config, name, schemaMapper.editOutputSchema())
         lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, metadata)
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
-        ShapeletPsfApproxMixin.measure(self, measRecord, exposure)
+        GeneralShapeletPsfApproxMixin.measure(self, measRecord, exposure)
 
     def fail(self, measRecord, error=None):
-        ShapeletPsfApproxMixin.fail(self, measRecord, error)
+        GeneralShapeletPsfApproxMixin.fail(self, measRecord, error)

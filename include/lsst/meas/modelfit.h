@@ -44,7 +44,7 @@
 #include "lsst/meas/modelfit/MultiModel.h"
 #include "lsst/meas/modelfit/Mixture.h"
 #include "lsst/meas/modelfit/optimizer.h"
-#include "lsst/meas/modelfit/psf.h"
+#include "lsst/meas/modelfit/GeneralPsfFitter.h"
 #include "lsst/meas/modelfit/CModel.h"
 
 #endif // !LSST_MEAS_MODELFIT_H

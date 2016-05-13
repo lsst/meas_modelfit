@@ -86,7 +86,7 @@ class CModelTestCase(AlgorithmTestCase):
         """Test that the plugin for single-frame measurement works, then use those outputs to test
         that the forced measurement plugin works."""
         plugin = "modelfit_CModel"
-        dependencies = ("modelfit_ShapeletPsfApprox", "base_PsfFlux")
+        dependencies = ("modelfit_DoubleShapeletPsfApprox", "base_PsfFlux")
         sfmTask = self.makeSingleFrameMeasurementTask(plugin, dependencies=dependencies)
         forcedTask = self.makeForcedMeasurementTask(plugin, dependencies=dependencies,
                                                     refSchema=sfmTask.schema)

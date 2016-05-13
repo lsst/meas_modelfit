@@ -271,19 +271,6 @@ PTR(OptimizerObjective) OptimizerObjective::makeFromLikelihood(
     return std::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
 }
 
-Scalar OptimizerObjective::computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {
-    return 1.0;
-}
-
-void OptimizerObjective::differentiatePrior(
-    ndarray::Array<Scalar const,1,1> const & parameters,
-    ndarray::Array<Scalar,1,1> const & gradient,
-    ndarray::Array<Scalar,2,1> const & hessian
-) const {
-    gradient.deep() = 0.0;
-    hessian.deep() = 0.0;
-}
-
 // ----------------- OptimizerIterationData -----------------------------------------------------------------
 
 OptimizerIterationData::OptimizerIterationData(int dataSize, int parameterSize) :
@@ -493,7 +480,7 @@ Optimizer::Optimizer(
     _step(ndarray::allocate(objective->parameterSize)),
     _gradient(ndarray::allocate(objective->parameterSize)),
     _hessian(ndarray::allocate(objective->parameterSize, objective->parameterSize)),
-    _jacobian(objective->dataSize, objective->parameterSize),
+    _residualDerivative(ndarray::allocate(objective->dataSize, objective->parameterSize)),
     _sr1b(objective->parameterSize, objective->parameterSize),
     _sr1v(objective->parameterSize),
     _sr1jtr(objective->parameterSize)
@@ -521,16 +508,19 @@ Optimizer::Optimizer(
 }
 
 void Optimizer::_computeDerivatives() {
-    _jacobian.setZero();
+    ndarray::EigenView<Scalar,2,-2> resDer(_residualDerivative);
+    resDer.setZero();
     _next.parameters.deep() = _current.parameters;
-    for (int n = 0; n < _objective->parameterSize; ++n) {
-        double numDiffStep = _ctrl.numDiffRelStep * _next.parameters[n]
-            + _ctrl.numDiffTrustRadiusStep * _trustRadius
-            + _ctrl.numDiffAbsStep;
-        _next.parameters[n] += numDiffStep;
-        _objective->computeResiduals(_next.parameters, _next.residuals);
-        _jacobian.col(n) = (_next.residuals.asEigen() - _current.residuals.asEigen()) / numDiffStep;
-        _next.parameters[n] = _current.parameters[n];
+    if (!_objective->differentiateResiduals(_current.parameters, _residualDerivative)) {
+        for (int n = 0; n < _objective->parameterSize; ++n) {
+            double numDiffStep = _ctrl.numDiffRelStep * _next.parameters[n]
+                + _ctrl.numDiffTrustRadiusStep * _trustRadius
+                + _ctrl.numDiffAbsStep;
+            _next.parameters[n] += numDiffStep;
+            _objective->computeResiduals(_next.parameters, _next.residuals);
+            resDer.col(n) = (_next.residuals.asEigen() - _current.residuals.asEigen()) / numDiffStep;
+            _next.parameters[n] = _current.parameters[n];
+        }
     }
     _gradient.deep() = 0.0;
     _hessian.deep() = 0.0;
@@ -542,12 +532,12 @@ void Optimizer::_computeDerivatives() {
         _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(_gradient.asEigen(), 1.0);
     }
     if (!_ctrl.noSR1Term) {
-        _sr1jtr = _jacobian.adjoint() * _current.residuals.asEigen();
+        _sr1jtr = resDer.adjoint() * _current.residuals.asEigen();
         _gradient.asEigen() += _sr1jtr;
     } else {
-        _gradient.asEigen() += _jacobian.adjoint() * _current.residuals.asEigen();
+        _gradient.asEigen() += resDer.adjoint() * _current.residuals.asEigen();
     }
-    _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(_jacobian.adjoint(), 1.0);
+    _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(resDer.adjoint(), 1.0);
 }
 
 void Optimizer::removeSR1Term() {

@@ -31,8 +31,9 @@ class CModelSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, modelfitLi
         lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
         modelfitLib.CModelConfig.setDefaults(self)
 
+apCorrList = ("modelfit_CModel", "modelfit_CModel_initial", "modelfit_CModel_exp", "modelfit_CModel_dev")
 
-@lsst.meas.base.register("modelfit_CModel")
+@lsst.meas.base.register("modelfit_CModel", apCorrList=apCorrList)
 class CModelSingleFramePlugin(lsst.meas.base.SingleFramePlugin):
     """Single-frame measurement interface for CModelAlgorithm.
 
@@ -61,7 +62,7 @@ class CModelForcedConfig(lsst.meas.base.ForcedPluginConfig, modelfitLib.CModelCo
         lsst.meas.base.ForcedPluginConfig.setDefaults(self)
         modelfitLib.CModelConfig.setDefaults(self)
 
-@lsst.meas.base.register("modelfit_CModel")
+@lsst.meas.base.register("modelfit_CModel", apCorrList=apCorrList)
 class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
     """Forced measurement interface for CModelAlgorithm
 

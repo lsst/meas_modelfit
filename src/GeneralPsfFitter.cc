@@ -27,13 +27,13 @@
 #include "lsst/pex/exceptions.h"
 #include "lsst/shapelet/MatrixBuilder.h"
 #include "lsst/shapelet/MultiShapeletBasis.h"
-#include "lsst/meas/modelfit/psf.h"
+#include "lsst/meas/modelfit/GeneralPsfFitter.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
 namespace {
 
-typedef std::pair<std::string,PsfFitterComponentControl> Component;
+typedef std::pair<std::string,GeneralPsfFitterComponentControl> Component;
 typedef std::vector<Component> ComponentVector;
 typedef ComponentVector::const_iterator ComponentIterator;
 
@@ -51,10 +51,10 @@ private:
 
 static afw::geom::ellipses::SeparableConformalShearLogTraceRadius psfFitterEllipseCore;
 
-class PsfFitterModel : public Model {
+class GeneralPsfFitterModel : public Model {
 public:
 
-    PsfFitterModel(
+    GeneralPsfFitterModel(
         BasisVector basisVector,
         NameVector nonlinearNames,
         NameVector amplitudeNames,
@@ -134,7 +134,7 @@ public:
 
     shapelet::MultiShapeletFunction adapt(
         shapelet::MultiShapeletFunction const & previousFit,
-        PsfFitterModel const & previousModel
+        GeneralPsfFitterModel const & previousModel
     ) const {
         shapelet::MultiShapeletFunction result;
         shapelet::ShapeletFunction const & previousPrimary
@@ -210,10 +210,10 @@ private:
     ComponentVector _components;
 };
 
-class PsfFitterPrior : public Prior {
+class GeneralPsfFitterPrior : public Prior {
 public:
 
-    PsfFitterPrior(ComponentVector components) : Prior("PSF"), _components(components) {}
+    GeneralPsfFitterPrior(ComponentVector components) : Prior("PSF"), _components(components) {}
 
     Scalar square(Scalar x) const { return x*x; }
 
@@ -320,7 +320,7 @@ private:
     ComponentVector _components;
 };
 
-ComponentVector vectorizeComponents(PsfFitterControl const & ctrl) {
+ComponentVector vectorizeComponents(GeneralPsfFitterControl const & ctrl) {
     ComponentVector components;
     if (ctrl.inner.order >= 0) {
         components.push_back(Component("inner", ctrl.inner));
@@ -337,8 +337,8 @@ ComponentVector vectorizeComponents(PsfFitterControl const & ctrl) {
     return components;
 }
 
-std::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const & getFlagDefinitions() {
-    static std::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const flagDefs = {{
+std::array<lsst::meas::base::FlagDefinition,GeneralPsfFitterAlgorithm::N_FLAGS> const & getFlagDefinitions() {
+    static std::array<lsst::meas::base::FlagDefinition,GeneralPsfFitterAlgorithm::N_FLAGS> const flagDefs = {{
         {"flag", "general failure flag"},
         {"flag_max_inner_iterations", "exceeded maxInnerIterations"},
         {"flag_max_outer_iterations", "exceeded maxOuterIterations"},
@@ -350,18 +350,18 @@ std::array<lsst::meas::base::FlagDefinition,PsfFitterAlgorithm::N_FLAGS> const &
 
 } // anonymous
 
-PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
+GeneralPsfFitter::GeneralPsfFitter(GeneralPsfFitterControl const & ctrl) :
     _ctrl(ctrl)
 {
     if (_ctrl.primary.order < 0) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterError,
-            "PsfFitter control must have a primary component with nonnegative order"
+            "GeneralPsfFitter control must have a primary component with nonnegative order"
         );
     }
     ComponentVector components = vectorizeComponents(_ctrl);
 
-    _prior = std::make_shared<PsfFitterPrior>(components);
+    _prior = std::make_shared<GeneralPsfFitterPrior>(components);
 
     Model::BasisVector basisVector;
     Model::NameVector nonlinearNames;
@@ -379,7 +379,7 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
         basisVector.push_back(basis);
 
         // Append to the name vectors for this component; all of this has to be consistent with the
-        // iteration that happens in PsfFitterModel and PsfFitterPrior
+        // iteration that happens in GeneralPsfFitterModel and GeneralPsfFitterPrior
         for (shapelet::PackedIndex s; s.getOrder() <= i->second.order; ++s) {
             amplitudeNames.push_back(
                 (boost::format("%s.alpha[%d,%d]") % i->first % s.getX() % s.getY()).str()
@@ -404,12 +404,12 @@ PsfFitter::PsfFitter(PsfFitterControl const & ctrl) :
 
     }
 
-    _model = std::make_shared<PsfFitterModel>(
+    _model = std::make_shared<GeneralPsfFitterModel>(
         basisVector, nonlinearNames, amplitudeNames, fixedNames, components
     );
 }
 
-shapelet::MultiShapeletFunctionKey PsfFitter::addFields(
+shapelet::MultiShapeletFunctionKey GeneralPsfFitter::addFields(
     afw::table::Schema & schema,
     std::string const & prefix
 ) const {
@@ -426,22 +426,22 @@ shapelet::MultiShapeletFunctionKey PsfFitter::addFields(
     );
 }
 
-shapelet::MultiShapeletFunction PsfFitter::adapt(
+shapelet::MultiShapeletFunction GeneralPsfFitter::adapt(
     shapelet::MultiShapeletFunction const & previousFit,
     PTR(Model) previousModel
 ) const {
-    PTR(PsfFitterModel) m = std::dynamic_pointer_cast<PsfFitterModel>(previousModel);
+    PTR(GeneralPsfFitterModel) m = std::dynamic_pointer_cast<GeneralPsfFitterModel>(previousModel);
     if (!m) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterError,
-            "Model passed to PsfFitter::adapt must have been constructed by PsfFitter"
+            "Model passed to GeneralPsfFitter::adapt must have been constructed by GeneralPsfFitter"
         );
     }
-    return std::static_pointer_cast<PsfFitterModel>(_model)->adapt(previousFit, *m);
+    return std::static_pointer_cast<GeneralPsfFitterModel>(_model)->adapt(previousFit, *m);
 }
 
 
-shapelet::MultiShapeletFunction PsfFitter::apply(
+shapelet::MultiShapeletFunction GeneralPsfFitter::apply(
     afw::image::Image<Pixel> const & image,
     afw::geom::ellipses::Quadrupole const & moments,
     Scalar noiseSigma,
@@ -451,11 +451,11 @@ shapelet::MultiShapeletFunction PsfFitter::apply(
         noiseSigma = _ctrl.defaultNoiseSigma;
     }
     shapelet::MultiShapeletFunction initial
-        = std::static_pointer_cast<PsfFitterModel>(_model)->makeInitial(moments);
+        = std::static_pointer_cast<GeneralPsfFitterModel>(_model)->makeInitial(moments);
     return apply(image, initial, noiseSigma, pState);
 }
 
-shapelet::MultiShapeletFunction PsfFitter::apply(
+shapelet::MultiShapeletFunction GeneralPsfFitter::apply(
     afw::image::Image<Pixel> const & image,
     shapelet::MultiShapeletFunction const & initial,
     Scalar noiseSigma,
@@ -471,7 +471,7 @@ shapelet::MultiShapeletFunction PsfFitter::apply(
         = parameters[ndarray::view(_model->getNonlinearDim(), parameterDim)];
     ndarray::Array<Scalar,1,1> fixed = ndarray::allocate(_model->getFixedDim());
 
-    std::static_pointer_cast<PsfFitterModel>(_model)->fillParameters(initial, nonlinear, amplitudes, fixed);
+    std::static_pointer_cast<GeneralPsfFitterModel>(_model)->fillParameters(initial, nonlinear, amplitudes, fixed);
 
     PTR(Likelihood) likelihood = std::make_shared<MultiShapeletPsfLikelihood>(
         image.getArray(), image.getXY0(), _model, noiseSigma, fixed
@@ -487,17 +487,17 @@ shapelet::MultiShapeletFunction PsfFitter::apply(
     return _model->makeShapeletFunction(nonlinear, amplitudes, fixed);
 }
 
-PsfFitterAlgorithm::PsfFitterAlgorithm(PsfFitterControl const & ctrl,
+GeneralPsfFitterAlgorithm::GeneralPsfFitterAlgorithm(GeneralPsfFitterControl const & ctrl,
     afw::table::Schema & schema,
     std::string const & prefix
-) : PsfFitter(ctrl)
+) : GeneralPsfFitter(ctrl)
 {
     _flagHandler = lsst::meas::base::FlagHandler::addFields(schema, prefix,
                                           getFlagDefinitions().begin(), getFlagDefinitions().end());
     _key = addFields(schema, prefix);
 }
 
-void PsfFitterAlgorithm::measure(
+void GeneralPsfFitterAlgorithm::measure(
     afw::table::SourceRecord & measRecord,
     afw::image::Image<double> const & image,
     shapelet::MultiShapeletFunction const & initial
@@ -535,7 +535,7 @@ void PsfFitterAlgorithm::measure(
     }
 }
 
-void PsfFitterAlgorithm::measure(
+void GeneralPsfFitterAlgorithm::measure(
     afw::table::SourceRecord & measRecord,
     afw::image::Image<double> const & image,
     afw::geom::ellipses::Quadrupole const & moments
@@ -573,7 +573,7 @@ void PsfFitterAlgorithm::measure(
     }
 }
 
-void PsfFitterAlgorithm::fail(
+void GeneralPsfFitterAlgorithm::fail(
     afw::table::SourceRecord & measRecord,
     lsst::meas::base::MeasurementError * error
 ) const {
