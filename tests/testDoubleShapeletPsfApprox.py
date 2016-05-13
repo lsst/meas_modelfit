@@ -210,6 +210,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         """Test that fitMoments() preserves peakRatio and radiusRatio while setting moments
         correctly.
         """
+        MOMENTS_RTOL = 1E-13
         image = self.psf.computeKernelImage()
         array = image.getArray()
         bbox = image.getBBox()
@@ -219,16 +220,16 @@ class DoubleShapeletPsfApproxTestMixin(object):
         )
         msf = self.Algorithm.initializeResult(self.ctrl)
         self.Algorithm.fitMoments(msf, self.ctrl, image)
-        self.assertClose(msf.evaluate().integrate(), array.sum())
+        self.assertClose(msf.evaluate().integrate(), array.sum(), rtol=MOMENTS_RTOL)
         moments = msf.evaluate().computeMoments()
         q = lsst.afw.geom.ellipses.Quadrupole(moments.getCore())
         cx = (x*array).sum()/array.sum()
         cy = (y*array).sum()/array.sum()
-        self.assertClose(moments.getCenter().getX(), cx)
-        self.assertClose(moments.getCenter().getY(), cy)
-        self.assertClose(q.getIxx(), ((x - cx)**2 * array).sum()/array.sum(), rtol=1E-14)
-        self.assertClose(q.getIyy(), ((y - cy)**2 * array).sum()/array.sum(), rtol=1E-14)
-        self.assertClose(q.getIxy(), ((x - cx)*(y - cy)*array).sum()/array.sum(), rtol=1E-14)
+        self.assertClose(moments.getCenter().getX(), cx, rtol=MOMENTS_RTOL)
+        self.assertClose(moments.getCenter().getY(), cy, rtol=MOMENTS_RTOL)
+        self.assertClose(q.getIxx(), ((x - cx)**2 * array).sum()/array.sum(), rtol=MOMENTS_RTOL)
+        self.assertClose(q.getIyy(), ((y - cy)**2 * array).sum()/array.sum(), rtol=MOMENTS_RTOL)
+        self.assertClose(q.getIxy(), ((x - cx)*(y - cy)*array).sum()/array.sum(), rtol=MOMENTS_RTOL)
         self.assertEqual(len(msf.getComponents()), 2)
         self.checkRatios(msf)
         self.checkBounds(msf)
