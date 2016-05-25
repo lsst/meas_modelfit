@@ -421,7 +421,7 @@ void Mixture::_stream(std::ostream & os) const {
 
 namespace {
 
-class MixturePersistenceKeys : private boost::noncopyable {
+class MixturePersistenceKeys {
 public:
     tbl::Schema schema;
     tbl::Key<Scalar> weight;
@@ -441,6 +441,14 @@ public:
         mu(schema["mu"]),
         sigma(schema["sigma"])
     {}
+
+    // No copying
+    MixturePersistenceKeys (const MixturePersistenceKeys&) = delete;
+    MixturePersistenceKeys& operator=(const MixturePersistenceKeys&) = delete;
+    
+    // No moving
+    MixturePersistenceKeys (MixturePersistenceKeys&&) = delete;
+    MixturePersistenceKeys& operator=(MixturePersistenceKeys&&) = delete;
 };
 
 class MixtureFactory : public tbl::io::PersistableFactory {

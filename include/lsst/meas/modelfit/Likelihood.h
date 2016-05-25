@@ -67,9 +67,6 @@ namespace lsst { namespace meas { namespace modelfit {
  *  rather than per-pixel weights, but will will still use a vector to represent it.
  */
 class Likelihood
-#ifndef SWIG
- : private boost::noncopyable
-#endif
 {
 public:
 
@@ -127,6 +124,16 @@ public:
     ) const = 0;
 
     virtual ~Likelihood() {}
+
+#ifndef SWIG
+    // No copying
+    Likelihood ( const Likelihood & ) = delete;
+    Likelihood & operator= ( const Likelihood & ) = delete;
+    
+    // No moving
+    Likelihood ( Likelihood && ) = delete;
+    Likelihood & operator= ( Likelihood && ) = delete;
+#endif
 
 protected:
 
