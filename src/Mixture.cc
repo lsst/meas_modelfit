@@ -109,7 +109,7 @@ PTR(Mixture) Mixture::project(int dim) const {
     for (const_iterator i = begin(); i != end(); ++i) {
         components.push_back(i->project(dim));
     }
-    return std::make_shared<Mixture>(1, boost::ref(components), _df);
+    return std::make_shared<Mixture>(1, components, _df);
 }
 
 PTR(Mixture) Mixture::project(int dim1, int dim2) const {
@@ -118,7 +118,7 @@ PTR(Mixture) Mixture::project(int dim1, int dim2) const {
     for (const_iterator i = begin(); i != end(); ++i) {
         components.push_back(i->project(dim1, dim2));
     }
-    return std::make_shared<Mixture>(2, boost::ref(components), _df);
+    return std::make_shared<Mixture>(2, components, _df);
 }
 
 void Mixture::normalize() {
@@ -467,7 +467,7 @@ public:
                 )
             );
         }
-        return std::make_shared<Mixture>(dim, boost::ref(components), df);
+        return std::make_shared<Mixture>(dim, components, df);
     }
 
     explicit MixtureFactory(std::string const & name) : tbl::io::PersistableFactory(name) {}

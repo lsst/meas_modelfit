@@ -90,7 +90,7 @@ void OptimizerInterpreter::attachPdf(ModelFitRecord & record, Optimizer const & 
     components.push_back(
         Mixture::Component(1.0, optimizer.getParameters().asEigen(), sigma)
     );
-    record.setPdf(std::make_shared<Mixture>(s.size(), boost::ref(components)));
+    record.setPdf(std::make_shared<Mixture>(s.size(), components));
 }
 
 ndarray::Array<Scalar,1,1> OptimizerInterpreter::computeParameterQuantiles(
