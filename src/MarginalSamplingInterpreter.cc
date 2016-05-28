@@ -321,7 +321,7 @@ void UnnestMarginalSamples::apply(
         directComponents.push_back(Mixture::Component(marginalIter->weight, directMu, directSigma));
     }
     PTR(Mixture) directPdf = std::make_shared<Mixture>(
-        parameterDim, boost::ref(directComponents), marginalPdf->getDegreesOfFreedom()
+        parameterDim, directComponents, marginalPdf->getDegreesOfFreedom()
     );
     afw::table::BaseColumnView columns = directRecord.getSamples().getColumnView();
     directPdf->updateEM(columns[_directInterpreter->getParameterKey()],

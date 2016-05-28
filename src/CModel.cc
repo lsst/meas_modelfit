@@ -1009,7 +1009,7 @@ CModelAlgorithm::CModelAlgorithm(
 {
     _impl->keys = std::make_shared<CModelKeys>(
         *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
-        boost::ref(schema), name, false, ctrl
+        schema, name, false, ctrl
     );
 }
 
@@ -1021,7 +1021,7 @@ CModelAlgorithm::CModelAlgorithm(
 {
     _impl->keys = std::make_shared<CModelKeys>(
         *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
-        boost::ref(schemaMapper.editOutputSchema()), name, true, ctrl
+        schemaMapper.editOutputSchema(), name, true, ctrl
     );
     _impl->refKeys = std::make_shared<CModelKeys>(
         *_impl->initial.model, *_impl->exp.model, *_impl->dev.model,
