@@ -26,8 +26,6 @@
 
 #include <vector>
 
-#include "boost/noncopyable.hpp"
-
 #include "lsst/base.h"
 #include "lsst/afw/geom/ellipses/Ellipse.h"
 #include "lsst/shapelet/MultiShapeletBasis.h"
@@ -55,7 +53,7 @@ typedef std::vector<PTR(Model)> ModelVector;
  *  A few private concrete subclasses of Model have been provided that will meet most needs;
  *  instances can be constructed via the make() and makeGaussian()
  */
-class Model : private boost::noncopyable {
+class Model {
 public:
 
     enum CenterEnum {
@@ -255,6 +253,14 @@ public:
     ) const;
 
     virtual ~Model() {}
+
+    // No copying
+    Model (const Model&) = delete;
+    Model& operator=(const Model&) = delete;
+
+    // No moving
+    Model (Model&&) = delete;
+    Model& operator=(Model&&) = delete;
 
 protected:
 

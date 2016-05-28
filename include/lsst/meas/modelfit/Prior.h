@@ -33,7 +33,7 @@ namespace lsst { namespace meas { namespace modelfit {
 /**
  *  @brief Base class for Bayesian priors
  */
-class Prior: private boost::noncopyable {
+class Prior {
 public:
 
     std::string const & getTag() const { return _tag; }
@@ -159,6 +159,14 @@ public:
     ) const = 0;
 
     virtual ~Prior() {}
+
+    // No copying
+    Prior (const Prior&) = delete;
+    Prior& operator=(const Prior&) = delete;
+
+    // No moving
+    Prior (Prior&&) = delete;
+    Prior& operator=(Prior&&) = delete;
 
 protected:
 
