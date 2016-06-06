@@ -23,7 +23,7 @@
 import lsst.pex.config
 from lsst.afw.table import SourceCatalog
 from lsst.pipe.base import Struct
-from lsst.meas.algorithms import StarSelectorTask
+from lsst.meas.algorithms import StarSelectorTask, starSelectorRegistry
 
 __all__ = ["S13StarSelectorConfig", "S13StarSelectorTask"]
 
@@ -50,3 +50,5 @@ class S13StarSelectorTask(StarSelectorTask):
         return Struct(
             starCat = starCat,
         )
+
+starSelectorRegistry.register("s13", S13StarSelectorTask)
