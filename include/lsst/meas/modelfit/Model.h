@@ -36,7 +36,7 @@ namespace lsst { namespace meas { namespace modelfit {
 class Model;
 class Prior;
 
-class LocalUnitTransform;
+struct LocalUnitTransform;
 
 typedef std::vector<PTR(Model)> ModelVector;
 

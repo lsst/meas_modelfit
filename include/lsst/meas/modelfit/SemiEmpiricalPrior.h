@@ -130,7 +130,7 @@ public:
 
 private:
 
-    class Impl;
+    struct Impl;
 
     PTR(Impl) _impl;
 };
