@@ -23,11 +23,11 @@
 import lsst.pex.config
 from lsst.afw.table import SourceCatalog
 from lsst.pipe.base import Struct
-from lsst.meas.algorithms import StarSelectorTask
+from lsst.meas.algorithms import BaseStarSelectorTask, starSelectorRegistry
 
 __all__ = ["S13StarSelectorConfig", "S13StarSelectorTask"]
 
-class S13StarSelectorConfig(StarSelectorTask.ConfigClass):
+class S13StarSelectorConfig(BaseStarSelectorTask.ConfigClass):
     fluxMin = lsst.pex.config.Field(
         doc = "specify the minimum apFlux for good PsfCandidates",
         dtype = float,
@@ -35,7 +35,7 @@ class S13StarSelectorConfig(StarSelectorTask.ConfigClass):
         check = lambda x: x >= 0.0,
     )
 
-class S13StarSelectorTask(StarSelectorTask):
+class S13StarSelectorTask(BaseStarSelectorTask):
     ConfigClass = S13StarSelectorConfig
     usesMatches = False # selectStars does not use its matches argument
 
@@ -50,3 +50,5 @@ class S13StarSelectorTask(StarSelectorTask):
         return Struct(
             starCat = starCat,
         )
+
+starSelectorRegistry.register("s13", S13StarSelectorTask)
