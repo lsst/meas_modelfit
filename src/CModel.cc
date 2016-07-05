@@ -1365,7 +1365,6 @@ void CModelAlgorithm::measure(
     afw::table::SourceRecord const & refRecord
 ) const {
     Result result = _impl->makeResult();
-    assert(measRecord.getFootprint()->getArea());
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
     shapelet::MultiShapeletFunction psf = _processInputs(measRecord, exposure);
     // If PsfFlux has been run, use that for approx flux; otherwise we'll compute it ourselves.
