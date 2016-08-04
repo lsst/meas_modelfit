@@ -197,8 +197,8 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         outCat.extend(prevCat, mapper=self.prevCatMapper)
         for n, (prevRecord, outRecord) in enumerate(zip(prevCat, outCat)):
             if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
-                self.log.info("Adapting objects %d-%d of %d (currently %3.2f%%)"
-                              % (n+1, n+self.config.progressChunk, len(outCat), (100.0*n)/len(outCat)))
+                self.log.info("Adapting objects %d-%d of %d (currently %3.2f%%)",
+                              n+1, n+self.config.progressChunk, len(outCat), (100.0*n)/len(outCat))
             self.fitter.adaptPrevious(prevRecord, outRecord)
         return outCat
 
@@ -211,7 +211,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         self.log.info("Reading inputs")
         inputs = self.readInputs(dataRef)
         if self.previous is not None:
-            self.log.info("Using previous run with tag '%s' for warm start" % self.config.previous)
+            self.log.info("Using previous run with tag '%s' for warm start", self.config.previous)
             outCat = self.adaptPrevious(inputs.prevCat)
         else:
             self.log.info("Preparing catalog")
@@ -221,8 +221,8 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         if not self.config.prepOnly:
             for n, outRecord in enumerate(outCat):
                 if self.config.progressChunk > 0 and n % self.config.progressChunk == 0:
-                    self.log.info("Fitting objects %d-%d of %d (currently %3.2f%%)"
-                                  % (n+1, n+self.config.progressChunk, len(outCat), (100.0*n)/len(outCat)))
+                    self.log.info("Fitting objects %d-%d of %d (currently %3.2f%%)",
+                                  n+1, n+self.config.progressChunk, len(outCat), (100.0*n)/len(outCat))
                 likelihood = self.makeLikelihood(inputs, outRecord)
                 try:
                     self.fitter.run(likelihood, outRecord)
@@ -234,8 +234,8 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
                     if self.config.doRaise:
                         raise
                     else:
-                        self.log.warn("Failure fitting object %d of %d with ID=%d:"
-                                      % (n, len(outCat), outRecord.getId()))
+                        self.log.warn("Failure fitting object %d of %d with ID=%d:",
+                                      n, len(outCat), outRecord.getId())
                         self.log.warn(str(err))
                         continue
         self.log.info("Writing output catalog")
