@@ -40,12 +40,11 @@ from lsst.meas.base.tests import AlgorithmTestCase, TestDataset
 # the measured flux lies within 2 sigma of the correct value, which we
 # should expect to fail sometimes.
 
-class CModelTestCase(AlgorithmTestCase):
+class CModelTestCase(AlgorithmTestCase, lsst.utils.tests.TestCase):
     """Test case for the CModel measurement plugins
     """
 
     def setUp(self):
-        AlgorithmTestCase.setUp(self)
         self.bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(0, 0),
                                         lsst.afw.geom.Extent2I(200, 100))
         self.dataset = TestDataset(self.bbox)
@@ -56,7 +55,6 @@ class CModelTestCase(AlgorithmTestCase):
                                lsst.afw.geom.ellipses.Quadrupole(8, 9, 3))
 
     def tearDown(self):
-        AlgorithmTestCase.tearDown(self)
         del self.bbox
         del self.dataset
 
