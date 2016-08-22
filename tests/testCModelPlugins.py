@@ -28,8 +28,7 @@ import lsst.afw.table
 import lsst.utils.tests
 import lsst.meas.modelfit
 
-from lsst.meas.base.tests import AlgorithmTestCase
-from lsst.meas.base.tests import TestDataset as Dataset
+import lsst.meas.base.tests
 
 
 # n.b. Some tests here depend on the noise realization in the test data
@@ -40,14 +39,14 @@ from lsst.meas.base.tests import TestDataset as Dataset
 # the measured flux lies within 2 sigma of the correct value, which we
 # should expect to fail sometimes.
 
-class CModelTestCase(AlgorithmTestCase, lsst.utils.tests.TestCase):
+class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase, lsst.utils.tests.TestCase):
     """Test case for the CModel measurement plugins
     """
 
     def setUp(self):
         self.bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(0, 0),
                                         lsst.afw.geom.Extent2I(200, 100))
-        self.dataset = Dataset(self.bbox)
+        self.dataset = lsst.meas.base.tests.TestDataset(self.bbox)
         # first source is a point
         self.dataset.addSource(100000.0, lsst.afw.geom.Point2D(50.1, 49.8))
         # second source is extended
