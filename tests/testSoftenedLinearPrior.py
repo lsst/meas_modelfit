@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import os
 import numpy
@@ -36,8 +35,6 @@ try:
 except ImportError:
     scipy = None
 
-numpy.random.seed(500)
-
 lsst.pex.logging.Debug("meas.modelfit.SoftenedLinearPrior", 10)
 
 
@@ -48,6 +45,7 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
         # a prior with broad ramps and non-zero slope; broad ramps makes evaluating numerical
         # derivatives easier, and we want to do that to check the analytic ones
+        numpy.random.seed(500)
         ctrl = lsst.meas.modelfit.SoftenedLinearPrior.Control()
         ctrl.logRadiusMinOuter = ctrl.logRadiusMinInner - 2.0
         ctrl.logRadiusMaxOuter = ctrl.logRadiusMaxInner + 2.0
@@ -87,9 +85,9 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
             pA = self.prior.evaluate(nonlinearA, self.amplitudes)
             pB = self.prior.evaluate(nonlinearB, self.amplitudes)
             dp = (pB - pA) / (2*self.NUM_DIFF_STEP)
-            self.assertClose(nonlinearGradient[i], dp, rtol=1E-3, atol=1E-8)
+            self.assertFloatsAlmostEqual(nonlinearGradient[i], dp, rtol=1E-3, atol=1E-8)
             d2p = (pA + pB - 2*p) / self.NUM_DIFF_STEP**2
-            self.assertClose(nonlinearHessian[i, i], d2p, rtol=1E-3, atol=1E-8)
+            self.assertFloatsAlmostEqual(nonlinearHessian[i, i], d2p, rtol=1E-3, atol=1E-8)
             for j in range(i+1, 3):
                 nonlinearAA = nonlinearA.copy()
                 nonlinearAB = nonlinearA.copy()
@@ -104,7 +102,7 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
                 pBA = self.prior.evaluate(nonlinearBA, self.amplitudes)
                 pBB = self.prior.evaluate(nonlinearBB, self.amplitudes)
                 d2p = (pBB - pAB - pBA + pAA) / (4*self.NUM_DIFF_STEP**2)
-                self.assertClose(nonlinearHessian[i, j], d2p, rtol=1E-3, atol=1E-8)
+                self.assertFloatsAlmostEqual(nonlinearHessian[i, j], d2p, rtol=1E-3, atol=1E-8)
 
     def testDerivatives(self):
         """Test that evaluateDerivatives() returns results similar to finite-differences
@@ -151,7 +149,7 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
             epsabs=1.0,
             epsrel=1.0,
         )
-        self.assertClose(integral, 1.0, atol=0.01)
+        self.assertFloatsAlmostEqual(integral, 1.0, atol=0.01)
 
     def testEllipticityDistribution(self):
         """Test that the ellipticity distribution is constant in the inner region,
@@ -175,19 +173,19 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
                 pInner = self.evaluatePrior(eInnerPoints*numpy.cos(2*theta),
                                             eInnerPoints*numpy.sin(2*theta),
                                             logRadius)
-                self.assertClose(pInner.mean(), pInner)
+                self.assertFloatsAlmostEqual(pInner.mean(), pInner)
 
                 # Each ramp point should be greater than the next one
                 pRamp = self.evaluatePrior(eRampPoints*numpy.cos(2*theta),
                                            eRampPoints*numpy.sin(2*theta),
                                            logRadius)
-                self.assertTrue((pRamp[:-1] > pRamp[1:]).all())
+                numpy.testing.assert_array_less(pRamp[1:], pRamp[:-1])
 
                 # Each outer point should be zero
                 pOuter = self.evaluatePrior(eOuterPoints*numpy.cos(2*theta),
                                             eOuterPoints*numpy.sin(2*theta),
                                             logRadius)
-                self.assertClose(pOuter, 0.0)
+                self.assertFloatsAlmostEqual(pOuter, 0.0)
 
     def testLogRadiusDistribution(self):
         """Test that the ln(radius) distribution is constant in the inner region,
@@ -213,36 +211,29 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
                 e2 = ellipticity*numpy.sin(2*theta)
                 # Outer points should be zero
                 pLowerOuter = self.evaluatePrior(e1, e2, rLowerOuterPoints)
-                self.assertClose(pLowerOuter, 0.0)
+                self.assertFloatsAlmostEqual(pLowerOuter, 0.0)
                 # Each ramp point should be less than the next one
                 pLowerRamp = self.evaluatePrior(e1, e2, rLowerRampPoints)
-                self.assertTrue((pLowerRamp[:-1] < pLowerRamp[1:]).all())
+                numpy.testing.assert_array_less(pLowerRamp[:-1], pLowerRamp[1:])
                 # All adjacent inner points should have the same distance between them (constant slope)
                 pInner = self.evaluatePrior(e1, e2, rInnerPoints)
                 diffs = pInner[1:] - pInner[:-1]
-                self.assertClose(diffs.mean(), diffs)
+                self.assertFloatsAlmostEqual(diffs.mean(), diffs)
                 # Each ramp point should be greater than the next one
                 pUpperRamp = self.evaluatePrior(e1, e2, rUpperRampPoints)
-                self.assertTrue((pUpperRamp[:-1] > pUpperRamp[1:]).all())
+                numpy.testing.assert_array_less(pUpperRamp[1:], pUpperRamp[:-1])
                 # Outer points should be zero
                 pUpperOuter = self.evaluatePrior(e1, e2, rUpperOuterPoints)
-                self.assertClose(pUpperOuter, 0.0)
+                self.assertFloatsAlmostEqual(pUpperOuter, 0.0)
 
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
 
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(SoftenedLinearPriorTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

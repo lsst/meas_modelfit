@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2014 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import numpy
 import os
@@ -33,8 +32,6 @@ import lsst.afw.table
 import lsst.afw.detection
 import lsst.meas.modelfit
 import lsst.meas.base
-
-numpy.random.seed(500)
 
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
@@ -55,6 +52,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         return config
 
     def setUp(self):
+        numpy.random.seed(500)
         self.psfSigma = 2.0
         self.exposure = lsst.afw.image.ExposureF(41, 41)
         self.psf = lsst.afw.detection.GaussianPsf(19, 19, self.psfSigma)
@@ -77,7 +75,8 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         modelImage = dataImage.Factory(dataImage.getBBox())
         modelImage.getArray()[:, :] *= -1
         msf.evaluate().addToImage(modelImage)
-        self.assertClose(dataImage.getArray(), modelImage.getArray(), atol=1E-6, plotOnFailure=False)
+        self.assertFloatsAlmostEqual(dataImage.getArray(), modelImage.getArray(), atol=1E-6,
+                                     plotOnFailure=False)
 
     def testSingleFrame(self):
         self.exposure.setPsf(self.psf)
@@ -192,20 +191,13 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.assertFalse(measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_flag_exception"))
 
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
 
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(GeneralShapeletPsfApproxPluginsTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

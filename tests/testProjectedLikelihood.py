@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import numpy
 
@@ -37,7 +36,6 @@ import lsst.meas.modelfit
 import lsst.meas.modelfit.display
 import lsst.afw.display.ds9
 
-numpy.random.seed(500)
 
 ASSERT_CLOSE_KWDS = dict(plotOnFailure=True, printFailures=False)
 
@@ -74,6 +72,7 @@ def scaleExposure(exposure, factor):
 class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
+        numpy.random.seed(500)
         self.position = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
         self.model = lsst.meas.modelfit.Model.makeGaussian(lsst.meas.modelfit.Model.FIXED_CENTER)
         self.ellipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(6.0, 5.0, numpy.pi/6))
@@ -128,11 +127,13 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         del self.psf1
 
     def checkLikelihood(self, likelihood, data):
-        self.assertClose(likelihood.getData().reshape(data.shape), data, rtol=1E-6, **ASSERT_CLOSE_KWDS)
+        self.assertFloatsAlmostEqual(likelihood.getData().reshape(data.shape), data, rtol=1E-6,
+                                     **ASSERT_CLOSE_KWDS)
         matrix = numpy.zeros((1, likelihood.getDataDim()), dtype=lsst.meas.modelfit.Pixel).transpose()
         likelihood.computeModelMatrix(matrix, self.nonlinear)
         model = numpy.dot(matrix, self.amplitudes)
-        self.assertClose(model.reshape(data.shape), data, rtol=1E-6, atol=1E-7, **ASSERT_CLOSE_KWDS)
+        self.assertFloatsAlmostEqual(model.reshape(data.shape), data, rtol=1E-6, atol=1E-7,
+                                     **ASSERT_CLOSE_KWDS)
 
     def testModel(self):
         """Test that when we use a Model to create a MultiShapeletFunction from our parameter vectors
@@ -140,7 +141,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         msf = self.model.makeShapeletFunction(self.nonlinear, self.amplitudes, self.fixed)
         image0a = lsst.afw.image.ImageD(self.bbox0)
         msf.evaluate().addToImage(image0a)
-        self.assertClose(image0a.getArray(), self.exposure0.getMaskedImage().getImage().getArray(),
+        self.assertFloatsAlmostEqual(image0a.getArray(), self.exposure0.getMaskedImage().getImage().getArray(),
                          rtol=1E-6, atol=1E-7, **ASSERT_CLOSE_KWDS)
 
     def testWarp(self):
@@ -156,7 +157,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         lsst.afw.math.warpExposure(exposure1a, self.exposure0, warpCtrl)
         exposure1a.setCalib(self.sys1.calib)
         scaleExposure(exposure1a, self.t01.flux)
-        self.assertClose(exposure1.getMaskedImage().getImage().getArray(),
+        self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
                          exposure1a.getMaskedImage().getImage().getArray(),
                          rtol=1E-6, **ASSERT_CLOSE_KWDS)
         # exposure1b: warp exposure0 using warpImage with AffineTransform arguments
@@ -167,7 +168,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
                                 xyTransform, warpCtrl)
         exposure1b.setCalib(self.sys1.calib)
         scaleExposure(exposure1b, self.t01.flux)
-        self.assertClose(exposure1.getMaskedImage().getImage().getArray(),
+        self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
                          exposure1b.getMaskedImage().getImage().getArray(),
                          rtol=1E-6, **ASSERT_CLOSE_KWDS)
         # now we rebuild exposure1 with the PSF convolution included, and convolve 1a->1c using an
@@ -183,7 +184,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         ctrl = lsst.afw.math.ConvolutionControl()
         ctrl.setDoCopyEdge(True)
         lsst.afw.math.convolve(exposure1c.getMaskedImage(), exposure1a.getMaskedImage(), kernel, ctrl)
-        self.assertClose(exposure1.getMaskedImage().getImage().getArray(),
+        self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
                          exposure1c.getMaskedImage().getImage().getArray(),
                          rtol=1E-5, atol=1E-6, **ASSERT_CLOSE_KWDS)
 
@@ -248,20 +249,13 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.checkLikelihood(l1d, data)
 
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
 
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(UnitTransformedLikelihoodTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

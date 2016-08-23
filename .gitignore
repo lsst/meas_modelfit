@@ -15,6 +15,7 @@ doc/xml/
 *Lib.py
 *Lib_wrap.cc
 version.py
+tests/.cache/*
 tests/.tests
 tests/reference/bvn
 bin/measureCcd.py

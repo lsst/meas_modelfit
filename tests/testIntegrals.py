@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import os
 import numpy
@@ -33,32 +32,26 @@ except ImportError:
 import lsst.utils.tests
 import lsst.meas.modelfit
 
-numpy.random.seed(500)
-
-
 class IntegralsTestCase(lsst.utils.tests.TestCase):
 
+    def setUp(self):
+        numpy.random.seed(500)
+
     def testBVN(self):
-        data = numpy.loadtxt(os.path.join("tests", "reference", "bvn.txt"), delimiter=',')
+        data = numpy.loadtxt(os.path.join(os.path.dirname(os.path.realpath(__file__)), "reference", "bvn.txt")
+                             , delimiter=',')
         for h, k, r, p1 in data:
             p2 = lsst.meas.modelfit.bvnu(h, k, r)
-            self.assertClose(p1, p2, rtol=1E-14)
+            self.assertFloatsAlmostEqual(p1, p2, rtol=1E-14)
 
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
 
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(IntegralsTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()
