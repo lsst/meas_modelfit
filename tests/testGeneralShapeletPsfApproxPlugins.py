@@ -39,6 +39,7 @@ numpy.random.seed(500)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
+
 class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
 
     def makeBlankConfig(self):
@@ -74,7 +75,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         # we should be able to fit with zero residuals, aside from (single-precision) round-off error.
         dataImage = self.exposure.getPsf().computeImage()
         modelImage = dataImage.Factory(dataImage.getBBox())
-        modelImage.getArray()[:,:] *= -1
+        modelImage.getArray()[:, :] *= -1
         msf.evaluate().addToImage(modelImage)
         self.assertClose(dataImage.getArray(), modelImage.getArray(), atol=1E-6, plotOnFailure=False)
 
@@ -90,7 +91,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         task.run(measCat, self.exposure)
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["SingleGaussian"]
-            )
+        )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
         self.checkResult(msfSingleGaussian)
@@ -111,7 +112,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         refCat = lsst.afw.table.SourceCatalog(self.schema)
         refRecord = refCat.addNew()
         refRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
-        refWcs = self.exposure.getWcs() # same as measurement Wcs
+        refWcs = self.exposure.getWcs()  # same as measurement Wcs
         task = lsst.meas.base.ForcedMeasurementTask(config=config, refSchema=self.schema)
         measCat = task.generateMeasCat(self.exposure, refCat, refWcs)
         task.run(measCat, self.exposure, refCat, refWcs)
@@ -119,7 +120,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measSchema = measCat.schema
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             measSchema["modelfit"]["GeneralShapeletPsfApprox"]["SingleGaussian"]
-            )
+        )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
         self.checkResult(msfSingleGaussian)
@@ -132,7 +133,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
         psfImage = lsst.afw.image.ImageD(os.path.join(self.psfDir, "galsimPsf_0.9.fits"))
-        psfImage.getArray()[0,0] = numpy.nan
+        psfImage.getArray()[0, 0] = numpy.nan
         psfImage.setXY0(lsst.afw.geom.Point2I(0, 0))
         kernel = lsst.afw.math.FixedKernel(psfImage)
         psf = lsst.meas.algorithms.KernelPsf(kernel)
@@ -190,6 +191,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         self.assertTrue(measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_flag_max_outer_iterations"))
         self.assertFalse(measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_flag_exception"))
 
+
 def suite():
     """Returns a suite containing all the test cases in this module."""
 
@@ -199,6 +201,7 @@ def suite():
     suites += unittest.makeSuite(GeneralShapeletPsfApproxPluginsTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

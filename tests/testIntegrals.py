@@ -35,6 +35,7 @@ import lsst.meas.modelfit
 
 numpy.random.seed(500)
 
+
 class IntegralsTestCase(lsst.utils.tests.TestCase):
 
     def testBVN(self):
@@ -42,6 +43,7 @@ class IntegralsTestCase(lsst.utils.tests.TestCase):
         for h, k, r, p1 in data:
             p2 = lsst.meas.modelfit.bvnu(h, k, r)
             self.assertClose(p1, p2, rtol=1E-14)
+
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
@@ -52,6 +54,7 @@ def suite():
     suites += unittest.makeSuite(IntegralsTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

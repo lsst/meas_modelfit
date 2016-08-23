@@ -34,6 +34,7 @@ numpy.random.seed(500)
 
 log = lsst.pex.logging.Debug("meas.modelfit.optimizer", 10)
 
+
 class OptimizerTestCase(lsst.utils.tests.TestCase):
 
     def testTrustRegionSolver(self):
@@ -50,13 +51,13 @@ class OptimizerTestCase(lsst.utils.tests.TestCase):
             self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
         # now we try some matrices with zero eigenvalues due to model degeneracies
         log.info("Testing solveTrustRegion with positive-semidefinite matrices")
-        m[:,-1] = m[:,0]
+        m[:, -1] = m[:, 0]
         f = numpy.dot(m.transpose(), m)
         g = numpy.dot(m.transpose(), y)
         for r in numpy.linspace(1E-3, 0.8, 5):
             lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
             self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
-        m[:,-2] = m[:,1]
+        m[:, -2] = m[:, 1]
         f = numpy.dot(m.transpose(), m)
         g = numpy.dot(m.transpose(), y)
         for r in numpy.linspace(1E-3, 0.8, 5):
@@ -71,6 +72,7 @@ class OptimizerTestCase(lsst.utils.tests.TestCase):
                 lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
                 self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
 
+
 def suite():
     """Returns a suite containing all the test cases in this module."""
 
@@ -80,6 +82,7 @@ def suite():
     suites += unittest.makeSuite(OptimizerTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

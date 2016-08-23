@@ -40,6 +40,7 @@ except ImportError:
 numpy.random.seed(500)
 rng = lsst.afw.math.Random("MT19937", 500)
 
+
 class MixtureTestCase(lsst.utils.tests.TestCase):
 
     @staticmethod
@@ -47,8 +48,8 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         l = lsst.meas.modelfit.Mixture.ComponentList()
         for i in range(nComponents):
             mu = numpy.random.randn(nDim)*4
-            a = numpy.random.randn(nDim+1,nDim)
-            sigma = numpy.dot(a.transpose(),a) + numpy.identity(nDim)
+            a = numpy.random.randn(nDim+1, nDim)
+            sigma = numpy.dot(a.transpose(), a) + numpy.identity(nDim)
             l.append(lsst.meas.modelfit.Mixture.Component(numpy.random.rand(), mu, sigma))
         return lsst.meas.modelfit.Mixture(nDim, l, df)
 
@@ -86,21 +87,23 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         x = numpy.random.randn(20, 2)
         p = numpy.zeros(20, dtype=float)
         m.evaluate(x, p)
-        z = ((x - mu)[:,numpy.newaxis,:] * fisher[numpy.newaxis,:,:,]
-             * (x - mu)[:,:,numpy.newaxis]).sum(axis=2).sum(axis=1)
+        z = ((x - mu)[:, numpy.newaxis, :] * fisher[numpy.newaxis, :, :, ]
+             * (x - mu)[:, :, numpy.newaxis]).sum(axis=2).sum(axis=1)
         self.assertClose(p, numpy.exp(-0.5*z) / numpy.linalg.det(2*numpy.pi*sigma)**0.5)
-        x = numpy.zeros((1000000,2), dtype=float)
+        x = numpy.zeros((1000000, 2), dtype=float)
         m.draw(rng, x)
         self.assertClose(x.mean(axis=0), mu, rtol=2E-2)
         self.assertClose(numpy.cov(x, rowvar=False), sigma, rtol=3E-2)
-        if scipy is None: return
-        self.assertGreater(scipy.stats.normaltest(x[:,0])[1], 0.05)
-        self.assertGreater(scipy.stats.normaltest(x[:,1])[1], 0.05)
+        if scipy is None:
+            return
+        self.assertGreater(scipy.stats.normaltest(x[:, 0])[1], 0.05)
+        self.assertGreater(scipy.stats.normaltest(x[:, 1])[1], 0.05)
 
     def testStudentsT(self):
         """Test that our implementations for a single-component Student's T are correct.
         """
-        if scipy is None: return
+        if scipy is None:
+            return
         for df in [4, 8]:
             m = self.makeRandomMixture(1, 1, df=df)
             mu = m[0].getMu()
@@ -136,11 +139,12 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         epsilon = 1E-7
         g = self.makeRandomMixture(3, 4)
         t = self.makeRandomMixture(4, 3, df=4.0)
+
         def doTest(mixture, point):
             n = mixture.getDimension()
             # Compute numeric first derivatives
             testPoints = numpy.zeros((2*n, n), dtype=float)
-            testPoints[:,:] = point[numpy.newaxis,:]
+            testPoints[:, :] = point[numpy.newaxis, :]
             for i in range(n):
                 testPoints[i, i] += epsilon
                 testPoints[n+i, i] -= epsilon
@@ -150,20 +154,20 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
             for i in range(n):
                 numericGradient[i] = (testValues[i] - testValues[n+i]) / (2.0 * epsilon)
             # Compute numeric second derivatives from analytic first derivatives
-            numericHessian = numpy.zeros((n,n), dtype=float)
+            numericHessian = numpy.zeros((n, n), dtype=float)
             testGrad1 = numpy.zeros(n, dtype=float)
             testGrad2 = numpy.zeros(n, dtype=float)
-            testHessian = numpy.zeros((n,n), dtype=float)
+            testHessian = numpy.zeros((n, n), dtype=float)
             for i in range(n):
                 testPoint = point.copy()
                 testPoint[i] += epsilon
                 mixture.evaluateDerivatives(testPoint, testGrad1, testHessian)
                 testPoint[i] -= 2.0*epsilon
                 mixture.evaluateDerivatives(testPoint, testGrad2, testHessian)
-                numericHessian[i,:] = (testGrad1 - testGrad2) / (2.0 * epsilon)
+                numericHessian[i, :] = (testGrad1 - testGrad2) / (2.0 * epsilon)
             # Compute analytic derivatives and compare
             analyticGradient = numpy.zeros(n, dtype=float)
-            analyticHessian = numpy.zeros((n,n), dtype=float)
+            analyticHessian = numpy.zeros((n, n), dtype=float)
             mixture.evaluateDerivatives(point, analyticGradient, analyticHessian)
             self.assertClose(analyticGradient, numericGradient, rtol=1.5E-6)
             self.assertClose(analyticHessian, numericHessian, rtol=1E-6)
@@ -184,6 +188,7 @@ def suite():
     suites += unittest.makeSuite(MixtureTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

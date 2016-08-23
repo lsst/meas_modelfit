@@ -38,12 +38,14 @@ numpy.random.seed(500)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
+
 def makeMultiShapeletCircularGaussian(sigma):
     s = lsst.shapelet.ShapeletFunction(0, lsst.shapelet.HERMITE, sigma)
     s.getCoefficients()[0] = 1.0 / lsst.shapelet.ShapeletFunction.FLUX_FACTOR
     m = lsst.shapelet.MultiShapeletFunction()
     m.getComponents().push_back(s)
     return m
+
 
 def computePsfFlux(centroid, exposure):
     schema = lsst.afw.table.SourceTable.makeMinimalSchema()
@@ -55,6 +57,7 @@ def computePsfFlux(centroid, exposure):
     record.set(pointKey, centroid)
     algorithm.measure(record, exposure)
     return record.get("base_PsfFlux_flux"), record.get("base_PsfFlux_fluxSigma")
+
 
 class CModelTestCase(lsst.utils.tests.TestCase):
 
@@ -77,12 +80,12 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         psf = lsst.afw.detection.GaussianPsf(25, 25, self.psfSigma)
         self.exposure.setPsf(psf)
         psfImage = psf.computeImage(self.xyPosition)
-        psfImage.getArray()[:,:] *= self.trueFlux
+        psfImage.getArray()[:, :] *= self.trueFlux
         psfBBox = psfImage.getBBox(lsst.afw.image.PARENT)
         self.footprint = lsst.afw.detection.Footprint(psfBBox)
         subImage = lsst.afw.image.ImageF(self.exposure.getMaskedImage().getImage(), psfBBox,
                                          lsst.afw.image.PARENT)
-        subImage.getArray()[:,:] = psfImage.getArray()
+        subImage.getArray()[:, :] = psfImage.getArray()
 
     def tearDown(self):
         del self.xyPosition
@@ -101,7 +104,7 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         result = algorithm.apply(
             self.exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
             self.xyPosition, self.exposure.getPsf().computeShape()
-            )
+        )
         self.assertFalse(result.initial.getFlag(result.FAILED))
         self.assertClose(result.initial.flux, self.trueFlux, rtol=0.01)
         self.assertClose(result.initial.fluxSigma, 0.0, rtol=0.0)
@@ -134,7 +137,7 @@ class CModelTestCase(lsst.utils.tests.TestCase):
             cmodel = algorithm.apply(
                 exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
                 self.xyPosition, self.exposure.getPsf().computeShape()
-                )
+            )
             psfFlux, psfFluxSigma = computePsfFlux(self.xyPosition, exposure)
             self.assertClose(psfFlux, cmodel.flux, rtol=0.1/fluxFactor**0.5)
             self.assertClose(psfFluxSigma, cmodel.fluxSigma, rtol=0.1/fluxFactor**0.5)
@@ -149,6 +152,7 @@ def suite():
     suites += unittest.makeSuite(CModelTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

@@ -41,14 +41,16 @@ lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 ELLIPSE_PARAMETER_NAMES = ["eta1", "eta2", "logR", "x", "y"]
 DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
 
+
 def computeMoments(image):
     """Helper function to compute moments of a postage stamp about its origin."""
     maskedImage = lsst.afw.image.MaskedImageD(image)
     result = lsst.meas.base.SdssShapeAlgorithm.computeAdaptiveMoments(
         maskedImage,
         lsst.afw.geom.Point2D(0.0, 0.0)
-        )
+    )
     return result.getShape()
+
 
 class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
 
@@ -165,13 +167,13 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
 
         # test the ellipse round-tripping again, this time starting with nonzero nonlinear parameters:
         # this will be read back in by adding to the fixed parameters and zeroing the nonlinear parameters.
-        nonlinear[:] = 0.5*ellipseParameters[:,:3].ravel()
+        nonlinear[:] = 0.5*ellipseParameters[:, :3].ravel()
         ellipses4 = model.writeEllipses(nonlinear, fixed)
         model.readEllipses(ellipses4, nonlinear, fixed)
         self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar),
                          rtol=1E-8)
-        self.assertClose(fixed.reshape(2,5)[:,:3], 1.5*ellipseParameters[:,:3], rtol=1E-8)
-        self.assertClose(fixed.reshape(2,5)[:,3:], ellipseParameters[:,3:], rtol=1E-8)
+        self.assertClose(fixed.reshape(2, 5)[:, :3], 1.5*ellipseParameters[:, :3], rtol=1E-8)
+        self.assertClose(fixed.reshape(2, 5)[:, 3:], ellipseParameters[:, 3:], rtol=1E-8)
 
     def testFullModel(self):
         fitter = lsst.meas.modelfit.GeneralPsfFitter(self.configs['full'].makeControl())
@@ -254,6 +256,7 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
                                  atol=tolerances[configKey],
                                  plotOnFailure=True)
 
+
 def suite():
     """Returns a suite containing all the test cases in this module."""
 
@@ -263,6 +266,7 @@ def suite():
     suites += unittest.makeSuite(GeneralPsfFitterTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

@@ -37,6 +37,7 @@ numpy.random.seed(500)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 
+
 class DoubleShapeletPsfApproxTestMixin(object):
 
     Algorithm = lsst.meas.modelfit.DoubleShapeletPsfApproxAlgorithm
@@ -115,7 +116,6 @@ class DoubleShapeletPsfApproxTestMixin(object):
              - msf.getComponents()[0].getEllipse().getCore().getDeterminantRadius())
         )
 
-
     def checkRatios(self, msf):
         """Check that the ratios specified in the control object are met by a MultiShapeletFunction.
 
@@ -179,7 +179,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         refCat = lsst.afw.table.SourceCatalog(refSchema)
         refRecord = refCat.addNew()
         refRecord.set(refCentroidKey, lsst.afw.geom.Point2D(0.0, 0.0))
-        refWcs = self.exposure.getWcs() # same as measurement Wcs
+        refWcs = self.exposure.getWcs()  # same as measurement Wcs
         task = lsst.meas.base.ForcedMeasurementTask(config=config, refSchema=refSchema)
         measCat = task.generateMeasCat(self.exposure, refCat, refWcs)
         task.run(measCat, self.exposure, refCat, refWcs)
@@ -270,7 +270,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
             d = (r1 - r2)/(2.0*step)
             self.assertClose(
                 d.reshape(image.getHeight(), image.getWidth()),
-                derivatives[:,i].reshape(image.getHeight(), image.getWidth()),
+                derivatives[:, i].reshape(image.getHeight(), image.getWidth()),
                 atol=1E-11
             )
 
@@ -283,6 +283,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         self.Algorithm.fitMoments(msf, self.ctrl, image)
         prev = lsst.shapelet.MultiShapeletFunction(msf)
         self.Algorithm.fitProfile(msf, self.ctrl, image)
+
         def getEllipticity(m, c):
             s = lsst.afw.geom.ellipses.SeparableDistortionDeterminantRadius(
                 m.getComponents()[c].getEllipse().getCore()
@@ -290,6 +291,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
             return numpy.array([s.getE1(), s.getE2()])
         self.assertClose(getEllipticity(prev, 0), getEllipticity(msf, 0), rtol=1E-13)
         self.assertClose(getEllipticity(prev, 1), getEllipticity(msf, 1), rtol=1E-13)
+
         def computeChiSq(m):
             data, model = self.makeImages(m)
             return numpy.sum((data.getArray() - model.getArray())**2)
@@ -313,7 +315,6 @@ class DoubleShapeletPsfApproxTestMixin(object):
             self.assertLessEqual(bestChiSq, computeChiSq(msf))
             component.setEllipse(original)
 
-
     def testFitShapelets(self):
         """Test that fitShapelets() does not modify the zeroth order coefficients or ellipse,
         that it improves the fit, and that small perturbations to the higher-order coefficients
@@ -333,6 +334,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
             prev.getComponents()[1].getEllipse().getParameterVector(),
             msf.getComponents()[1].getEllipse().getParameterVector()
         )
+
         def computeChiSq(m):
             data, model = self.makeImages(m)
             return numpy.sum((data.getArray() - model.getArray())**2)
@@ -357,6 +359,7 @@ class SingleGaussianTestCase(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.
             innerOrder=0, outerOrder=0, peakRatio=0.0
         )
 
+
 class HigherOrderTestCase0(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.TestCase):
 
     def setUp(self):
@@ -366,6 +369,7 @@ class HigherOrderTestCase0(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.Te
             innerOrder=3, outerOrder=2,
             atol=0.0005
         )
+
 
 class HigherOrderTestCase1(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.TestCase):
 
@@ -389,6 +393,7 @@ def suite():
     suites += unittest.makeSuite(HigherOrderTestCase1)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

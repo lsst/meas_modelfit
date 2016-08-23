@@ -48,6 +48,7 @@ DO_MAKE_PLOTS = True
 
 DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
 
+
 class FakeDataRef(object):
 
     def __init__(self, tag=None):
@@ -83,6 +84,7 @@ class FakeDataRef(object):
         r.data = self.data
         return r
 
+
 class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
 
     def setUp(self):
@@ -93,7 +95,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.models = [
             'bulge+disk',
             'fixed-sersic',
-            ]
+        ]
 
     def testSampler(self):
         self.config.fitter.retarget(lsst.meas.modelfit.AdaptiveImportanceSamplerTask)
@@ -148,6 +150,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         del self.dataRef
         del self.config
 
+
 def suite():
     """Returns a suite containing all the test cases in this module."""
 
@@ -157,6 +160,7 @@ def suite():
     suites += unittest.makeSuite(MeasureImageTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

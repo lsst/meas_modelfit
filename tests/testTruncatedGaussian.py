@@ -42,26 +42,29 @@ if False:
     lsst.pex.logging.Debug("meas.modelfit.integrals", 10)
     lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 10)
 
+
 class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
 
     def check1d(self, mu, hessian, tg):
         evaluator = tg.evaluate()
         logEvaluator = tg.evaluateLog()
-        dist = scipy.stats.norm(loc=mu[0], scale=hessian[0,0]**-0.5)
+        dist = scipy.stats.norm(loc=mu[0], scale=hessian[0, 0]**-0.5)
         self.assertClose(1.0 - dist.cdf(0.0), tg.getUntruncatedFraction())
         eps = 1E-7
         if numpy.all(mu >= 0.0):
             self.assertClose(logEvaluator(mu), tg.getLogPeakAmplitude())
             self.assertGreater(logEvaluator(mu+eps), tg.getLogPeakAmplitude())
             self.assertGreater(logEvaluator(mu-eps), tg.getLogPeakAmplitude())
-        peak = numpy.array([tg.maximize()]) # workaround NumPy automatic-scalarification
+        peak = numpy.array([tg.maximize()])  # workaround NumPy automatic-scalarification
         self.assertGreater(evaluator(peak), 0.0)
         self.assertLess(evaluator(peak+eps), evaluator(peak))
         self.assertLess(evaluator(peak-eps), evaluator(peak))
+
         def altLogEval(x):
-            if numpy.any(x < 0): return float("inf")
-            return tg.getLogPeakAmplitude() + 0.5*hessian[0,0]*(x-mu[0])**2
-        for alpha in (numpy.random.randn(10, 1) * hessian[0,0]**-0.5 + mu[0]):
+            if numpy.any(x < 0):
+                return float("inf")
+            return tg.getLogPeakAmplitude() + 0.5*hessian[0, 0]*(x-mu[0])**2
+        for alpha in (numpy.random.randn(10, 1) * hessian[0, 0]**-0.5 + mu[0]):
             x1 = logEvaluator(alpha)
             x2 = altLogEval(alpha[0])
             if numpy.isfinite(x1) and numpy.isfinite(x2):
@@ -90,8 +93,10 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
         self.assertLess(evaluator(peak - unit1*eps) / evaluator(peak), 1.0)
         self.assertLess(evaluator(peak + unit2*eps) / evaluator(peak), 1.0)
         self.assertLess(evaluator(peak - unit2*eps) / evaluator(peak), 1.0)
+
         def altLogEval(a):
-            if numpy.any(a < 0): return float("inf")
+            if numpy.any(a < 0):
+                return float("inf")
             return tg.getLogPeakAmplitude() + 0.5*numpy.dot(numpy.dot(hessian, a - mu).transpose(), a - mu)
         for alpha in (numpy.random.randn(10, 2) * hessian.diagonal()**-0.5 + mu):
             x1 = logEvaluator(alpha)
@@ -106,21 +111,23 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
 
     def integrate1d(self, tg):
         evaluator = tg.evaluate()
+
         def func(x):
             return evaluator(numpy.array([x]))
         return scipy.integrate.quad(func, 0.0, numpy.Inf)
 
     def integrate2d(self, tg):
         evaluator = tg.evaluate()
+
         def func(x, y):
-            return evaluator(numpy.array([x,y]))
+            return evaluator(numpy.array([x, y]))
         return scipy.integrate.dblquad(func, 0.0, numpy.Inf, lambda x: 0.0, lambda x: numpy.Inf)
 
     def test1d(self):
         if scipy is None:
             return
         for i in range(5):
-            sigma = (numpy.random.randn(1,1)**2 + 1)*5
+            sigma = (numpy.random.randn(1, 1)**2 + 1)*5
             mu = (numpy.random.randn(1))*3
             q0 = float(numpy.random.randn())
             hessian = numpy.linalg.inv(sigma)
@@ -144,9 +151,9 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
         for i in range(5):
             x = numpy.linspace(-1, 1, 5)
             model = numpy.zeros((x.size, 2), dtype=float)
-            model[:,0] = x
-            model[:,1] = x**2 + x
-            data = numpy.random.randn(x.size) + model[:,0]*0.9 + model[:,1]*1.1
+            model[:, 0] = x
+            model[:, 1] = x**2 + x
+            data = numpy.random.randn(x.size) + model[:, 0]*0.9 + model[:, 1]*1.1
             q0 = 0.5*float(numpy.dot(data, data))
             gradient = -numpy.dot(model.transpose(), data)
             hessian = numpy.dot(model.transpose(), model)
@@ -172,9 +179,9 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
         for i in range(5):
             x = numpy.linspace(-1, 1, 5)
             model = numpy.zeros((x.size, 2), dtype=float)
-            model[:,0] = x
-            model[:,1] = 2*x
-            data = numpy.random.randn(x.size) + model[:,0]*0.9 + model[:,1]*1.1
+            model[:, 0] = x
+            model[:, 1] = 2*x
+            data = numpy.random.randn(x.size) + model[:, 0]*0.9 + model[:, 1]*1.1
             q0 = 0.5*float(numpy.dot(data, data))
             gradient = -numpy.dot(model.transpose(), data)
             hessian = numpy.dot(model.transpose(), model)
@@ -185,6 +192,7 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
                              rtol=1E-13)
             self.check2d(mu, hessian, tg, isDegenerate=True)
 
+
 def suite():
     """Returns a suite containing all the test cases in this module."""
 
@@ -194,6 +202,7 @@ def suite():
     suites += unittest.makeSuite(TruncatedGaussianTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

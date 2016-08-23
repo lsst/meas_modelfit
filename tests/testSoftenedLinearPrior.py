@@ -40,6 +40,7 @@ numpy.random.seed(500)
 
 lsst.pex.logging.Debug("meas.modelfit.SoftenedLinearPrior", 10)
 
+
 class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
 
     NUM_DIFF_STEP = 1E-3
@@ -69,14 +70,14 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
     def checkDerivatives(self, e1, e2, r):
         nonlinear = numpy.array([e1, e2, r], dtype=lsst.meas.modelfit.Scalar)
         amplitudeGradient = numpy.zeros(1, dtype=lsst.meas.modelfit.Scalar)
-        amplitudeHessian = numpy.zeros((1,1), dtype=lsst.meas.modelfit.Scalar)
-        crossHessian = numpy.zeros((3,1), dtype=lsst.meas.modelfit.Scalar)
+        amplitudeHessian = numpy.zeros((1, 1), dtype=lsst.meas.modelfit.Scalar)
+        crossHessian = numpy.zeros((3, 1), dtype=lsst.meas.modelfit.Scalar)
         nonlinearGradient = numpy.zeros(3, dtype=lsst.meas.modelfit.Scalar)
         nonlinearHessian = numpy.zeros((3, 3), dtype=lsst.meas.modelfit.Scalar)
         self.prior.evaluateDerivatives(nonlinear, self.amplitudes,
-                                  nonlinearGradient, amplitudeGradient,
-                                  nonlinearHessian, amplitudeHessian,
-                                  crossHessian)
+                                       nonlinearGradient, amplitudeGradient,
+                                       nonlinearHessian, amplitudeHessian,
+                                       crossHessian)
         p = self.prior.evaluate(nonlinear, self.amplitudes)
         for i in range(3):
             nonlinearA = nonlinear.copy()
@@ -88,7 +89,7 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
             dp = (pB - pA) / (2*self.NUM_DIFF_STEP)
             self.assertClose(nonlinearGradient[i], dp, rtol=1E-3, atol=1E-8)
             d2p = (pA + pB - 2*p) / self.NUM_DIFF_STEP**2
-            self.assertClose(nonlinearHessian[i,i], d2p, rtol=1E-3, atol=1E-8)
+            self.assertClose(nonlinearHessian[i, i], d2p, rtol=1E-3, atol=1E-8)
             for j in range(i+1, 3):
                 nonlinearAA = nonlinearA.copy()
                 nonlinearAB = nonlinearA.copy()
@@ -103,7 +104,7 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
                 pBA = self.prior.evaluate(nonlinearBA, self.amplitudes)
                 pBB = self.prior.evaluate(nonlinearBB, self.amplitudes)
                 d2p = (pBB - pAB - pBA + pAA) / (4*self.NUM_DIFF_STEP**2)
-                self.assertClose(nonlinearHessian[i,j], d2p, rtol=1E-3, atol=1E-8)
+                self.assertClose(nonlinearHessian[i, j], d2p, rtol=1E-3, atol=1E-8)
 
     def testDerivatives(self):
         """Test that evaluateDerivatives() returns results similar to finite-differences
@@ -149,7 +150,7 @@ class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):
             lambda logR, e2: (ctrl.ellipticityMaxOuter**2 - e2**2)**0.5,
             epsabs=1.0,
             epsrel=1.0,
-            )
+        )
         self.assertClose(integral, 1.0, atol=0.01)
 
     def testEllipticityDistribution(self):
@@ -237,6 +238,7 @@ def suite():
     suites += unittest.makeSuite(SoftenedLinearPriorTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

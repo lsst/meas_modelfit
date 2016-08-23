@@ -40,6 +40,7 @@ numpy.random.seed(500)
 
 lsst.pex.logging.Debug("meas.modelfit.SemiEmpiricalPrior", 10)
 
+
 class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
 
     NUM_DIFF_STEP = 1E-4
@@ -75,12 +76,12 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
     def testGradient(self):
         for row in self.data:
             grad = numpy.zeros(4, dtype=float)
-            hess = numpy.zeros((4,4), dtype=float)
+            hess = numpy.zeros((4, 4), dtype=float)
             self.prior.evaluateDerivatives(
                 numpy.array([row["eta1"], row["eta2"], row["lnR"]]),
                 self.amplitudes,
                 grad[:3], grad[3:],
-                hess[:3,:3], hess[3:, 3:], hess[:3,3:]
+                hess[:3, :3], hess[3:, 3:], hess[:3, 3:]
             )
             self.assertClose(row["d_eta1"], grad[0])
             self.assertClose(row["d_eta2"], grad[1])
@@ -89,20 +90,19 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
     def testHessian(self):
         for row in self.data:
             grad = numpy.zeros(4, dtype=float)
-            hess = numpy.zeros((4,4), dtype=float)
+            hess = numpy.zeros((4, 4), dtype=float)
             self.prior.evaluateDerivatives(
                 numpy.array([row["eta1"], row["eta2"], row["lnR"]]),
                 self.amplitudes,
                 grad[:3], grad[3:],
-                hess[:3,:3], hess[3:, 3:], hess[:3,3:]
+                hess[:3, :3], hess[3:, 3:], hess[:3, 3:]
             )
-            self.assertClose(row["d2_eta1_eta1"], hess[0,0])
-            self.assertClose(row["d2_eta1_eta2"], hess[0,1])
-            self.assertClose(row["d2_eta1_lnR"], hess[0,2])
-            self.assertClose(row["d2_eta2_eta2"], hess[1,1])
-            self.assertClose(row["d2_eta2_lnR"], hess[1,2])
-            self.assertClose(row["d2_lnR_lnR"], hess[2,2])
-
+            self.assertClose(row["d2_eta1_eta1"], hess[0, 0])
+            self.assertClose(row["d2_eta1_eta2"], hess[0, 1])
+            self.assertClose(row["d2_eta1_lnR"], hess[0, 2])
+            self.assertClose(row["d2_eta2_eta2"], hess[1, 1])
+            self.assertClose(row["d2_eta2_lnR"], hess[1, 2])
+            self.assertClose(row["d2_lnR_lnR"], hess[2, 2])
 
     def evaluatePrior(self, eta1, eta2, lnR):
         b = numpy.broadcast(eta1, eta2, lnR)
@@ -110,6 +110,7 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
         for i, (eta1i, eta2i, lnRi) in enumerate(b):
             p.flat[i] = self.prior.evaluate(numpy.array([eta1i, eta2i, lnRi]), self.amplitudes)
         return p
+
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
@@ -120,6 +121,7 @@ def suite():
     suites += unittest.makeSuite(SemiEmpiricalPriorTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""

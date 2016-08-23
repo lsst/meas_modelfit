@@ -41,6 +41,7 @@ numpy.random.seed(500)
 
 ASSERT_CLOSE_KWDS = dict(plotOnFailure=True, printFailures=False)
 
+
 def makeGaussianFunction(ellipse, flux=1.0):
     """Create a single-Gaussian MultiShapeletFunction
 
@@ -54,6 +55,7 @@ def makeGaussianFunction(ellipse, flux=1.0):
     msf.getComponents().push_back(s)
     return msf
 
+
 def addGaussian(exposure, ellipse, flux, psf=None):
     s = makeGaussianFunction(ellipse, flux)
     if psf is not None:
@@ -63,9 +65,11 @@ def addGaussian(exposure, ellipse, flux, psf=None):
     s.evaluate().addToImage(imageD)
     imageF += imageD.convertF()
 
+
 def scaleExposure(exposure, factor):
     mi = exposure.getMaskedImage()
     mi *= factor
+
 
 class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
 
@@ -174,7 +178,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         kernel = lsst.afw.math.AnalyticKernel(
             int(self.psfSigma1*16)+1, int(self.psfSigma1*16)+1,
             lsst.afw.math.GaussianFunction2D(self.psfSigma1, self.psfSigma1)
-            )
+        )
         exposure1c = lsst.afw.image.ExposureF(self.bbox1)
         ctrl = lsst.afw.math.ConvolutionControl()
         ctrl.setDoCopyEdge(True)
@@ -188,17 +192,17 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         """
         ctrl = lsst.meas.modelfit.UnitTransformedLikelihoodControl()
         var = numpy.random.rand(self.bbox0.getHeight(), self.bbox0.getWidth()) + 2.0
-        self.exposure0.getMaskedImage().getVariance().getArray()[:,:] = var
+        self.exposure0.getMaskedImage().getVariance().getArray()[:, :] = var
         efv = lsst.meas.modelfit.EpochFootprintVector()
         efv.push_back(lsst.meas.modelfit.EpochFootprint(self.footprint0, self.exposure0, self.psf0))
         # test with per-pixel weights, using both ctors
         ctrl.usePixelWeights = True
         data = self.exposure0.getMaskedImage().getImage().getArray() / var**0.5
         l0a = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     self.exposure0, self.footprint0, self.psf0, ctrl)
+                                                           self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0a, data)
         l0b = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     efv, ctrl)
+                                                           efv, ctrl)
         self.checkLikelihood(l0b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
@@ -207,7 +211,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
                                                            self.exposure0, self.footprint0, self.psf0, ctrl)
         self.checkLikelihood(l0c, data)
         l0d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     efv, ctrl)
+                                                           efv, ctrl)
         self.checkLikelihood(l0d, data)
 
     def testProjected(self):
@@ -220,7 +224,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         exposure1.setWcs(self.sys1.wcs)
         exposure1.setCalib(self.sys1.calib)
         var = numpy.random.rand(self.bbox1.getHeight(), self.bbox1.getWidth()) + 2.0
-        exposure1.getMaskedImage().getVariance().getArray()[:,:] = var
+        exposure1.getMaskedImage().getVariance().getArray()[:, :] = var
         ctrl = lsst.meas.modelfit.UnitTransformedLikelihoodControl()
         efv = lsst.meas.modelfit.EpochFootprintVector()
         efv.push_back(lsst.meas.modelfit.EpochFootprint(self.footprint1, exposure1, self.psf1))
@@ -228,20 +232,21 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         ctrl.usePixelWeights = True
         data = exposure1.getMaskedImage().getImage().getArray() / var**0.5
         l1a = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     exposure1, self.footprint1, self.psf1, ctrl)
+                                                           exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1a, data)
         l1b = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     efv, ctrl)
+                                                           efv, ctrl)
         self.checkLikelihood(l1b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
         data = exposure1.getMaskedImage().getImage().getArray()
         l1c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     exposure1, self.footprint1, self.psf1, ctrl)
+                                                           exposure1, self.footprint1, self.psf1, ctrl)
         self.checkLikelihood(l1c, data)
         l1d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
-                                                     efv, ctrl)
+                                                           efv, ctrl)
         self.checkLikelihood(l1d, data)
+
 
 def suite():
     """Returns a suite containing all the test cases in this module."""
@@ -252,6 +257,7 @@ def suite():
     suites += unittest.makeSuite(UnitTransformedLikelihoodTestCase)
     suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
     return unittest.TestSuite(suites)
+
 
 def run(shouldExit=False):
     """Run the tests"""
