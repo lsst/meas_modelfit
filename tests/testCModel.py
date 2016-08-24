@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import os
 import numpy
@@ -33,10 +32,9 @@ import lsst.afw.image
 import lsst.meas.modelfit
 import lsst.meas.base
 
-numpy.random.seed(500)
-
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
+
 
 def makeMultiShapeletCircularGaussian(sigma):
     s = lsst.shapelet.ShapeletFunction(0, lsst.shapelet.HERMITE, sigma)
@@ -44,6 +42,7 @@ def makeMultiShapeletCircularGaussian(sigma):
     m = lsst.shapelet.MultiShapeletFunction()
     m.getComponents().push_back(s)
     return m
+
 
 def computePsfFlux(centroid, exposure):
     schema = lsst.afw.table.SourceTable.makeMinimalSchema()
@@ -56,10 +55,12 @@ def computePsfFlux(centroid, exposure):
     algorithm.measure(record, exposure)
     return record.get("base_PsfFlux_flux"), record.get("base_PsfFlux_fluxSigma")
 
+
 class CModelTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         # Setup test data: a single point source, initially with no noise.
+        numpy.random.seed(500)
         crval = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
         crpix = lsst.afw.geom.Point2D(0.0, 0.0)
         cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
@@ -77,12 +78,12 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         psf = lsst.afw.detection.GaussianPsf(25, 25, self.psfSigma)
         self.exposure.setPsf(psf)
         psfImage = psf.computeImage(self.xyPosition)
-        psfImage.getArray()[:,:] *= self.trueFlux
+        psfImage.getArray()[:, :] *= self.trueFlux
         psfBBox = psfImage.getBBox(lsst.afw.image.PARENT)
         self.footprint = lsst.afw.detection.Footprint(psfBBox)
         subImage = lsst.afw.image.ImageF(self.exposure.getMaskedImage().getImage(), psfBBox,
                                          lsst.afw.image.PARENT)
-        subImage.getArray()[:,:] = psfImage.getArray()
+        subImage.getArray()[:, :] = psfImage.getArray()
 
     def tearDown(self):
         del self.xyPosition
@@ -101,22 +102,22 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         result = algorithm.apply(
             self.exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
             self.xyPosition, self.exposure.getPsf().computeShape()
-            )
+        )
         self.assertFalse(result.initial.getFlag(result.FAILED))
-        self.assertClose(result.initial.flux, self.trueFlux, rtol=0.01)
-        self.assertClose(result.initial.fluxSigma, 0.0, rtol=0.0)
+        self.assertFloatsAlmostEqual(result.initial.flux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.initial.fluxSigma, 0.0, rtol=0.0)
         self.assertLess(result.initial.getEllipse().getDeterminantRadius(), 0.2)
         self.assertFalse(result.exp.getFlag(result.FAILED))
-        self.assertClose(result.exp.flux, self.trueFlux, rtol=0.01)
-        self.assertClose(result.exp.fluxSigma, 0.0, rtol=0.0)
+        self.assertFloatsAlmostEqual(result.exp.flux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.exp.fluxSigma, 0.0, rtol=0.0)
         self.assertLess(result.exp.getEllipse().getDeterminantRadius(), 0.2)
         self.assertFalse(result.dev.getFlag(result.FAILED))
-        self.assertClose(result.dev.flux, self.trueFlux, rtol=0.01)
-        self.assertClose(result.dev.fluxSigma, 0.0, rtol=0.0)
+        self.assertFloatsAlmostEqual(result.dev.flux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.dev.fluxSigma, 0.0, rtol=0.0)
         self.assertLess(result.dev.getEllipse().getDeterminantRadius(), 0.2)
         self.assertFalse(result.getFlag(result.FAILED))
-        self.assertClose(result.flux, self.trueFlux, rtol=0.01)
-        self.assertClose(result.fluxSigma, 0.0, rtol=0.0, atol=0.0)
+        self.assertFloatsAlmostEqual(result.flux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.fluxSigma, 0.0, rtol=0.0, atol=0.0)
 
     def testVsPsfFlux(self):
         """Test that CModel produces results comparable to PsfFlux when run
@@ -134,25 +135,19 @@ class CModelTestCase(lsst.utils.tests.TestCase):
             cmodel = algorithm.apply(
                 exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
                 self.xyPosition, self.exposure.getPsf().computeShape()
-                )
+            )
             psfFlux, psfFluxSigma = computePsfFlux(self.xyPosition, exposure)
-            self.assertClose(psfFlux, cmodel.flux, rtol=0.1/fluxFactor**0.5)
-            self.assertClose(psfFluxSigma, cmodel.fluxSigma, rtol=0.1/fluxFactor**0.5)
+            self.assertFloatsAlmostEqual(psfFlux, cmodel.flux, rtol=0.1/fluxFactor**0.5)
+            self.assertFloatsAlmostEqual(psfFluxSigma, cmodel.fluxSigma, rtol=0.1/fluxFactor**0.5)
 
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
 
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(CModelTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

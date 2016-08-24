@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import os
 import numpy
@@ -30,11 +29,12 @@ import lsst.utils.tests
 import lsst.pex.logging
 import lsst.meas.modelfit
 
-numpy.random.seed(500)
-
 log = lsst.pex.logging.Debug("meas.modelfit.optimizer", 10)
 
 class OptimizerTestCase(lsst.utils.tests.TestCase):
+
+    def setUp(self):
+        numpy.random.seed(500)
 
     def testTrustRegionSolver(self):
         tolerance = 1E-6
@@ -50,13 +50,13 @@ class OptimizerTestCase(lsst.utils.tests.TestCase):
             self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
         # now we try some matrices with zero eigenvalues due to model degeneracies
         log.info("Testing solveTrustRegion with positive-semidefinite matrices")
-        m[:,-1] = m[:,0]
+        m[:, -1] = m[:, 0]
         f = numpy.dot(m.transpose(), m)
         g = numpy.dot(m.transpose(), y)
         for r in numpy.linspace(1E-3, 0.8, 5):
             lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
             self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
-        m[:,-2] = m[:,1]
+        m[:, -2] = m[:, 1]
         f = numpy.dot(m.transpose(), m)
         g = numpy.dot(m.transpose(), y)
         for r in numpy.linspace(1E-3, 0.8, 5):
@@ -71,19 +71,14 @@ class OptimizerTestCase(lsst.utils.tests.TestCase):
                 lsst.meas.modelfit.solveTrustRegion(x, f, g, r, tolerance)
                 self.assertLessEqual(numpy.linalg.norm(x), r * (1.0 + tolerance))
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
 
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
+
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(OptimizerTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

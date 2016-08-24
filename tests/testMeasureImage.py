@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import os
 import unittest
 import numpy
@@ -37,8 +36,6 @@ import lsst.meas.modelfit
 import lsst.meas.modelfit.display
 import lsst.afw.display.ds9
 
-numpy.random.seed(500)
-
 # Set to 7 for per-object messages, 10 for per-sample
 lsst.pex.logging.Debug("meas.modelfit.AdaptiveImportanceSampler", 0)
 lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 0)
@@ -46,7 +43,8 @@ lsst.pex.logging.Debug("meas.modelfit.optimizer", 0)
 
 DO_MAKE_PLOTS = True
 
-DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
+
 
 class FakeDataRef(object):
 
@@ -83,9 +81,11 @@ class FakeDataRef(object):
         r.data = self.data
         return r
 
+
 class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
 
     def setUp(self):
+        numpy.random.seed(500)
         self.dataRef = FakeDataRef()
         self.config = lsst.meas.modelfit.MeasureCcdTask.ConfigClass()
         self.config.progressChunk = 1
@@ -93,7 +93,7 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
         self.models = [
             'bulge+disk',
             'fixed-sersic',
-            ]
+        ]
 
     def testSampler(self):
         self.config.fitter.retarget(lsst.meas.modelfit.AdaptiveImportanceSamplerTask)
@@ -109,9 +109,9 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             task1.writeConfig(butler=self.dataRef)
             results1 = task1.run(self.dataRef)
             for outRecord in results1.outCat:
-                self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
+                self.assertTrue(numpy.isfinite(outRecord['fit.nonlinear']).all())
                 if False:  # not yet implemented, but we should enable this test someday
-                    self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
+                    self.assertTrue(numpy.isfinite(outRecord['fit.amplitudes']).all())
             if task1.model.getAmplitudeDim() > 1:
                 # Direct sampling doesn't yet handle the degeneracies that can arise with
                 # multi-component models very well.
@@ -128,8 +128,8 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             task2.writeConfig(butler=self.dataRef)
             results2 = task2.run(self.dataRef)
             for outRecord in results2.outCat:
-                self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
-                self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
+                self.assertTrue(numpy.isfinite(outRecord['fit.nonlinear']).all())
+                self.assertTrue(numpy.isfinite(outRecord['fit.amplitudes']).all())
 
     def testOptimizer(self):
         self.config.fitter.retarget(lsst.meas.modelfit.OptimizerTask)
@@ -141,26 +141,21 @@ class MeasureImageTestCase(lsst.shapelet.tests.ShapeletTestCase):
             results = task.run(self.dataRef)
             for outRecord in results.outCat:
                 self.assertFalse(outRecord.get("fit.flags"))
-                self.assert_(numpy.isfinite(outRecord['fit.nonlinear']).all())
-                self.assert_(numpy.isfinite(outRecord['fit.amplitudes']).all())
+                self.assertTrue(numpy.isfinite(outRecord['fit.nonlinear']).all())
+                self.assertTrue(numpy.isfinite(outRecord['fit.amplitudes']).all())
 
     def tearDown(self):
         del self.dataRef
         del self.config
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
 
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
+
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(MeasureImageTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

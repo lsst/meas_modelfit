@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2016 LSST/AURA.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import os
 import unittest
 import numpy
@@ -32,10 +31,9 @@ import lsst.afw.image
 import lsst.afw.coord
 import lsst.meas.modelfit
 
-numpy.random.seed(500)
-
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
+
 
 class DoubleShapeletPsfApproxTestMixin(object):
 
@@ -115,7 +113,6 @@ class DoubleShapeletPsfApproxTestMixin(object):
              - msf.getComponents()[0].getEllipse().getCore().getDeterminantRadius())
         )
 
-
     def checkRatios(self, msf):
         """Check that the ratios specified in the control object are met by a MultiShapeletFunction.
 
@@ -125,10 +122,11 @@ class DoubleShapeletPsfApproxTestMixin(object):
         inner = msf.getComponents()[0]
         outer = msf.getComponents()[1]
         position = msf.getComponents()[0].getEllipse().getCenter()
-        self.assertClose(position.getX(), msf.getComponents()[1].getEllipse().getCenter().getX())
-        self.assertClose(position.getY(), msf.getComponents()[1].getEllipse().getCenter().getY())
-        self.assertClose(outer.evaluate()(position), inner.evaluate()(position) * self.ctrl.peakRatio)
-        self.assertClose(
+        self.assertFloatsAlmostEqual(position.getX(), msf.getComponents()[1].getEllipse().getCenter().getX())
+        self.assertFloatsAlmostEqual(position.getY(), msf.getComponents()[1].getEllipse().getCenter().getY())
+        self.assertFloatsAlmostEqual(outer.evaluate()(position),
+                                     inner.evaluate()(position)*self.ctrl.peakRatio)
+        self.assertFloatsAlmostEqual(
             outer.getEllipse().getCore().getDeterminantRadius(),
             inner.getEllipse().getCore().getDeterminantRadius() * self.ctrl.radiusRatio
         )
@@ -145,7 +143,8 @@ class DoubleShapeletPsfApproxTestMixin(object):
         """Check the quality of the fit by comparing to the PSF image.
         """
         dataImage, modelImage = self.makeImages(msf)
-        self.assertClose(dataImage.getArray(), modelImage.getArray(), atol=self.atol, plotOnFailure=True)
+        self.assertFloatsAlmostEqual(dataImage.getArray(), modelImage.getArray(), atol=self.atol,
+                                     plotOnFailure=True)
 
     def testSingleFramePlugin(self):
         """Run the algorithm as a single-frame plugin and check the quality of the fit.
@@ -179,7 +178,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         refCat = lsst.afw.table.SourceCatalog(refSchema)
         refRecord = refCat.addNew()
         refRecord.set(refCentroidKey, lsst.afw.geom.Point2D(0.0, 0.0))
-        refWcs = self.exposure.getWcs() # same as measurement Wcs
+        refWcs = self.exposure.getWcs()  # same as measurement Wcs
         task = lsst.meas.base.ForcedMeasurementTask(config=config, refSchema=refSchema)
         measCat = task.generateMeasCat(self.exposure, refCat, refWcs)
         task.run(measCat, self.exposure, refCat, refWcs)
@@ -196,13 +195,13 @@ class DoubleShapeletPsfApproxTestMixin(object):
         with the right peakRatio and radiusRatio.
         """
         msf = self.Algorithm.initializeResult(self.ctrl)
-        self.assertClose(msf.evaluate().integrate(), 1.0)
+        self.assertFloatsAlmostEqual(msf.evaluate().integrate(), 1.0)
         moments = msf.evaluate().computeMoments()
         axes = lsst.afw.geom.ellipses.Axes(moments.getCore())
-        self.assertClose(moments.getCenter().getX(), 0.0)
-        self.assertClose(moments.getCenter().getY(), 0.0)
-        self.assertClose(axes.getA(), 1.0)
-        self.assertClose(axes.getB(), 1.0)
+        self.assertFloatsAlmostEqual(moments.getCenter().getX(), 0.0)
+        self.assertFloatsAlmostEqual(moments.getCenter().getY(), 0.0)
+        self.assertFloatsAlmostEqual(axes.getA(), 1.0)
+        self.assertFloatsAlmostEqual(axes.getB(), 1.0)
         self.assertEqual(len(msf.getComponents()), 2)
         self.checkRatios(msf)
 
@@ -220,16 +219,17 @@ class DoubleShapeletPsfApproxTestMixin(object):
         )
         msf = self.Algorithm.initializeResult(self.ctrl)
         self.Algorithm.fitMoments(msf, self.ctrl, image)
-        self.assertClose(msf.evaluate().integrate(), array.sum(), rtol=MOMENTS_RTOL)
+        self.assertFloatsAlmostEqual(msf.evaluate().integrate(), array.sum(), rtol=MOMENTS_RTOL)
         moments = msf.evaluate().computeMoments()
         q = lsst.afw.geom.ellipses.Quadrupole(moments.getCore())
         cx = (x*array).sum()/array.sum()
         cy = (y*array).sum()/array.sum()
-        self.assertClose(moments.getCenter().getX(), cx, rtol=MOMENTS_RTOL)
-        self.assertClose(moments.getCenter().getY(), cy, rtol=MOMENTS_RTOL)
-        self.assertClose(q.getIxx(), ((x - cx)**2 * array).sum()/array.sum(), rtol=MOMENTS_RTOL)
-        self.assertClose(q.getIyy(), ((y - cy)**2 * array).sum()/array.sum(), rtol=MOMENTS_RTOL)
-        self.assertClose(q.getIxy(), ((x - cx)*(y - cy)*array).sum()/array.sum(), rtol=MOMENTS_RTOL)
+        self.assertFloatsAlmostEqual(moments.getCenter().getX(), cx, rtol=MOMENTS_RTOL)
+        self.assertFloatsAlmostEqual(moments.getCenter().getY(), cy, rtol=MOMENTS_RTOL)
+        self.assertFloatsAlmostEqual(q.getIxx(), ((x - cx)**2 * array).sum()/array.sum(), rtol=MOMENTS_RTOL)
+        self.assertFloatsAlmostEqual(q.getIyy(), ((y - cy)**2 * array).sum()/array.sum(), rtol=MOMENTS_RTOL)
+        self.assertFloatsAlmostEqual(q.getIxy(), ((x - cx)*(y - cy)*array).sum()/array.sum(),
+                                     rtol=MOMENTS_RTOL)
         self.assertEqual(len(msf.getComponents()), 2)
         self.checkRatios(msf)
         self.checkBounds(msf)
@@ -251,7 +251,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         parameters[3] = msf.getComponents()[1].getEllipse().getCore().getDeterminantRadius() / r0
         residuals = numpy.zeros(image.getArray().size, dtype=float)
         objective.computeResiduals(parameters, residuals)
-        self.assertClose(
+        self.assertFloatsAlmostEqual(
             residuals.reshape(image.getHeight(), image.getWidth()),
             image.getArray() - model.getArray()
         )
@@ -268,9 +268,9 @@ class DoubleShapeletPsfApproxTestMixin(object):
             objective.computeResiduals(parameters, r2)
             parameters[i] = original
             d = (r1 - r2)/(2.0*step)
-            self.assertClose(
+            self.assertFloatsAlmostEqual(
                 d.reshape(image.getHeight(), image.getWidth()),
-                derivatives[:,i].reshape(image.getHeight(), image.getWidth()),
+                derivatives[:, i].reshape(image.getHeight(), image.getWidth()),
                 atol=1E-11
             )
 
@@ -283,13 +283,15 @@ class DoubleShapeletPsfApproxTestMixin(object):
         self.Algorithm.fitMoments(msf, self.ctrl, image)
         prev = lsst.shapelet.MultiShapeletFunction(msf)
         self.Algorithm.fitProfile(msf, self.ctrl, image)
+
         def getEllipticity(m, c):
             s = lsst.afw.geom.ellipses.SeparableDistortionDeterminantRadius(
                 m.getComponents()[c].getEllipse().getCore()
             )
             return numpy.array([s.getE1(), s.getE2()])
-        self.assertClose(getEllipticity(prev, 0), getEllipticity(msf, 0), rtol=1E-13)
-        self.assertClose(getEllipticity(prev, 1), getEllipticity(msf, 1), rtol=1E-13)
+        self.assertFloatsAlmostEqual(getEllipticity(prev, 0), getEllipticity(msf, 0), rtol=1E-13)
+        self.assertFloatsAlmostEqual(getEllipticity(prev, 1), getEllipticity(msf, 1), rtol=1E-13)
+
         def computeChiSq(m):
             data, model = self.makeImages(m)
             return numpy.sum((data.getArray() - model.getArray())**2)
@@ -313,7 +315,6 @@ class DoubleShapeletPsfApproxTestMixin(object):
             self.assertLessEqual(bestChiSq, computeChiSq(msf))
             component.setEllipse(original)
 
-
     def testFitShapelets(self):
         """Test that fitShapelets() does not modify the zeroth order coefficients or ellipse,
         that it improves the fit, and that small perturbations to the higher-order coefficients
@@ -325,14 +326,15 @@ class DoubleShapeletPsfApproxTestMixin(object):
         self.Algorithm.fitProfile(msf, self.ctrl, image)
         prev = lsst.shapelet.MultiShapeletFunction(msf)
         self.Algorithm.fitShapelets(msf, self.ctrl, image)
-        self.assertClose(
+        self.assertFloatsAlmostEqual(
             prev.getComponents()[0].getEllipse().getParameterVector(),
             msf.getComponents()[0].getEllipse().getParameterVector()
         )
-        self.assertClose(
+        self.assertFloatsAlmostEqual(
             prev.getComponents()[1].getEllipse().getParameterVector(),
             msf.getComponents()[1].getEllipse().getParameterVector()
         )
+
         def computeChiSq(m):
             data, model = self.makeImages(m)
             return numpy.sum((data.getArray() - model.getArray())**2)
@@ -352,25 +354,32 @@ class DoubleShapeletPsfApproxTestMixin(object):
 class SingleGaussianTestCase(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.TestCase):
 
     def setUp(self):
+        numpy.random.seed(500)
         DoubleShapeletPsfApproxTestMixin.initialize(
             self, psf=lsst.afw.detection.GaussianPsf(25, 25, 2.0),
             innerOrder=0, outerOrder=0, peakRatio=0.0
         )
 
+
 class HigherOrderTestCase0(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.TestCase):
 
     def setUp(self):
-        image = lsst.afw.image.ImageD(os.path.join("tests/data/psfs/great3-0.fits"))
+        numpy.random.seed(500)
+        image = lsst.afw.image.ImageD(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                                   "data", "psfs/great3-0.fits"))
         DoubleShapeletPsfApproxTestMixin.initialize(
             self, psf=image,
             innerOrder=3, outerOrder=2,
             atol=0.0005
         )
 
+
 class HigherOrderTestCase1(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.TestCase):
 
     def setUp(self):
-        image = lsst.afw.image.ImageD(os.path.join("tests/data/psfs/great3-1.fits"))
+        numpy.random.seed(500)
+        image = lsst.afw.image.ImageD(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                                   "data", "psfs/great3-1.fits"))
         DoubleShapeletPsfApproxTestMixin.initialize(
             self, psf=image,
             innerOrder=2, outerOrder=1,
@@ -378,21 +387,13 @@ class HigherOrderTestCase1(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.Te
         )
 
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
 
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(SingleGaussianTestCase)
-    suites += unittest.makeSuite(HigherOrderTestCase0)
-    suites += unittest.makeSuite(HigherOrderTestCase1)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

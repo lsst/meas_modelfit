@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -18,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 
 import lsst.afw.geom
@@ -63,20 +63,21 @@ class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase, lsst.utils.tests.Te
         Science-quality tests either in testCModel.py (where we call the same code via a different interface)
         or something we have to do statistically on real data.
         """
-        if truthCat is None: truthCat = measCat
+        if truthCat is None:
+            truthCat = measCat
         for measRecord, truthRecord in zip(measCat, truthCat):
             trueFlux = truthRecord.get("truth_flux")
             self.assertFalse(measRecord.get("modelfit_CModel_initial_flag"))
             self.assertFalse(measRecord.get("modelfit_CModel_exp_flag"))
             self.assertFalse(measRecord.get("modelfit_CModel_dev_flag"))
             self.assertFalse(measRecord.get("modelfit_CModel_flag"))
-            self.assertClose(measRecord.get("modelfit_CModel_flux"), trueFlux, rtol=0.5)
+            self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_flux"), trueFlux, rtol=0.5)
             self.assertGreater(measRecord.get("modelfit_CModel_fluxSigma"), 0.0)
-            self.assertClose(measRecord.get("modelfit_CModel_initial_flux"), trueFlux, rtol=0.5)
+            self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_initial_flux"), trueFlux, rtol=0.5)
             self.assertGreater(measRecord.get("modelfit_CModel_initial_fluxSigma"), 0.0)
-            self.assertClose(measRecord.get("modelfit_CModel_exp_flux"), trueFlux, rtol=0.5)
+            self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_exp_flux"), trueFlux, rtol=0.5)
             self.assertGreater(measRecord.get("modelfit_CModel_exp_fluxSigma"), 0.0)
-            self.assertClose(measRecord.get("modelfit_CModel_dev_flux"), trueFlux, rtol=0.5)
+            self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_dev_flux"), trueFlux, rtol=0.5)
             self.assertGreater(measRecord.get("modelfit_CModel_dev_fluxSigma"), 0.0)
 
     def testPlugins(self):
@@ -108,19 +109,13 @@ class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase, lsst.utils.tests.Te
         self.checkOutputs(measCat, catalog2)
 
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
 
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(CModelTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

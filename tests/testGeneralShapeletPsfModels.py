@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2014 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import numpy
 import os
@@ -36,14 +35,14 @@ import lsst.meas.modelfit
 import lsst.meas.base
 import lsst.meas.algorithms
 
-numpy.random.seed(500)
-
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
 lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
+
 
 class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
+        numpy.random.seed(500)
         self.exposure = lsst.afw.image.ExposureF(41, 41)
         self.schema = lsst.afw.table.SourceTable.makeMinimalSchema()
         self.centroidKey = lsst.afw.table.Point2DKey.addFields(self.schema, "centroid", "centroid", "pixel")
@@ -92,12 +91,12 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian"])
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["SingleGaussian"]
-            )
+        )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
         comps = msfSingleGaussian.getComponents()
         r0 = comps[0].getEllipse().getCore().getDeterminantRadius()
-        self.assertClose(r0, sigma1, .05)
+        self.assertFloatsAlmostEqual(r0, sigma1, .05)
 
     def testDoubleGaussian(self):
         sigma1 = 2.0
@@ -106,25 +105,25 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measRecord = self.runTask("Double Gaussian Psf", ["DoubleGaussian"])
         keyDoubleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["DoubleGaussian"]
-            )
+        )
         msf = measRecord.get(keyDoubleGaussian)
         comps = msf.getComponents()
         self.assertEqual(len(comps), 2)
         #  amplitudes are equal by construction
         A0 = measRecord.get("modelfit_GeneralShapeletPsfApprox_DoubleGaussian_0_0")
         A1 = measRecord.get("modelfit_GeneralShapeletPsfApprox_DoubleGaussian_1_0")
-        self.assertClose(A0, A1, .05)
+        self.assertFloatsAlmostEqual(A0, A1, .05)
         r0 = comps[0].getEllipse().getCore().getDeterminantRadius()
         r1 = comps[1].getEllipse().getCore().getDeterminantRadius()
-        self.assertClose(r0, sigma1, .05)
-        self.assertClose(r1, sigma2, .05)
+        self.assertFloatsAlmostEqual(r0, sigma1, .05)
+        self.assertFloatsAlmostEqual(r1, sigma2, .05)
 
     def testDoubleShapelet(self):
         self.exposure.setPsf(self.makePsf("galsimPsf_0.5.fits", max=33))
         measRecord = self.runTask("Galsim Psf", ["DoubleShapelet"])
         keyDoubleShapelet = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["DoubleShapelet"]
-            )
+        )
         msf = measRecord.get(keyDoubleShapelet)
         comps = msf.getComponents()
         self.assertEqual(len(comps), 2)
@@ -138,7 +137,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measRecord = self.runTask("Galsim Psf", ["Full"])
         keyFull = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["Full"]
-            )
+        )
         msf = measRecord.get(keyFull)
         comps = msf.getComponents()
         self.assertEqual(len(comps), 4)
@@ -153,40 +152,35 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         sigma2 = 4.0
         self.exposure.setPsf(lsst.meas.algorithms.DoubleGaussianPsf(19, 19, sigma1, sigma2, .25))
         measRecord = self.runTask("Single Gaussian Psf", ["SingleGaussian", "DoubleGaussian",
-                                  "DoubleShapelet"])
+                                                          "DoubleShapelet"])
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["SingleGaussian"]
-            )
+        )
         msfSingleGaussian = measRecord.get(keySingleGaussian)
         self.assertEqual(len(msfSingleGaussian.getComponents()), 1)
         comps = msfSingleGaussian.getComponents()
         r0 = comps[0].getEllipse().getCore().getDeterminantRadius()
         # don't expect it to be all that close, but the DoubleGaussian should be
-        self.assertClose(r0, sigma1, .3)
+        self.assertFloatsAlmostEqual(r0, sigma1, .3)
 
         keyDoubleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["DoubleGaussian"]
-            )
+        )
         msfDoubleGaussian = measRecord.get(keyDoubleGaussian)
         comps = msfDoubleGaussian.getComponents()
         r0 = comps[0].getEllipse().getCore().getDeterminantRadius()
         r1 = comps[1].getEllipse().getCore().getDeterminantRadius()
-        self.assertClose(r0, sigma1, .05)
-        self.assertClose(r1, sigma2, .05)
+        self.assertFloatsAlmostEqual(r0, sigma1, .05)
+        self.assertFloatsAlmostEqual(r1, sigma2, .05)
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
 
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
+
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(GeneralShapeletPsfApproxPluginsTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

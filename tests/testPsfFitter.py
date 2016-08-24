@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import os
 import glob
@@ -41,14 +40,16 @@ lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
 ELLIPSE_PARAMETER_NAMES = ["eta1", "eta2", "logR", "x", "y"]
 DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
 
+
 def computeMoments(image):
     """Helper function to compute moments of a postage stamp about its origin."""
     maskedImage = lsst.afw.image.MaskedImageD(image)
     result = lsst.meas.base.SdssShapeAlgorithm.computeAdaptiveMoments(
         maskedImage,
         lsst.afw.geom.Point2D(0.0, 0.0)
-        )
+    )
     return result.getShape()
+
 
 class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
 
@@ -111,16 +112,16 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
         amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.modelfit.Scalar)
         model.readEllipses(ellipses1, nonlinear, fixed)
-        self.assertClose(fixed, ellipseParameters.ravel())
+        self.assertFloatsAlmostEqual(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
-        self.assertClose(len(msf.getComponents()), len(ellipses1))
+        self.assertFloatsAlmostEqual(len(msf.getComponents()), len(ellipses1))
         ellipses3 = model.makeEllipseVector()
         for i in range(len(ellipses2)):
-            self.assertClose(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector())
+            self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector())
             ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
-            self.assertClose(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector())
-            self.assertClose(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients())
+            self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector())
+            self.assertFloatsAlmostEqual(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients())
 
     def testEllipseModel(self):
         fitter = lsst.meas.modelfit.GeneralPsfFitter(self.configs['ellipse'].makeControl())
@@ -151,27 +152,32 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
         amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.modelfit.Scalar)
         model.readEllipses(ellipses1, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar))
-        self.assertClose(fixed, ellipseParameters.ravel())
+        self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
+                                     dtype=lsst.meas.modelfit.Scalar))
+        self.assertFloatsAlmostEqual(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
-        self.assertClose(len(msf.getComponents()), len(ellipses1))
+        self.assertFloatsAlmostEqual(len(msf.getComponents()), len(ellipses1))
         ellipses3 = model.makeEllipseVector()
         for i in range(len(ellipses2)):
-            self.assertClose(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(), rtol=1E-8)
+            self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(),
+                                         rtol=1E-8)
             ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
-            self.assertClose(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(), rtol=1E-8)
-            self.assertClose(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients(), rtol=1E-8)
+            self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(),
+                                         rtol=1E-8)
+            self.assertFloatsAlmostEqual(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients(),
+                                         rtol=1E-8)
 
         # test the ellipse round-tripping again, this time starting with nonzero nonlinear parameters:
         # this will be read back in by adding to the fixed parameters and zeroing the nonlinear parameters.
-        nonlinear[:] = 0.5*ellipseParameters[:,:3].ravel()
+        nonlinear[:] = 0.5*ellipseParameters[:, :3].ravel()
         ellipses4 = model.writeEllipses(nonlinear, fixed)
         model.readEllipses(ellipses4, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar),
+        self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
+                                     dtype=lsst.meas.modelfit.Scalar),
                          rtol=1E-8)
-        self.assertClose(fixed.reshape(2,5)[:,:3], 1.5*ellipseParameters[:,:3], rtol=1E-8)
-        self.assertClose(fixed.reshape(2,5)[:,3:], ellipseParameters[:,3:], rtol=1E-8)
+        self.assertFloatsAlmostEqual(fixed.reshape(2, 5)[:, :3], 1.5*ellipseParameters[:, :3], rtol=1E-8)
+        self.assertFloatsAlmostEqual(fixed.reshape(2, 5)[:, 3:], ellipseParameters[:, 3:], rtol=1E-8)
 
     def testFullModel(self):
         fitter = lsst.meas.modelfit.GeneralPsfFitter(self.configs['full'].makeControl())
@@ -216,19 +222,22 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
         amplitudes = numpy.random.randn(model.getAmplitudeDim())
         model.readEllipses(ellipses1, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar))
-        self.assertClose(fixed, ellipseParameters.ravel())
+        self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
+                                     dtype=lsst.meas.modelfit.Scalar))
+        self.assertFloatsAlmostEqual(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
-        self.assertClose(len(msf.getComponents()), len(ellipses1))
+        self.assertFloatsAlmostEqual(len(msf.getComponents()), len(ellipses1))
         ellipses3 = model.makeEllipseVector()
         amplitudeOffset = 0
         for i in range(len(ellipses2)):
-            self.assertClose(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(), rtol=1E-8)
+            self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(),
+                                         rtol=1E-8)
             ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
             amplitudeCount = len(msf.getComponents()[i].getCoefficients())
-            self.assertClose(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(), rtol=1E-8)
-            self.assertClose(amplitudes[amplitudeOffset:amplitudeOffset+amplitudeCount],
+            self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(),
+                                         rtol=1E-8)
+            self.assertFloatsAlmostEqual(amplitudes[amplitudeOffset:amplitudeOffset+amplitudeCount],
                              msf.getComponents()[i].getCoefficients(), rtol=1E-8)
             amplitudeOffset += amplitudeCount
 
@@ -237,8 +246,9 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         nonlinear[:] = 0.5*ellipseParameters.ravel()
         ellipses4 = model.writeEllipses(nonlinear, fixed)
         model.readEllipses(ellipses4, nonlinear, fixed)
-        self.assertClose(nonlinear, numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar))
-        self.assertClose(fixed, 1.5*ellipseParameters.ravel())
+        self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
+                                     dtype=lsst.meas.modelfit.Scalar))
+        self.assertFloatsAlmostEqual(fixed, 1.5*ellipseParameters.ravel())
 
     def testApply(self):
         tolerances = {"full": 3E-4, "ellipse": 8E-3, "fixed": 1E-2}
@@ -250,23 +260,18 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
                 multiShapeletFit = fitter.apply(kernelImage, shape, 0.01)
                 modelImage = lsst.afw.image.ImageD(kernelImage.getBBox(lsst.afw.image.PARENT))
                 multiShapeletFit.evaluate().addToImage(modelImage)
-                self.assertClose(kernelImage.getArray(), modelImage.getArray(),
+                self.assertFloatsAlmostEqual(kernelImage.getArray(), modelImage.getArray(),
                                  atol=tolerances[configKey],
                                  plotOnFailure=True)
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
 
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
+
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(GeneralPsfFitterTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+#
+# Copyright 2008-2016  AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,9 +19,8 @@
 #
 # You should have received a copy of the LSST License Statement and
 # the GNU General Public License along with this program.  If not,
-# see <http://www.lsstcorp.org/LegalNotices/>.
+# see <https://www.lsstcorp.org/LegalNotices/>.
 #
-
 import unittest
 import os
 import numpy
@@ -36,9 +35,8 @@ try:
 except ImportError:
     scipy = None
 
-numpy.random.seed(500)
-
 lsst.pex.logging.Debug("meas.modelfit.SemiEmpiricalPrior", 10)
+
 
 class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
 
@@ -47,6 +45,7 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
         # a prior with broad ramps and non-zero slope; broad ramps makes evaluating numerical
         # derivatives easier, and we want to do that to check the analytic ones
+        numpy.random.seed(500)
         self.ctrl = lsst.meas.modelfit.SemiEmpiricalPrior.Control()
         self.ctrl.ellipticityCore = 4.0
         self.ctrl.ellipticitySigma = 10.0
@@ -61,7 +60,7 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
                              ("d2_eta1_eta1", float), ("d2_eta1_eta2", float),
                              ("d2_eta1_lnR", float), ("d2_eta2_eta2", float),
                              ("d2_eta2_lnR", float), ("d2_lnR_lnR", float)])
-        self.data = numpy.loadtxt("tests/data/SEP.txt", dtype=dtype)
+        self.data = numpy.loadtxt(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "SEP.txt"), dtype=dtype)
 
     def tearDown(self):
         del self.prior
@@ -70,39 +69,38 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
     def testEvaluate(self):
         for row in self.data:
             p = self.prior.evaluate(numpy.array([row["eta1"], row["eta2"], row["lnR"]]), self.amplitudes)
-            self.assertClose(row["p"], p)
+            self.assertFloatsAlmostEqual(row["p"], p)
 
     def testGradient(self):
         for row in self.data:
             grad = numpy.zeros(4, dtype=float)
-            hess = numpy.zeros((4,4), dtype=float)
+            hess = numpy.zeros((4, 4), dtype=float)
             self.prior.evaluateDerivatives(
                 numpy.array([row["eta1"], row["eta2"], row["lnR"]]),
                 self.amplitudes,
                 grad[:3], grad[3:],
-                hess[:3,:3], hess[3:, 3:], hess[:3,3:]
+                hess[:3, :3], hess[3:, 3:], hess[:3, 3:]
             )
-            self.assertClose(row["d_eta1"], grad[0])
-            self.assertClose(row["d_eta2"], grad[1])
-            self.assertClose(row["d_lnR"], grad[2])
+            self.assertFloatsAlmostEqual(row["d_eta1"], grad[0])
+            self.assertFloatsAlmostEqual(row["d_eta2"], grad[1])
+            self.assertFloatsAlmostEqual(row["d_lnR"], grad[2])
 
     def testHessian(self):
         for row in self.data:
             grad = numpy.zeros(4, dtype=float)
-            hess = numpy.zeros((4,4), dtype=float)
+            hess = numpy.zeros((4, 4), dtype=float)
             self.prior.evaluateDerivatives(
                 numpy.array([row["eta1"], row["eta2"], row["lnR"]]),
                 self.amplitudes,
                 grad[:3], grad[3:],
-                hess[:3,:3], hess[3:, 3:], hess[:3,3:]
+                hess[:3, :3], hess[3:, 3:], hess[:3, 3:]
             )
-            self.assertClose(row["d2_eta1_eta1"], hess[0,0])
-            self.assertClose(row["d2_eta1_eta2"], hess[0,1])
-            self.assertClose(row["d2_eta1_lnR"], hess[0,2])
-            self.assertClose(row["d2_eta2_eta2"], hess[1,1])
-            self.assertClose(row["d2_eta2_lnR"], hess[1,2])
-            self.assertClose(row["d2_lnR_lnR"], hess[2,2])
-
+            self.assertFloatsAlmostEqual(row["d2_eta1_eta1"], hess[0, 0])
+            self.assertFloatsAlmostEqual(row["d2_eta1_eta2"], hess[0, 1])
+            self.assertFloatsAlmostEqual(row["d2_eta1_lnR"], hess[0, 2])
+            self.assertFloatsAlmostEqual(row["d2_eta2_eta2"], hess[1, 1])
+            self.assertFloatsAlmostEqual(row["d2_eta2_lnR"], hess[1, 2])
+            self.assertFloatsAlmostEqual(row["d2_lnR_lnR"], hess[2, 2])
 
     def evaluatePrior(self, eta1, eta2, lnR):
         b = numpy.broadcast(eta1, eta2, lnR)
@@ -111,19 +109,14 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
             p.flat[i] = self.prior.evaluate(numpy.array([eta1i, eta2i, lnRi]), self.amplitudes)
         return p
 
-def suite():
-    """Returns a suite containing all the test cases in this module."""
 
+class TestMemory(lsst.utils.tests.MemoryTestCase):
+    pass
+
+
+def setup_module(module):
     lsst.utils.tests.init()
 
-    suites = []
-    suites += unittest.makeSuite(SemiEmpiricalPriorTestCase)
-    suites += unittest.makeSuite(lsst.utils.tests.MemoryTestCase)
-    return unittest.TestSuite(suites)
-
-def run(shouldExit=False):
-    """Run the tests"""
-    lsst.utils.tests.run(suite(), shouldExit)
-
 if __name__ == "__main__":
-    run(True)
+    lsst.utils.tests.init()
+    unittest.main()
