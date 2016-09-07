@@ -1058,7 +1058,16 @@ void CModelAlgorithm::_applyImpl(
     int footprintArea
 ) const {
 
-    afw::geom::ellipses::Quadrupole psfMoments = psf.evaluate().computeMoments().getCore();
+    afw::geom::ellipses::Quadrupole psfMoments;
+    try {
+        psfMoments = psf.evaluate().computeMoments().getCore();
+    } catch (afw::geom::SingularTransformException const& exc) {
+        throw LSST_EXCEPT(
+            meas::base::MeasurementError,
+            std::string("Singular transform in shapelets: ") + exc.what(),
+            CModelResult::NO_SHAPELET_PSF
+            );
+    }
 
     PixelFitRegion region(getControl().region, moments, psfMoments, kronRadius, footprintArea);
     result.initialFitRegion = region.ellipse;
@@ -1325,7 +1334,15 @@ void CModelAlgorithm::measure(
         (measRecord.getTable()->getShapeFlagKey().isValid() && measRecord.getShapeFlag())) {
         if (getControl().fallbackInitialMomentsPsfFactor > 0.0) {
             result.setFlag(Result::NO_SHAPE, true);
-            moments = psf.evaluate().computeMoments().getCore();
+            try {
+                moments = psf.evaluate().computeMoments().getCore();
+            } catch (afw::geom::SingularTransformException const& exc) {
+                throw LSST_EXCEPT(
+                    meas::base::MeasurementError,
+                    std::string("Singular transform in shapelets: ") + exc.what(),
+                    CModelResult::NO_SHAPELET_PSF
+                );
+            }
             moments.scale(getControl().fallbackInitialMomentsPsfFactor);
         } else {
             throw LSST_EXCEPT(
