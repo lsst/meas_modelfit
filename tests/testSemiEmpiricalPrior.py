@@ -28,6 +28,7 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
+import lsst.pex.logging
 import lsst.meas.modelfit
 
 try:

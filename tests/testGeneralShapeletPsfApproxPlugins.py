@@ -30,6 +30,7 @@ import lsst.shapelet
 import lsst.afw.geom.ellipses
 import lsst.afw.table
 import lsst.afw.detection
+import lsst.pex.logging
 import lsst.meas.modelfit
 import lsst.meas.base
 
