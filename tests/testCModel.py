@@ -29,6 +29,7 @@ import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
 import lsst.afw.image
+import lsst.pex.logging
 import lsst.meas.modelfit
 import lsst.meas.base
 

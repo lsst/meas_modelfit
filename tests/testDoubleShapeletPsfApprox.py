@@ -29,6 +29,7 @@ import lsst.utils.tests
 import lsst.afw.detection
 import lsst.afw.image
 import lsst.afw.coord
+import lsst.pex.logging
 import lsst.meas.modelfit
 
 lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
