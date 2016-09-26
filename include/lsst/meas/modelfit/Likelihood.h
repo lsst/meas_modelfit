@@ -140,7 +140,7 @@ protected:
     Likelihood(PTR(Model) model, ndarray::Array<Scalar const,1,1> const & fixed) :
         _model(model), _fixed(fixed) {
         LSST_THROW_IF_NE(
-            fixed.getSize<0>(), model->getFixedDim(),
+            fixed.getSize<0>(), static_cast<std::size_t>(model->getFixedDim()),
             pex::exceptions::LengthError,
             "Fixed parameter vector size (%d) does not match Model fixed parameter dimensionality (%d)"
         );
