@@ -49,7 +49,7 @@ Basic routines to talk to lsst::meas::modelfit classes
 %initializeNumPy(meas_modelfit)
 %{
 #include "ndarray/swig.h"
-#include "ndarray/swig/eigen.h"
+#include "ndarray/converter/eigen.h"
 %}
 %include "ndarray.i"
 
