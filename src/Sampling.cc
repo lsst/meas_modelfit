@@ -102,7 +102,7 @@ ndarray::Array<Scalar,1,1> SamplingInterpreter::computeSampleQuantiles(
             if (!r.second) r.first->second += i->get(_weightKey);
         }
         Scalar cumulative = 0.0;
-        int iFraction = 0;
+        std::size_t iFraction = 0;
         std::map<Scalar,Scalar>::const_iterator current = map.begin(), end = map.end();
         std::pair<Scalar,Scalar> last(current->first, 0.0);
         for (; current != end; ++current) {
