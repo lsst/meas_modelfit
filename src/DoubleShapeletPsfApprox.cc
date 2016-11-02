@@ -346,7 +346,8 @@ void DoubleShapeletPsfApproxAlgorithm::fitProfile(
     parameters[2] = result.getComponents()[0].getEllipse().getCore().getDeterminantRadius() / momentsRadius;
     parameters[3] = result.getComponents()[1].getEllipse().getCore().getDeterminantRadius() / momentsRadius;
     Optimizer optimizer(objective, parameters, ctrl.optimizer);
-    int state = optimizer.run();
+    optimizer.run();
+    int state = optimizer.getState();
     result.getComponents()[0].getCoefficients()[0] = optimizer.getParameters()[0];
     result.getComponents()[1].getCoefficients()[0] = optimizer.getParameters()[1];
     result.getComponents()[0].getEllipse().getCore().scale(optimizer.getParameters()[2] / parameters[2]);
