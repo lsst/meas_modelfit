@@ -1,3 +1,5 @@
+from builtins import zip
+from builtins import object
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.

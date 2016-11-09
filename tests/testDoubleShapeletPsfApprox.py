@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import object
 #!/usr/bin/env python
 #
 # LSST Data Management System
@@ -49,7 +51,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         if ctrl is None:
             ctrl = lsst.meas.modelfit.DoubleShapeletPsfApproxControl()
         self.ctrl = ctrl
-        for name, value in kwds.iteritems():
+        for name, value in kwds.items():
             setattr(self.ctrl, name, value)
         self.exposure = lsst.afw.image.ExposureF(1, 1)
         self.exposure.setWcs(

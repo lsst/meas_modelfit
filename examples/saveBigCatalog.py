@@ -24,6 +24,7 @@
 A script to be used when profiling and debugging large-catalog IO.
 """
 from __future__ import print_function
+from builtins import range
 
 import resource
 import os
@@ -35,10 +36,10 @@ def main(nRecords, nSamplesPerRecord):
     task = lsst.meas.modelfit.MeasureCcdTask()
     print("Filling catalog")
     catalog = lsst.meas.modelfit.ModelFitCatalog(task.makeTable())
-    for i in xrange(nRecords):
+    for i in range(nRecords):
         record = catalog.addNew()
         samples = record.getSamples()
-        for j in xrange(nSamplesPerRecord):
+        for j in range(nSamplesPerRecord):
             samples.addNew()
     print("Saving catalog")
     res0 = resource.getrusage(resource.RUSAGE_SELF)

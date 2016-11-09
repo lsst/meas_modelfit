@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+from builtins import range
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -151,7 +151,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         design = numpy.zeros((nComponents, parameterDim), dtype=float)
         numpy.random.seed(int(rng.uniformInt(1000)))
         x = numpy.linspace(-1, 1, nComponents)
-        for j in xrange(parameterDim):
+        for j in range(parameterDim):
             design[:, j] = x[numpy.random.permutation(nComponents)]
         # note: we could do some permutations to make this a better sampling
         # of the space (i.e. reduce correlations, move things further apart),
@@ -172,7 +172,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         components = modelfitLib.Mixture.ComponentList()
         sigma = numpy.identity(parameters.size, dtype=float) * self.config.initialSigma**2
         design = self.makeLatinCube(self.rng, self.config.nComponents, parameters.size)
-        for n in xrange(self.config.nComponents):
+        for n in range(self.config.nComponents):
             mu = parameters.copy()
             mu[:] += design[n, :]*self.config.initialSpacing
             components.append(modelfitLib.Mixture.Component(1.0, mu, sigma))

@@ -23,6 +23,7 @@
 """
 Config classes and registry for Bayesian priors
 """
+from builtins import range
 
 import os
 import numpy

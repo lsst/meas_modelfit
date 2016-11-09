@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import object
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -84,7 +86,7 @@ class OptimizerDisplay(object):
         # We slice mgrid to generate the basic grid, which is [N, steps, ..., steps]
         mgridArgs = (slice(-1.0, 1.0, steps*1j),) * self.ndim
         # We'll index the result of mgrid with these args to make first dimension last
-        transposeArgs = tuple(range(1, self.ndim+1) + [0])
+        transposeArgs = tuple(list(range(1, self.ndim+1)) + [0])
         self.unitGrid = numpy.mgrid[mgridArgs].transpose(transposeArgs).copy()
         current = None
         for sample in history:

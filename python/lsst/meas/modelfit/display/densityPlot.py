@@ -32,6 +32,8 @@ the ExampleData class provided here, and use the provided HistogramLayer and Sur
 classes directly.  In more complicated cases, users may want to create their own Layer classes,
 which may define their own relationship with the data object.
 """
+from builtins import range
+from builtins import object
 
 import collections
 import numpy
@@ -311,7 +313,7 @@ class DensityPlot(object):
         self._upper = dict()
         # We merge the dimension name lists manually rather than using sets to preserve the order.
         # Most of the time we expect all data objects to have the same dimensions anyway.
-        for v in self.data.itervalues():
+        for v in self.data.values():
             for dim in v.dimensions:
                 if dim not in active:
                     active.append(dim)
@@ -378,7 +380,7 @@ class DensityPlot(object):
         self._lower = {dim: min(self.data[k].lower[dim] for k in self.data) for dim in self._active}
         self._upper = {dim: max(self.data[k].upper[dim] for k in self.data) for dim in self._active}
         self._build_axes()
-        for name, layer in self.layers.iteritems():
+        for name, layer in self.layers.items():
             self._plotLayer(name, layer)
 
     def _build_axes(self):
