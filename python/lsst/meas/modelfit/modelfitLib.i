@@ -166,7 +166,7 @@ Pixel = numpy.float32
 
     %pythoncode %{
         def __iter__(self):
-            for i in xrange(len(self)):
+            for i in range(len(self)):
                 yield self[i]
     %}
 }
