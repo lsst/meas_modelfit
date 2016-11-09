@@ -154,7 +154,7 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.modelfit.Scalar)
         model.readEllipses(ellipses1, nonlinear, fixed)
         self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
-                                     dtype=lsst.meas.modelfit.Scalar))
+                                                            dtype=lsst.meas.modelfit.Scalar))
         self.assertFloatsAlmostEqual(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
@@ -175,8 +175,8 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         ellipses4 = model.writeEllipses(nonlinear, fixed)
         model.readEllipses(ellipses4, nonlinear, fixed)
         self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
-                                     dtype=lsst.meas.modelfit.Scalar),
-                         rtol=1E-8)
+                                                            dtype=lsst.meas.modelfit.Scalar),
+                                     rtol=1E-8)
         self.assertFloatsAlmostEqual(fixed.reshape(2, 5)[:, :3], 1.5*ellipseParameters[:, :3], rtol=1E-8)
         self.assertFloatsAlmostEqual(fixed.reshape(2, 5)[:, 3:], ellipseParameters[:, 3:], rtol=1E-8)
 
@@ -224,7 +224,7 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         amplitudes = numpy.random.randn(model.getAmplitudeDim())
         model.readEllipses(ellipses1, nonlinear, fixed)
         self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
-                                     dtype=lsst.meas.modelfit.Scalar))
+                                                            dtype=lsst.meas.modelfit.Scalar))
         self.assertFloatsAlmostEqual(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
@@ -239,7 +239,7 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
             self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(),
                                          rtol=1E-8)
             self.assertFloatsAlmostEqual(amplitudes[amplitudeOffset:amplitudeOffset+amplitudeCount],
-                             msf.getComponents()[i].getCoefficients(), rtol=1E-8)
+                                         msf.getComponents()[i].getCoefficients(), rtol=1E-8)
             amplitudeOffset += amplitudeCount
 
         # test the ellipse round-tripping again, this time starting with nonzero nonlinear parameters:
@@ -248,7 +248,7 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         ellipses4 = model.writeEllipses(nonlinear, fixed)
         model.readEllipses(ellipses4, nonlinear, fixed)
         self.assertFloatsAlmostEqual(nonlinear, numpy.zeros(model.getNonlinearDim(),
-                                     dtype=lsst.meas.modelfit.Scalar))
+                                                            dtype=lsst.meas.modelfit.Scalar))
         self.assertFloatsAlmostEqual(fixed, 1.5*ellipseParameters.ravel())
 
     def testApply(self):
@@ -262,8 +262,8 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
                 modelImage = lsst.afw.image.ImageD(kernelImage.getBBox(lsst.afw.image.PARENT))
                 multiShapeletFit.evaluate().addToImage(modelImage)
                 self.assertFloatsAlmostEqual(kernelImage.getArray(), modelImage.getArray(),
-                                 atol=tolerances[configKey],
-                                 plotOnFailure=True)
+                                             atol=tolerances[configKey],
+                                             plotOnFailure=True)
 
 
 class TestMemory(lsst.utils.tests.MemoryTestCase):

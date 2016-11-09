@@ -137,12 +137,12 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             tg2 = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertEqual(tg1.getLogIntegral(), 0.0)
             self.assertFloatsAlmostEqual(tg1.getLogPeakAmplitude(),
-                             (0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))
-                              + numpy.log(tg1.getUntruncatedFraction())),
-                             rtol=1E-13)
+                                         (0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))
+                                          + numpy.log(tg1.getUntruncatedFraction())),
+                                         rtol=1E-13)
             self.assertFloatsAlmostEqual(tg2.getLogPeakAmplitude(),
-                             q0 + 0.5*numpy.dot(mu, gradient),
-                             rtol=1E-13)
+                                         q0 + 0.5*numpy.dot(mu, gradient),
+                                         rtol=1E-13)
             self.check1d(mu, hessian, tg1)
             self.check1d(mu, hessian, tg2)
 
@@ -163,15 +163,15 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             mu = -numpy.dot(sigma, gradient)
             tg1 = lsst.meas.modelfit.TruncatedGaussian.fromStandardParameters(mu, sigma)
             self.assertFloatsAlmostEqual(tg1.getLogPeakAmplitude(),
-                             (numpy.log(tg1.getUntruncatedFraction())
-                              + 0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))),
-                             rtol=1E-13)
+                                         (numpy.log(tg1.getUntruncatedFraction())
+                                          + 0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))),
+                                         rtol=1E-13)
             self.assertEqual(tg1.getLogIntegral(), 0.0)
             self.check2d(mu, hessian, tg1)
             tg2 = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertFloatsAlmostEqual(tg2.getLogPeakAmplitude(),
-                             q0+0.5*numpy.dot(mu, gradient),
-                             rtol=1E-13)
+                                         q0+0.5*numpy.dot(mu, gradient),
+                                         rtol=1E-13)
             self.check2d(mu, hessian, tg2)
 
     def testDegenerate(self):
@@ -189,8 +189,8 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             mu, _, _, _ = numpy.linalg.lstsq(model, data)
             tg = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertFloatsAlmostEqual(tg.getLogPeakAmplitude(),
-                             q0+0.5*numpy.dot(mu, gradient),
-                             rtol=1E-13)
+                                         q0+0.5*numpy.dot(mu, gradient),
+                                         rtol=1E-13)
             self.check2d(mu, hessian, tg, isDegenerate=True)
 
 

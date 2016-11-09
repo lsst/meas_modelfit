@@ -31,6 +31,7 @@ import lsst.meas.modelfit.display
 rng = lsst.afw.math.Random()
 log = lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 10)
 
+
 class TruncatedGaussianData(object):
 
     def __init__(self, tg, nSamples, strategy=None):
@@ -54,7 +55,7 @@ class TruncatedGaussianData(object):
 
     def eval1d(self, dim, x):
         i = self.dimensions.index(dim)
-        y = numpy.linspace(0, self.ranges[not i,1], 200)
+        y = numpy.linspace(0, self.ranges[not i, 1], 200)
         xg, yg = numpy.meshgrid(x, y)
         full = self.eval2d(dim, ('x' if dim == 'y' else 'y'), xg, yg)
         r = numpy.trapz(full, x=y, axis=0)
@@ -66,11 +67,12 @@ class TruncatedGaussianData(object):
         j = self.dimensions.index(yDim)
         r = numpy.zeros(x.size, dtype=float)
         xy = numpy.zeros((x.size, 2), dtype=float)
-        xy[:,i] = x.flat
-        xy[:,j] = y.flat
+        xy[:, i] = x.flat
+        xy[:, j] = y.flat
         evaluator(xy, r)
         r -= self.tg.getLogIntegral()
         return numpy.exp(-r).reshape(x.shape)
+
 
 def display(tg, nSamples=5000, strategy=None):
     data = TruncatedGaussianData(tg, nSamples=nSamples, strategy=strategy)

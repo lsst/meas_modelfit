@@ -33,6 +33,7 @@ from .fitRegion import setupFitRegion
 
 __all__ = ("MeasureImageConfig", "MeasureImageTask")
 
+
 class MeasureImageConfig(BaseMeasureConfig):
     likelihood = lsst.pex.config.ConfigField(
         dtype=modelfitLib.UnitTransformedLikelihood.ConfigClass,
@@ -43,6 +44,7 @@ class MeasureImageConfig(BaseMeasureConfig):
         default=0.1,
         doc="Minimum deconvolved initial radius in pixels"
     )
+
 
 class MeasureImageTask(BaseMeasureTask):
     """Driver class for S13-specific galaxy modeling work
@@ -74,12 +76,12 @@ class MeasureImageTask(BaseMeasureTask):
             return lsst.pipe.base.Struct(
                 prevCat=prevCat,
                 exposure=exposure
-                )
+            )
         else:
             return lsst.pipe.base.Struct(
                 srcCat=dataRef.get(self.dataPrefix + "src", immediate=True),
                 exposure=exposure
-                )
+            )
 
     def prepCatalog(self, inputs):
         """Prepare and return the output catalog, doing everything but the actual fitting.
@@ -102,7 +104,7 @@ class MeasureImageTask(BaseMeasureTask):
 
         for srcRecord in srcCat:
             if (srcRecord.getShapeFlag() or srcRecord.getCentroidFlag()
-                or srcRecord.getApFluxFlag() or srcRecord.getPsfFluxFlag()):
+                    or srcRecord.getApFluxFlag() or srcRecord.getPsfFluxFlag()):
                 continue
 
             outRecord = outCat.addNew()
@@ -131,7 +133,7 @@ class MeasureImageTask(BaseMeasureTask):
                 max(fullShape.getIxx() - psfShape.getIxx(), self.config.minInitialRadius**2),
                 max(fullShape.getIyy() - psfShape.getIyy(), self.config.minInitialRadius**2),
                 fullShape.getIxy() - psfShape.getIxy()
-                )
+            )
             ellipse1 = lsst.afw.geom.ellipses.Ellipse(deconvolvedShape, srcRecord.getCentroid())
             ellipse2 = ellipse1.transform(transform.geometric)
 
@@ -171,7 +173,7 @@ class MeasureImageTask(BaseMeasureTask):
             record.getFootprint(),
             psf,
             self.config.likelihood.makeControl()
-            )
+        )
 
     def writeOutputs(self, dataRef, outCat):
         dataRef.put(outCat, self.dataPrefix + "modelfits", tag=self.config.tag)

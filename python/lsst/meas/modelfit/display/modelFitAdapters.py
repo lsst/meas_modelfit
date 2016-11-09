@@ -26,6 +26,7 @@ from .. import modelfitLib
 
 __all__ = ("SamplingDataAdapter", "OptimizerTrackLayer", "OptimizerDataAdapter",)
 
+
 class ModelFitDataAdapter(object):
 
     def __init__(self, record):
@@ -50,10 +51,11 @@ class ModelFitDataAdapter(object):
             return None
         projection = self.pdf.project(j, i)
         xy = numpy.zeros((x.size, 2), dtype=float)
-        xy[:,0] = x.flatten()
-        xy[:,1] = y.flatten()
+        xy[:, 0] = x.flatten()
+        xy[:, 1] = y.flatten()
         projection.evaluate(xy, z)
         return z.reshape(x.shape)
+
 
 class SamplingDataAdapter(ModelFitDataAdapter):
 
@@ -68,21 +70,22 @@ class SamplingDataAdapter(ModelFitDataAdapter):
     def setRangesFromQuantiles(self, lower, upper):
         fractions = numpy.array([lower, upper], dtype=float)
         ranges = self.record.getInterpreter().computeParameterQuantiles(self.record, fractions)
-        self.lower = {dim: ranges[i,0] for i, dim in enumerate(self.dimensions)}
-        self.upper = {dim: ranges[i,1] for i, dim in enumerate(self.dimensions)}
+        self.lower = {dim: ranges[i, 0] for i, dim in enumerate(self.dimensions)}
+        self.upper = {dim: ranges[i, 1] for i, dim in enumerate(self.dimensions)}
+
 
 class OptimizerTrackLayer(object):
 
     defaults = dict(
         accepted=dict(
             marker='.', linestyle='-', color='c',
-            markevery=(1,1), # (start, stride): don't put a marker on the first point
-            ),
+            markevery=(1, 1), # (start, stride): don't put a marker on the first point
+        ),
         rejected=dict(
             marker='.', linestyle='-', color='k', alpha=0.5,
             markevery=3, # marker at every third point, so we only mark the rejected points
-            ),
-        )
+        ),
+    )
 
     def __init__(self, tag, accepted=None, rejected=None):
         self.tag = tag
@@ -99,9 +102,10 @@ class OptimizerTrackLayer(object):
         i = data.dimensions.index(yDim)
         j = data.dimensions.index(xDim)
         artists = []
-        artists.extend(axes.plot(data.rejected[:,j], data.rejected[:,i], **self.rejected))
-        artists.extend(axes.plot(data.accepted[:,j], data.accepted[:,i], **self.accepted))
+        artists.extend(axes.plot(data.rejected[:, j], data.rejected[:, i], **self.rejected))
+        artists.extend(axes.plot(data.accepted[:, j], data.accepted[:, i], **self.accepted))
         return artists
+
 
 class OptimizerDataAdapter(ModelFitDataAdapter):
 
@@ -133,17 +137,15 @@ class OptimizerDataAdapter(ModelFitDataAdapter):
             projected = self.pdf[0].project(i)
             mu = projected.getMu()
             sigma = projected.getSigma()**0.5
-            self.lower[dim] = min(self.accepted[:,i].min(), mu - 3*sigma)
-            self.upper[dim] = max(self.accepted[:,i].max(), mu + 3*sigma)
+            self.lower[dim] = min(self.accepted[:, i].min(), mu - 3*sigma)
+            self.upper[dim] = max(self.accepted[:, i].max(), mu + 3*sigma)
         # Now we setup some special points for a CrossPointsLayer
         self.points = numpy.zeros((2, self.parameters.shape[1]), dtype=float)
         record.getInterpreter().packParameters(
             self.record['initial.nonlinear'], self.record['initial.amplitudes'],
-            self.points[0,:]
-            )
+            self.points[0, :]
+        )
         record.getInterpreter().packParameters(
             self.record['fit.nonlinear'], self.record['fit.amplitudes'],
-            self.points[1,:]
-            )
-
-
+            self.points[1, :]
+        )

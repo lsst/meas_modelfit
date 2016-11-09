@@ -41,6 +41,7 @@ priorRegistry = lsst.pex.config.makeRegistry(
     """
 )
 
+
 def registerPrior(name):
     """Decorator to add a Config class with a makePrior static method to the
     prior registry.
@@ -51,12 +52,13 @@ def registerPrior(name):
         return cls
     return decorate
 
+
 @registerPrior("mixture")
 class MixturePriorConfig(lsst.pex.config.Config):
     filename = lsst.pex.config.Field(
         dtype=str, default="s13-v2-disk-08.fits",
         doc="Filename for mixture data file to load; relative to $MEAS_MODELFIT_DIR/data unless absolute"
-        )
+    )
 
     @staticmethod
     def makePrior(config):
@@ -66,6 +68,7 @@ class MixturePriorConfig(lsst.pex.config.Config):
             path = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "data", config.filename)
         mixture = modelfitLib.Mixture.readFits(path)
         return modelfitLib.MixturePrior(mixture, "single-ellipse")
+
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):
     """Fit a Mixture distribution to a set of (e1, e2, r) data points
@@ -81,16 +84,16 @@ def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20,
                               (inf=Gaussian).
     """
     components = lsst.meas.modelfit.Mixture.ComponentList()
-    rMu = data[:,2].mean()
-    rSigma = data[:,2].var()
-    eSigma = 0.5*(data[:,0].var() + data[:,1].var())
+    rMu = data[:, 2].mean()
+    rSigma = data[:, 2].var()
+    eSigma = 0.5*(data[:, 0].var() + data[:, 1].var())
     mu = numpy.array([0.0, 0.0, rMu], dtype=float)
     baseSigma = numpy.array([[eSigma, 0.0, 0.0],
                              [0.0, eSigma, 0.0],
                              [0.0, 0.0, rSigma]])
     for factor in numpy.linspace(minFactor, maxFactor, nComponents):
         sigma = baseSigma.copy()
-        sigma[:2,:2] *= factor
+        sigma[:2, :2] *= factor
         components.append(lsst.meas.modelfit.Mixture.Component(1.0, mu, sigma))
     mixture = lsst.meas.modelfit.Mixture(3, components, df)
     restriction = lsst.meas.modelfit.MixturePrior.getUpdateRestriction()

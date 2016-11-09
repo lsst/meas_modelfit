@@ -142,7 +142,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         image0a = lsst.afw.image.ImageD(self.bbox0)
         msf.evaluate().addToImage(image0a)
         self.assertFloatsAlmostEqual(image0a.getArray(), self.exposure0.getMaskedImage().getImage().getArray(),
-                         rtol=1E-6, atol=1E-7, **ASSERT_CLOSE_KWDS)
+                                     rtol=1E-6, atol=1E-7, **ASSERT_CLOSE_KWDS)
 
     def testWarp(self):
         """Test that transforming ellipses and fluxes with LocalUnitTransform agrees with warping
@@ -158,8 +158,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         exposure1a.setCalib(self.sys1.calib)
         scaleExposure(exposure1a, self.t01.flux)
         self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
-                         exposure1a.getMaskedImage().getImage().getArray(),
-                         rtol=1E-6, **ASSERT_CLOSE_KWDS)
+                                     exposure1a.getMaskedImage().getImage().getArray(),
+                                     rtol=1E-6, **ASSERT_CLOSE_KWDS)
         # exposure1b: warp exposure0 using warpImage with AffineTransform arguments
         exposure1b = lsst.afw.image.ExposureF(self.bbox1)
         exposure1b.setWcs(self.sys1.wcs)
@@ -169,8 +169,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         exposure1b.setCalib(self.sys1.calib)
         scaleExposure(exposure1b, self.t01.flux)
         self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
-                         exposure1b.getMaskedImage().getImage().getArray(),
-                         rtol=1E-6, **ASSERT_CLOSE_KWDS)
+                                     exposure1b.getMaskedImage().getImage().getArray(),
+                                     rtol=1E-6, **ASSERT_CLOSE_KWDS)
         # now we rebuild exposure1 with the PSF convolution included, and convolve 1a->1c using an
         # afw::math::Kernel.  Since 1a is the same as 1b, there's no need to convolve 1b too.
         exposure1 = lsst.afw.image.ExposureF(self.bbox1)
@@ -185,8 +185,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         ctrl.setDoCopyEdge(True)
         lsst.afw.math.convolve(exposure1c.getMaskedImage(), exposure1a.getMaskedImage(), kernel, ctrl)
         self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
-                         exposure1c.getMaskedImage().getImage().getArray(),
-                         rtol=1E-5, atol=1E-6, **ASSERT_CLOSE_KWDS)
+                                     exposure1c.getMaskedImage().getImage().getArray(),
+                                     rtol=1E-5, atol=1E-6, **ASSERT_CLOSE_KWDS)
 
     def testDirect(self):
         """Test likelihood evaluation when the fit system is the same as the data system.

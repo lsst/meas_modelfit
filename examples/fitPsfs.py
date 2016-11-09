@@ -31,12 +31,14 @@ import lsst.pex.logging
 
 lsst.pex.logging.Debug("meas.modelfit.optimizer", 0)
 
+
 def printResidualStatistics(image, msf, index):
     residuals = image.Factory(image, True)
     residuals *= -1
     msf.evaluate().addToImage(residuals)
     r = residuals.getArray()
     print "  %s: abs_diff_max=%f rms_diff=%f" % (index, numpy.abs(r).max(), ((r**2).mean())**0.5)
+
 
 def fitPsfImage(image, fitters):
     maskedImage = lsst.afw.image.MaskedImageD(image)
@@ -47,7 +49,7 @@ def fitPsfImage(image, fitters):
             lsst.afw.detection.Footprint(image.getBBox(lsst.afw.image.PARENT)),
             lsst.afw.geom.Point2D(0.0, 0.0),
             result
-            )
+        )
     except lsst.meas.base.MeasurementError:
         pass
     if (result.x**2 + result.y**2) > 0.25:
@@ -64,7 +66,7 @@ def fitPsfImage(image, fitters):
 ctrls = [
     lsst.meas.modelfit.GeneralPsfFitterControl(),
     lsst.meas.modelfit.GeneralPsfFitterControl(),
-    ]
+]
 ctrls[0].primary.ellipticityPriorSigma = 0.3
 ctrls[0].primary.radiusPriorSigma = 0.5
 ctrls[0].wings.ellipticityPriorSigma = 0.3
@@ -86,11 +88,12 @@ ctrls[1].outer.ellipticityPriorSigma = 0.3
 ctrls[1].outer.radiusPriorSigma = 0.5
 ctrls[1].outer.positionPriorSigma = 0.1
 
+
 def main(filenames):
     fitters = [lsst.meas.modelfit.GeneralPsfFitter(ctrl) for ctrl in ctrls]
     for filename in filenames:
         image = lsst.afw.image.ImageD(filename)
-        image.getArray()[:,:] /= image.getArray()[:,:].max()
+        image.getArray()[:, :] /= image.getArray()[:, :].max()
         print filename
         fitPsfImage(image, fitters)
 

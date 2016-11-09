@@ -44,6 +44,7 @@ from .optimizerDisplay import *
 
 __all__ = ("Interactive", )
 
+
 class Interactive(object):
     """Interactive analysis helper class
 

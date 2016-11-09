@@ -32,14 +32,15 @@ except ImportError:
 import lsst.utils.tests
 import lsst.meas.modelfit
 
+
 class IntegralsTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         numpy.random.seed(500)
 
     def testBVN(self):
-        data = numpy.loadtxt(os.path.join(os.path.dirname(os.path.realpath(__file__)), "reference", "bvn.txt")
-                             , delimiter=',')
+        data = numpy.loadtxt(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                          "reference", "bvn.txt"), delimiter=',')
         for h, k, r, p1 in data:
             p2 = lsst.meas.modelfit.bvnu(h, k, r)
             self.assertFloatsAlmostEqual(p1, p2, rtol=1E-14)

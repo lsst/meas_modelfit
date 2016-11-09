@@ -35,6 +35,7 @@ from .fitRegion import setupFitRegion
 
 __all__ = ("BaseMeasureConfig", "BaseMeasureTask")
 
+
 class BaseMeasureConfig(lsst.pex.config.Config):
     fitter = lsst.pex.config.ConfigurableField(
         target=OptimizerTask,
@@ -90,6 +91,7 @@ class BaseMeasureConfig(lsst.pex.config.Config):
         doc="The tag of a previous run of a meas_modelfit measure task to use as inputs"
     )
 
+
 class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
     """An intermediate base class for top-level model-fitting tasks.
 
@@ -118,38 +120,38 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
         self.keys = {}
         self.keys["center"] = lsst.afw.table.Point2DKey.addFields(
             self.schema, "center", "input centroid of the object in image coordinates", "pixel"
-            )
+        )
         self.keys["initial.nonlinear"] = self.schema.addField(
             "initial.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),
             doc="initial (pre-fit) nonlinear parameters"
-            )
+        )
         self.keys["initial.amplitudes"] = self.schema.addField(
             "initial.amplitudes", type="ArrayD", size=self.model.getAmplitudeDim(),
             doc="initial (pre-fit) linear amplitudes"
-            )
+        )
         self.keys["fixed"] = self.schema.addField(
             "fixed", type="ArrayD", size=self.model.getFixedDim(),
             doc="fixed nonlinear parameters"
-            )
+        )
         self.keys["snr"] = self.schema.addField(
             "snr", type=float,
             doc="signal to noise ratio from source apFlux/apFluxErr"
-            )
+        )
         self.keys["sys.position"] = lsst.afw.table.CoordKey.addFields(
             self.schema, "sys.position", "nominal position used to construct UnitSystem for parameters",
-            )
+        )
         self.keys["sys.magnitude"] = self.schema.addField(
             "sys.mag", type=float,
             doc="nominal magnitude used to construct UnitSystem for parameters"
-            )
+        )
         self.keys["fit.nonlinear"] = self.schema.addField(
             "fit.nonlinear", type="ArrayD", size=self.model.getNonlinearDim(),
             doc="best-fit nonlinear parameters"
-            )
+        )
         self.keys["fit.amplitudes"] = self.schema.addField(
             "fit.amplitudes", type="ArrayD", size=self.model.getAmplitudeDim(),
             doc="best-fit linear amplitudes"
-            )
+        )
         # If we're doing a warm start from a previous run with a different tag, check that things
         # are compatible, and add a subtask that matches what was used to run the previous.
         # This can be recursive.
@@ -163,7 +165,7 @@ class BaseMeasureTask(lsst.pipe.base.CmdLineTask):
             self.previous = PrevTask(name="previous", config=prevConfig, parentTask=self, butler=butler)
             if (self.previous.model.getNonlinearDim() != self.model.getNonlinearDim()
                 or self.previous.model.getAmplitudeDim() != self.model.getAmplitudeDim()
-                or self.previous.model.getFixedDim() != self.model.getFixedDim()):
+                    or self.previous.model.getFixedDim() != self.model.getFixedDim()):
                 raise lsst.pipe.base.TaskError("Cannot use previous catalog: model is incompatible")
             self.prevCatMapper = lsst.afw.table.SchemaMapper(self.previous.schema)
             self.prevCatMapper.addMinimalSchema(self.schema)

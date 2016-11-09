@@ -28,6 +28,7 @@ import lsst.afw.detection
 
 __all__ = ("FitRegionConfig", "setupFitRegion")
 
+
 class FitRegionConfig(lsst.pex.config.Config):
     """Config class for setupFitRegion() function
     """
@@ -41,6 +42,7 @@ class FitRegionConfig(lsst.pex.config.Config):
         default=True,
         doc="Whether to grow footprints isotropically"
     )
+
 
 def setupFitRegion(config, exposure, source):
     """Given a SourceRecord (with Footprint) and the Exposure it was detected on,

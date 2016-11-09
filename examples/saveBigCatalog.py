@@ -28,6 +28,7 @@ import resource
 import os
 import lsst.meas.modelfit
 
+
 def main(nRecords, nSamplesPerRecord):
     print "Initializing Task"
     task = lsst.meas.modelfit.MeasureCcdTask()

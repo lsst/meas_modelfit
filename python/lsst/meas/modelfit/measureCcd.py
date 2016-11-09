@@ -33,12 +33,14 @@ except ImportError:
 
 __all__ = ("MeasureCcdConfig", "MeasureCcdTask")
 
+
 class MeasureCcdConfig(MeasureImageTask.ConfigClass):
     doApplyUberCal = lsst.pex.config.Field(
-        dtype = bool,
-        doc = "Apply meas_mosaic ubercal results to input calexps?",
-        default = False
+        dtype=bool,
+        doc="Apply meas_mosaic ubercal results to input calexps?",
+        default=False
     )
+
 
 class MeasureCcdTask(MeasureImageTask):
     """Specialization of MeasureImageTask for running on calexps, after processCcd.py or processEimage.py
@@ -55,7 +57,7 @@ class MeasureCcdTask(MeasureImageTask):
                 raise RuntimeError(
                     "Cannot use improved calibrations for %s because meas_mosaic could not be imported."
                     % dataRef.dataId
-                    )
+                )
             applyMosaicResults(dataRef, calexp=inputs.exposure)
         return inputs
 

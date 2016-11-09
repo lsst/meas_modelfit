@@ -32,6 +32,7 @@ except ImportError:
 
 __all__ = ("MeasureMultiConfig", "MeasureMultiTask")
 
+
 class MeasureMultiConfig(BaseMeasureConfig):
     coaddName = lsst.pex.config.Field(
         doc="coadd name: typically one of deep or goodSeeing",
@@ -66,6 +67,7 @@ class MeasureMultiConfig(BaseMeasureConfig):
         if self.fitFluxMag0 is None:
             raise lsst.pex.config.ValidationError("fitFluxMag0", self,
                                                   "value may not be None in MeasureMulti")
+
 
 class MeasureMultiTask(BaseMeasureTask):
     """Variant of BaseMeasureTask for running modelfit on the calexps that make up a coadd.
@@ -105,6 +107,7 @@ class MeasureMultiTask(BaseMeasureTask):
         visitKey = exposureSchema.find("visit").key
         ccdKey = exposureSchema.find("ccd").key
         butler = dataRef.getButler()
+
         def readInputExposure(record, bbox):
             """Given an ExposureRecord and bounding box, load the appropriate subimage."""
             dataId = butler.mapper.getDataId(visit=record.get(visitKey), ccdId=record.get(ccdKey))
@@ -119,7 +122,7 @@ class MeasureMultiTask(BaseMeasureTask):
                     raise RuntimeError(
                         "Cannot use improved calibrations for %s because meas_mosaic could not be imported."
                         % dataRef.dataId
-                        )
+                    )
                 applyMosaicResults(dataRef, calexp=exposure, bbox=bbox)
             return exposure
         return lsst.pipe.base.Struct(
@@ -184,7 +187,7 @@ class MeasureMultiTask(BaseMeasureTask):
     def _makeArgumentParser(cls):
         parser = lsst.pipe.base.ArgumentParser(name=cls._DefaultName)
         parser.add_id_argument("--id", "deepCoadd",
-            help="coadd data ID, e.g. --id tract=1 patch=2,2 filter=g")
+                               help="coadd data ID, e.g. --id tract=1 patch=2,2 filter=g")
         return parser
 
     def _getConfigName(self):

@@ -367,7 +367,7 @@ class HigherOrderTestCase0(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.Te
     def setUp(self):
         numpy.random.seed(500)
         image = lsst.afw.image.ImageD(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                                   "data", "psfs/great3-0.fits"))
+                                                   "data", "psfs/great3-0.fits"))
         DoubleShapeletPsfApproxTestMixin.initialize(
             self, psf=image,
             innerOrder=3, outerOrder=2,
@@ -380,7 +380,7 @@ class HigherOrderTestCase1(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.Te
     def setUp(self):
         numpy.random.seed(500)
         image = lsst.afw.image.ImageD(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                                   "data", "psfs/great3-1.fits"))
+                                                   "data", "psfs/great3-1.fits"))
         DoubleShapeletPsfApproxTestMixin.initialize(
             self, psf=image,
             innerOrder=2, outerOrder=1,
