@@ -23,6 +23,7 @@
 """
 A script to be used when profiling and debugging large-catalog IO.
 """
+from __future__ import print_function
 
 import resource
 import os
@@ -30,25 +31,25 @@ import lsst.meas.modelfit
 
 
 def main(nRecords, nSamplesPerRecord):
-    print "Initializing Task"
+    print("Initializing Task")
     task = lsst.meas.modelfit.MeasureCcdTask()
-    print "Filling catalog"
+    print("Filling catalog")
     catalog = lsst.meas.modelfit.ModelFitCatalog(task.makeTable())
     for i in xrange(nRecords):
         record = catalog.addNew()
         samples = record.getSamples()
         for j in xrange(nSamplesPerRecord):
             samples.addNew()
-    print "Saving catalog"
+    print("Saving catalog")
     res0 = resource.getrusage(resource.RUSAGE_SELF)
     catalog.writeFits("tmp.fits")
     res1 = resource.getrusage(resource.RUSAGE_SELF)
-    print "Save complete: system=%f, user=%f" % (res1.ru_stime - res0.ru_utime, res1.ru_utime - res0.ru_utime)
-    print "Loading catalog"
+    print("Save complete: system=%f, user=%f" % (res1.ru_stime - res0.ru_utime, res1.ru_utime - res0.ru_utime))
+    print("Loading catalog")
     res0 = resource.getrusage(resource.RUSAGE_SELF)
     catalog1 = lsst.meas.modelfit.ModelFitCatalog.readFits("tmp.fits")
     res1 = resource.getrusage(resource.RUSAGE_SELF)
-    print "Load complete: system=%f, user=%f" % (res1.ru_stime - res0.ru_utime, res1.ru_utime - res0.ru_utime)
+    print("Load complete: system=%f, user=%f" % (res1.ru_stime - res0.ru_utime, res1.ru_utime - res0.ru_utime))
     os.remove("tmp.fits")
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+from __future__ import print_function
 import numpy
 import matplotlib
 
@@ -46,7 +47,7 @@ class TruncatedGaussianData(object):
         sampler(rng, self.values, self.weights)
         assert numpy.isfinite(self.values).all()
         assert numpy.isfinite(self.weights).all()
-        print self.weights.min(), self.weights.max(), self.weights.sum()
+        print(self.weights.min(), self.weights.max(), self.weights.sum())
         if False:
             self.ranges = numpy.array([self.values.min(axis=0),
                                        self.values.max(axis=0)]).transpose()

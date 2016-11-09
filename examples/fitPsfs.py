@@ -22,6 +22,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+from __future__ import print_function
 import sys
 import numpy
 
@@ -37,7 +38,7 @@ def printResidualStatistics(image, msf, index):
     residuals *= -1
     msf.evaluate().addToImage(residuals)
     r = residuals.getArray()
-    print "  %s: abs_diff_max=%f rms_diff=%f" % (index, numpy.abs(r).max(), ((r**2).mean())**0.5)
+    print("  %s: abs_diff_max=%f rms_diff=%f" % (index, numpy.abs(r).max(), ((r**2).mean())**0.5))
 
 
 def fitPsfImage(image, fitters):
@@ -94,7 +95,7 @@ def main(filenames):
     for filename in filenames:
         image = lsst.afw.image.ImageD(filename)
         image.getArray()[:, :] /= image.getArray()[:, :].max()
-        print filename
+        print(filename)
         fitPsfImage(image, fitters)
 
 if __name__ == "__main__":
