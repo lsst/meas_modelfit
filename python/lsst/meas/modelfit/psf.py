@@ -1,3 +1,4 @@
+from builtins import object
 #!/usr/bin/env python
 #
 # LSST Data Management System
@@ -32,18 +33,19 @@ lsst.meas.base.wrapSimpleAlgorithm(
     executionOrder=lsst.meas.base.BasePlugin.SHAPE_ORDER
 )
 
+
 class GeneralShapeletPsfApproxConfig(lsst.pex.config.Config):
     models = lsst.pex.config.ConfigDictField(
         keytype=str,
         itemtype=modelfitLib.GeneralPsfFitterConfig,
         doc="a dictionary of models that can be used to fit the PSF",
         default={} # populated in setDefaults; can't do it on a single line here
-        )
+    )
     sequence = lsst.pex.config.ListField(
         dtype=str,
         doc="a sequence of model names indicating which models should be fit, and their order",
         default=["DoubleShapelet"]
-        )
+    )
 
     def setDefaults(self):
         super(GeneralShapeletPsfApproxConfig, self).setDefaults()
@@ -76,6 +78,7 @@ class GeneralShapeletPsfApproxConfig(lsst.pex.config.Config):
             if m not in self.models:
                 raise KeyError("All elements in sequence must be keys in models dict")
 
+
 class GeneralShapeletPsfApproxMixin(object):
     """Mixin base class for fitting shapelet approximations to the PSF model
 
@@ -98,7 +101,8 @@ class GeneralShapeletPsfApproxMixin(object):
         """
         self.sequence = []
         for m in config.sequence:
-            fitter = modelfitLib.GeneralPsfFitterAlgorithm(config.models[m].makeControl(), schema, schema[name][m].getPrefix())
+            fitter = modelfitLib.GeneralPsfFitterAlgorithm(
+                config.models[m].makeControl(), schema, schema[name][m].getPrefix())
             self.sequence.append((fitter, schema[name][m].getPrefix()))
 
     def measure(self, measRecord, exposure):
@@ -106,7 +110,8 @@ class GeneralShapeletPsfApproxMixin(object):
         measRecord.getCentroid(), then save the results to measRecord.
         """
         if not exposure.hasPsf():
-            raise lsst.meas.base.FatalAlgorithmError("GeneralShapeletPsfApprox requires Exposure to have a Psf")
+            raise lsst.meas.base.FatalAlgorithmError(
+                "GeneralShapeletPsfApprox requires Exposure to have a Psf")
         psf = exposure.getPsf()
         psfImage = psf.computeKernelImage(measRecord.getCentroid())
         psfShape = psf.computeShape(measRecord.getCentroid())
@@ -140,11 +145,13 @@ class GeneralShapeletPsfApproxMixin(object):
     def fail(self, measRecord, error=None):
         pass
 
+
 class GeneralShapeletPsfApproxSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, GeneralShapeletPsfApproxConfig):
 
     def setDefaults(self):
         lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
         GeneralShapeletPsfApproxConfig.setDefaults(self)
+
 
 @lsst.meas.base.register("modelfit_GeneralShapeletPsfApprox")
 class GeneralShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin, GeneralShapeletPsfApproxMixin):
@@ -169,11 +176,13 @@ class GeneralShapeletPsfApproxSingleFramePlugin(lsst.meas.base.SingleFramePlugin
     def fail(self, measRecord, error=None):
         GeneralShapeletPsfApproxMixin.fail(self, measRecord, error)
 
+
 class GeneralShapeletPsfApproxForcedConfig(lsst.meas.base.ForcedPluginConfig, GeneralShapeletPsfApproxConfig):
 
     def setDefaults(self):
         lsst.meas.base.ForcedPluginConfig.setDefaults(self)
         GeneralShapeletPsfApproxConfig.setDefaults(self)
+
 
 @lsst.meas.base.register("modelfit_GeneralShapeletPsfApprox")
 class GeneralShapeletPsfApproxForcedPlugin(lsst.meas.base.ForcedPlugin, GeneralShapeletPsfApproxMixin):

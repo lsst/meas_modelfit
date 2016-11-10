@@ -1,3 +1,5 @@
+from past.builtins import basestring
+from builtins import object
 #!/usr/bin/env python
 #
 # LSST Data Management System
@@ -43,6 +45,7 @@ from .modelFitAdapters import *
 from .optimizerDisplay import *
 
 __all__ = ("Interactive", )
+
 
 class Interactive(object):
     """Interactive analysis helper class

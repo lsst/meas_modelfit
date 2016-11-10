@@ -1,3 +1,5 @@
+from builtins import zip
+from builtins import range
 #!/usr/bin/env python
 #
 # LSST Data Management System
@@ -37,6 +39,7 @@ try:
 except ImportError:
     scipy = None
 
+
 class MixtureTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
@@ -72,10 +75,10 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         self.assertFloatsAlmostEqual(m1[0].getMu(), numpy.array([1.0], dtype=float))
         self.assertFloatsAlmostEqual(m1[0].getSigma(), numpy.array([4.0], dtype=float))
         self.assertFloatsAlmostEqual(m1.evaluate(m1[1], numpy.array([0.0], dtype=float)),
-                         m1[1].weight*(2.0*numpy.pi)**(-0.5))
+                                     m1[1].weight*(2.0*numpy.pi)**(-0.5))
         self.assertFloatsAlmostEqual(m1.evaluate(numpy.array([0.0], dtype=float)),
-                         (m1[0].weight*numpy.exp(-0.125)/2 + m1[1].weight + m1[2].weight)
-                         * (2.0*numpy.pi)**(-0.5))
+                                     (m1[0].weight*numpy.exp(-0.125)/2 + m1[1].weight + m1[2].weight)
+                                     * (2.0*numpy.pi)**(-0.5))
 
     def testGaussian(self):
         """Test that our implementations for a single-component Gaussian are correct.

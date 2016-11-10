@@ -27,13 +27,15 @@ from lsst.meas.algorithms import BaseStarSelectorTask, starSelectorRegistry
 
 __all__ = ["S13StarSelectorConfig", "S13StarSelectorTask"]
 
+
 class S13StarSelectorConfig(BaseStarSelectorTask.ConfigClass):
     fluxMin = lsst.pex.config.Field(
-        doc = "specify the minimum apFlux for good PsfCandidates",
-        dtype = float,
-        default = 50000,
-        check = lambda x: x >= 0.0,
+        doc="specify the minimum apFlux for good PsfCandidates",
+        dtype=float,
+        default=50000,
+        check=lambda x: x >= 0.0,
     )
+
 
 class S13StarSelectorTask(BaseStarSelectorTask):
     ConfigClass = S13StarSelectorConfig
@@ -48,7 +50,7 @@ class S13StarSelectorTask(BaseStarSelectorTask):
                 continue
             starCat.append(source)
         return Struct(
-            starCat = starCat,
+            starCat=starCat,
         )
 
 starSelectorRegistry.register("s13", S13StarSelectorTask)

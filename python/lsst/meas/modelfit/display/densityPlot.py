@@ -32,6 +32,8 @@ the ExampleData class provided here, and use the provided HistogramLayer and Sur
 classes directly.  In more complicated cases, users may want to create their own Layer classes,
 which may define their own relationship with the data object.
 """
+from builtins import range
+from builtins import object
 
 import collections
 import numpy
@@ -40,19 +42,23 @@ import matplotlib
 __all__ = ("HistogramLayer", "SurfaceLayer", "ScatterLayer", "CrossPointsLayer",
            "DensityPlot", "ExampleData", "demo")
 
+
 def hide_xticklabels(axes):
     for label in axes.get_xticklabels():
         label.set_visible(False)
 
+
 def hide_yticklabels(axes):
     for label in axes.get_yticklabels():
         label.set_visible(False)
+
 
 def mergeDefaults(kwds, defaults):
     copy = defaults.copy()
     if kwds is not None:
         copy.update(**kwds)
     return copy
+
 
 class HistogramLayer(object):
     """A Layer class for DensityPlot for gridded histograms, drawing bar plots in 1-d and
@@ -70,10 +76,10 @@ class HistogramLayer(object):
     the hist1d and hist2d methods.
     """
 
-    defaults1d=dict(facecolor='b', alpha=0.5)
-    defaults2d=dict(cmap=matplotlib.cm.Blues, vmin=0.0, interpolation='nearest')
+    defaults1d = dict(facecolor='b', alpha=0.5)
+    defaults2d = dict(cmap=matplotlib.cm.Blues, vmin=0.0, interpolation='nearest')
 
-    def __init__(self, tag, bins1d=20, bins2d=(20,20), kwds1d=None, kwds2d=None):
+    def __init__(self, tag, bins1d=20, bins2d=(20, 20), kwds1d=None, kwds2d=None):
         self.tag = tag
         self.bins1d = bins1d
         self.bins2d = bins2d
@@ -92,7 +98,7 @@ class HistogramLayer(object):
             weights = data.weights
         else:
             weights = None
-        return numpy.histogram(data.values[:,i], bins=self.bins1d, weights=weights,
+        return numpy.histogram(data.values[:, i], bins=self.bins1d, weights=weights,
                                range=limits, normed=True)
 
     def hist2d(self, data, xDim, yDim, xLimits, yLimits):
@@ -108,7 +114,7 @@ class HistogramLayer(object):
             weights = data.weights
         else:
             weights = None
-        return numpy.histogram2d(data.values[:,j], data.values[:,i], bins=self.bins2d, weights=weights,
+        return numpy.histogram2d(data.values[:, j], data.values[:, i], bins=self.bins2d, weights=weights,
                                  range=(xLimits, yLimits), normed=True)
 
     def plotX(self, axes, data, dim):
@@ -127,6 +133,7 @@ class HistogramLayer(object):
         z, xEdge, yEdge = self.hist2d(data, xDim, yDim, axes.get_xlim(), axes.get_ylim())
         return axes.imshow(z.transpose(), aspect='auto', extent=(xEdge[0], xEdge[-1], yEdge[0], yEdge[-1]),
                            origin='lower', **self.kwds2d)
+
 
 class ScatterLayer(object):
     """A Layer class that plots individual points in 2-d, and does nothing in 1-d.
@@ -156,10 +163,11 @@ class ScatterLayer(object):
         i = data.dimensions.index(yDim)
         j = data.dimensions.index(xDim)
         if hasattr(data, "weights") and data.weights is not None:
-            args = data.values[:,j], data.values[:,i], data.weights
+            args = data.values[:, j], data.values[:, i], data.weights
         else:
-            args = data.values[:,j], data.values[:,i]
+            args = data.values[:, j], data.values[:, i]
         return axes.scatter(*args, **self.kwds)
+
 
 class SurfaceLayer(object):
     """A Layer class for analytic N-d distributions that can be evaluated in 1-d or 2-d slices.
@@ -170,8 +178,8 @@ class SurfaceLayer(object):
     SurfaceLayer and reimplementing its own eval1d and eval2d methods.
     """
 
-    defaults1d=dict(linewidth=2, color='r')
-    defaults2d=dict(linewidths=2, cmap=matplotlib.cm.Reds)
+    defaults1d = dict(linewidth=2, color='r')
+    defaults2d = dict(linewidths=2, cmap=matplotlib.cm.Reds)
 
     def __init__(self, tag, steps1d=200, steps2d=200, filled=False, kwds1d=None, kwds2d=None):
         self.tag = tag
@@ -193,14 +201,16 @@ class SurfaceLayer(object):
         xMin, xMax = axes.get_xlim()
         x = numpy.linspace(xMin, xMax, self.steps1d)
         z = self.eval1d(data, dim, x)
-        if z is None: return
+        if z is None:
+            return
         return axes.plot(x, z, **self.kwds1d)
 
     def plotY(self, axes, data, dim):
         yMin, yMax = axes.get_ylim()
         y = numpy.linspace(yMin, yMax, self.steps1d)
         z = self.eval1d(data, dim, y)
-        if z is None: return
+        if z is None:
+            return
         return axes.plot(z, y, **self.kwds1d)
 
     def plotXY(self, axes, data, xDim, yDim):
@@ -210,11 +220,13 @@ class SurfaceLayer(object):
         yc = numpy.linspace(yMin, yMax, self.steps2d)
         xg, yg = numpy.meshgrid(xc, yc)
         z = self.eval2d(data, xDim, yDim, xg, yg)
-        if z is None: return
+        if z is None:
+            return
         if self.filled:
             return axes.contourf(xg, yg, z, 6, **self.kwds2d)
         else:
             return axes.contour(xg, yg, z, 6, **self.kwds2d)
+
 
 class CrossPointsLayer(object):
     """A layer that marks a few points with axis-length vertical and horizontal lines.
@@ -251,6 +263,7 @@ class CrossPointsLayer(object):
             artists.append(axes.axvline(point[j], color=self.colors[n % len(self.colors)], **self.kwds))
             artists.append(axes.axhline(point[i], color=self.colors[n % len(self.colors)], **self.kwds))
         return artists
+
 
 class DensityPlot(object):
     """An object that manages a matrix of matplotlib.axes.Axes objects that represent a set of 1-d and 2-d
@@ -300,7 +313,7 @@ class DensityPlot(object):
         self._upper = dict()
         # We merge the dimension name lists manually rather than using sets to preserve the order.
         # Most of the time we expect all data objects to have the same dimensions anyway.
-        for v in self.data.itervalues():
+        for v in self.data.values():
             for dim in v.dimensions:
                 if dim not in active:
                     active.append(dim)
@@ -327,29 +340,32 @@ class DensityPlot(object):
                 # but it still works
                 pass
         for i, yDim in enumerate(self._active):
-            removeArtist(None,i,name)
-            removeArtist(i,None,name)
+            removeArtist(None, i, name)
+            removeArtist(i, None, name)
             for j, xDim in enumerate(self._active):
-                if i == j: continue
-                removeArtist(i,j,name)
+                if i == j:
+                    continue
+                removeArtist(i, j, name)
 
     def _plotLayer(self, name, layer):
         for i, yDim in enumerate(self._active):
             if yDim not in self.data[layer.tag].dimensions:
                 continue
-            self._objs[None,i,name] = layer.plotX(self._axes[None,i], self.data[layer.tag], yDim)
-            self._objs[i,None,name] = layer.plotY(self._axes[i,None], self.data[layer.tag], yDim)
+            self._objs[None, i, name] = layer.plotX(self._axes[None, i], self.data[layer.tag], yDim)
+            self._objs[i, None, name] = layer.plotY(self._axes[i, None], self.data[layer.tag], yDim)
             for j, xDim in enumerate(self._active):
                 if xDim not in self.data[layer.tag].dimensions:
                     continue
-                if i == j: continue
-                self._objs[i,j,name] = layer.plotXY(self._axes[i,j], self.data[layer.tag], xDim, yDim)
-            self._axes[None,i].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
-            self._axes[i,None].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
-            self._axes[None,i].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
-            self._axes[i,None].yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+                if i == j:
+                    continue
+                self._objs[i, j, name] = layer.plotXY(self._axes[i, j], self.data[layer.tag], xDim, yDim)
+            self._axes[None, i].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
+            self._axes[i, None].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5, prune='both'))
+            self._axes[None, i].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
+            self._axes[i, None].yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
     def _get_active(self): return self._active
+
     def _set_active(self, active):
         s = set(active)
         if len(s) != len(active):
@@ -364,7 +380,7 @@ class DensityPlot(object):
         self._lower = {dim: min(self.data[k].lower[dim] for k in self.data) for dim in self._active}
         self._upper = {dim: max(self.data[k].upper[dim] for k in self.data) for dim in self._active}
         self._build_axes()
-        for name, layer in self.layers.iteritems():
+        for name, layer in self.layers.items():
             self._plotLayer(name, layer)
 
     def _build_axes(self):
@@ -378,7 +394,7 @@ class DensityPlot(object):
         jStart = n
         for i in range(n):
             j = i
-            axesX = self._axes[None,j] = self.figure.add_subplot(n+1, n+1, jStart+j*jStride)
+            axesX = self._axes[None, j] = self.figure.add_subplot(n+1, n+1, jStart+j*jStride)
             axesX.autoscale(False, axis='x')
             axesX.xaxis.tick_top()
             axesX.set_xlim(self._lower[self._active[j]], self._upper[self._active[j]])
@@ -386,7 +402,7 @@ class DensityPlot(object):
             bbox = axesX.get_position()
             bbox.y1 -= 0.035
             axesX.set_position(bbox)
-            axesY = self._axes[i,None] = self.figure.add_subplot(n+1, n+1, iStart + iStart+i*iStride)
+            axesY = self._axes[i, None] = self.figure.add_subplot(n+1, n+1, iStart + iStart+i*iStride)
             axesY.autoscale(False, axis='y')
             axesY.yaxis.tick_right()
             axesY.set_ylim(self._lower[self._active[i]], self._upper[self._active[i]])
@@ -396,11 +412,11 @@ class DensityPlot(object):
             axesY.set_position(bbox)
         for i in range(n):
             for j in range(n):
-                axesXY = self._axes[i,j] = self.figure.add_subplot(
+                axesXY = self._axes[i, j] = self.figure.add_subplot(
                     n+1, n+1, iStart+i*iStride + jStart+j*jStride,
-                    sharex=self._axes[None,j],
-                    sharey=self._axes[i,None]
-                    )
+                    sharex=self._axes[None, j],
+                    sharey=self._axes[i, None]
+                )
                 axesXY.autoscale(False)
                 if j < n - 1:
                     hide_yticklabels(axesXY)
@@ -408,14 +424,15 @@ class DensityPlot(object):
                     hide_xticklabels(axesXY)
         for i in range(n):
             j = i
-            xbox = self._axes[None,j].get_position()
-            ybox = self._axes[i,None].get_position()
+            xbox = self._axes[None, j].get_position()
+            ybox = self._axes[i, None].get_position()
             self.figure.text(0.5*(xbox.x0 + xbox.x1), 0.5*(ybox.y0 + ybox.y1), self.active[i],
                              ha='center', va='center', weight='bold')
-            self._axes[i,j].get_frame().set_facecolor('none')
+            self._axes[i, j].get_frame().set_facecolor('none')
 
     def draw(self):
         self.figure.canvas.draw()
+
 
 class ExampleData(object):
     """An example data object for DensityPlot, demonstrating the necessarity interface.
@@ -449,7 +466,7 @@ class ExampleData(object):
         self.sigma = numpy.array([3.0, 2.0, 1.0])
         self.lower = {dim: -3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
         self.upper = {dim: 3*self.sigma[i] + self.mu[i] for i, dim in enumerate(self.dimensions)}
-        self.values = numpy.random.randn(2000, 3) * self.sigma[numpy.newaxis,:] + self.mu[numpy.newaxis,:]
+        self.values = numpy.random.randn(2000, 3) * self.sigma[numpy.newaxis, :] + self.mu[numpy.newaxis, :]
 
     def eval1d(self, dim, x):
         """Evaluate the 1-d analytic function for the given dim at points x (a 1-d numpy array;
@@ -466,6 +483,7 @@ class ExampleData(object):
         j = self.dimensions.index(xDim)
         return (numpy.exp(-0.5*(((x-self.mu[j])/self.sigma[j])**2 + ((y-self.mu[i])/self.sigma[i])**2))
                 / (2.0*numpy.pi * self.sigma[j]*self.sigma[i]))
+
 
 def demo():
     """Create and return a DensityPlot with example data."""

@@ -1,3 +1,4 @@
+from builtins import range
 #!/usr/bin/env python
 #
 # LSST Data Management System
@@ -30,6 +31,7 @@ import lsst.pex.logging
 import lsst.meas.modelfit
 
 log = lsst.pex.logging.Debug("meas.modelfit.optimizer", 10)
+
 
 class OptimizerTestCase(lsst.utils.tests.TestCase):
 

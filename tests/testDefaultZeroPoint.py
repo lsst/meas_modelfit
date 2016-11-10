@@ -21,6 +21,7 @@
 # the GNU General Public License along with this program.  If not,
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
+from __future__ import print_function
 import unittest
 import numpy as np
 
@@ -61,7 +62,7 @@ class DefaultZeroPointTestCase(lsst.utils.tests.TestCase):
         magNoZero = self.flux2Mag(self.unitNoZero.calib.getFluxMag0()[0])
         magWithZero = self.flux2Mag(self.unitWithZero.calib.getFluxMag0()[0])
 
-        print(magNoZero, magWithZero)
+        print((magNoZero, magWithZero))
 
         self.assertAlmostEqual(magNoZero, 27, 6)
         self.assertAlmostEqual(magWithZero, 25, 6)

@@ -61,7 +61,8 @@ class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
                              ("d2_eta1_eta1", float), ("d2_eta1_eta2", float),
                              ("d2_eta1_lnR", float), ("d2_eta2_eta2", float),
                              ("d2_eta2_lnR", float), ("d2_lnR_lnR", float)])
-        self.data = numpy.loadtxt(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "SEP.txt"), dtype=dtype)
+        self.data = numpy.loadtxt(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "data", "SEP.txt"), dtype=dtype)
 
     def tearDown(self):
         del self.prior

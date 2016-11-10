@@ -29,13 +29,15 @@ from .measureImage import MeasureImageTask
 
 __all__ = ("MeasureCoaddConfig", "MeasureCoaddTask")
 
+
 class MeasureCoaddConfig(MeasureImageTask.ConfigClass):
     """Config for ProcessCoadd"""
     coaddName = lsst.pex.config.Field(
-        doc = "coadd name: typically one of deep or goodSeeing",
-        dtype = str,
-        default = "deep",
+        doc="coadd name: typically one of deep or goodSeeing",
+        dtype=str,
+        default="deep",
     )
+
 
 class MeasureCoaddTask(MeasureImageTask):
     """Specialization of MeasureImageTask for running on coadds, after processCoadd.py

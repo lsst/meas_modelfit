@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import object
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -30,6 +32,7 @@ from .densityPlot import mergeDefaults, hide_xticklabels, hide_yticklabels
 from .. import modelfitLib
 
 __all__ = ("OptimizerDisplay", )
+
 
 class OptimizerIterationDisplay(object):
 
@@ -67,6 +70,7 @@ class OptimizerIterationDisplay(object):
                                                         self._objectiveModel.reshape(-1))
         return self._objectiveModel
 
+
 class OptimizerDisplay(object):
 
     def __init__(self, history, model, objective, steps=11):
@@ -82,7 +86,7 @@ class OptimizerDisplay(object):
         # We slice mgrid to generate the basic grid, which is [N, steps, ..., steps]
         mgridArgs = (slice(-1.0, 1.0, steps*1j),) * self.ndim
         # We'll index the result of mgrid with these args to make first dimension last
-        transposeArgs = tuple(range(1, self.ndim+1) + [0])
+        transposeArgs = tuple(list(range(1, self.ndim+1)) + [0])
         self.unitGrid = numpy.mgrid[mgridArgs].transpose(transposeArgs).copy()
         current = None
         for sample in history:
@@ -95,6 +99,7 @@ class OptimizerDisplay(object):
 
     def plot(self, xDim, yDim, n=0):
         return OptimizerDisplayFigure(self, xDim=xDim, yDim=yDim, n=n)
+
 
 class OptimizerDisplayFigure(object):
 
@@ -119,10 +124,10 @@ class OptimizerDisplayFigure(object):
         self.sliceY[self.i] = slice(None)
         self.sliceY = tuple(self.sliceY)
         self.track = dict(
-            x = numpy.array([iteration.sample.get(self.xKey) for iteration in self.parent.track]),
-            y = numpy.array([iteration.sample.get(self.yKey) for iteration in self.parent.track]),
-            z = numpy.array([iteration.sample.get(self.zKey) for iteration in self.parent.track]),
-            )
+            x=numpy.array([iteration.sample.get(self.xKey) for iteration in self.parent.track]),
+            y=numpy.array([iteration.sample.get(self.yKey) for iteration in self.parent.track]),
+            z=numpy.array([iteration.sample.get(self.zKey) for iteration in self.parent.track]),
+        )
         self.n = n
         self.figure = matplotlib.pyplot.figure("%s vs %s" % (xDim, yDim), figsize=(16, 8))
         self.figure.subplots_adjust(left=0.025, right=0.975, bottom=0.08, top=0.95, wspace=0.12)
@@ -169,12 +174,18 @@ class OptimizerDisplayFigure(object):
                        z0=min(zMin1, zMin2), z1=max(zMax1, zMax2), lock=False)
 
     def setExtent(self, x0=None, x1=None, y0=None, y1=None, z0=None, z1=None, lock=True):
-        if x0 is None: x0 = self._extent[0]
-        if x1 is None: x1 = self._extent[1]
-        if y0 is None: y0 = self._extent[2]
-        if y1 is None: y1 = self._extent[3]
-        if z0 is None: z0 = self._extent[4]
-        if z1 is None: z1 = self._extent[5]
+        if x0 is None:
+            x0 = self._extent[0]
+        if x1 is None:
+            x1 = self._extent[1]
+        if y0 is None:
+            y0 = self._extent[2]
+        if y1 is None:
+            y1 = self._extent[3]
+        if z0 is None:
+            z0 = self._extent[4]
+        if z1 is None:
+            z1 = self._extent[5]
         self._extent = (x0, x1, y0, y1, z0, z1)
         self._lock = lock
         self.axes3d.set_xlim(*self.xlim)

@@ -42,6 +42,7 @@ modelRegistry = lsst.pex.config.makeRegistry(
     """
 )
 
+
 def registerModel(name):
     """Decorator to add a Config class with a makeModel static method to the
     model registry.
@@ -52,9 +53,11 @@ def registerModel(name):
         return cls
     return decorate
 
+
 def getCenterEnum(config):
     """Helper function to turn config boolean option into enum value"""
     return modelfitLib.Model.FIXED_CENTER if config.fixCenter else modelfitLib.Model.SINGLE_CENTER
+
 
 @registerModel("gaussian")
 class GaussianModelConfig(lsst.pex.config.Config):
@@ -63,15 +66,16 @@ class GaussianModelConfig(lsst.pex.config.Config):
     radius = lsst.pex.config.Field(
         "Radius parameter to use for the model, in units of the RMS size (sigma)",
         dtype=float, default=1.0,
-        )
+    )
     fixCenter = lsst.pex.config.Field(
         "Fix the center to the position derived from a previous centeroider?",
         dtype=bool, default=True
-        )
+    )
 
     @staticmethod
     def makeModel(config):
         return modelfitLib.Model.makeGaussian(getCenterEnum(config), self.config.radius)
+
 
 class FixedSersicConfig(lsst.pex.config.Config):
     """Config class used to define a MultiShapeletBasis approximation to a Sersic or Sersic-like profile,
@@ -83,21 +87,22 @@ class FixedSersicConfig(lsst.pex.config.Config):
     profile = lsst.pex.config.Field(
         "name of the profile: one of 'exp', 'dev', 'ser2', 'ser3', 'luv', or 'lux'",
         dtype=str, default='lux',
-        )
+    )
     nComponents = lsst.pex.config.Field(
         "number of Gaussian components in the approximation",
         dtype=int, default=8,
-        )
+    )
     maxRadius = lsst.pex.config.Field(
         ("maximum radius for which the multi-Gaussian approximation was optimized, in units"
          " of the half-light radius; None will use the profile-dependent default"),
         dtype=int, optional=True,
-        )
+    )
 
     def makeBasis(self):
         """Return a MultiShapeletBasis corresponding to the config."""
         maxRadius = self.maxRadius if self.maxRadius is not None else 0
         return lsst.shapelet.RadialProfile.get(self.profile).getBasis(self.nComponents, maxRadius)
+
 
 @registerModel("fixed-sersic")
 class FixedSersicModelConfig(FixedSersicConfig):
@@ -107,11 +112,12 @@ class FixedSersicModelConfig(FixedSersicConfig):
     fixCenter = lsst.pex.config.Field(
         "Fix the center to the position derived from a previous centeroider?",
         dtype=bool, default=True
-        )
+    )
 
     @staticmethod
     def makeModel(config):
         return modelfitLib.Model.make(config.makeBasis(), getCenterEnum(config))
+
 
 @registerModel("bulge+disk")
 class BulgeDiskModelConfig(lsst.pex.config.Config):
@@ -120,11 +126,11 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
     disk = lsst.pex.config.ConfigField(
         "multi-Gaussian approximation to be used for the disk component of the model",
         dtype=FixedSersicConfig
-        )
+    )
     bulge = lsst.pex.config.ConfigField(
         "multi-Gaussian approximation to be used for the bulge component of the model",
         dtype=FixedSersicConfig
-        )
+    )
     bulgeRadius = lsst.pex.config.Field(
         ("Half-light radius of bulge in units of half-light radius of disk. "
          "If None, the two components will have completely independent radii "
@@ -132,11 +138,11 @@ class BulgeDiskModelConfig(lsst.pex.config.Config):
         dtype=float,
         default=0.6,
         optional=True
-        )
+    )
     fixCenter = lsst.pex.config.Field(
         "Fix the center to the position derived from a previous centeroider?",
         dtype=bool, default=True
-        )
+    )
 
     def setDefaults(self):
         self.disk.profile = "lux"
