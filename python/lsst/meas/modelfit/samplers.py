@@ -195,7 +195,7 @@ class AdaptiveImportanceSamplerTask(lsst.pipe.base.Task):
         nRetries = 0
         while True:
             try:
-                outRecord.setString(self.keys["rngstate"], self.rng.getState())
+                outRecord.setBytes(self.keys["rngstate"], self.rng.getState())
                 self.sampler.run(objective, outRecord.getPdf(), outRecord.getSamples())
                 break
             except Exception as err:
