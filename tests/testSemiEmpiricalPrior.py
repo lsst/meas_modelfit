@@ -28,16 +28,12 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
-import lsst.pex.logging
 import lsst.meas.modelfit
 
 try:
     import scipy.integrate
 except ImportError:
     scipy = None
-
-lsst.pex.logging.Debug("meas.modelfit.SemiEmpiricalPrior", 10)
-
 
 class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
 

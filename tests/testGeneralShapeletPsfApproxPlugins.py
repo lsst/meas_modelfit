@@ -30,12 +30,14 @@ import lsst.shapelet
 import lsst.afw.geom.ellipses
 import lsst.afw.table
 import lsst.afw.detection
-import lsst.pex.logging
+import lsst.log
+import lsst.log.utils
 import lsst.meas.modelfit
 import lsst.meas.base
 
-lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
-lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
+#   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
+lsst.log.utils.traceSetAt("meas.modelfit.optimizer.Optimizer", -1)
+lsst.log.utils.traceSetAt("meas.modelfit.optimizer.solveTrustRegion", -1)
 
 
 class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):

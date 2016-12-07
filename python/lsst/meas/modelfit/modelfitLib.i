@@ -31,7 +31,6 @@ Basic routines to talk to lsst::meas::modelfit classes
 %module(package="lsst.meas.modelfit", docstring=modelfitLib_DOCSTRING) modelfitLib
 
 %{
-#include "lsst/pex/logging.h"
 #include "lsst/afw/geom.h"
 #include "lsst/afw/geom/ellipses.h"
 #include "lsst/afw/geom/ellipses/PyPixelRegion.h"

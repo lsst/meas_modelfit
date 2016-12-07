@@ -27,11 +27,13 @@ import os
 import numpy
 
 import lsst.utils.tests
-import lsst.pex.logging
+import lsst.log
+import lsst.log.utils
 import lsst.meas.modelfit
 
-log = lsst.pex.logging.Debug("meas.modelfit.optimizer", 10)
-
+#   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
+lsst.log.utils.traceSetAt("meas.modelfit.optimizer", 5)
+log = lsst.log.Log.getLogger("meas.modelfit.optimizer")
 
 class OptimizerTestCase(lsst.utils.tests.TestCase):
 
