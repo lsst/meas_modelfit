@@ -32,14 +32,15 @@ try:
 except ImportError:
     scipy = None
 
-import lsst.pex.logging
+import lsst.log
+import lsst.log.utils
 import lsst.utils.tests
 import lsst.meas.modelfit
 
 
 if False:
-    lsst.pex.logging.Debug("meas.modelfit.integrals", 10)
-    lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 10)
+    lsst.log.utils.traceSetAt("meas.modelfit.integrals", 5)
+    lsst.log.utils.traceSetAt("meas.modelfit.TruncatedGaussian", 5)
 
 
 class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):

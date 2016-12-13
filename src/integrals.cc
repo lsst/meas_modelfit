@@ -23,8 +23,7 @@
 
 #include "boost/math/special_functions/erf.hpp"
 
-#define LSST_MAX_DEBUG 10
-#include "lsst/pex/logging/Debug.h"
+#include "lsst/log/Log.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/modelfit/integrals.h"
 
@@ -38,8 +37,8 @@ double phid(double z) {
 }
 
 double bvnu(double h, double k, double rho) {
-    pex::logging::Debug log("meas.modelfit.integrals");
-    log.debug<8>("Starting bvnu: h=%g, k=%g, rho=%g", h, k, rho);
+    LOG_LOGGER trace4Logger = LOG_GET("TRACE4.meas.modelfit.integrals");
+    LOGL_DEBUG(trace4Logger, "Starting bvnu: h=%g, k=%g, rho=%g", h, k, rho);
     if (h == std::numeric_limits<double>::infinity() || h == std::numeric_limits<double>::infinity()) {
         return 0.0;
     } else if (h == -std::numeric_limits<double>::infinity()) {

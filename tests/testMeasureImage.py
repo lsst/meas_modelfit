@@ -27,7 +27,8 @@ import unittest
 import numpy
 import copy
 
-import lsst.pex.logging
+import lsst.log
+import lsst.log.utils
 import lsst.utils.tests
 import lsst.shapelet.tests
 import lsst.afw.geom.ellipses
@@ -37,10 +38,11 @@ import lsst.meas.modelfit
 import lsst.meas.modelfit.display
 import lsst.afw.display.ds9
 
-# Set to 7 for per-object messages, 10 for per-sample
-lsst.pex.logging.Debug("meas.modelfit.AdaptiveImportanceSampler", 0)
-lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 0)
-lsst.pex.logging.Debug("meas.modelfit.optimizer", 0)
+#   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
+#   Set to 3 for per-object messages, 5 for per-sample
+lsst.log.utils.traceSetAt("meas.modelfit.AdaptiveImportanceSampler", -1)
+lsst.log.utils.traceSetAt("meas.modelfit.TruncatedGaussian", -1)
+lsst.log.utils.traceSetAt("meas.modelfit.optimizer", -1)
 
 DO_MAKE_PLOTS = True
 

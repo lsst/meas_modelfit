@@ -30,14 +30,16 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
-import lsst.pex.logging
+import lsst.log
+import lsst.log.utils
 import lsst.meas.modelfit
 import lsst.meas.base
 
 numpy.random.seed(500)
 
-lsst.pex.logging.Debug("meas.modelfit.optimizer.Optimizer", 0)
-lsst.pex.logging.Debug("meas.modelfit.optimizer.solveTrustRegion", 0)
+#   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
+lsst.log.utils.traceSetAt("meas.modelfit.optimizer.Optimizer", -1)
+lsst.log.utils.traceSetAt("meas.modelfit.optimizer.solveTrustRegion", -1)
 
 ELLIPSE_PARAMETER_NAMES = ["eta1", "eta2", "logR", "x", "y"]
 DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")

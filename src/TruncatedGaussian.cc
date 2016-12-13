@@ -37,8 +37,7 @@
 #include "Eigen/LU"
 
 #include "ndarray/eigen.h"
-#define LSST_MAX_DEBUG 0
-#include "lsst/pex/logging/Debug.h"
+#include "lsst/log/Log.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/modelfit/integrals.h"
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
@@ -75,7 +74,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
 ) {
     static Scalar const LN_2PI = std::log(2.0*M_PI);
     static Scalar const SQRT_PI = std::sqrt(M_PI);
-    pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
+    LOG_LOGGER trace4Logger = LOG_GET("TRACE4.meas.modelfit.TruncatedGaussian");
     int const n = gradient.size();
     if (hessian.rows() != n || hessian.cols() != n) {
         throw LSST_EXCEPT(
@@ -89,7 +88,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
         Scalar g = gradient[0];
         Scalar H = hessian(0,0);
         Scalar mu = -g / H;
-        debugLog.debug<8>("fromSeriesParameters: 1d with H=[%g], mu=[%g]", H, mu);
+        LOGL_DEBUG(trace4Logger, "fromSeriesParameters: 1d with H=[%g], mu=[%g]", H, mu);
         impl->mu[0] = mu;
         impl->s(0,0) = H;
         impl->v.setIdentity();
@@ -110,22 +109,22 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
             v(0,1) *= -1;
             v(1,1) *= -1;
         }
-        debugLog.debug<8>(
+        LOGL_DEBUG(trace4Logger,
             "fromSeriesParameters: 2d with H=[[%16.16g, %16.16g], [%16.16g, %16.16g]], g=[%16.16g, %16.16g]",
             H(0,0), H(0,1), H(1,0), H(1,1), g[0], g[1]
         );
-        debugLog.debug<8>("fromSeriesParameters: v=[[%8.8g, %8.8g], [%8.8g, %8.8g]]",
+        LOGL_DEBUG(trace4Logger, "fromSeriesParameters: v=[[%8.8g, %8.8g], [%8.8g, %8.8g]]",
                           v(0,0), v(0,1), v(1,0), v(1,1));
         Eigen::Vector2d mu;
         bool isSingular = (s[0] < s[1] * THRESHOLD);
         if (isSingular) {
             double solutionThreshold = SLN_THRESHOLD*std::max(std::abs(g[0]), std::abs(g[1]));
             if (!(std::abs(v.col(0).dot(g)) < solutionThreshold)) {
-                debugLog.debug<8>(
+                LOGL_DEBUG(trace4Logger,
                     "no solution: singular matrix with s=[%g, %g], mu=[%g, %g]",
                     s[0], s[1], mu[0], mu[1]
                 );
-                debugLog.debug<8>(
+                LOGL_DEBUG(trace4Logger,
                     "|v.col(0).dot(g)=%g| > %g",
                     v.col(0).dot(g), solutionThreshold
                 );
@@ -135,7 +134,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
                 );
             }
             if (v(1,1) < 0.0) {
-                debugLog.debug<8>("unconstrained: singular matrix with s=[%g, %g], mu=[%g, %g]; v(1,1)=%g",
+                LOGL_DEBUG(trace4Logger, "unconstrained: singular matrix with s=[%g, %g], mu=[%g, %g]; v(1,1)=%g",
                                   s[0], s[1], mu[0], mu[1], v(1,1));
                 throw LSST_EXCEPT(
                     pex::exceptions::RuntimeError,
@@ -158,7 +157,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
             impl->logPeakAmplitude = q0 + 0.5*g.dot(mu);
         } else {
             mu = -v * ((v.adjoint() * g).array() / s.array()).matrix();
-            debugLog.debug<8>("fromSeriesParameters: full-rank matrix with s=[%g, %g], mu=[%g, %g]",
+            LOGL_DEBUG(trace4Logger, "fromSeriesParameters: full-rank matrix with s=[%g, %g], mu=[%g, %g]",
                               s[0], s[1], mu[0], mu[1]);
             Scalar rho = -H(0,1) / std::sqrt(H(0,0) * H(1,1));
             Scalar detH = s[0] * s[1];
@@ -171,7 +170,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
             impl->logIntegral = impl->logPeakAmplitude + 0.5*std::log(detH) - LN_2PI
                 - std::log(impl->untruncatedFraction);
         }
-        debugLog.debug<8>("fromSeriesParameters: v=[[%g, %g], [%g, %g]]",
+        LOGL_DEBUG(trace4Logger, "fromSeriesParameters: v=[[%g, %g], [%g, %g]]",
                           v(0,0), v(0,1), v(1,0), v(1,1));
         impl->mu.head<2>() = mu;
         impl->s.head<2>() = s;
@@ -182,7 +181,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
             "Greater than 2 dimensions not yet supported"
         );
     }
-    debugLog.debug<8>("fromSeriesParameters: logPeakAmplitude=%g, logIntegral=%g, untruncatedFraction=%g",
+    LOGL_DEBUG(trace4Logger, "fromSeriesParameters: logPeakAmplitude=%g, logIntegral=%g, untruncatedFraction=%g",
                       impl->logPeakAmplitude, impl->logIntegral, impl->untruncatedFraction);
     return TruncatedGaussian(impl);
 }
@@ -191,7 +190,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
     Vector const & mean, Matrix const & covariance
 ) {
     static Scalar const LN_2PI = std::log(2.0*M_PI);
-    pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
+    LOG_LOGGER trace4Logger = LOG_GET("TRACE4.meas.modelfit.TruncatedGaussian");
     int const n = mean.size();
     if (covariance.rows() != n || covariance.cols() != n) {
         throw LSST_EXCEPT(
@@ -204,7 +203,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
     if (n == 1) {
         Scalar mu = mean[0];
         Scalar Sigma = covariance(0,0);
-        debugLog.debug<8>("fromStandardParameters: 1d with Sigma=[%g], mu=[%g]", Sigma, mu);
+        LOGL_DEBUG(trace4Logger, "fromStandardParameters: 1d with Sigma=[%g], mu=[%g]", Sigma, mu);
         impl->mu[0] = mu;
         impl->s(0,0) = 1.0/Sigma;
         impl->v.setIdentity();
@@ -227,7 +226,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
                 "TruncatedGaussian cannot be normalized"
             );
         }
-        debugLog.debug<8>("fromStandardParameters: full-rank matrix with s=[%g, %g], mu=[%g, %g]",
+        LOGL_DEBUG(trace4Logger, "fromStandardParameters: full-rank matrix with s=[%g, %g], mu=[%g, %g]",
                           s[0], s[1], mu[0], mu[1]);
         Scalar rho = Sigma(0,1) / std::sqrt(Sigma(0,0) * Sigma(1,1));
         Scalar detSigma = 1.0 / (s[0] * s[1]);
@@ -245,7 +244,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
             "Greater than 2 dimensions not yet supported"
         );
     }
-    debugLog.debug<8>("fromStandardParameters: logPeakAmplitude=%g, logIntegral=%g, untruncatedFraction=%g",
+    LOGL_DEBUG(trace4Logger, "fromStandardParameters: logPeakAmplitude=%g, logIntegral=%g, untruncatedFraction=%g",
                       impl->logPeakAmplitude, impl->logIntegral, impl->untruncatedFraction);
     return TruncatedGaussian(impl);
 }
@@ -443,13 +442,13 @@ public:
         {
             static Scalar const LOG_2PI = std::log(2.0*M_PI);
             static Scalar const MAX_NEGATIVE_SIGMA = 6.0;
-            pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
+            LOG_LOGGER trace4Logger = LOG_GET("TRACE4.meas.modelfit.TruncatedGaussian");
             // We start with the inverse of the diagonal of H; we'd prefer the diagonal of the inverse,
             // but H may not be invertible.  The inverse of the diagonal at H represents the width in
             // each dimension at a fixed point in all the other dimensions, so it's not quite wide
             // enough to be a good importance distribution, so we'll multiply it by 2 (just a heuristic).
             _rootD = (v * s.asDiagonal() * v.adjoint()).diagonal().array().inverse().sqrt().matrix() * 2;
-            debugLog.debug<8>("AAW Sampler: rootD=[%g, %g]", _rootD[0], _rootD[1]);
+            LOGL_DEBUG(trace4Logger, "AAW Sampler: rootD=[%g, %g]", _rootD[0], _rootD[1]);
             for (int j = 0; j < _Ap.size(); ++j) {
                 Scalar x = _mu[j]/_rootD[j];
                 if (x < -MAX_NEGATIVE_SIGMA) {
@@ -491,20 +490,20 @@ TruncatedGaussianSampler::TruncatedGaussianSampler(
     TruncatedGaussian const & parent,
     TruncatedGaussian::SampleStrategy strategy
 ) {
-    pex::logging::Debug debugLog("meas.modelfit.TruncatedGaussian");
+    LOG_LOGGER trace4Logger = LOG_GET("TRACE4.meas.modelfit.TruncatedGaussian");
     if (parent.getDim() == 1) {
         switch (strategy) {
         case TruncatedGaussian::DIRECT_WITH_REJECTION:
             _impl = std::make_shared<SamplerImplDWR1>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
-            debugLog.debug<8>("Sampler: using DWR1");
+            LOGL_DEBUG(trace4Logger, "Sampler: using DWR1");
             break;
         case TruncatedGaussian::ALIGN_AND_WEIGHT:
             _impl = std::make_shared<SamplerImplAAW1>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
-            debugLog.debug<8>("Sampler: using AAW1");
+            LOGL_DEBUG(trace4Logger, "Sampler: using AAW1");
             break;
         }
     } else {
@@ -513,13 +512,13 @@ TruncatedGaussianSampler::TruncatedGaussianSampler(
             _impl = std::make_shared<SamplerImplDWR>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
-            debugLog.debug<8>("Sampler: using DWR");
+            LOGL_DEBUG(trace4Logger, "Sampler: using DWR");
             break;
         case TruncatedGaussian::ALIGN_AND_WEIGHT:
             _impl = std::make_shared<SamplerImplAAW>(
                 parent, parent._impl->mu, parent._impl->v, parent._impl->s
             );
-            debugLog.debug<8>("Sampler: using AAW");
+            LOGL_DEBUG(trace4Logger, "Sampler: using AAW");
             break;
         }
     }

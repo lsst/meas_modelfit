@@ -29,7 +29,8 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom.ellipses
-import lsst.pex.logging
+import lsst.log
+import lsst.log.utils
 import lsst.meas.modelfit
 
 try:
@@ -37,7 +38,7 @@ try:
 except ImportError:
     scipy = None
 
-lsst.pex.logging.Debug("meas.modelfit.SoftenedLinearPrior", 10)
+lsst.log.utils.traceSetAt("meas.modelfit.SoftenedLinearPrior", 5)
 
 
 class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):

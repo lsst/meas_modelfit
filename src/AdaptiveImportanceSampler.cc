@@ -24,8 +24,7 @@
 
 #include "ndarray/eigen.h"
 
-#define LSST_MAX_DEBUG 10
-#include "lsst/pex/logging/Debug.h"
+#include "lsst/log/Log.h"
 #include "lsst/afw/table/BaseRecord.h"
 #include "lsst/afw/table/Catalog.h"
 #include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
@@ -36,15 +35,15 @@ namespace {
 
 // Given a sample catalog with log unnormalized weights, transform to normalized weights
 Scalar computeRobustWeights(afw::table::BaseCatalog & samples, afw::table::Key<Scalar> const & weightKey) {
+    LOG_LOGGER trace4Logger = LOG_GET("TRACE4.meas.modelfit.AdaptiveImportanceSampler");
     static Scalar const CLIP_THRESHOLD = 100; // clip samples with weight < e^{-CLIP_THRESHOLD} * wMax
-    pex::logging::Debug log("meas.modelfit.AdaptiveImportanceSampler");
-    log.debug<8>("Starting computeRobustWeights with %d samples", int(samples.size()));
+    LOGL_DEBUG(trace4Logger, "Starting computeRobustWeights with %d samples", int(samples.size()));
     // Sort the sample by weight so we can accumulate robustly.
     samples.sort(weightKey);
     Scalar uMax = samples.back().get(weightKey);
     Scalar uClip = uMax - CLIP_THRESHOLD;
     afw::table::BaseCatalog::iterator const iClip = samples.lower_bound(uClip, weightKey);
-    log.debug<8>("uMax=%g, uClip=%g, iClip at offset %d", uMax, uClip, int(iClip - samples.begin()));
+    LOGL_DEBUG(trace4Logger, "uMax=%g, uClip=%g, iClip at offset %d", uMax, uClip, int(iClip - samples.begin()));
     for (afw::table::BaseCatalog::iterator i = samples.begin(); i != iClip; ++i) {
         i->set(weightKey, 0.0);
     }
@@ -54,7 +53,7 @@ Scalar computeRobustWeights(afw::table::BaseCatalog & samples, afw::table::Key<S
         i->set(weightKey, w);
         wSum += w;
     }
-    log.debug<8>("Uncorrected wSum=%g", wSum);
+    LOGL_DEBUG(trace4Logger, "Uncorrected wSum=%g", wSum);
     for (afw::table::BaseCatalog::iterator i = iClip; i != samples.end(); ++i) {
         (*i)[weightKey] /= wSum;
     }
@@ -110,14 +109,14 @@ void AdaptiveImportanceSampler::run(
     PTR(Mixture) proposal,
     afw::table::BaseCatalog & samples
 ) const {
-    pex::logging::Debug log("meas.modelfit.AdaptiveImportanceSampler");
+    LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.AdaptiveImportanceSampler");
     double perplexity = 0.0;
     int parameterDim = objective.getParameterDim();
     for (std::map<int,ImportanceSamplerControl>::const_iterator i = _ctrls.begin(); i != _ctrls.end(); ++i) {
         ImportanceSamplerControl const & ctrl = i->second;
         int nRepeat = 0;
         while (nRepeat <= ctrl.maxRepeat && perplexity < ctrl.targetPerplexity) {
-            log.debug<7>(
+            LOGL_DEBUG(trace3Logger,
                 "Starting repeat %d with nSamples=%d, nUpdateSteps=%d, targetPerplexity=%g",
                 nRepeat, ctrl.nSamples, ctrl.nUpdateSteps, ctrl.targetPerplexity
             );
@@ -163,7 +162,7 @@ void AdaptiveImportanceSampler::run(
                     "Normalized perplexity is non-finite."
                 );
             }
-            log.debug<7>(
+            LOGL_DEBUG(trace3Logger,
                 "Normalized perplexity is %g; target is %g",
                 perplexity, ctrl.targetPerplexity
             );

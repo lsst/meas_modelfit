@@ -27,8 +27,7 @@
 
 #include "ndarray/eigen.h"
 
-#define LSST_MAX_DEBUG 10
-#include "lsst/pex/logging/Debug.h"
+#include "lsst/log/Log.h"
 #include "lsst/afw/table/Catalog.h"
 #include "lsst/afw/table/BaseTable.h"
 #include "lsst/afw/table/BaseRecord.h"
@@ -485,7 +484,7 @@ Optimizer::Optimizer(
     _sr1v(objective->parameterSize),
     _sr1jtr(objective->parameterSize)
 {
-    pex::logging::Debug log("meas.modelfit.optimizer.Optimizer");
+    LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.optimizer.Optimizer");
     if (parameters.getSize<0>() != _objective->parameterSize) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthError,
@@ -501,7 +500,7 @@ Optimizer::Optimizer(
         _current.priorValue = _objective->computePrior(_current.parameters);
         _current.objectiveValue -= std::log(_current.priorValue);
     }
-    log.debug<7>("Initial objective value is %g", _current.objectiveValue);
+    LOGL_DEBUG(trace3Logger, "Initial objective value is %g", _current.objectiveValue);
     _sr1b.setZero();
     _computeDerivatives();
     _hessian.asEigen() = _hessian.asEigen().selfadjointView<Eigen::Lower>();
@@ -549,16 +548,17 @@ bool Optimizer::_stepImpl(
     HistoryRecorder const * recorder,
     afw::table::BaseCatalog * history
 ) {
-    pex::logging::Debug log("meas.modelfit.optimizer.Optimizer");
+    LOG_LOGGER trace5Logger = LOG_GET("TRACE5.meas.modelfit.optimizer.Optimizer");
+    LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.optimizer.Optimizer");
     _state &= ~int(STATUS);
     if (_gradient.asEigen().lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
-        log.debug<7>("max(gradient)=%g below threshold; declaring convergence",
-                     _gradient.asEigen().lpNorm<Eigen::Infinity>());
+        LOGL_DEBUG(trace3Logger, "max(gradient)=%g below threshold; declaring convergence",
+                   _gradient.asEigen().lpNorm<Eigen::Infinity>());
         _state |= CONVERGED_GRADZERO;
         return false;
     }
     for (int innerIterCount = 0; innerIterCount < _ctrl.maxInnerIterations; ++innerIterCount) {
-        log.debug<10>("Starting inner iteration %d", innerIterCount);
+        LOGL_DEBUG(trace5Logger, "Starting inner iteration %d", innerIterCount);
         _state &= ~int(STATUS);
         _next.objectiveValue = 0.0;
         _next.priorValue = 1.0;
@@ -568,30 +568,30 @@ bool Optimizer::_stepImpl(
         _next.parameters.asEigen() = _current.parameters.asEigen() + _step.asEigen();
         double stepLength = _step.asEigen().norm();
         if (std::isnan(stepLength)) {
-            log.debug<7>("NaN encountered in step length");
+            LOGL_DEBUG(trace3Logger, "NaN encountered in step length");
             _state |= FAILED_NAN;
             return false;
         }
-        log.debug<10>("Step has length %g", stepLength);
+        LOGL_DEBUG(trace5Logger, "Step has length %g", stepLength);
         if (_objective->hasPrior()) {
             _next.priorValue = _objective->computePrior(_next.parameters);
             _next.objectiveValue = -std::log(_next.priorValue);
             if (_next.priorValue <= 0.0 || std::isnan(_next.objectiveValue)) {
                 _next.objectiveValue = std::numeric_limits<Scalar>::infinity();
-                log.debug<10>("Rejecting step due to zero prior");
+                LOGL_DEBUG(trace5Logger, "Rejecting step due to zero prior");
                 if (stepLength < _trustRadius) {
                     // Because the step failed due to the prior, we could add an API to the objective
                     // for projecting the step back to a feasible value, and move directly there.
                     // It remains to be seen if that's needed.
-                    log.debug<10>("Unconstrained step failed; setting trust radius to step length %g",
-                                  stepLength);
+                    LOGL_DEBUG(trace5Logger, "Unconstrained step failed; setting trust radius to step length %g",
+                               stepLength);
                     _trustRadius = stepLength;
                 }
                 _trustRadius *= _ctrl.trustRegionShrinkFactor;
-                log.debug<10>("Decreasing trust radius to %g", _trustRadius);
+                LOGL_DEBUG(trace5Logger, "Decreasing trust radius to %g", _trustRadius);
                 _state |= STATUS_STEP_REJECTED | STATUS_TR_DECREASED;
                 if (_trustRadius <= _ctrl.minTrustRadiusThreshold) {
-                    log.debug<7>("Trust radius %g has dropped below threshold %g; declaring convergence",
+                    LOGL_DEBUG(trace3Logger, "Trust radius %g has dropped below threshold %g; declaring convergence",
                                  _trustRadius, _ctrl.minTrustRadiusThreshold);
                     _state |= CONVERGED_TR_SMALL;
                     return false;
@@ -608,14 +608,14 @@ bool Optimizer::_stepImpl(
         );
         double rho = actualChange / predictedChange;
         if (std::isnan(rho)) {
-            log.debug<10>("NaN encountered in rho");
+            LOGL_DEBUG(trace5Logger, "NaN encountered in rho");
             _state |= FAILED_NAN;
             return false;
         }
-        log.debug<10>("Reduction ratio rho=%g; actual=%g, predicted=%g", rho, actualChange, predictedChange);
+        LOGL_DEBUG(trace5Logger, "Reduction ratio rho=%g; actual=%g, predicted=%g", rho, actualChange, predictedChange);
         if (rho > _ctrl.stepAcceptThreshold && actualChange < 0.0) {
-            log.debug<10>("Step accepted; new objective=%g, old was %g",
-                          _next.objectiveValue, _current.objectiveValue);
+            LOGL_DEBUG(trace5Logger, "Step accepted; new objective=%g, old was %g", _next.objectiveValue,
+                       _current.objectiveValue);
             _state |= STATUS_STEP_ACCEPTED;
             _current.swap(_next);
             if (!_ctrl.noSR1Term) {
@@ -637,58 +637,59 @@ bool Optimizer::_stepImpl(
             ) {
                 _state |= STATUS_TR_INCREASED;
                 _trustRadius *= _ctrl.trustRegionGrowFactor;
-                log.debug<10>("Increasing trust radius to %g", _trustRadius);
+                LOGL_DEBUG(trace5Logger, "Increasing trust radius to %g", _trustRadius);
             } else if (rho < _ctrl.trustRegionShrinkReductionRatio) {
                 // even though the step was accepted, our quadratic model
                 // of the objective function wasn't very accurate, so we
                 // decrease the trust region anyway
                 _state |= STATUS_TR_DECREASED;
                 _trustRadius *= _ctrl.trustRegionShrinkFactor;
-                log.debug<10>("Decreasing trust radius to %g", _trustRadius);
+                LOGL_DEBUG(trace5Logger, "Decreasing trust radius to %g", _trustRadius);
             } else {
-                log.debug<10>("Leaving trust radius unchanged at %g", _trustRadius);
+                LOGL_DEBUG(trace5Logger, "Leaving trust radius unchanged at %g", _trustRadius);
                 _state |= STATUS_TR_UNCHANGED;
             }
             if (recorder) recorder->apply(outerIterCount, innerIterCount, *history, *this);
             return true;
         }
         _state |= STATUS_STEP_REJECTED;
-        log.debug<10>("Step rejected; test objective was %g, current is %g",
-                      _next.objectiveValue, _current.objectiveValue);
+        LOGL_DEBUG(trace5Logger, "Step rejected; test objective was %g, current is %g", _next.objectiveValue,
+                   _current.objectiveValue);
         if (stepLength < _trustRadius) {
-            log.debug<10>("Unconstrained step failed; setting trust radius to step length %g",
-                          stepLength);
+            LOGL_DEBUG(trace5Logger, "Unconstrained step failed; setting trust radius to step length %g",
+                       stepLength);
             _trustRadius = stepLength;
         }
         // we always decrease the trust radius if the step is rejected - otherwise we'll just
         // produce the same step again
         _state |= STATUS_TR_DECREASED;
         _trustRadius *= _ctrl.trustRegionShrinkFactor;
-        log.debug<10>("Decreasing trust radius to %g", _trustRadius);
+        LOGL_DEBUG(trace5Logger, "Decreasing trust radius to %g", _trustRadius);
         if (_trustRadius <= _ctrl.minTrustRadiusThreshold) {
             _state |= CONVERGED_TR_SMALL;
-            log.debug<7>("Trust radius %g has dropped below threshold %g; declaring convergence",
-                         _trustRadius, _ctrl.minTrustRadiusThreshold);
+            LOGL_DEBUG(trace3Logger, "Trust radius %g has dropped below threshold %g; declaring convergence",
+                       _trustRadius, _ctrl.minTrustRadiusThreshold);
             return false;
         }
         if (recorder) recorder->apply(outerIterCount, innerIterCount, *history, *this);
     }
-    log.debug<7>("Max inner iteration number exceeded");
+    LOGL_DEBUG(trace3Logger, "Max inner iteration number exceeded");
     _state |= FAILED_MAX_INNER_ITERATIONS;
     return false;
 }
 
 int Optimizer::_runImpl(HistoryRecorder const * recorder, afw::table::BaseCatalog * history) {
-    pex::logging::Debug log("meas.modelfit.optimizer.Optimizer");
+    LOG_LOGGER trace5Logger = LOG_GET("TRACE5.meas.modelfit.optimizer.Optimizer");
+    LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.optimizer.Optimizer");
     if (recorder) recorder->apply(-1, -1, *history, *this);
     int outerIterCount = 0;
     try {
         for (; outerIterCount < _ctrl.maxOuterIterations; ++outerIterCount) {
-            log.debug<10>("Starting outer iteration %d", outerIterCount);
+            LOGL_DEBUG(trace5Logger, "Starting outer iteration %d", outerIterCount);
             if (!_stepImpl(outerIterCount, recorder, history)) return outerIterCount;
         }
         _state |= FAILED_MAX_OUTER_ITERATIONS;
-        log.debug<7>("Max outer iteration number exceeded");
+        LOGL_DEBUG(trace3Logger, "Max outer iteration number exceeded");
     } catch (...) {
         _state |= FAILED_EXCEPTION;
     }
@@ -706,7 +707,8 @@ void solveTrustRegion(
 ) {
     static double const ROOT_EPS = std::sqrt(std::numeric_limits<double>::epsilon());
     static int const ITER_MAX = 10;
-    pex::logging::Debug log("meas.modelfit.optimizer.solveTrustRegion");
+    LOG_LOGGER trace5Logger = LOG_GET("TRACE5.meas.modelfit.optimizer.Optimizer");
+    LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.optimizer.Optimizer");
     double const r2 = r*r;
     double const r2min = r2 * (1.0 - tolerance) * (1.0 - tolerance);
     double const r2max = r2 * (1.0 + tolerance) * (1.0 + tolerance);
@@ -718,12 +720,12 @@ void solveTrustRegion(
     double mu = 0.0;
     double xsn = 0.0;
     if (eigh.eigenvalues()[0] >= threshold) {
-        log.debug<10>("Starting with full-rank matrix");
+        LOGL_DEBUG(trace5Logger, "Starting with full-rank matrix");
         tmp = (eigh.eigenvalues().array().inverse() * qtg.array()).matrix();
         x.asEigen() = -eigh.eigenvectors() * tmp;
         xsn = x.asEigen().squaredNorm();
         if (xsn <= r2max) {
-            log.debug<10>("Ending with unconstrained solution");
+            LOGL_DEBUG(trace5Logger, "Ending with unconstrained solution");
             // unconstrained solution is within the constraint; no more work to do
             return;
         }
@@ -732,7 +734,7 @@ void solveTrustRegion(
         tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
         int n = 0;
         while (eigh.eigenvalues()[++n] < threshold);
-        log.debug<10>("Starting with %d zero eigenvalue(s) (of %d)", n, d);
+        LOGL_DEBUG(trace5Logger, "Starting with %d zero eigenvalue(s) (of %d)", n, d);
         if ((qtg.head(n).array() < ROOT_EPS * g.asEigen().lpNorm<Eigen::Infinity>()).all()) {
             x.asEigen() = -eigh.eigenvectors().rightCols(n) * tmp.tail(n);
             xsn = x.asEigen().squaredNorm();
@@ -746,26 +748,26 @@ void solveTrustRegion(
                 // solution with the usual iteration by increasing \mu.
                 double tau = std::sqrt(r*r - x.asEigen().squaredNorm());
                 x.asEigen() += tau * eigh.eigenvectors().col(0);
-                log.debug<10>("Ending; Q_1^T g == 0, and ||x|| < r");
+                LOGL_DEBUG(trace5Logger, "Ending; Q_1^T g == 0, and ||x|| < r");
                 return;
             }
-            log.debug<10>("Continuing; Q_1^T g == 0, but ||x|| > r");
+            LOGL_DEBUG(trace5Logger, "Continuing; Q_1^T g == 0, but ||x|| > r");
         } else {
             x.asEigen() = -eigh.eigenvectors() * tmp;
             xsn = x.asEigen().squaredNorm();
-            log.debug<10>("Continuing; Q_1^T g != 0, ||x||=%f");
+            LOGL_DEBUG(trace5Logger, "Continuing; Q_1^T g != 0, ||x||=%f");
         }
     }
     int nIter = 0;
     while ((xsn < r2min || xsn > r2max) && ++nIter < ITER_MAX) {
-        log.debug<10>("Iterating at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
+        LOGL_DEBUG(trace5Logger, "Iterating at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
         mu += xsn*(std::sqrt(xsn) / r - 1.0)
             / (qtg.array().square() / (eigh.eigenvalues().array() + mu).cube()).sum();
         tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
         x.asEigen() = -eigh.eigenvectors() * tmp;
         xsn = x.asEigen().squaredNorm();
     }
-    log.debug<10>("Ending at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
+    LOGL_DEBUG(trace5Logger, "Ending at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
     return;
 }
 

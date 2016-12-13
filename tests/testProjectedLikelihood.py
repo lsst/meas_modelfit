@@ -24,7 +24,6 @@
 import unittest
 import numpy
 
-import lsst.pex.logging
 import lsst.utils.tests
 import lsst.shapelet.tests
 import lsst.afw.geom.ellipses

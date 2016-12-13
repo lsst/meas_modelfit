@@ -23,8 +23,7 @@
 
 #include "ndarray/eigen.h"
 
-#define LSST_MAX_DEBUG 10
-#include "lsst/pex/logging/Debug.h"
+#include "lsst/log/Log.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/modelfit/SoftenedLinearPrior.h"
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
@@ -93,8 +92,8 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
             "ellipticityMaxOuter must be > 0"
         );
     }
-    pex::logging::Debug log("meas.modelfit.SoftenedLinearPrior");
-    log.debug<7>("Constructing new SoftenedLinearPrior");
+    LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.SoftenedLinearPrior");
+    LOGL_DEBUG(trace3Logger, "Constructing new SoftenedLinearPrior");
     // Radius distribution is a trapezoid with cubic-softened sides.  First, the trapezoid:
     double logRadiusCoreIntegral = (ctrl.logRadiusMaxInner - ctrl.logRadiusMinInner)
         * 0.5*(_logRadiusP1 + 1.0);
@@ -107,7 +106,7 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
     double logRadiusIntegral = logRadiusCoreIntegral + logRadiusMinRampIntegral + logRadiusMaxRampIntegral;
     _logRadiusMinRampFraction = logRadiusMinRampIntegral / logRadiusIntegral;
     _logRadiusMaxRampFraction = logRadiusMaxRampIntegral / logRadiusIntegral;
-    log.debug<7>("logRadiusCoreIntegral=%g, logRadiusMinRampIntegral=%g, logRadiusMaxRampIntegral=%g",
+    LOGL_DEBUG(trace3Logger, "logRadiusCoreIntegral=%g, logRadiusMinRampIntegral=%g, logRadiusMaxRampIntegral=%g",
                  logRadiusCoreIntegral, logRadiusMinRampIntegral, logRadiusMaxRampIntegral);
 
     // ellipticity distribution is a cylinder softened at the outside with a cubic radial profile.
@@ -122,7 +121,7 @@ SoftenedLinearPrior::SoftenedLinearPrior(Control const & ctrl) :
     ).dot(_ellipticityPoly);
     double ellipticityIntegral = ellipticityCoreIntegral + ellipticityMaxRampIntegral;
     _ellipticityMaxRampFraction = ellipticityMaxRampIntegral / ellipticityIntegral;
-    log.debug<7>("ellipticityCoreIntegral=%g, ellipticityMaxRampIntegral=%g",
+    LOGL_DEBUG(trace3Logger, "ellipticityCoreIntegral=%g, ellipticityMaxRampIntegral=%g",
                  ellipticityCoreIntegral, ellipticityMaxRampIntegral);
 
     // now we can compute the full 3-d integral and rescale all the radii probabilities;
