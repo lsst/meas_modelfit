@@ -37,7 +37,9 @@ from builtins import object
 
 import collections
 import numpy
-import matplotlib
+import matplotlib.cm
+import matplotlib.pyplot
+import matplotlib.ticker
 
 __all__ = ("HistogramLayer", "SurfaceLayer", "ScatterLayer", "CrossPointsLayer",
            "DensityPlot", "ExampleData", "demo")
