@@ -61,8 +61,8 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
     def makePsf(self, psfname, max=None):
         data = lsst.afw.image.ImageF(os.path.join(self.psfDir, psfname)).getArray().astype(numpy.float64)
         if max is not None:
-            trim0 = (data.shape[0] - max)/2
-            trim1 = (data.shape[1] - max)/2
+            trim0 = (data.shape[0] - max)//2
+            trim1 = (data.shape[1] - max)//2
             if trim0 > 0 and trim1 > 0:
                 data = data[trim0:trim0+max, trim1:trim1+max]
         kernel = lsst.afw.math.FixedKernel(lsst.afw.image.ImageD(data))
