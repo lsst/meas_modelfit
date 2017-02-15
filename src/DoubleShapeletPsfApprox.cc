@@ -30,6 +30,19 @@
 #include "lsst/meas/modelfit/DoubleShapeletPsfApprox.h"
 
 namespace lsst { namespace meas { namespace modelfit {
+namespace {
+base::FlagDefinitionList flagDefinitions;
+} // end anonymous
+
+base::FlagDefinition const DoubleShapeletPsfApproxAlgorithm::FAILURE = flagDefinitions.addFailureFlag();
+base::FlagDefinition const DoubleShapeletPsfApproxAlgorithm::INVALID_POINT_FOR_PSF = flagDefinitions.add("flag_invalidPointForPsf", "PSF model could not be evaluated at the source position");
+base::FlagDefinition const DoubleShapeletPsfApproxAlgorithm::INVALID_MOMENTS = flagDefinitions.add("flag_invalidMoments", "Moments of the PSF model were not a valid ellipse");
+base::FlagDefinition const DoubleShapeletPsfApproxAlgorithm::MAX_ITERATIONS = flagDefinitions.add("flag_maxIterations", "optimizer exceeded the maximum number (inner or outer) iterations");
+
+base::FlagDefinitionList const & DoubleShapeletPsfApproxAlgorithm::getFlagDefinitions() {
+    return flagDefinitions;
+}
+
 
 namespace {
 
@@ -144,12 +157,6 @@ DoubleShapeletPsfApproxAlgorithm::DoubleShapeletPsfApproxAlgorithm(
 ) : _ctrl(ctrl),
     _centroidExtractor(schema, name)
 {
-    static std::array<meas::base::FlagDefinition,N_FLAGS> const flagDefs = {{
-        {"flag", "general failure flag"},
-        {"flag_invalidPointForPsf", "PSF model could not be evaluated at the source position"},
-        {"flag_invalidMoments", "Moments of the PSF model were not a valid ellipse"},
-        {"flag_maxIterations", "optimizer exceeded the maximum number (inner or outer) iterations"},
-    }};
     std::vector<int> const orders = { ctrl.innerOrder, ctrl.outerOrder };
     _key = shapelet::MultiShapeletFunctionKey::addFields(
         schema,
@@ -159,7 +166,7 @@ DoubleShapeletPsfApproxAlgorithm::DoubleShapeletPsfApproxAlgorithm(
         "",       // amplitude is unitless
         orders
     );
-    _flagHandler = meas::base::FlagHandler::addFields(schema, name, flagDefs.begin(), flagDefs.end());
+    _flagHandler = meas::base::FlagHandler::addFields(schema, name, getFlagDefinitions());
 }
 
 
@@ -198,7 +205,7 @@ void DoubleShapeletPsfApproxAlgorithm::fitMoments(
         throw LSST_EXCEPT(
             meas::base::MeasurementError,
             err.what(),
-            INVALID_MOMENTS
+            INVALID_MOMENTS.number
         );
     }
     result.transformInPlace(ellipse.getGridTransform().invert());
@@ -210,7 +217,7 @@ void DoubleShapeletPsfApproxAlgorithm::fitMoments(
             meas::base::MeasurementError,
             (boost::format("Semi-minor radius derived from moments (%g) is less than lower bound (%g).")
              % axesOuter.getB() % ctrl.minRadius).str(),
-            INVALID_MOMENTS
+            INVALID_MOMENTS.number
         );
     }
     double const maxRadius = ctrl.maxRadiusBoxFraction*std::sqrt(psfImage.getBBox().getArea());
@@ -219,7 +226,7 @@ void DoubleShapeletPsfApproxAlgorithm::fitMoments(
             meas::base::MeasurementError,
             (boost::format("Semi-major radius derived from moments (%g) is greater than upper bound (%g).")
              % axesOuter.getA() % maxRadius).str(),
-            INVALID_MOMENTS
+            INVALID_MOMENTS.number
         );
     }
     if (!(axesOuter.getDeterminantRadius() - axesInner.getDeterminantRadius() >= ctrl.minRadiusDiff)) {
@@ -229,7 +236,7 @@ void DoubleShapeletPsfApproxAlgorithm::fitMoments(
              % axesOuter.getDeterminantRadius() % axesInner.getDeterminantRadius()
              % (axesOuter.getDeterminantRadius() - axesInner.getDeterminantRadius())
              % ctrl.minRadiusDiff).str(),
-            INVALID_MOMENTS
+            INVALID_MOMENTS.number
         );
     }
 }
@@ -357,7 +364,7 @@ void DoubleShapeletPsfApproxAlgorithm::fitProfile(
             throw LSST_EXCEPT(
                 meas::base::MeasurementError,
                 "Fitting profile failed; too many outer iterations",
-                MAX_ITERATIONS
+                MAX_ITERATIONS.number
             );
         } else {
             throw LSST_EXCEPT(
@@ -446,7 +453,7 @@ void DoubleShapeletPsfApproxAlgorithm::measure(
         throw LSST_EXCEPT(
             meas::base::MeasurementError,
             err.what(),
-            INVALID_POINT_FOR_PSF
+            INVALID_POINT_FOR_PSF.number
         );
     }
     auto result = initializeResult(_ctrl);

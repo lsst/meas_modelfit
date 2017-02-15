@@ -30,6 +30,20 @@
 #include "lsst/meas/modelfit/GeneralPsfFitter.h"
 
 namespace lsst { namespace meas { namespace modelfit {
+namespace {
+base::FlagDefinitionList flagDefinitions;
+} // end anonymous
+
+base::FlagDefinition const GeneralPsfFitterAlgorithm::FAILURE = flagDefinitions.addFailureFlag();
+base::FlagDefinition const GeneralPsfFitterAlgorithm::MAX_INNER_ITERATIONS = flagDefinitions.add("flag_max_inner_iterations", "exceeded maxInnerIterations");
+base::FlagDefinition const GeneralPsfFitterAlgorithm::MAX_OUTER_ITERATIONS = flagDefinitions.add("flag_max_outer_iterations", "exceeded maxOuterIterations");
+base::FlagDefinition const GeneralPsfFitterAlgorithm::EXCEPTION = flagDefinitions.add("flag_exception", "exception in apply method");
+base::FlagDefinition const GeneralPsfFitterAlgorithm::CONTAINS_NAN = flagDefinitions.add("flag_contains_nan", "Nan in the Psf image");
+
+base::FlagDefinitionList const & GeneralPsfFitterAlgorithm::getFlagDefinitions() {
+    return flagDefinitions;
+}
+
 
 namespace {
 
@@ -337,17 +351,6 @@ ComponentVector vectorizeComponents(GeneralPsfFitterControl const & ctrl) {
     return components;
 }
 
-std::array<lsst::meas::base::FlagDefinition,GeneralPsfFitterAlgorithm::N_FLAGS> const & getFlagDefinitions() {
-    static std::array<lsst::meas::base::FlagDefinition,GeneralPsfFitterAlgorithm::N_FLAGS> const flagDefs = {{
-        {"flag", "general failure flag"},
-        {"flag_max_inner_iterations", "exceeded maxInnerIterations"},
-        {"flag_max_outer_iterations", "exceeded maxOuterIterations"},
-        {"flag_exception", "exception in apply method"},
-        {"flag_contains_nan", "Nan in the Psf image"}
-    }};
-    return flagDefs;
-}
-
 } // anonymous
 
 GeneralPsfFitter::GeneralPsfFitter(GeneralPsfFitterControl const & ctrl) :
@@ -493,7 +496,7 @@ GeneralPsfFitterAlgorithm::GeneralPsfFitterAlgorithm(GeneralPsfFitterControl con
 ) : GeneralPsfFitter(ctrl)
 {
     _flagHandler = lsst::meas::base::FlagHandler::addFields(schema, prefix,
-                                          getFlagDefinitions().begin(), getFlagDefinitions().end());
+                                          getFlagDefinitions());
     _key = addFields(schema, prefix);
 }
 
@@ -508,29 +511,29 @@ void GeneralPsfFitterAlgorithm::measure(
     if (state & Optimizer::FAILED_MAX_INNER_ITERATIONS) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_INNER_ITERATIONS).doc,
-            MAX_INNER_ITERATIONS
+            MAX_INNER_ITERATIONS.doc,
+            MAX_INNER_ITERATIONS.number
         );
     }
     if (state & Optimizer::FAILED_MAX_OUTER_ITERATIONS) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_OUTER_ITERATIONS).doc,
-            MAX_OUTER_ITERATIONS
+            MAX_OUTER_ITERATIONS.doc,
+            MAX_OUTER_ITERATIONS.number
         );
     }
     if (state & Optimizer::FAILED_EXCEPTION) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(EXCEPTION).doc,
-            EXCEPTION
+            EXCEPTION.doc,
+            EXCEPTION.number
         );
     }
     if (state & Optimizer::FAILED_NAN) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(CONTAINS_NAN).doc,
-            CONTAINS_NAN
+            CONTAINS_NAN.doc,
+            CONTAINS_NAN.number
         );
     }
 }
@@ -546,29 +549,29 @@ void GeneralPsfFitterAlgorithm::measure(
     if (state & Optimizer::FAILED_MAX_INNER_ITERATIONS) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_INNER_ITERATIONS).doc,
-            MAX_INNER_ITERATIONS
+            MAX_INNER_ITERATIONS.doc,
+            MAX_INNER_ITERATIONS.number
         );
     }
     if (state & Optimizer::FAILED_MAX_OUTER_ITERATIONS) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(MAX_OUTER_ITERATIONS).doc,
-            MAX_OUTER_ITERATIONS
+            MAX_OUTER_ITERATIONS.doc,
+            MAX_OUTER_ITERATIONS.number
         );
     }
     if (state & Optimizer::FAILED_EXCEPTION) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(EXCEPTION).doc,
-            EXCEPTION
+            EXCEPTION.doc,
+            EXCEPTION.number
         );
     }
     if (state & Optimizer::FAILED_NAN) {
         throw LSST_EXCEPT(
             lsst::meas::base::MeasurementError,
-            _flagHandler.getDefinition(CONTAINS_NAN).doc,
-            CONTAINS_NAN
+            CONTAINS_NAN.doc,
+            CONTAINS_NAN.number
         );
     }
 }
