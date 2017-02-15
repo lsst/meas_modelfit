@@ -32,8 +32,6 @@ import lsst.afw.image
 import lsst.afw.math
 import lsst.afw.detection
 import lsst.meas.modelfit
-import lsst.meas.modelfit.display
-import lsst.afw.display.ds9
 
 
 ASSERT_CLOSE_KWDS = dict(plotOnFailure=True, printFailures=False)

@@ -21,14 +21,6 @@
 #
 from .version import *
 from .modelfitLib import *
-from .measureCcd import *
-from .measureCoadd import *
-from .measureImage import *
-from .measureMulti import *
-from .fitRegion import *
-from .samplers import *
-from .optimizer import *
-from .models import *
 from .priors import *
 from . import psf     # import these into separate namespaces because they just contain plugins,
 from . import cmodel  # which we don't expect users to need to get to outside of their registries.

@@ -24,9 +24,6 @@
 #ifndef LSST_MEAS_MODELFIT_H
 #define LSST_MEAS_MODELFIT_H
 
-#include "lsst/meas/modelfit/MarginalSamplingInterpreter.h"
-#include "lsst/meas/modelfit/DirectSamplingInterpreter.h"
-#include "lsst/meas/modelfit/ModelFitRecord.h"
 #include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
 #include "lsst/meas/modelfit/Sampling.h"
 #include "lsst/meas/modelfit/Sampler.h"
@@ -34,7 +31,6 @@
 #include "lsst/meas/modelfit/Likelihood.h"
 #include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
 #include "lsst/meas/modelfit/UnitSystem.h"
-#include "lsst/meas/modelfit/Interpreter.h"
 #include "lsst/meas/modelfit/Prior.h"
 #include "lsst/meas/modelfit/MixturePrior.h"
 #include "lsst/meas/modelfit/SoftenedLinearPrior.h"
