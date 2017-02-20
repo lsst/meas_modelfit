@@ -47,7 +47,7 @@ def makeGaussianFunction(ellipse, flux=1.0):
     s.normalize()
     s.getCoefficients()[0] *= flux
     msf = lsst.shapelet.MultiShapeletFunction()
-    msf.getComponents().push_back(s)
+    msf.addComponent(s)
     return msf
 
 
@@ -75,7 +75,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.ellipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(6.0, 5.0, numpy.pi/6))
         self.flux = 50.0
         ev = self.model.makeEllipseVector()
-        ev[0] = self.ellipse
+        ev[0].setCore(self.ellipse.getCore())
+        ev[0].setCenter(self.ellipse.getCenter())
         self.nonlinear = numpy.zeros(self.model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar)
         self.fixed = numpy.zeros(self.model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
         self.model.readEllipses(ev, self.nonlinear, self.fixed)
@@ -191,8 +192,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         ctrl = lsst.meas.modelfit.UnitTransformedLikelihoodControl()
         var = numpy.random.rand(self.bbox0.getHeight(), self.bbox0.getWidth()) + 2.0
         self.exposure0.getMaskedImage().getVariance().getArray()[:, :] = var
-        efv = lsst.meas.modelfit.EpochFootprintVector()
-        efv.push_back(lsst.meas.modelfit.EpochFootprint(self.footprint0, self.exposure0, self.psf0))
+        efv = [lsst.meas.modelfit.EpochFootprint(self.footprint0, self.exposure0, self.psf0)]
         # test with per-pixel weights, using both ctors
         ctrl.usePixelWeights = True
         data = self.exposure0.getMaskedImage().getImage().getArray() / var**0.5
@@ -224,8 +224,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         var = numpy.random.rand(self.bbox1.getHeight(), self.bbox1.getWidth()) + 2.0
         exposure1.getMaskedImage().getVariance().getArray()[:, :] = var
         ctrl = lsst.meas.modelfit.UnitTransformedLikelihoodControl()
-        efv = lsst.meas.modelfit.EpochFootprintVector()
-        efv.push_back(lsst.meas.modelfit.EpochFootprint(self.footprint1, exposure1, self.psf1))
+        efv = [lsst.meas.modelfit.EpochFootprint(self.footprint1, exposure1, self.psf1)]
         # test with per-pixel weights, using both ctors
         ctrl.usePixelWeights = True
         data = exposure1.getMaskedImage().getImage().getArray() / var**0.5

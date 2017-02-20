@@ -123,7 +123,9 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         ellipses3 = model.makeEllipseVector()
         for i in range(len(ellipses2)):
             self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector())
-            ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
+            # need to convert ellipse parametrization
+            ellipses3[i].setCore(msf.getComponents()[i].getEllipse().getCore())
+            ellipses3[i].setCenter(msf.getComponents()[i].getEllipse().getCenter())
             self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector())
             self.assertFloatsAlmostEqual(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients())
 
@@ -161,12 +163,14 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertFloatsAlmostEqual(fixed, ellipseParameters.ravel())
         ellipses2 = model.writeEllipses(nonlinear, fixed)
         msf = model.makeShapeletFunction(nonlinear, amplitudes, fixed)
-        self.assertFloatsAlmostEqual(len(msf.getComponents()), len(ellipses1))
+        self.assertEqual(len(msf.getComponents()), len(ellipses1))
         ellipses3 = model.makeEllipseVector()
         for i in range(len(ellipses2)):
             self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(),
                                          rtol=1E-8)
-            ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
+            # need to convert ellipse parametrization
+            ellipses3[i].setCore(msf.getComponents()[i].getEllipse().getCore())
+            ellipses3[i].setCenter(msf.getComponents()[i].getEllipse().getCenter())
             self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(),
                                          rtol=1E-8)
             self.assertFloatsAlmostEqual(amplitudes[i:i+1], msf.getComponents()[i].getCoefficients(),
@@ -237,7 +241,9 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         for i in range(len(ellipses2)):
             self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses2[i].getParameterVector(),
                                          rtol=1E-8)
-            ellipses3[i] = msf.getComponents()[i].getEllipse()  # need to convert ellipse parametrization
+            # need to convert ellipse parametrization
+            ellipses3[i].setCore(msf.getComponents()[i].getEllipse().getCore())
+            ellipses3[i].setCenter(msf.getComponents()[i].getEllipse().getCenter())
             amplitudeCount = len(msf.getComponents()[i].getCoefficients())
             self.assertFloatsAlmostEqual(ellipses1[i].getParameterVector(), ellipses3[i].getParameterVector(),
                                          rtol=1E-8)

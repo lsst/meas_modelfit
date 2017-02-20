@@ -1,6 +1,6 @@
 #
 # LSST Data Management System
-# Copyright 2008-2013 LSST Corporation.
+# Copyright 2017 LSST/AURA.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -19,22 +19,32 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-from .version import *
-from .common import *
-from .mixture import *
-from .unitSystem import *
-from .priors import *
-from .model import *
-from .multiModel import *
-from .likelihood import *
-from .sampler import *
-from .adaptiveImportanceSampler import *
-from .optimizer import *
-from .pixelFitRegion import *
-from .psf import *
-from .truncatedGaussian import *
-from .unitTransformedLikelihood import *
-from .cmodel import *
 
-# Match C++ namespace, without bothering with a new package for just one file.
-from . import integrals as detail
+from __future__ import absolute_import, division, print_function
+
+__all__ = ("OptimizerConfig",)
+
+from .optimizer import Optimizer, OptimizerControl
+
+from lsst.utils import continueClass
+import lsst.pex.config
+
+
+OptimizerConfig = lsst.pex.config.makeConfigClass(OptimizerControl)
+
+
+@continueClass
+class OptimizerControl:
+
+    ConfigClass = OptimizerConfig
+
+
+@continueClass
+class Optimizer:
+
+    ConfigClass = OptimizerConfig
+
+    def getConfig(self):
+        config = self.ConfigClass()
+        config.readControl(self.getControl())
+        return config
