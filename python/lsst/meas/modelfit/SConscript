@@ -1,3 +1,21 @@
 # -*- python -*-
 from lsst.sconsUtils import scripts
-scripts.BasicSConscript.python(['modelfitLib'])
+scripts.BasicSConscript.pybind11(
+    ['mixture',
+     'unitSystem',
+     'priors/priors',
+     'model',
+     'multiModel',
+     'likelihood',
+     'sampler',
+     'adaptiveImportanceSampler',
+     'optimizer/optimizer',
+     'psf/psf',
+     'pixelFitRegion/pixelFitRegion',
+     'truncatedGaussian',
+     'integrals',
+     'unitTransformedLikelihood',
+     'cmodel/cmodel',
+     ],
+    addUnderscore=False
+)

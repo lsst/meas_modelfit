@@ -313,8 +313,6 @@ public:
         Optimizer const & optimizer
     ) const;
 
-#ifndef SWIG // can't use Eigen references as output arguments in Python
-
     void unpackDerivatives(
         ndarray::Array<Scalar const,1,1> const & nested,
         Vector & gradient,
@@ -326,8 +324,6 @@ public:
         Vector & gradient,
         Matrix & hessian
     ) const;
-
-#endif
 
     void unpackDerivatives(
         ndarray::Array<Scalar const,1,1> const & nested,

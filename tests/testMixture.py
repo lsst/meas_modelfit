@@ -48,7 +48,7 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
 
     @staticmethod
     def makeRandomMixture(nDim, nComponents, df=float("inf")):
-        l = lsst.meas.modelfit.Mixture.ComponentList()
+        l = []
         for i in range(nComponents):
             mu = numpy.random.randn(nDim)*4
             a = numpy.random.randn(nDim+1, nDim)
@@ -59,7 +59,7 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
     def testSwig(self):
         """Test that Swig correctly wrapped tricky things.
         """
-        l1 = lsst.meas.modelfit.MixtureComponentList()
+        l1 = []
         l1.append(lsst.meas.modelfit.MixtureComponent(1))
         l1.append(lsst.meas.modelfit.MixtureComponent(1))
         l1.append(lsst.meas.modelfit.MixtureComponent(1))
@@ -70,7 +70,6 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         l1[2].weight = 0.5
         m1 = lsst.meas.modelfit.Mixture(1, l1)
         self.assertEqual(m1[0].weight, 0.5)
-        self.assertEqual(len(l1), 0)
         self.assertEqual([0.5, 0.25, 0.25], [c.weight for c in m1])
         self.assertFloatsAlmostEqual(m1[0].getMu(), numpy.array([1.0], dtype=float))
         self.assertFloatsAlmostEqual(m1[0].getSigma(), numpy.array([4.0], dtype=float))

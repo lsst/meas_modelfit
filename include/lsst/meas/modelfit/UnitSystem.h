@@ -57,22 +57,11 @@ struct UnitSystem {
         wcs(wcs_), calib(validateCalib(calib_))
     {}
 
-// work around a bug in SWIG 3.0.2: mis-handling templated constructors
-// once we have a fixed SWIG you remove this if/else hack and update modelfitLib.i accordingly
-#ifndef SWIG
     /// Construct a UnitSystem by extracting the Wcs and Calib from an Exposure (implicit)
     template <typename T>
     UnitSystem(afw::image::Exposure<T> const & exposure) :
         wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib()))
     {}
-#else
-    UnitSystem(afw::image::Exposure<float> const & exposure) :
-        wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib()))
-    {}
-    UnitSystem(afw::image::Exposure<double> const & exposure) :
-        wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib()))
-    {}
-#endif
 
 private:
     std::shared_ptr<const lsst::afw::image::Calib> validateCalib(

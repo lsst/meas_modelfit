@@ -43,7 +43,7 @@ def makeMultiShapeletCircularGaussian(sigma):
     s = lsst.shapelet.ShapeletFunction(0, lsst.shapelet.HERMITE, sigma)
     s.getCoefficients()[0] = 1.0 / lsst.shapelet.ShapeletFunction.FLUX_FACTOR
     m = lsst.shapelet.MultiShapeletFunction()
-    m.getComponents().push_back(s)
+    m.addComponent(s)
     return m
 
 
