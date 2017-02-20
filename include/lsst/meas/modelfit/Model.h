@@ -160,8 +160,6 @@ public:
      */
     virtual EllipseVector makeEllipseVector() const = 0;
 
-#ifndef SWIG
-
     /**
      *  @brief Convert a set of nonlinear+fixed parameter arrays to a vector of ellipses.
      *
@@ -203,8 +201,6 @@ public:
         EllipseConstIterator ellipseIter,
         Scalar * nonlinearIter, Scalar * fixedIter
     ) const = 0;
-
-#endif // !SWIG
 
     /**
      *  @brief Convert a set of nonlinear+fixed parameter arrays to a vector of ellipses.

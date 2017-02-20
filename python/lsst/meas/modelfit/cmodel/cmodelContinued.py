@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 #
 # LSST Data Management System
-# Copyright 2008-2014 LSST Corporation.
+# Copyright 2008-2017 LSST/AURA.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -20,19 +19,28 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+from __future__ import absolute_import, division, print_function
 
-import lsst.pex.config
+# The Plugin classes here are accessed via registries, not direct imports.
+__all__ = ("CModelStageConfig", "CModelConfig")
+
+from .cmodel import CModelStageControl, CModelControl, CModelAlgorithm
+
+from lsst.pex.config import makeConfigClass
 import lsst.meas.base
-from . import modelfitLib
 
 
-class CModelSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, modelfitLib.CModelConfig):
+CModelStageConfig = makeConfigClass(CModelStageControl)
+CModelConfig = makeConfigClass(CModelControl)
+
+apCorrList = ("modelfit_CModel", "modelfit_CModel_initial", "modelfit_CModel_exp", "modelfit_CModel_dev")
+
+
+class CModelSingleFrameConfig(lsst.meas.base.SingleFramePluginConfig, CModelConfig):
 
     def setDefaults(self):
         lsst.meas.base.SingleFramePluginConfig.setDefaults(self)
-        modelfitLib.CModelConfig.setDefaults(self)
-
-apCorrList = ("modelfit_CModel", "modelfit_CModel_initial", "modelfit_CModel_exp", "modelfit_CModel_dev")
+        CModelConfig.setDefaults(self)
 
 
 @lsst.meas.base.register("modelfit_CModel", apCorrList=apCorrList)
@@ -50,7 +58,7 @@ class CModelSingleFramePlugin(lsst.meas.base.SingleFramePlugin):
 
     def __init__(self, config, name, schema, metadata):
         lsst.meas.base.SingleFramePlugin.__init__(self, config, name, schema, metadata)
-        self.algorithm = modelfitLib.CModelAlgorithm(name, config.makeControl(), schema)
+        self.algorithm = CModelAlgorithm(name, config.makeControl(), schema)
 
     def measure(self, measRecord, exposure):
         self.algorithm.measure(measRecord, exposure)
@@ -59,11 +67,11 @@ class CModelSingleFramePlugin(lsst.meas.base.SingleFramePlugin):
         self.algorithm.fail(measRecord, error.cpp if error is not None else None)
 
 
-class CModelForcedConfig(lsst.meas.base.ForcedPluginConfig, modelfitLib.CModelConfig):
+class CModelForcedConfig(lsst.meas.base.ForcedPluginConfig, CModelConfig):
 
     def setDefaults(self):
         lsst.meas.base.ForcedPluginConfig.setDefaults(self)
-        modelfitLib.CModelConfig.setDefaults(self)
+        CModelConfig.setDefaults(self)
 
 
 @lsst.meas.base.register("modelfit_CModel", apCorrList=apCorrList)
@@ -90,7 +98,7 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
 
     def __init__(self, config, name, schemaMapper, metadata):
         lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, metadata)
-        self.algorithm = modelfitLib.CModelAlgorithm(name, config.makeControl(), schemaMapper)
+        self.algorithm = CModelAlgorithm(name, config.makeControl(), schemaMapper)
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
         if refWcs != exposure.getWcs():

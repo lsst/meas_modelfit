@@ -174,12 +174,12 @@ struct CModelStageControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        linearPriorConfig, lsst.meas.modelfit.modelfitLib, SoftenedLinearPriorControl,
+        linearPriorConfig, lsst.meas.modelfit.priors, SoftenedLinearPriorControl,
         "Configuration for a linear prior, used if priorSource='LINEAR'."
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        empiricalPriorConfig, lsst.meas.modelfit.modelfitLib, SemiEmpiricalPriorControl,
+        empiricalPriorConfig, lsst.meas.modelfit.priors, SemiEmpiricalPriorControl,
         "Configuration for an empirical prior, used if priorSource='EMPIRICAL'."
     );
 
@@ -199,7 +199,7 @@ struct CModelStageControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        optimizer, lsst.meas.modelfit.modelfitLib, OptimizerControl,
+        optimizer, lsst.meas.modelfit.optimizer, OptimizerControl,
         "Configuration for how the objective surface is explored.  Ignored for forced fitting"
     );
 
@@ -243,23 +243,23 @@ struct CModelControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        region, lsst.meas.modelfit.modelfitLib, PixelFitRegionControl,
+        region, lsst.meas.modelfit.pixelFitRegion, PixelFitRegionControl,
         "Configuration parameters related to the determination of the pixels to include in the fit."
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        initial, lsst.meas.modelfit.modelfitLib, CModelStageControl,
+        initial, lsst.meas.modelfit.cmodel, CModelStageControl,
         "An initial fit (usually with a fast, approximate model) used to warm-start the exp and dev fits, "
         "convolved with only the zeroth-order terms in the multi-shapelet PSF approximation."
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        exp, lsst.meas.modelfit.modelfitLib, CModelStageControl,
+        exp, lsst.meas.modelfit.cmodel, CModelStageControl,
         "Independent fit of the exponential component"
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        dev, lsst.meas.modelfit.modelfitLib, CModelStageControl,
+        dev, lsst.meas.modelfit.cmodel, CModelStageControl,
         "Independent fit of the de Vaucouleur component"
     );
 
