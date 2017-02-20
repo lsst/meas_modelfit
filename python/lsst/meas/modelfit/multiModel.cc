@@ -21,21 +21,38 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
-%include "lsst/meas/modelfit/optimizer.i"
+#include "lsst/meas/modelfit/MultiModel.h"
 
-%{
-#include "lsst/meas/modelfit/GeneralPsfFitter.h"
-#include "lsst/meas/modelfit/DoubleShapeletPsfApprox.h"
-%}
+namespace py = pybind11;
+using namespace pybind11::literals;
 
-%include "lsst/meas/modelfit/GeneralPsfFitter.h"
-%include "lsst/meas/modelfit/DoubleShapeletPsfApprox.h"
+namespace lsst {
+namespace meas {
+namespace modelfit {
+namespace {
 
-%pythoncode %{
-import lsst.pex.config
+using PyMultiModel = py::class_<MultiModel, std::shared_ptr<MultiModel>, Model>;
 
-GeneralPsfFitterComponentConfig = lsst.pex.config.makeConfigClass(GeneralPsfFitterComponentControl)
-GeneralPsfFitterConfig = lsst.pex.config.makeConfigClass(GeneralPsfFitterControl)
-GeneralPsfFitter.ConfigClass = GeneralPsfFitterConfig
-%}
+PYBIND11_PLUGIN(multiModel) {
+
+    py::module::import("lsst.meas.modelfit.model");
+
+    py::module mod("multiModel");
+
+    PyMultiModel cls(mod, "MultiModel");
+    cls.def(
+        py::init<ModelVector, MultiModel::NameVector const &>(),
+        "components"_a, "prefixes"_a
+    );
+    cls.def("getComponents", &MultiModel::getComponents);
+
+    // All other MultiModel methods are virtuals already inherited from
+    // wrappers for Model.
+
+    return mod.ptr();
+}
+
+}}}} // namespace lsst::meas::modelfit::anonymous

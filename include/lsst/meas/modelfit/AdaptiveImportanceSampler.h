@@ -27,6 +27,7 @@
 #include <map>
 
 #include "lsst/pex/config.h"
+#include "lsst/afw/table/Schema.h"
 #include "lsst/meas/modelfit/Sampler.h"
 #include "lsst/meas/modelfit/Mixture.h"
 

@@ -6,6 +6,7 @@ setupRequired(log)
 setupRequired(scons)
 setupRequired(sconsUtils)
 setupRequired(shapelet)
+setupRequired(pybind11)
 
 setupOptional(matplotlib)
 

@@ -34,6 +34,7 @@ import lsst.afw.coord
 import lsst.log
 import lsst.log.utils
 import lsst.meas.modelfit
+import lsst.meas.algorithms
 
 #   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
 lsst.log.utils.traceSetAt("meas.modelfit.optimizer.Optimizer", -1)

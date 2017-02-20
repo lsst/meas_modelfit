@@ -125,15 +125,13 @@ public:
 
     virtual ~Likelihood() {}
 
-#ifndef SWIG
     // No copying
     Likelihood ( const Likelihood & ) = delete;
     Likelihood & operator= ( const Likelihood & ) = delete;
-    
+
     // No moving
     Likelihood ( Likelihood && ) = delete;
     Likelihood & operator= ( Likelihood && ) = delete;
-#endif
 
 protected:
 

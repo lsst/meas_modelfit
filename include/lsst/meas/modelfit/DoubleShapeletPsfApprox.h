@@ -70,7 +70,7 @@ public:
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        optimizer, lsst.meas.modelfit.modelfitLib, OptimizerControl,
+        optimizer, lsst.meas.modelfit.optimizer, OptimizerControl,
         "Configuration of the optimizer used by DoubleShapeletPsfsApproxAlgorithm::fitProfile()."
     );
 

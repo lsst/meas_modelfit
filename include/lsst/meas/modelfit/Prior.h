@@ -137,7 +137,7 @@ public:
      *  is integrated by the marginalize() method.
      *
      *  @param[in]  gradient     Gradient of the -log likelihood in @f$\alpha@f$ at fixed @f$\theta@f$.
-     *  @param[in]  fisher       Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
+     *  @param[in]  hessian      Second derivatives of of the -log likelihood in @f$\alpha@f$ at fixed
      *                           @f$\theta@f$.
      *  @param[in]  nonlinear    The nonlinear parameters @f$\theta@f$ at which we are evaluating
      *                           the conditional distribution @f$P(\alpha|\theta)@f$.
@@ -150,7 +150,7 @@ public:
      *  @param[in]  multiplyWeights  If true, multiply weight vector instead of overwriting it.
      */
     virtual void drawAmplitudes(
-        Vector const & gradient, Matrix const & fisher,
+        Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         afw::math::Random & rng,
         ndarray::Array<Scalar,2,1> const & amplitudes,
