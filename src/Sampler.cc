@@ -23,7 +23,7 @@
 
 #include "ndarray/eigen.h"
 
-#include "lsst/meas/modelfit/Sampling.h"
+#include "lsst/meas/modelfit/Sampler.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 

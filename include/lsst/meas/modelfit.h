@@ -25,7 +25,6 @@
 #define LSST_MEAS_MODELFIT_H
 
 #include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
-#include "lsst/meas/modelfit/Sampling.h"
 #include "lsst/meas/modelfit/Sampler.h"
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
 #include "lsst/meas/modelfit/Likelihood.h"

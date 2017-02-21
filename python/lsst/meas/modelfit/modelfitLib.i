@@ -186,7 +186,6 @@ Pixel = numpy.float32
 %include "lsst/meas/modelfit/Likelihood.h"
 %include "lsst/meas/modelfit/UnitSystem.h"
 %include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
-%include "lsst/meas/modelfit/Sampling.h"
 %include "lsst/meas/modelfit/Sampler.h"
 %include "lsst/meas/modelfit/TruncatedGaussian.h"
 
