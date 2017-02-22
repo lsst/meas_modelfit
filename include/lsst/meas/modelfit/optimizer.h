@@ -295,22 +295,6 @@ public:
     {}
 };
 
-/**
- *  @brief Internal struct used for per-iteration optimizer data, made public for debugging purposes.
- *
- *  @note This is logically an inner class, but Swig doesn't support those.
- */
-struct OptimizerIterationData {
-    Scalar objectiveValue;
-    Scalar priorValue;
-    ndarray::Array<Scalar,1,1> parameters;
-    ndarray::Array<Scalar,1,1> residuals;
-
-    OptimizerIterationData(int dataSize, int parameterSize);
-
-    void swap(OptimizerIterationData & other);
-};
-
 class OptimizerHistoryRecorder {
 public:
 
@@ -422,8 +406,6 @@ public:
     typedef OptimizerObjective Objective;
     typedef OptimizerControl Control;
     typedef OptimizerHistoryRecorder HistoryRecorder;
-    typedef OptimizerIterationData IterationData;
-    typedef std::vector<IterationData> IterationDataVector;
 
     enum StateFlags {
         CONVERGED_GRADZERO = 0x0001,
@@ -483,6 +465,17 @@ public:
     void removeSR1Term();
 
 private:
+
+    struct IterationData {
+        Scalar objectiveValue;
+        Scalar priorValue;
+        ndarray::Array<Scalar,1,1> parameters;
+        ndarray::Array<Scalar,1,1> residuals;
+
+        IterationData(int dataSize, int parameterSize);
+
+        void swap(IterationData & other);
+    };
 
     friend class OptimizerHistoryRecorder;
 
