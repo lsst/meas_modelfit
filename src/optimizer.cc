@@ -125,15 +125,15 @@ PTR(OptimizerObjective) OptimizerObjective::makeFromLikelihood(
     return std::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
 }
 
-// ----------------- OptimizerIterationData -----------------------------------------------------------------
+// ----------------- Optimizer::IterationData -----------------------------------------------------------------
 
-OptimizerIterationData::OptimizerIterationData(int dataSize, int parameterSize) :
+Optimizer::IterationData::IterationData(int dataSize, int parameterSize) :
     objectiveValue(0.0), priorValue(0.0),
     parameters(ndarray::allocate(parameterSize)),
     residuals(ndarray::allocate(dataSize))
 {}
 
-void OptimizerIterationData::swap(OptimizerIterationData & other) {
+void Optimizer::IterationData::swap(IterationData & other) {
     std::swap(objectiveValue, other.objectiveValue);
     std::swap(priorValue, other.priorValue);
     parameters.swap(other.parameters);
@@ -224,7 +224,7 @@ void OptimizerHistoryRecorder::apply(
     record->set(inner, innerIterCount);
     record->set(state, optimizer.getState());
     record->set(trust, optimizer._trustRadius);
-    OptimizerIterationData const * data;
+    Optimizer::IterationData const * data;
     if (!(optimizer.getState() & Optimizer::STATUS_STEP_REJECTED)) {
         data = &optimizer._current;
         if (derivatives.isValid()) {
