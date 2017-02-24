@@ -25,7 +25,6 @@ from builtins import object
 import lsst.pex.config
 import lsst.meas.base
 from . import modelfitLib
-from . import optimizer   # needed to declare OptimizerConfig
 
 lsst.meas.base.wrapSimpleAlgorithm(
     modelfitLib.DoubleShapeletPsfApproxAlgorithm,

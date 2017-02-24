@@ -25,50 +25,12 @@ Config classes and registry for Bayesian priors
 """
 from builtins import range
 
-import os
 import numpy
 
 import lsst.pex.config
 
-from . import modelfitLib
 
-__all__ = ("priorRegistry", "registerPrior")
-
-priorRegistry = lsst.pex.config.makeRegistry(
-    """Registry for Bayesian priors on galaxy parameters
-
-    The Configurables (callables that take a Config as their first argument)
-    in the registry should return a subclass of the Prior class.
-    """
-)
-
-
-def registerPrior(name):
-    """Decorator to add a Config class with a makePrior static method to the
-    prior registry.
-    """
-    def decorate(cls):
-        cls.makePrior.ConfigClass = cls
-        priorRegistry.register(name, cls.makePrior)
-        return cls
-    return decorate
-
-
-@registerPrior("mixture")
-class MixturePriorConfig(lsst.pex.config.Config):
-    filename = lsst.pex.config.Field(
-        dtype=str, default="s13-v2-disk-08.fits",
-        doc="Filename for mixture data file to load; relative to $MEAS_MODELFIT_DIR/data unless absolute"
-    )
-
-    @staticmethod
-    def makePrior(config):
-        if os.path.isabs(config.filename):
-            path = config.filename
-        else:
-            path = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "data", config.filename)
-        mixture = modelfitLib.Mixture.readFits(path)
-        return modelfitLib.MixturePrior(mixture, "single-ellipse")
+__all__ = ("fitMixture",)
 
 
 def fitMixture(data, nComponents, minFactor=0.25, maxFactor=4.0, nIterations=20, df=float("inf")):

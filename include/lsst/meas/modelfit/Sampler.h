@@ -26,9 +26,28 @@
 
 #include "lsst/afw/table/fwd.h"
 #include "lsst/meas/modelfit/Mixture.h"
-#include "lsst/meas/modelfit/Sampling.h"
+#include "lsst/meas/modelfit/Likelihood.h"
 
 namespace lsst { namespace meas { namespace modelfit {
+
+class SamplingObjective {
+public:
+
+    virtual int getParameterDim() const = 0;
+
+    virtual Scalar operator()(
+        ndarray::Array<Scalar const,1,1> const & parameters,
+        afw::table::BaseRecord & sample
+    ) const = 0;
+
+    virtual ~SamplingObjective() {}
+
+protected:
+    explicit SamplingObjective(PTR(Likelihood) likelihood);
+
+    PTR(Likelihood) _likelihood;
+    ndarray::Array<Pixel,2,-1> _modelMatrix;
+};
 
 class Sampler {
 public:

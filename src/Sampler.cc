@@ -21,25 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_MEAS_MODELFIT_H
-#define LSST_MEAS_MODELFIT_H
+#include "ndarray/eigen.h"
 
-#include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
 #include "lsst/meas/modelfit/Sampler.h"
-#include "lsst/meas/modelfit/TruncatedGaussian.h"
-#include "lsst/meas/modelfit/Likelihood.h"
-#include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
-#include "lsst/meas/modelfit/UnitSystem.h"
-#include "lsst/meas/modelfit/Prior.h"
-#include "lsst/meas/modelfit/MixturePrior.h"
-#include "lsst/meas/modelfit/SoftenedLinearPrior.h"
-#include "lsst/meas/modelfit/SemiEmpiricalPrior.h"
-#include "lsst/meas/modelfit/integrals.h"
-#include "lsst/meas/modelfit/Model.h"
-#include "lsst/meas/modelfit/MultiModel.h"
-#include "lsst/meas/modelfit/Mixture.h"
-#include "lsst/meas/modelfit/optimizer.h"
-#include "lsst/meas/modelfit/GeneralPsfFitter.h"
-#include "lsst/meas/modelfit/CModel.h"
 
-#endif // !LSST_MEAS_MODELFIT_H
+namespace lsst { namespace meas { namespace modelfit {
+
+SamplingObjective::SamplingObjective(PTR(Likelihood) likelihood) :
+    _likelihood(likelihood),
+    _modelMatrix(ndarray::allocate(likelihood->getDataDim(), likelihood->getAmplitudeDim()))
+{}
+
+}}} // namespace lsst::meas::modelfit
