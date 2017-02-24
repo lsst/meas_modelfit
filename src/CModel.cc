@@ -247,7 +247,7 @@ struct CModelStageKeys {
     void copyResultToRecord(CModelStageResult const & result, afw::table::BaseRecord & record) {
         record.set(flux, result.flux);
         record.set(fluxSigma, result.fluxSigma);
-        record.set(fluxFlag, result.getFlag(CModelStageResult::FAILED));
+        record.set(fluxFlag, result.flags[CModelStageResult::FAILED]);
         record.set(fluxInner, result.fluxInner);
         if (objective.isValid()) {
             record.set(objective, result.objective);
@@ -277,7 +277,7 @@ struct CModelStageKeys {
     CModelStageResult copyRecordToResult(afw::table::BaseRecord const & record) const {
         // this is only used when reading reference records, so we only transfer the fields we need for that
         CModelStageResult result;
-        result.setFlag(CModelStageResult::FAILED, record.get(flags[CModelStageResult::FAILED]));
+        result.flags[CModelStageResult::FAILED] = record.get(flags[CModelStageResult::FAILED]);
         result.nonlinear = record.get(nonlinear);
         result.fixed = record.get(fixed);
         return result;
@@ -488,7 +488,7 @@ struct CModelKeys {
         result.dev = dev.copyRecordToResult(record);
         result.initialFitRegion = record.get(initialFitRegion);
         result.finalFitRegion = record.get(finalFitRegion);
-        result.setFlag(CModelResult::FAILED, record.get(flags[CModelResult::FAILED]));
+        result.flags[CModelResult::FAILED] = record.get(flags[CModelResult::FAILED]);
         return result;
     }
 
@@ -728,13 +728,13 @@ public:
                 optimizer.run();
             }
         } catch (std::overflow_error &) {
-            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.flags[CModelStageResult::NUMERIC_ERROR] = true;
         } catch (std::underflow_error &) {
-            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.flags[CModelStageResult::NUMERIC_ERROR] = true;
         } catch (pex::exceptions::UnderflowError &) {
-            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.flags[CModelStageResult::NUMERIC_ERROR] = true;
         } catch (pex::exceptions::OverflowError &) {
-            result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+            result.flags[CModelStageResult::NUMERIC_ERROR] = true;
         }
 
         // Use the optimizer state to set flags.  There's more information in the state than we
@@ -742,16 +742,16 @@ public:
         // look at the history by running outside of plugin mode.
         int state = optimizer.getState();
         if (state & Optimizer::FAILED) {
-            result.setFlag(CModelStageResult::FAILED, true);
+            result.flags[CModelStageResult::FAILED] = true;
             if (state & Optimizer::FAILED_MAX_ITERATIONS) {
-                result.setFlag(CModelStageResult::MAX_ITERATIONS, true);
+                result.flags[CModelStageResult::MAX_ITERATIONS] = true;
             } else if (state & Optimizer::FAILED_NAN) {
-                result.setFlag(CModelStageResult::NUMERIC_ERROR, true);
+                result.flags[CModelStageResult::NUMERIC_ERROR] = true;
             }
         } else {
-            result.setFlag(CModelStageResult::FAILED, false);
+            result.flags[CModelStageResult::FAILED] = false;
             if (state & Optimizer::CONVERGED_TR_SMALL) {
-                result.setFlag(CModelStageResult::TR_SMALL, true);
+                result.flags[CModelStageResult::TR_SMALL] = true;
             }
         }
 
@@ -815,7 +815,7 @@ public:
         WeightSums sums(modelMatrix, result.likelihood->getUnweightedData(), result.likelihood->getVariance());
 
         fillResult(result, data, sums);
-        result.setFlag(CModelStageResult::FAILED, false);
+        result.flags[CModelStageResult::FAILED] = false;
     }
 
 };
@@ -908,7 +908,7 @@ public:
         WeightSums sums(model, likelihood.getUnweightedData(), likelihood.getVariance());
         result.fluxInner = sums.fluxInner;
         result.fluxSigma = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
-        result.setFlag(CModelResult::FAILED, false);
+        result.flags[CModelResult::FAILED] = false;
         result.fracDev = amplitudes[1] / amplitudes.sum();
         result.objective = tg.evaluateLog()(amplitudes);
     }
@@ -931,18 +931,18 @@ public:
             ixy = moments.getIxy() - psfMoments.getIxy();
         } catch (pex::exceptions::InvalidParameterError &) {
             // let ixx, iyy, ixy stay at initial minimum values
-            result.setFlag(CModelResult::SMALL_SHAPE, true); // set this now, unset it on success later
+            result.flags[CModelResult::SMALL_SHAPE] = true; // set this now, unset it on success later
         }
         if (ixx*iyy < ixy*ixy) {
             ixy = 0.0;
-            result.setFlag(CModelResult::SMALL_SHAPE, true); // set this now, unset it on success later
+            result.flags[CModelResult::SMALL_SHAPE] = true; // set this now, unset it on success later
         }
         afw::geom::ellipses::Quadrupole deconvolvedMoments(ixx, iyy, ixy, false);
         try {
             deconvolvedMoments.normalize();
         } catch (pex::exceptions::InvalidParameterError &) {
             deconvolvedMoments = afw::geom::ellipses::Quadrupole(mir2, mir2, 0.0);
-            result.setFlag(CModelResult::SMALL_SHAPE, true);
+            result.flags[CModelResult::SMALL_SHAPE] = true;
         }
         afw::geom::ellipses::Ellipse deconvolvedEllipse(
             deconvolvedMoments,
@@ -1074,10 +1074,10 @@ void CModelAlgorithm::_applyImpl(
     region.applyMask(*exposure.getMaskedImage().getMask(), center);
     // TODO: have PixelFitRegion throw MeasurementError instead for some of these?
     // (logic should be correct, but we might be able to simplify the code)
-    result.setFlag(CModelResult::REGION_MAX_AREA, region.maxArea);
-    result.setFlag(CModelResult::REGION_MAX_BAD_PIXEL_FRACTION, region.maxBadPixelFraction);
-    result.setFlag(CModelResult::REGION_USED_FOOTPRINT_AREA, region.usedFootprintArea);
-    result.setFlag(CModelResult::REGION_USED_PSF_AREA, region.usedPsfArea);
+    result.flags[CModelResult::REGION_MAX_AREA] = region.maxArea;
+    result.flags[CModelResult::REGION_MAX_BAD_PIXEL_FRACTION] = region.maxBadPixelFraction;
+    result.flags[CModelResult::REGION_USED_FOOTPRINT_AREA] = region.usedFootprintArea;
+    result.flags[CModelResult::REGION_USED_PSF_AREA] = region.usedPsfArea;
     if (!region.footprint) return;
 
     // Negative approxFlux means we should come up with an estimate ourselves.
@@ -1087,13 +1087,13 @@ void CModelAlgorithm::_applyImpl(
         if (!(approxFlux > 0.0)) {
             // This is only be possible if the object has all data pixels set to zero or
             // if there are unmasked NaNs in the fit region.
-            result.initial.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-            result.initial.setFlag(CModelStageResult::FAILED, true);
-            result.exp.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-            result.exp.setFlag(CModelStageResult::FAILED, true);
-            result.dev.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-            result.dev.setFlag(CModelStageResult::FAILED, true);
-            result.setFlag(CModelResult::FAILED, true);
+            result.initial.flags[CModelStageResult::NUMERIC_ERROR] = true;
+            result.initial.flags[CModelStageResult::FAILED] = true;
+            result.exp.flags[CModelStageResult::NUMERIC_ERROR] = true;
+            result.exp.flags[CModelStageResult::FAILED] = true;
+            result.dev.flags[CModelStageResult::NUMERIC_ERROR] = true;
+            result.dev.flags[CModelStageResult::FAILED] = true;
+            result.flags[CModelResult::FAILED] = true;
             return;
         }
     }
@@ -1108,7 +1108,7 @@ void CModelAlgorithm::_applyImpl(
     // Do the initial fit
     // TODO: use only 0th-order terms in psf
     _impl->initial.fit(getControl().initial, result.initial, initialData, exposure, *region.footprint);
-    if (result.initial.getFlag(CModelStageResult::FAILED)) return;
+    if (result.initial.flags[CModelStageResult::FAILED]) return;
 
     // Include a multiple of the initial-fit ellipse in the footprint, re-do clipping
     result.initial.model->writeEllipses(initialData.nonlinear.begin(), initialData.fixed.begin(),
@@ -1120,10 +1120,10 @@ void CModelAlgorithm::_applyImpl(
     result.finalFitRegion = region.ellipse;
     region.applyMask(*exposure.getMaskedImage().getMask(), center);
     // It's okay to "override" these flags, because we'd have already returned early if they were set above.
-    result.setFlag(CModelResult::REGION_MAX_AREA, region.maxArea);
-    result.setFlag(CModelResult::REGION_MAX_BAD_PIXEL_FRACTION, region.maxBadPixelFraction);
-    result.setFlag(CModelResult::REGION_USED_INITIAL_ELLIPSE_MIN, region.usedMinEllipse);
-    result.setFlag(CModelResult::REGION_USED_INITIAL_ELLIPSE_MAX, region.usedMaxEllipse);
+    result.flags[CModelResult::REGION_MAX_AREA] = region.maxArea;
+    result.flags[CModelResult::REGION_MAX_BAD_PIXEL_FRACTION] = region.maxBadPixelFraction;
+    result.flags[CModelResult::REGION_USED_INITIAL_ELLIPSE_MIN] = region.usedMinEllipse;
+    result.flags[CModelResult::REGION_USED_INITIAL_ELLIPSE_MAX] = region.usedMaxEllipse;
     if (!region.footprint) return;
 
     // Do the exponential fit
@@ -1134,14 +1134,14 @@ void CModelAlgorithm::_applyImpl(
     CModelStageData devData = initialData.changeModel(*_impl->dev.model);
     _impl->dev.fit(getControl().dev, result.dev, devData, exposure, *region.footprint);
 
-    if (result.exp.getFlag(CModelStageResult::FAILED) ||result.dev.getFlag(CModelStageResult::FAILED))
+    if (result.exp.flags[CModelStageResult::FAILED] ||result.dev.flags[CModelStageResult::FAILED])
         return;
 
     // Do the linear combination fit
     try {
         _impl->fitLinear(getControl(), result, expData, devData, exposure, *region.footprint);
     } catch (...) {
-        result.setFlag(CModelResult::FAILED, true);
+        result.flags[CModelResult::FAILED] = true;
         throw;
     }
 }
@@ -1196,9 +1196,9 @@ void CModelAlgorithm::_applyForcedImpl(
     Scalar approxFlux
 ) const {
 
-    if (reference.getFlag(CModelResult::FAILED)) {
-        result.setFlag(CModelResult::BAD_REFERENCE, true);
-        result.setFlag(CModelResult::FAILED, true);
+    if (reference.flags[CModelResult::FAILED]) {
+        result.flags[CModelResult::BAD_REFERENCE] = true;
+        result.flags[CModelResult::FAILED] = true;
     }
 
     // n.b. we're using the fit region from the reference without transforming
@@ -1210,8 +1210,8 @@ void CModelAlgorithm::_applyForcedImpl(
     // regular and forced measurement.
     PixelFitRegion region(getControl().region, reference.finalFitRegion);
     region.applyMask(*exposure.getMaskedImage().getMask(), center);
-    result.setFlag(CModelResult::REGION_MAX_AREA, region.maxArea);
-    result.setFlag(CModelResult::REGION_MAX_BAD_PIXEL_FRACTION, region.maxBadPixelFraction);
+    result.flags[CModelResult::REGION_MAX_AREA] = region.maxArea;
+    result.flags[CModelResult::REGION_MAX_BAD_PIXEL_FRACTION] = region.maxBadPixelFraction;
     if (!region.footprint) return;
 
     // Negative approxFlux means we should come up with an estimate ourselves.
@@ -1221,13 +1221,13 @@ void CModelAlgorithm::_applyForcedImpl(
         if (!(approxFlux > 0.0)) {
             // This is only be possible if the object has all data pixels set to zero or
             // if there are unmasked NaNs in the fit region.
-            result.initial.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-            result.initial.setFlag(CModelStageResult::FAILED, true);
-            result.exp.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-            result.exp.setFlag(CModelStageResult::FAILED, true);
-            result.dev.setFlag(CModelStageResult::NUMERIC_ERROR, true);
-            result.dev.setFlag(CModelStageResult::FAILED, true);
-            result.setFlag(CModelResult::FAILED, true);
+            result.initial.flags[CModelStageResult::NUMERIC_ERROR] = true;
+            result.initial.flags[CModelStageResult::FAILED] = true;
+            result.exp.flags[CModelStageResult::NUMERIC_ERROR] = true;
+            result.exp.flags[CModelStageResult::FAILED] = true;
+            result.dev.flags[CModelStageResult::NUMERIC_ERROR] = true;
+            result.dev.flags[CModelStageResult::FAILED] = true;
+            result.flags[CModelResult::FAILED] = true;
             return;
         }
     }
@@ -1243,44 +1243,44 @@ void CModelAlgorithm::_applyForcedImpl(
     initialData.fixed.deep() = reference.initial.fixed;
 
     // Do the initial fit (amplitudes only)
-    if (!reference.initial.getFlag(CModelStageResult::FAILED)) {
+    if (!reference.initial.flags[CModelStageResult::FAILED]) {
         _impl->initial.fitLinear(getControl().initial, result.initial, initialData,
                                  exposure, *region.footprint);
     } else {
-        result.initial.setFlag(CModelStageResult::BAD_REFERENCE, true);
-        result.initial.setFlag(CModelStageResult::FAILED, true);
+        result.initial.flags[CModelStageResult::BAD_REFERENCE] = true;
+        result.initial.flags[CModelStageResult::FAILED] = true;
     }
 
     // Do the exponential fit (amplitudes only)
     CModelStageData expData = initialData.changeModel(*_impl->exp.model);
-    if (!reference.exp.getFlag(CModelStageResult::FAILED)) {
+    if (!reference.exp.flags[CModelStageResult::FAILED]) {
         expData.nonlinear.deep() = reference.exp.nonlinear;
         expData.fixed.deep() = reference.exp.fixed;
         _impl->exp.fitLinear(getControl().exp, result.exp, expData, exposure, *region.footprint);
     } else {
-        result.exp.setFlag(CModelStageResult::BAD_REFERENCE, true);
-        result.exp.setFlag(CModelStageResult::FAILED, true);
+        result.exp.flags[CModelStageResult::BAD_REFERENCE] = true;
+        result.exp.flags[CModelStageResult::FAILED] = true;
     }
 
     // Do the de Vaucouleur fit (amplitudes only)
     CModelStageData devData = initialData.changeModel(*_impl->dev.model);
-    if (!reference.dev.getFlag(CModelStageResult::FAILED)) {
+    if (!reference.dev.flags[CModelStageResult::FAILED]) {
         devData.nonlinear.deep() = reference.dev.nonlinear;
         devData.fixed.deep() = reference.dev.fixed;
         _impl->dev.fitLinear(getControl().dev, result.dev, devData, exposure, *region.footprint);
     } else {
-        result.dev.setFlag(CModelStageResult::BAD_REFERENCE, true);
-        result.dev.setFlag(CModelStageResult::FAILED, true);
+        result.dev.flags[CModelStageResult::BAD_REFERENCE] = true;
+        result.dev.flags[CModelStageResult::FAILED] = true;
     }
 
-    if (result.exp.getFlag(CModelStageResult::FAILED) ||result.dev.getFlag(CModelStageResult::FAILED))
+    if (result.exp.flags[CModelStageResult::FAILED] || result.dev.flags[CModelStageResult::FAILED])
         return;
 
     // Do the linear combination fit
     try {
         _impl->fitLinear(getControl(), result, expData, devData, exposure, *region.footprint);
     } catch (...) {
-        result.setFlag(CModelResult::FAILED, true);
+        result.flags[CModelResult::FAILED] = true;
         throw;
     }
 }
@@ -1333,7 +1333,7 @@ void CModelAlgorithm::measure(
     if (!measRecord.getTable()->getShapeKey().isValid() ||
         (measRecord.getTable()->getShapeFlagKey().isValid() && measRecord.getShapeFlag())) {
         if (getControl().fallbackInitialMomentsPsfFactor > 0.0) {
-            result.setFlag(Result::NO_SHAPE, true);
+            result.flags[Result::NO_SHAPE] = true;
             try {
                 moments = psf.evaluate().computeMoments().getCore();
             } catch (afw::geom::SingularTransformException const& exc) {
