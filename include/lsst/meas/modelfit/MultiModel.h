@@ -47,22 +47,22 @@ public:
     ModelVector const & getComponents() const { return _components; }
 
     /// @copydoc Model::adaptPrior
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const;
+    PTR(Prior) adaptPrior(PTR(Prior) prior) const override;
 
     /// @copydoc Model::makeEllipseVector
-    virtual EllipseVector makeEllipseVector() const;
+    EllipseVector makeEllipseVector() const override;
 
     /// @copydoc Model::writeEllipses
-    virtual void writeEllipses(
+    void writeEllipses(
         Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
-    ) const;
+    ) const override;
 
     /// @copydoc Model::readEllipses
-    virtual void readEllipses(
+    void readEllipses(
         EllipseConstIterator ellipseIter,
         Scalar * nonlinearIter, Scalar * fixedIter
-    ) const;
+    ) const override;
 
 private:
     ModelVector _components;
