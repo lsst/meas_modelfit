@@ -321,11 +321,11 @@ public:
         ndarray::Array<Scalar const,1,1> const & fixed
     );
 
-    virtual void computeModelMatrix(
+    void computeModelMatrix(
         ndarray::Array<Pixel,2,-1> const & modelMatrix,
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         bool doApplyWeights=true
-    ) const;
+    ) const override;
 
     virtual ~MultiShapeletPsfLikelihood();
 

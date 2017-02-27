@@ -70,10 +70,10 @@ public:
         _modelMatrix(ndarray::allocate(likelihood->getDataDim(), likelihood->getAmplitudeDim()))
     {}
 
-    virtual void computeResiduals(
+    void computeResiduals(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & residuals
-    ) const {
+    ) const override {
         int nlDim = _likelihood->getNonlinearDim();
         int ampDim = _likelihood->getAmplitudeDim();
         _likelihood->computeModelMatrix(_modelMatrix, parameters[ndarray::view(0, nlDim)]);
@@ -82,20 +82,20 @@ public:
         residuals.asEigen() -= _likelihood->getData().asEigen().cast<Scalar>();
     }
 
-    virtual bool hasPrior() const { return static_cast<bool>(_prior); }
+    bool hasPrior() const override { return static_cast<bool>(_prior); }
 
-    virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {
+    Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const override {
         int nlDim = _likelihood->getNonlinearDim();
         int ampDim = _likelihood->getAmplitudeDim();
         return _prior->evaluate(parameters[ndarray::view(0, nlDim)],
                                 parameters[ndarray::view(nlDim, nlDim+ampDim)]);
     }
 
-    virtual void differentiatePrior(
+    void differentiatePrior(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & gradient,
         ndarray::Array<Scalar,2,1> const & hessian
-    ) const {
+    ) const override {
         int nlDim = _likelihood->getNonlinearDim();
         int ampDim = _likelihood->getAmplitudeDim();
         int totDim = nlDim + ampDim;
