@@ -41,16 +41,19 @@ from .psf import (
 lsst.meas.base.wrapSimpleAlgorithm(
     DoubleShapeletPsfApproxAlgorithm,
     Control=DoubleShapeletPsfApproxControl,
+    module='lsst.meas.modelfit',
     name='modelfit_DoubleShapeletPsfApprox',
     executionOrder=lsst.meas.base.BasePlugin.SHAPE_ORDER
 )
 
 
 GeneralPsfFitterComponentConfig = lsst.pex.config.makeConfigClass(
-    GeneralPsfFitterComponentControl
+    GeneralPsfFitterComponentControl,
+    module='lsst.meas.modelfit'
 )
 GeneralPsfFitterConfig = lsst.pex.config.makeConfigClass(
-    GeneralPsfFitterControl
+    GeneralPsfFitterControl,
+    module='lsst.meas.modelfit'
 )
 GeneralPsfFitter.ConfigClass = GeneralPsfFitterConfig
 

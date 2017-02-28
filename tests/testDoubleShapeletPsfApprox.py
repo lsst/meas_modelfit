@@ -26,6 +26,7 @@ from builtins import object
 import os
 import unittest
 import numpy
+from io import StringIO
 
 import lsst.utils.tests
 import lsst.afw.detection
@@ -355,6 +356,17 @@ class DoubleShapeletPsfApproxTestMixin(object):
                 component.getCoefficients()[i] = original - step
                 self.assertLessEqual(bestChiSq, computeChiSq(msf))
                 component.getCoefficients()[i] = original
+
+    def testSingleFrameConfigIO(self):
+        config1 = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
+        config2 = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
+        self.setupTaskConfig(config1)
+        stream = StringIO()
+        config1.saveToStream(stream)
+        with open("fail.py", "w") as f:
+            f.write(stream.getvalue())
+        config2.loadFromStream(stream.getvalue())
+        self.assertEqual(config1, config2)
 
 
 class SingleGaussianTestCase(DoubleShapeletPsfApproxTestMixin, lsst.utils.tests.TestCase):
