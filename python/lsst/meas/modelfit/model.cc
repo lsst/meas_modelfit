@@ -83,10 +83,10 @@ PYBIND11_PLUGIN(model) {
     cls.def("getAmplitudeDim", &Model::getAmplitudeDim);
     cls.def("getFixedDim", &Model::getFixedDim);
     cls.def("getBasisCount", &Model::getBasisCount);
-    cls.def("getNonlinearNames", &Model::getNonlinearNames);
-    cls.def("getAmplitudeNames", &Model::getAmplitudeNames);
-    cls.def("getFixedNames", &Model::getFixedNames);
-    cls.def("getBasisVector", &Model::getBasisVector);
+    cls.def("getNonlinearNames", &Model::getNonlinearNames, py::return_value_policy::copy);
+    cls.def("getAmplitudeNames", &Model::getAmplitudeNames, py::return_value_policy::copy);
+    cls.def("getFixedNames", &Model::getFixedNames, py::return_value_policy::copy);
+    cls.def("getBasisVector", &Model::getBasisVector, py::return_value_policy::copy);
     cls.def("makeShapeletFunction", &Model::makeShapeletFunction);
     cls.def("adaptPrior", &Model::adaptPrior);
     cls.def("makeEllipseVector", &Model::makeEllipseVector);
