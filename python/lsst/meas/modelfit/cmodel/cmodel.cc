@@ -26,7 +26,7 @@
 #include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
-#include "lsst/pex/config/pybind11.h"
+#include "lsst/pex/config/python.h"
 #include "lsst/meas/modelfit/CModel.h"
 
 namespace py = pybind11;

@@ -24,7 +24,7 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
-#include "lsst/pex/config/pybind11.h"
+#include "lsst/pex/config/python.h"
 
 #include "lsst/meas/modelfit/PixelFitRegion.h"
 

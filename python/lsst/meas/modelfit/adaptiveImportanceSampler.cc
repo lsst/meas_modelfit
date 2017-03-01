@@ -23,7 +23,7 @@
 
 #include "pybind11/pybind11.h"
 
-#include "lsst/pex/config/pybind11.h"
+#include "lsst/pex/config/python.h"
 #include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
 #include "lsst/afw/table/BaseRecord.h"
 #include "lsst/afw/table/BaseTable.h"

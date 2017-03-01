@@ -23,7 +23,7 @@
 
 #include "pybind11/pybind11.h"
 
-#include "lsst/pex/config/pybind11.h"
+#include "lsst/pex/config/python.h"
 
 #include "lsst/meas/modelfit/DoubleShapeletPsfApprox.h"
 #include "lsst/meas/modelfit/GeneralPsfFitter.h"

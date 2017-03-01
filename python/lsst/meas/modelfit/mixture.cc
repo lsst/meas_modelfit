@@ -30,7 +30,7 @@
 #include "ndarray/pybind11.h"
 #include "ndarray/eigen.h"
 
-#include "lsst/utils/pybind11.h"
+#include "lsst/utils/python.h"
 #include "lsst/meas/modelfit/Mixture.h"
 
 namespace py = pybind11;
@@ -87,7 +87,7 @@ static PyMixtureUpdateRestriction declareMixtureUpdateRestriction(py::module & m
 }
 
 static PyMixture declareMixture(py::module & mod) {
-    afw::table::io::declarePersistableFacade<Mixture>(mod, "Mixture");
+    afw::table::io::python::declarePersistableFacade<Mixture>(mod, "Mixture");
     PyMixture cls(mod, "Mixture");
     cls.def(
         "__iter__",
