@@ -266,14 +266,15 @@ private:
 class GeneralPsfFitterAlgorithm : public GeneralPsfFitter {
 public:
 
-    enum {
-        FAILURE=lsst::meas::base::FlagHandler::FAILURE,
-        MAX_INNER_ITERATIONS,
-        MAX_OUTER_ITERATIONS,
-        EXCEPTION,
-        CONTAINS_NAN,
-        N_FLAGS
-    };
+    // Structures and routines to manage flaghandler
+    static base::FlagDefinitionList const & getFlagDefinitions();
+    static base::FlagDefinition const FAILURE;
+    static base::FlagDefinition const MAX_INNER_ITERATIONS;
+    static base::FlagDefinition const MAX_OUTER_ITERATIONS;
+    static base::FlagDefinition const EXCEPTION;
+    static base::FlagDefinition const CONTAINS_NAN;
+
+    typedef GeneralPsfFitterControl Control;
 
     GeneralPsfFitterAlgorithm(GeneralPsfFitterControl const & ctrl,
         afw::table::Schema & schema,

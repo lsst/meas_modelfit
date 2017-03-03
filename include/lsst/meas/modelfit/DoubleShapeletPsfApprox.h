@@ -95,16 +95,16 @@ public:
 class DoubleShapeletPsfApproxAlgorithm : public meas::base::SimpleAlgorithm {
 public:
 
+    // Structures and routines to manage flaghandler
+    static base::FlagDefinitionList const & getFlagDefinitions();
+    static base::FlagDefinition const FAILURE;
+    static base::FlagDefinition const INVALID_POINT_FOR_PSF;
+    static base::FlagDefinition const INVALID_MOMENTS;
+    static base::FlagDefinition const MAX_ITERATIONS;
+
     typedef DoubleShapeletPsfApproxControl Control;
 
     /// Failure modes passed by MeasurementErrors thrown by this class.
-    enum {
-        FAILURE=lsst::meas::base::FlagHandler::FAILURE,
-        INVALID_POINT_FOR_PSF,
-        INVALID_MOMENTS,
-        MAX_ITERATIONS,
-        N_FLAGS
-    };
 
     /**
      *  Construct an algorithm for use with record outputs.
