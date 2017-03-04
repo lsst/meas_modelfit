@@ -61,11 +61,13 @@ static PyMixtureComponent declareMixtureComponent(py::module &mod) {
             "dim1"_a, "dim2"_a);
     cls.def(py::init<int>(), "dim"_a);
     cls.def(py::init<Scalar, Vector const &, Matrix const &>(), "weight"_a, "mu"_a, "sigma"_a);
-    cls.def("__str__", [](MixtureComponent const &self) {
+    auto streamStr = [](MixtureComponent const &self) {
         std::ostringstream os;
         os << self;
         return os.str();
-    });
+    };
+    cls.def("__str__", streamStr);
+    cls.def("__repr__", streamStr);
     return cls;
 }
 
@@ -131,11 +133,14 @@ static PyMixture declareMixture(py::module &mod) {
     cls.def("clone", &Mixture::clone);
     cls.def(py::init<int, Mixture::ComponentList &, Scalar>(), "dim"_a, "components"_a,
             "df"_a = std::numeric_limits<Scalar>::infinity());
-    cls.def("__str__", [](Mixture const &self) {
+    auto streamStr = [](Mixture const &self) {
         std::ostringstream os;
         os << self;
         return os.str();
-    });
+    };
+    return cls;
+    cls.def("__str__", streamStr);
+    cls.def("__repr__", streamStr);
     return cls;
 }
 
