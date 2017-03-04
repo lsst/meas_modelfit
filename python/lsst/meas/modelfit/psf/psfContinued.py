@@ -167,7 +167,7 @@ class GeneralShapeletPsfApproxMixin(object):
                 lastModel = fitter.getModel()
             except lsst.meas.base.baseMeasurement.FATAL_EXCEPTIONS:
                 raise
-            except lsst.meas.base.baseLib.MeasurementError as error:
+            except lsst.meas.base.MeasurementError as error:
                 fitter.fail(measRecord, error.cpp)
                 lastError = error
             except Exception as error:

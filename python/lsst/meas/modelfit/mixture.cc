@@ -83,7 +83,7 @@ static PyMixture declareMixture(py::module &mod) {
     cls.def("__iter__", [](Mixture &self) { return py::make_iterator(self.begin(), self.end()); },
             py::keep_alive<0, 1>());
     cls.def("__getitem__",
-            [](Mixture &self, std::ptrdiff_t i) { return self[utils::cppIndex(self.size(), i)]; },
+            [](Mixture &self, std::ptrdiff_t i) { return self[utils::python::cppIndex(self.size(), i)]; },
             py::return_value_policy::reference_internal);
     cls.def("__len__", &Mixture::size);
     cls.def("getComponentCount", &Mixture::getComponentCount);
