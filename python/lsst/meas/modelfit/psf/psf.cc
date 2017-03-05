@@ -57,11 +57,10 @@ void declareDoubleShapelet(py::module &mod) {
     PyAlgorithm clsAlgorithm(mod, "DoubleShapeletPsfApproxAlgorithm");
     // wrap anonymous enum values as ints because we'll need to use them as ints
     clsAlgorithm.attr("Control") = clsControl;
-    clsAlgorithm.attr("FAILURE") = py::cast(int(Algorithm::FAILURE));
-    clsAlgorithm.attr("INVALID_POINT_FOR_PSF") = py::cast(int(Algorithm::INVALID_POINT_FOR_PSF));
-    clsAlgorithm.attr("INVALID_MOMENTS") = py::cast(int(Algorithm::INVALID_MOMENTS));
-    clsAlgorithm.attr("MAX_ITERATIONS") = py::cast(int(Algorithm::MAX_ITERATIONS));
-    clsAlgorithm.attr("N_FLAGS") = py::cast(int(Algorithm::N_FLAGS));
+    clsAlgorithm.attr("FAILURE") = py::cast(Algorithm::FAILURE);
+    clsAlgorithm.attr("INVALID_POINT_FOR_PSF") = py::cast(Algorithm::INVALID_POINT_FOR_PSF);
+    clsAlgorithm.attr("INVALID_MOMENTS") = py::cast(Algorithm::INVALID_MOMENTS);
+    clsAlgorithm.attr("MAX_ITERATIONS") = py::cast(Algorithm::MAX_ITERATIONS);
 
     clsAlgorithm.def(py::init<Control const &, std::string const &, afw::table::Schema &>(), "ctrl"_a,
                      "name"_a, "schema"_a);
@@ -129,12 +128,11 @@ void declareGeneral(py::module &mod) {
 
     PyAlgorithm clsAlgorithm(mod, "GeneralPsfFitterAlgorithm");
     clsAlgorithm.attr("Control") = clsControl;
-    clsAlgorithm.attr("FAILURE") = py::cast(int(Algorithm::FAILURE));
-    clsAlgorithm.attr("MAX_INNER_ITERATIONS") = py::cast(int(Algorithm::MAX_INNER_ITERATIONS));
-    clsAlgorithm.attr("MAX_OUTER_ITERATIONS") = py::cast(int(Algorithm::MAX_OUTER_ITERATIONS));
-    clsAlgorithm.attr("EXCEPTION") = py::cast(int(Algorithm::EXCEPTION));
-    clsAlgorithm.attr("CONTAINS_NAN") = py::cast(int(Algorithm::CONTAINS_NAN));
-    clsAlgorithm.attr("N_FLAGS") = py::cast(int(Algorithm::N_FLAGS));
+    clsAlgorithm.attr("FAILURE") = py::cast(Algorithm::FAILURE);
+    clsAlgorithm.attr("MAX_INNER_ITERATIONS") = py::cast(Algorithm::MAX_INNER_ITERATIONS);
+    clsAlgorithm.attr("MAX_OUTER_ITERATIONS") = py::cast(Algorithm::MAX_OUTER_ITERATIONS);
+    clsAlgorithm.attr("EXCEPTION") = py::cast(Algorithm::EXCEPTION);
+    clsAlgorithm.attr("CONTAINS_NAN") = py::cast(Algorithm::CONTAINS_NAN);
     clsAlgorithm.def(py::init<Control const &, afw::table::Schema &, std::string const &>(), "ctrl"_a,
                      "schema"_a, "prefix"_a);
     clsAlgorithm.def("getKey", &Algorithm::getKey);
