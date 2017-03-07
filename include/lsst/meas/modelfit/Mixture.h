@@ -35,6 +35,8 @@
 #include "lsst/afw/math/Random.h"
 #include "lsst/afw/table/io/Persistable.h"
 #include "lsst/meas/modelfit/common.h"
+#include "lsst/afw/table/io/python.h"  // for declarePersistableFacade
+
 
 namespace lsst { namespace meas { namespace modelfit {
 

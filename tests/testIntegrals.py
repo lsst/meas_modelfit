@@ -42,7 +42,7 @@ class IntegralsTestCase(lsst.utils.tests.TestCase):
         data = numpy.loadtxt(os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                           "reference", "bvn.txt"), delimiter=',')
         for h, k, r, p1 in data:
-            p2 = lsst.meas.modelfit.bvnu(h, k, r)
+            p2 = lsst.meas.modelfit.detail.bvnu(h, k, r)
             self.assertFloatsAlmostEqual(p1, p2, rtol=1E-14)
 
 

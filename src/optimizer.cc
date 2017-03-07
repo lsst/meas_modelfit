@@ -70,10 +70,10 @@ public:
         _modelMatrix(ndarray::allocate(likelihood->getDataDim(), likelihood->getAmplitudeDim()))
     {}
 
-    virtual void computeResiduals(
+    void computeResiduals(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & residuals
-    ) const {
+    ) const override {
         int nlDim = _likelihood->getNonlinearDim();
         int ampDim = _likelihood->getAmplitudeDim();
         _likelihood->computeModelMatrix(_modelMatrix, parameters[ndarray::view(0, nlDim)]);
@@ -82,20 +82,20 @@ public:
         residuals.asEigen() -= _likelihood->getData().asEigen().cast<Scalar>();
     }
 
-    virtual bool hasPrior() const { return static_cast<bool>(_prior); }
+    bool hasPrior() const override { return static_cast<bool>(_prior); }
 
-    virtual Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const {
+    Scalar computePrior(ndarray::Array<Scalar const,1,1> const & parameters) const override {
         int nlDim = _likelihood->getNonlinearDim();
         int ampDim = _likelihood->getAmplitudeDim();
         return _prior->evaluate(parameters[ndarray::view(0, nlDim)],
                                 parameters[ndarray::view(nlDim, nlDim+ampDim)]);
     }
 
-    virtual void differentiatePrior(
+    void differentiatePrior(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,1,1> const & gradient,
         ndarray::Array<Scalar,2,1> const & hessian
-    ) const {
+    ) const override {
         int nlDim = _likelihood->getNonlinearDim();
         int ampDim = _likelihood->getAmplitudeDim();
         int totDim = nlDim + ampDim;
@@ -125,15 +125,15 @@ PTR(OptimizerObjective) OptimizerObjective::makeFromLikelihood(
     return std::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
 }
 
-// ----------------- OptimizerIterationData -----------------------------------------------------------------
+// ----------------- Optimizer::IterationData -----------------------------------------------------------------
 
-OptimizerIterationData::OptimizerIterationData(int dataSize, int parameterSize) :
+Optimizer::IterationData::IterationData(int dataSize, int parameterSize) :
     objectiveValue(0.0), priorValue(0.0),
     parameters(ndarray::allocate(parameterSize)),
     residuals(ndarray::allocate(dataSize))
 {}
 
-void OptimizerIterationData::swap(OptimizerIterationData & other) {
+void Optimizer::IterationData::swap(IterationData & other) {
     std::swap(objectiveValue, other.objectiveValue);
     std::swap(priorValue, other.priorValue);
     parameters.swap(other.parameters);
@@ -224,7 +224,7 @@ void OptimizerHistoryRecorder::apply(
     record->set(inner, innerIterCount);
     record->set(state, optimizer.getState());
     record->set(trust, optimizer._trustRadius);
-    OptimizerIterationData const * data;
+    Optimizer::IterationData const * data;
     if (!(optimizer.getState() & Optimizer::STATUS_STEP_REJECTED)) {
         data = &optimizer._current;
         if (derivatives.isValid()) {

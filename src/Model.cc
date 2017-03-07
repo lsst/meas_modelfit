@@ -86,7 +86,7 @@ public:
         Model(basisVector, nonlinearNames, amplitudeNames, getFixedNames())
     {}
 
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
+    PTR(Prior) adaptPrior(PTR(Prior) prior) const override {
         if (prior->getTag() != "single-ellipse") {
             throw LSST_EXCEPT(
                 pex::exceptions::LogicError,
@@ -96,14 +96,14 @@ public:
         return prior;
     }
 
-    virtual EllipseVector makeEllipseVector() const {
+    EllipseVector makeEllipseVector() const override {
         return makeEllipseVectorImpl(getBasisVector());
     }
 
-    virtual void writeEllipses(
+    void writeEllipses(
         Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
-    ) const {
+    ) const override {
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
                 ellipseIter->getCore().readParameters(nonlinearIter);
@@ -114,10 +114,10 @@ public:
         }
     }
 
-    virtual void readEllipses(
+    void readEllipses(
         EllipseConstIterator ellipseIter,
         Scalar * nonlinearIter, Scalar * fixedIter
-    ) const {
+    ) const override {
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
                 ellipseIter->getCore().writeParameters(nonlinearIter);
@@ -148,21 +148,21 @@ public:
         Model(basisVector, nonlinearNames, amplitudeNames, NameVector())
     {}
 
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
+    PTR(Prior) adaptPrior(PTR(Prior) prior) const override {
         throw LSST_EXCEPT(
             pex::exceptions::LogicError,
             "adaptPrior not implemented for SingleCenterModel"
         );
     }
 
-    virtual EllipseVector makeEllipseVector() const {
+    EllipseVector makeEllipseVector() const override {
         return makeEllipseVectorImpl(getBasisVector());
     }
 
-    virtual void writeEllipses(
+    void writeEllipses(
         Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
-    ) const {
+    ) const override {
         afw::geom::Point2D center(nonlinearIter[getNonlinearDim()-2], nonlinearIter[getNonlinearDim()-1]);
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
@@ -173,10 +173,10 @@ public:
         }
     }
 
-    virtual void readEllipses(
+    void readEllipses(
         EllipseConstIterator ellipseIter,
         Scalar * nonlinearIter, Scalar * fixedIter
-    ) const {
+    ) const override {
         // Ellipses have more centers than we need, so we average them.  In most cases, they'll
         // all be the same anyway.
         Eigen::Vector2d p = Eigen::Vector2d::Zero();
@@ -212,21 +212,21 @@ public:
         _centerParameterOffset(getNonlinearDim() - getBasisVector().size()*2)
     {}
 
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
+    PTR(Prior) adaptPrior(PTR(Prior) prior) const override {
         throw LSST_EXCEPT(
             pex::exceptions::LogicError,
             "adaptPrior not implemented for MultiCenterModel"
         );
     }
 
-    virtual EllipseVector makeEllipseVector() const {
+    EllipseVector makeEllipseVector() const override {
         return makeEllipseVectorImpl(getBasisVector());
     }
 
-    virtual void writeEllipses(
+    void writeEllipses(
         Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
-    ) const {
+    ) const override {
         Scalar const * centerIter = nonlinearIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
@@ -238,10 +238,10 @@ public:
         }
     }
 
-    virtual void readEllipses(
+    void readEllipses(
         EllipseConstIterator ellipseIter,
         Scalar * nonlinearIter, Scalar * fixedIter
-    ) const {
+    ) const override {
         Scalar * centerIter = nonlinearIter + _centerParameterOffset;
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {

@@ -99,11 +99,11 @@ class UnitTransformedLikelihood : public Likelihood {
 public:
 
     /// @copydoc Likelihood::computeModelMatrix
-    virtual void computeModelMatrix(
+    void computeModelMatrix(
         ndarray::Array<Pixel,2,-1> const & modelMatrix,
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         bool doApplyWeights=true
-    ) const;
+    ) const override;
 
     /**
      * @brief Initialize a UnitTransformedLikelihood with data from multiple exposures.

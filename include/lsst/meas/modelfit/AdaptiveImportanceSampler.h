@@ -27,6 +27,7 @@
 #include <map>
 
 #include "lsst/pex/config.h"
+#include "lsst/afw/table/Schema.h"
 #include "lsst/meas/modelfit/Sampler.h"
 #include "lsst/meas/modelfit/Mixture.h"
 
@@ -86,11 +87,11 @@ public:
         bool doSaveIterations=false
     );
 
-    virtual void run(
+    void run(
         SamplingObjective const & objective,
         PTR(Mixture) proposal,
         afw::table::BaseCatalog & samples
-    ) const;
+    ) const override;
 
     double computeNormalizedPerplexity(afw::table::BaseCatalog const & samples) const;
 

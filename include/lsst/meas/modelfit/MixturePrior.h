@@ -38,13 +38,13 @@ public:
     explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
 
     /// @copydoc Prior::evaluate
-    virtual Scalar evaluate(
+    Scalar evaluate(
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes
-    ) const;
+    ) const override;
 
     /// @copydoc Prior::evaluateDerivatives
-    virtual void evaluateDerivatives(
+    void evaluateDerivatives(
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar const,1,1> const & amplitudes,
         ndarray::Array<Scalar,1,1> const & nonlinearGradient,
@@ -52,30 +52,30 @@ public:
         ndarray::Array<Scalar,2,1> const & nonlinearHessian,
         ndarray::Array<Scalar,2,1> const & amplitudeHessian,
         ndarray::Array<Scalar,2,1> const & crossHessian
-    ) const;
+    ) const override;
 
     /// @copydoc Prior::marginalize
-    virtual Scalar marginalize(
+    Scalar marginalize(
         Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear
-    ) const;
+    ) const override;
 
     /// @copydoc Prior::maximize
-    virtual Scalar maximize(
+    Scalar maximize(
         Vector const & gradient, Matrix const & hessian,
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         ndarray::Array<Scalar,1,1> const & amplitudes
-    ) const;
+    ) const override;
 
     /// @copydoc Prior::drawAmplitudes
-    virtual void drawAmplitudes(
+    void drawAmplitudes(
         Vector const & gradient, Matrix const & fisher,
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         afw::math::Random & rng,
         ndarray::Array<Scalar,2,1> const & amplitudes,
         ndarray::Array<Scalar,1,1> const & weights,
         bool multiplyWeights=false
-    ) const;
+    ) const override;
 
     /**
      *  @brief Return a MixtureUpdateRestriction appropriate for (e1,e2,r) data.

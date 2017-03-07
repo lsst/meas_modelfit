@@ -174,12 +174,12 @@ struct CModelStageControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        linearPriorConfig, lsst.meas.modelfit.modelfitLib, SoftenedLinearPriorControl,
+        linearPriorConfig, lsst.meas.modelfit.priors, SoftenedLinearPriorControl,
         "Configuration for a linear prior, used if priorSource='LINEAR'."
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        empiricalPriorConfig, lsst.meas.modelfit.modelfitLib, SemiEmpiricalPriorControl,
+        empiricalPriorConfig, lsst.meas.modelfit.priors, SemiEmpiricalPriorControl,
         "Configuration for an empirical prior, used if priorSource='EMPIRICAL'."
     );
 
@@ -199,7 +199,7 @@ struct CModelStageControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        optimizer, lsst.meas.modelfit.modelfitLib, OptimizerControl,
+        optimizer, lsst.meas.modelfit.optimizer, OptimizerControl,
         "Configuration for how the objective surface is explored.  Ignored for forced fitting"
     );
 
@@ -243,23 +243,23 @@ struct CModelControl {
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        region, lsst.meas.modelfit.modelfitLib, PixelFitRegionControl,
+        region, lsst.meas.modelfit.pixelFitRegion, PixelFitRegionControl,
         "Configuration parameters related to the determination of the pixels to include in the fit."
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        initial, lsst.meas.modelfit.modelfitLib, CModelStageControl,
+        initial, lsst.meas.modelfit.cmodel, CModelStageControl,
         "An initial fit (usually with a fast, approximate model) used to warm-start the exp and dev fits, "
         "convolved with only the zeroth-order terms in the multi-shapelet PSF approximation."
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        exp, lsst.meas.modelfit.modelfitLib, CModelStageControl,
+        exp, lsst.meas.modelfit.cmodel, CModelStageControl,
         "Independent fit of the exponential component"
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        dev, lsst.meas.modelfit.modelfitLib, CModelStageControl,
+        dev, lsst.meas.modelfit.cmodel, CModelStageControl,
         "Independent fit of the de Vaucouleur component"
     );
 
@@ -307,20 +307,12 @@ struct CModelStageResult {
     Scalar time;         ///< Time spent in this fit in seconds.
     afw::geom::ellipses::Quadrupole ellipse;  ///< Best fit half-light ellipse in pixel coordinates
 
-    //@{
-    /// Flag accessors, to work around Swig's lack of support for std::bitset
-    bool getFlag(FlagBit b) const { return flags[b]; }
-    void setFlag(FlagBit b, bool value) { flags[b] = value; }
-    //}
-
     ndarray::Array<Scalar const,1,1> nonlinear;  ///< Opaque nonlinear parameters in specialized units
     ndarray::Array<Scalar const,1,1> amplitudes; ///< Opaque linear parameters in specialized units
     ndarray::Array<Scalar const,1,1> fixed;      ///< Opaque fixed parameters in specialized units
 
     afw::table::BaseCatalog history;  ///< Trace of the optimizer's path, if enabled by diagnostic options
-#ifndef SWIG
     std::bitset<N_FLAGS> flags; ///< Array of flags.
-#endif
 };
 
 /**
@@ -364,12 +356,6 @@ struct CModelResult {
                        ///  (always between 0 and 1).
     Scalar objective;  ///< Objective value at the best-fit point (chisq/2)
 
-    //@{
-    /// Flag accessors, to work around Swig's lack of support for std::bitset
-    bool getFlag(FlagBit b) const { return flags[b]; }
-    void setFlag(FlagBit b, bool value) { flags[b] = value; }
-    //@}
-
     CModelStageResult initial; ///< Results from the initial approximate nonlinear fit that feeds the others
     CModelStageResult exp;     ///< Results from the exponential (Sersic n=1) fit
     CModelStageResult dev;     ///< Results from the de Vaucouleur (Sersic n=4) fit
@@ -378,10 +364,7 @@ struct CModelResult {
     afw::geom::ellipses::Quadrupole finalFitRegion;    ///< Pixels used in the exp, dev, and linear fits.
 
     LocalUnitTransform fitSysToMeasSys; ///< Transforms to the coordinate system where parameters are defined
-
-#ifndef SWIG
     std::bitset<N_FLAGS> flags; ///< Array of flags.
-#endif
 };
 
 /**

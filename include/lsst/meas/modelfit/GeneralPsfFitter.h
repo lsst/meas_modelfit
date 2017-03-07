@@ -92,27 +92,27 @@ public:
     {}
 
     LSST_NESTED_CONTROL_FIELD(
-        inner, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
+        inner, lsst.meas.modelfit.psf.psfContinued, GeneralPsfFitterComponentControl,
         "Innermost shapelet expansion, used to fit PSFs with very sharp cores"
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        primary, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
+        primary, lsst.meas.modelfit.psf.psfContinued, GeneralPsfFitterComponentControl,
         "Primary shapelet expansion, typically used to fit the bulk of the PSF "
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        wings, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
+        wings, lsst.meas.modelfit.psf.psfContinued, GeneralPsfFitterComponentControl,
         "Wing shapelet expansion (between primary and outer), typically used to fit the wings of the PSF"
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        outer, lsst.meas.modelfit.modelfitLib, GeneralPsfFitterComponentControl,
+        outer, lsst.meas.modelfit.psf.psfContinued, GeneralPsfFitterComponentControl,
         "Outermost shapelet expansion, used to fit PSFs with very broad wings"
     );
 
     LSST_NESTED_CONTROL_FIELD(
-        optimizer, lsst.meas.modelfit.modelfitLib, OptimizerControl,
+        optimizer, lsst.meas.modelfit.optimizer, OptimizerControl,
         "Configuration of the optimizer used to do the fitting"
     );
 
@@ -144,10 +144,9 @@ public:
  *  as this is a very high-dimensional fit.
  */
 class GeneralPsfFitter {
-
 public:
     /// Initialize the fitter class with the given control object.
-    GeneralPsfFitter(GeneralPsfFitterControl const & ctrl);
+    explicit GeneralPsfFitter(GeneralPsfFitterControl const & ctrl);
 
     /**
      *  Add fields to a Schema that can be used to store the MultiShapeletFunction returned by apply().
@@ -322,11 +321,11 @@ public:
         ndarray::Array<Scalar const,1,1> const & fixed
     );
 
-    virtual void computeModelMatrix(
+    void computeModelMatrix(
         ndarray::Array<Pixel,2,-1> const & modelMatrix,
         ndarray::Array<Scalar const,1,1> const & nonlinear,
         bool doApplyWeights=true
-    ) const;
+    ) const override;
 
     virtual ~MultiShapeletPsfLikelihood();
 
