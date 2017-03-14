@@ -34,7 +34,7 @@ import lsst.afw.detection
 import lsst.meas.modelfit
 
 
-ASSERT_CLOSE_KWDS = dict(plotOnFailure=True, printFailures=False)
+ASSERT_CLOSE_KWDS = dict(plotOnFailure=False, printFailures=False)
 
 
 def makeGaussianFunction(ellipse, flux=1.0):
@@ -207,10 +207,11 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         data = self.exposure0.getMaskedImage().getImage().getArray()
         l0c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                            self.exposure0, self.footprint0, self.psf0, ctrl)
-        self.checkLikelihood(l0c, data)
+        weights = numpy.exp((-0.5*numpy.log(l0c.getVariance())/l0c.getDataDim()).sum())
+        self.checkLikelihood(l0c, data*weights)
         l0d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                            efv, ctrl)
-        self.checkLikelihood(l0d, data)
+        self.checkLikelihood(l0d, data*weights)
 
     def testProjected(self):
         """Test likelihood evaluation when the fit system is not the same as the data system.
@@ -239,10 +240,11 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         data = exposure1.getMaskedImage().getImage().getArray()
         l1c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                            exposure1, self.footprint1, self.psf1, ctrl)
-        self.checkLikelihood(l1c, data)
+        weights = numpy.exp((-0.5*numpy.log(l1c.getVariance())/l1c.getDataDim()).sum())
+        self.checkLikelihood(l1c, data*weights)
         l1d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                            efv, ctrl)
-        self.checkLikelihood(l1d, data)
+        self.checkLikelihood(l1d, data*weights)
 
 
 class TestMemory(lsst.utils.tests.MemoryTestCase):

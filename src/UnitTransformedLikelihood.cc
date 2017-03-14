@@ -108,20 +108,25 @@ void setupArrays(
     ndarray::Array<Pixel,1,1> const & data,
     ndarray::Array<Pixel,1,1> const & variance,
     ndarray::Array<Pixel,1,1> const & weights,
-    ndarray::Array<Pixel,1,1> & unweightedData,
+    ndarray::Array<Pixel,1,1> const & unweightedData,
     bool usePixelWeights
 ) {
     afw::detection::flattenArray(footprint, image.getImage()->getArray(), data, image.getXY0());
     afw::detection::flattenArray(footprint, image.getVariance()->getArray(), variance, image.getXY0());
-    if (usePixelWeights) {
-        unweightedData = ndarray::copy(data);
-        // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
-        // weighting, because we implicitly square it later.
-        weights.asEigen<Eigen::ArrayXpr>() = variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
-        data.asEigen<Eigen::ArrayXpr>() *= weights.asEigen<Eigen::ArrayXpr>();
-    } else {
-        unweightedData = data;
+    unweightedData.deep() = data;
+    // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
+    // weighting, because we implicitly square it later.
+    weights.asEigen<Eigen::ArrayXpr>() = variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
+    if (!usePixelWeights) {
+        // If we're not using per-pixel weights, we need to use a constant non-unit weight instead,
+        // which we compute as the geometric mean of the per-pixel weights.  The choice of geometric
+        // mean preserves the determinant of the covariance matrix and makes it irrelevant whether
+        // we average the variances or average the weights, but there's no real statistical
+        // motivation for making the weights uniform (we do it to prevent model bias) and hence no
+        // rigorous choice.
+        weights.deep() = std::exp(weights.asEigen<Eigen::ArrayXpr>().log().sum() / weights.getSize<0>());
     }
+    data.asEigen<Eigen::ArrayXpr>() *= weights.asEigen<Eigen::ArrayXpr>();
 }
 
 } // anonymous
@@ -169,9 +174,8 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
                                     0, componentPixelSum);
     _data = ndarray::allocate(totPixels);
     _variance = ndarray::allocate(totPixels);
-    if (ctrl.usePixelWeights) {
-        _weights = ndarray::allocate(totPixels);
-    }
+    _weights = ndarray::allocate(totPixels);
+    _unweightedData = ndarray::allocate(totPixels);
     _impl->epochs.reserve(epochFootprintList.size());
     _impl->ellipses = model->makeEllipseVector();
     int dataOffset = 0;
@@ -193,8 +197,8 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
             (**imPtrIter).footprint,
             _data[ndarray::view(dataOffset, dataEnd)],
             _variance[ndarray::view(dataOffset, dataEnd)],
-            (ctrl.usePixelWeights) ? _weights[ndarray::view(dataOffset, dataEnd)] : _weights,
-            _unweightedData,
+            _weights[ndarray::view(dataOffset, dataEnd)],
+            _unweightedData[ndarray::view(dataOffset, dataEnd)],
             ctrl.usePixelWeights
         );
     }
@@ -213,9 +217,8 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     int totPixels = footprint.getArea();
     _data = ndarray::allocate(totPixels);
     _variance = ndarray::allocate(totPixels);
-    if (ctrl.usePixelWeights) {
-        _weights = ndarray::allocate(totPixels);
-    }
+    _weights = ndarray::allocate(totPixels);
+    _unweightedData = ndarray::allocate(totPixels);
     _impl->ellipses = model->makeEllipseVector();
     _impl->epochs.push_back(
         Impl::Epoch(
@@ -256,7 +259,7 @@ void UnitTransformedLikelihood::computeModelMatrix(
         modelMatrix[ndarray::view(dataOffset, dataEnd)()] *= i->transform.flux;
         dataOffset = dataEnd;
     }
-    if (doApplyWeights && !_weights.isEmpty()) {
+    if (doApplyWeights) {
         modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
     }
 }
