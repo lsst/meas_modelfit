@@ -715,7 +715,8 @@ public:
         }
         result.likelihood = std::make_shared<UnitTransformedLikelihood>(
             model, data.fixed, data.fitSys, *data.position,
-            exposure, footprint, data.psf, UnitTransformedLikelihoodControl(ctrl.usePixelWeights)
+            exposure, footprint, data.psf,
+            UnitTransformedLikelihoodControl(ctrl.usePixelWeights, ctrl.weightsMultiplier)
         );
         PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(result.likelihood, prior);
         result.objfunc = objective;

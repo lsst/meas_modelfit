@@ -144,6 +144,7 @@ struct CModelStageControl {
         nComponents(8),
         maxRadius(0),
         usePixelWeights(false),
+        weightsMultiplier(1.0),
         doRecordHistory(true),
         doRecordTime(true)
     {}
@@ -196,6 +197,12 @@ struct CModelStageControl {
         bool,
         "Use per-pixel variances as weights in the nonlinear fit (the final linear fit for"
         " flux never uses per-pixel variances)"
+    );
+
+    LSST_CONTROL_FIELD(
+        weightsMultiplier,
+        double,
+        "Scale the likelihood by this factor to artificially reweight it w.r.t. the prior."
     );
 
     LSST_NESTED_CONTROL_FIELD(

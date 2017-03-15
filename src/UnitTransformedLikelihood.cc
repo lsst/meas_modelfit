@@ -109,14 +109,16 @@ void setupArrays(
     ndarray::Array<Pixel,1,1> const & variance,
     ndarray::Array<Pixel,1,1> const & weights,
     ndarray::Array<Pixel,1,1> const & unweightedData,
-    bool usePixelWeights
+    bool usePixelWeights,
+    double weightsMultiplier
 ) {
     afw::detection::flattenArray(footprint, image.getImage()->getArray(), data, image.getXY0());
     afw::detection::flattenArray(footprint, image.getVariance()->getArray(), variance, image.getXY0());
     unweightedData.deep() = data;
     // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
     // weighting, because we implicitly square it later.
-    weights.asEigen<Eigen::ArrayXpr>() = variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse();
+    weights.asEigen<Eigen::ArrayXpr>() =
+        variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse() * weightsMultiplier;
     if (!usePixelWeights) {
         // If we're not using per-pixel weights, we need to use a constant non-unit weight instead,
         // which we compute as the geometric mean of the per-pixel weights.  The choice of geometric
@@ -199,7 +201,8 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
             _variance[ndarray::view(dataOffset, dataEnd)],
             _weights[ndarray::view(dataOffset, dataEnd)],
             _unweightedData[ndarray::view(dataOffset, dataEnd)],
-            ctrl.usePixelWeights
+            ctrl.usePixelWeights,
+            ctrl.weightsMultiplier
         );
     }
 }
@@ -227,7 +230,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
         )
     );
     setupArrays(exposure.getMaskedImage(), footprint, _data, _variance, _weights, _unweightedData,
-                ctrl.usePixelWeights);
+                ctrl.usePixelWeights, ctrl.weightsMultiplier);
 }
 
 UnitTransformedLikelihood::~UnitTransformedLikelihood() {}

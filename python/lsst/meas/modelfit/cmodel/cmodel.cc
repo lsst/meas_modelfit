@@ -57,6 +57,7 @@ static PyCModelStageControl declareCModelStageControl(py::module &mod) {
     LSST_DECLARE_CONTROL_FIELD(cls, CModelStageControl, nComponents);
     LSST_DECLARE_CONTROL_FIELD(cls, CModelStageControl, maxRadius);
     LSST_DECLARE_CONTROL_FIELD(cls, CModelStageControl, usePixelWeights);
+    LSST_DECLARE_CONTROL_FIELD(cls, CModelStageControl, weightsMultiplier);
     LSST_DECLARE_NESTED_CONTROL_FIELD(cls, CModelStageControl, optimizer);
     LSST_DECLARE_CONTROL_FIELD(cls, CModelStageControl, doRecordHistory);
     LSST_DECLARE_CONTROL_FIELD(cls, CModelStageControl, doRecordTime);
