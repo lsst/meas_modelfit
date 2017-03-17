@@ -89,7 +89,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         calib0.setFluxMag0(10000)
         self.psf0 = makeGaussianFunction(0.0)
         self.bbox0 = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
-        self.footprint0 = lsst.afw.detection.Footprint(self.bbox0)
+        self.spanSet0 = lsst.afw.geom.SpanSet(self.bbox0)
+        self.footprint0 = lsst.afw.detection.Footprint(self.spanSet0)
         self.exposure0 = lsst.afw.image.ExposureF(self.bbox0)
         self.exposure0.setWcs(wcs0)
         self.exposure0.setCalib(calib0)
@@ -106,7 +107,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.position, self.sys0, self.sys1)
         self.bbox1 = lsst.afw.geom.Box2I(self.bbox0)
         self.bbox1.grow(-60)
-        self.footprint1 = lsst.afw.detection.Footprint(self.bbox1)
+        self.spanSet1 = lsst.afw.geom.SpanSet(self.bbox1)
+        self.footprint1 = lsst.afw.detection.Footprint(self.spanSet1)
         self.psfSigma1 = 2.5
         self.psf1 = makeGaussianFunction(self.psfSigma1)
 
@@ -115,12 +117,14 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         del self.model
         del self.ellipse
         del self.bbox0
+        del self.spanSet0
         del self.footprint0
         del self.exposure0
         del self.sys0
         del self.sys1
         del self.t01
         del self.bbox1
+        del self.spanSet1
         del self.footprint1
         del self.psf1
 
