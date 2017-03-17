@@ -28,7 +28,6 @@
 #include "ndarray/eigen.h"
 
 #include "lsst/afw/detection/FootprintSet.h"
-#include "lsst/afw/detection/FootprintArray.cc"
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/math/LeastSquares.h"
 #include "lsst/shapelet/FunctorKeys.h"
@@ -48,7 +47,7 @@ Pixel computeFluxInFootprint(
     afw::image::Image<Pixel> const & image,
     afw::detection::Footprint const & footprint
 ) {
-    ndarray::Array<Pixel,1,1> flat = flattenArray(footprint, image.getArray(), image.getXY0());
+    ndarray::Array<Pixel,1,1> flat = footprint.getSpans()->flatten(image.getArray(), image.getXY0());
     // We're only using the flux to provide a scale for the problem that eases some numerical problems,
     // so for objects with SNR < 1, it's probably better to use the RMS than the flux, since the latter
     // can be negative.
