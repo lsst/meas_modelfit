@@ -340,7 +340,7 @@ Optimizer::Optimizer(
     _sr1jtr(objective->parameterSize)
 {
     LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.optimizer.Optimizer");
-    if (parameters.getSize<0>() != _objective->parameterSize) {
+    if (parameters.getSize<0>() != static_cast<std::size_t>(_objective->parameterSize)) {
         throw LSST_EXCEPT(
             pex::exceptions::LengthError,
             (boost::format("Parameter vector size (%d) does not match objective (%d)")
