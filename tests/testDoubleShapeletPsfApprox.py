@@ -363,8 +363,6 @@ class DoubleShapeletPsfApproxTestMixin(object):
         self.setupTaskConfig(config1)
         stream = StringIO()
         config1.saveToStream(stream)
-        with open("fail.py", "w") as f:
-            f.write(stream.getvalue())
         config2.loadFromStream(stream.getvalue())
         self.assertEqual(config1, config2)
 

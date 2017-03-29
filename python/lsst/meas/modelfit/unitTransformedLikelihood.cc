@@ -63,6 +63,7 @@ PYBIND11_PLUGIN(unitTransformedLikelihood) {
 
     PyUnitTransformedLikelihoodControl clsControl(mod, "UnitTransformedLikelihoodControl");
     LSST_DECLARE_CONTROL_FIELD(clsControl, UnitTransformedLikelihoodControl, usePixelWeights);
+    LSST_DECLARE_CONTROL_FIELD(clsControl, UnitTransformedLikelihoodControl, weightsMultiplier);
     clsControl.def(py::init<bool>(), "usePixelWeights"_a = false);
 
     PyEpochFootprint clsEpochFootprint(mod, "EpochFootprint");

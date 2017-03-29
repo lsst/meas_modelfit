@@ -53,8 +53,11 @@ public:
     LSST_CONTROL_FIELD(usePixelWeights, bool,
                        "whether to individually weigh pixels using the variance image.");
 
-    explicit UnitTransformedLikelihoodControl(bool usePixelWeights_=false)
-        : usePixelWeights(usePixelWeights_) {}
+    LSST_CONTROL_FIELD(weightsMultiplier, double,
+                       "Scaling factor to apply to weights.");
+
+    explicit UnitTransformedLikelihoodControl(bool usePixelWeights_=false, double weightsMultiplier_=1.0)
+        : usePixelWeights(usePixelWeights_), weightsMultiplier(weightsMultiplier_) {}
 
 };
 

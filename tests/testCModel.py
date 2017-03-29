@@ -98,29 +98,36 @@ class CModelTestCase(lsst.utils.tests.TestCase):
     def testNoNoise(self):
         """Test that CModelAlgorithm.apply() works when applied to a postage-stamp
         containing only a point source with no noise.
+
+        We still have to pretend there is noise (i.e. have nonzero values in
+        the variance plane) to allow it to compute a likelihood, though.
         """
         ctrl = lsst.meas.modelfit.CModelControl()
         ctrl.initial.usePixelWeights = False
         algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
+        var = 1E-16
+        self.exposure.getMaskedImage().getVariance().getArray()[:,:] = var
+        psfImage = self.exposure.getPsf().computeKernelImage(self.xyPosition).getArray()
+        expectedFluxSigma = var**0.5 * (psfImage**2).sum()**(-0.5)
         result = algorithm.apply(
             self.exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
             self.xyPosition, self.exposure.getPsf().computeShape()
         )
         self.assertFalse(result.initial.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.initial.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.initial.fluxSigma, 0.0, rtol=0.0)
+        self.assertFloatsAlmostEqual(result.initial.fluxSigma, expectedFluxSigma, rtol=0.01)
         self.assertLess(result.initial.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.exp.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.exp.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.exp.fluxSigma, 0.0, rtol=0.0)
+        self.assertFloatsAlmostEqual(result.exp.fluxSigma, expectedFluxSigma, rtol=0.01)
         self.assertLess(result.exp.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.dev.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.dev.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.dev.fluxSigma, 0.0, rtol=0.0)
+        self.assertFloatsAlmostEqual(result.dev.fluxSigma, expectedFluxSigma, rtol=0.01)
         self.assertLess(result.dev.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.fluxSigma, 0.0, rtol=0.0, atol=0.0)
+
 
     def testVsPsfFlux(self):
         """Test that CModel produces results comparable to PsfFlux when run
