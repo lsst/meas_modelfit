@@ -176,6 +176,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         """Run the algorithm as a forced plugin and check the quality of the fit.
         """
         config = lsst.meas.base.ForcedMeasurementTask.ConfigClass()
+        config.copyColumns = {"id": "objectId", "parent": "parentObjectId"}
         self.setupTaskConfig(config)
         config.slots.centroid = "base_TransformedCentroid"
         config.plugins.names |= ["base_TransformedCentroid"]

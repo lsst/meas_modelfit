@@ -112,6 +112,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.centroid = "base_TransformedCentroid"
         config.plugins.names = ["base_TransformedCentroid", "modelfit_GeneralShapeletPsfApprox"]
         config.plugins["modelfit_GeneralShapeletPsfApprox"].sequence = ["SingleGaussian"]
+        config.copyColumns = {"id": "objectId", "parent": "parentObjectId"}
         refCat = lsst.afw.table.SourceCatalog(self.schema)
         refRecord = refCat.addNew()
         refRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
