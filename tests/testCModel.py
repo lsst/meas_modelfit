@@ -83,7 +83,6 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         psfImage = psf.computeImage(self.xyPosition)
         psfImage.getArray()[:, :] *= self.trueFlux
         psfBBox = psfImage.getBBox(lsst.afw.image.PARENT)
-        self.footprint = lsst.afw.detection.Footprint(psfBBox)
         subImage = lsst.afw.image.ImageF(self.exposure.getMaskedImage().getImage(), psfBBox,
                                          lsst.afw.image.PARENT)
         subImage.getArray()[:, :] = psfImage.getArray()
@@ -93,7 +92,6 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         del self.exposure
         del self.trueFlux
         del self.psfSigma
-        del self.footprint
 
     def testNoNoise(self):
         """Test that CModelAlgorithm.apply() works when applied to a postage-stamp

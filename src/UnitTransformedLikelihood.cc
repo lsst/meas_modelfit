@@ -29,7 +29,6 @@
 #include "ndarray/eigen.h"
 
 #include "lsst/afw/image/Calib.h"
-#include "lsst/afw/detection/FootprintArray.cc"  // yes .cc; see the file for an explanation
 #include "lsst/shapelet/MatrixBuilder.h"
 #include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
 
@@ -69,11 +68,11 @@ BuilderVector makeMatrixBuilders(
     ndarray::Array<Pixel,1,1> y = ndarray::allocate(footprint.getArea());
     int n = 0;
     for (
-        afw::detection::Footprint::SpanList::const_iterator i = footprint.getSpans().begin();
-        i != footprint.getSpans().end();
+        auto i = footprint.getSpans()->begin();
+        i != footprint.getSpans()->end();
         ++i
     ) {
-        for (afw::geom::Span::Iterator j = (**i).begin(); j != (**i).end(); ++j, ++n) {
+        for (afw::geom::Span::Iterator j = (*i).begin(); j != (*i).end(); ++j, ++n) {
             x[n] = j->getX();
             y[n] = j->getY();
         }
@@ -112,8 +111,8 @@ void setupArrays(
     bool usePixelWeights,
     double weightsMultiplier
 ) {
-    afw::detection::flattenArray(footprint, image.getImage()->getArray(), data, image.getXY0());
-    afw::detection::flattenArray(footprint, image.getVariance()->getArray(), variance, image.getXY0());
+    footprint.getSpans()->flatten(data, image.getImage()->getArray(), image.getXY0());
+    footprint.getSpans()->flatten(variance, image.getVariance()->getArray(), image.getXY0());
     unweightedData.deep() = data;
     // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
     // weighting, because we implicitly square it later.

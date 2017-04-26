@@ -1,3 +1,4 @@
+
 // -*- lsst-c++ -*-
 /*
  * LSST Data Management System
@@ -23,6 +24,8 @@
 #include <cmath>
 
 #include "lsst/meas/modelfit/PixelFitRegion.h"
+#include "lsst/afw/geom/SpanSet.h"
+#include "lsst/afw/geom/ellipses/Ellipse.h"
 
 namespace lsst { namespace meas { namespace modelfit {
 
@@ -158,7 +161,7 @@ bool PixelFitRegion::applyEllipse(
 void PixelFitRegion::applyMask(afw::image::Mask<> const & mask, afw::geom::Point2D const & center) {
     Scalar originalArea = ellipse.getArea();
     footprint = std::make_shared<afw::detection::Footprint>(
-        afw::geom::ellipses::Ellipse(ellipse, center),
+        afw::geom::SpanSet::fromShape(afw::geom::ellipses::Ellipse(ellipse, center)),
         mask.getBBox(lsst::afw::image::PARENT)
     );
     footprint->clipTo(mask.getBBox(afw::image::PARENT));
@@ -167,8 +170,9 @@ void PixelFitRegion::applyMask(afw::image::Mask<> const & mask, afw::geom::Point
         footprint.reset();
         return;
     }
-    footprint->intersectMask(mask, _badPixelMask);
-    if (originalArea - footprint->getArea() > originalArea*_ctrl.maxBadPixelFraction) {
+    auto spans = footprint->getSpans()->intersectNot(mask, _badPixelMask);
+    footprint->setSpans(spans);
+    if (originalArea - spans->getArea() > originalArea*_ctrl.maxBadPixelFraction) {
         maxBadPixelFraction = true;
         footprint.reset();
         return;
