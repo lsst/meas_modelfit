@@ -1,6 +1,5 @@
 from builtins import range
 from builtins import object
-#!/usr/bin/env python
 #
 # LSST Data Management System
 #
