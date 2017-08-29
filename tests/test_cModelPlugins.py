@@ -90,17 +90,17 @@ class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase, lsst.utils.tests.Te
                                                     refSchema=sfmTask.schema)
         # catalog1 will contain both the SFM outputs and the truth catalog for sources in exposure 1.
         # Those SFM outputs will also be used as the references for the forced task.
-        exposure1, catalog1 = self.dataset.realize(10.0, sfmTask.schema)
+        exposure1, catalog1 = self.dataset.realize(10.0, sfmTask.schema, randomSeed=0)
         sfmTask.run(catalog1, exposure1)
         self.checkOutputs(catalog1)
         if False:  # this line should be re-enabled on DM-5405
-            wcs2 = self.dataset.makePerturbedWcs(self.dataset.exposure.getWcs())
+            wcs2 = self.dataset.makePerturbedWcs(self.dataset.exposure.getWcs(), randomSeed=0)
         else:
             wcs2 = self.dataset.exposure.getWcs()
         dataset2 = self.dataset.transform(wcs2)
         # catalog2 will contain only the truth catalog for sources in exposure 1; the structure of
         # ForcedMeasurementTask means we can't put the outputs in the same catalog.
-        exposure2, catalog2 = dataset2.realize(10.0, dataset2.makeMinimalSchema())
+        exposure2, catalog2 = dataset2.realize(10.0, dataset2.makeMinimalSchema(), randomSeed=1)
         refWcs = exposure1.getWcs()
         refCat = catalog1
         measCat = forcedTask.generateMeasCat(exposure2, refCat, refWcs)
