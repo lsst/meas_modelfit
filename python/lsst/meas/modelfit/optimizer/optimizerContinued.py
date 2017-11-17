@@ -39,7 +39,7 @@ class OptimizerControl:
     ConfigClass = OptimizerConfig
 
 
-@continueClass
+@continueClass  # noqa
 class Optimizer:
 
     ConfigClass = OptimizerConfig

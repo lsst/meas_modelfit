@@ -115,8 +115,8 @@ class DoubleShapeletPsfApproxTestMixin(object):
         )
         self.assertLess(
             self.ctrl.minRadiusDiff,
-            (msf.getComponents()[1].getEllipse().getCore().getDeterminantRadius()
-             - msf.getComponents()[0].getEllipse().getCore().getDeterminantRadius())
+            (msf.getComponents()[1].getEllipse().getCore().getDeterminantRadius() -
+             msf.getComponents()[0].getEllipse().getCore().getDeterminantRadius())
         )
 
     def checkRatios(self, msf):
@@ -409,6 +409,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

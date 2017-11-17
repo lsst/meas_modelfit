@@ -26,9 +26,8 @@ import numpy
 import matplotlib
 import matplotlib.colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import mpl_toolkits.mplot3d
 
-from .densityPlot import mergeDefaults, hide_xticklabels, hide_yticklabels
+from .densityPlot import hide_xticklabels, hide_yticklabels
 from .. import modelfitLib
 
 __all__ = ("OptimizerDisplay", )
@@ -153,13 +152,16 @@ class OptimizerDisplayFigure(object):
         self.plotSurfaces()
 
     @property
-    def xlim(self): return self._extent[:2]
+    def xlim(self):
+        return self._extent[:2]
 
     @property
-    def ylim(self): return self._extent[2:4]
+    def ylim(self):
+        return self._extent[2:4]
 
     @property
-    def zlim(self): return self._extent[4:]
+    def zlim(self):
+        return self._extent[4:]
 
     def guessExtent(self):
         current = self.parent.track[self.n]

@@ -21,7 +21,6 @@
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 import unittest
-import os
 import numpy
 
 import lsst.utils.tests
@@ -70,7 +69,6 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         dataCalib = lsst.afw.image.Calib()
         dataCalib.setFluxMag0(1e12)
         self.xyPosition = lsst.afw.geom.Point2D(1.1, -0.8)
-        position = dataWcs.pixelToSky(self.xyPosition)
         bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
         self.exposure = lsst.afw.image.ExposureF(bbox)
         self.exposure.setWcs(dataWcs)
@@ -103,7 +101,7 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         ctrl.initial.usePixelWeights = False
         algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
         var = 1E-16
-        self.exposure.getMaskedImage().getVariance().getArray()[:,:] = var
+        self.exposure.getMaskedImage().getVariance().getArray()[:, :] = var
         psfImage = self.exposure.getPsf().computeKernelImage(self.xyPosition).getArray()
         expectedFluxSigma = var**0.5 * (psfImage**2).sum()**(-0.5)
         result = algorithm.apply(
@@ -124,7 +122,6 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         self.assertLess(result.dev.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.flux, self.trueFlux, rtol=0.01)
-
 
     def testVsPsfFlux(self):
         """Test that CModel produces results comparable to PsfFlux when run
@@ -154,6 +151,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

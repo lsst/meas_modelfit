@@ -101,8 +101,8 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(list(model.getNonlinearNames()), [])
         self.assertEqual(list(model.getAmplitudeNames()), ["primary.alpha[0,0]", "wings.alpha[0,0]"])
         self.assertEqual(list(model.getFixedNames()),
-                         ["primary.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["wings.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES])
+                         ["primary.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["wings.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES])
 
         # test that we can round-trip ellipses through the model, and that this agrees
         # with makeShapeletFunction
@@ -138,13 +138,13 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(model.getAmplitudeDim(), 2)
         self.assertEqual(model.getBasisCount(), 2)
         self.assertEqual(list(model.getNonlinearNames()),
-                         ["primary.%s" % s for s in ELLIPSE_PARAMETER_NAMES[:3]]
-                         + ["wings.%s" % s for s in ELLIPSE_PARAMETER_NAMES[:3]]
+                         ["primary.%s" % s for s in ELLIPSE_PARAMETER_NAMES[:3]] +
+                         ["wings.%s" % s for s in ELLIPSE_PARAMETER_NAMES[:3]]
                          )
         self.assertEqual(list(model.getAmplitudeNames()), ["primary.alpha[0,0]", "wings.alpha[0,0]"])
         self.assertEqual(list(model.getFixedNames()),
-                         ["primary.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["wings.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES])
+                         ["primary.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["wings.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES])
 
         # test that we can round-trip ellipses through the model, and that this agrees
         # with makeShapeletFunction
@@ -196,23 +196,23 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         self.assertEqual(model.getAmplitudeDim(), 2*(1 + lsst.shapelet.computeSize(4)))
         self.assertEqual(model.getBasisCount(), 4)
         self.assertEqual(list(model.getNonlinearNames()),
-                         ["inner.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["primary.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["wings.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["outer.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
+                         ["inner.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["primary.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["wings.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["outer.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
                          )
         self.assertEqual(list(model.getAmplitudeNames()),
-                         ["inner.alpha[0,0]"]
-                         + ["primary.alpha[%d,%d]" % (x, y)
-                            for n, x, y in lsst.shapelet.HermiteIndexGenerator(4)]
-                         + ["wings.alpha[%d,%d]" % (x, y)
-                            for n, x, y in lsst.shapelet.HermiteIndexGenerator(4)]
-                         + ["outer.alpha[0,0]"])
+                         ["inner.alpha[0,0]"] +
+                         ["primary.alpha[%d,%d]" % (x, y)
+                          for n, x, y in lsst.shapelet.HermiteIndexGenerator(4)] +
+                         ["wings.alpha[%d,%d]" % (x, y)
+                          for n, x, y in lsst.shapelet.HermiteIndexGenerator(4)] +
+                         ["outer.alpha[0,0]"])
         self.assertEqual(list(model.getFixedNames()),
-                         ["inner.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["primary.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["wings.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
-                         + ["outer.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
+                         ["inner.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["primary.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["wings.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES] +
+                         ["outer.fiducial.%s" % s for s in ELLIPSE_PARAMETER_NAMES]
                          )
 
         # test that we can round-trip ellipses through the model, and that this agrees
@@ -280,6 +280,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

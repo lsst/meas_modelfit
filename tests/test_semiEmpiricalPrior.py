@@ -34,6 +34,7 @@ try:
 except ImportError:
     scipy = None
 
+
 class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):
 
     NUM_DIFF_STEP = 1E-4
@@ -113,6 +114,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

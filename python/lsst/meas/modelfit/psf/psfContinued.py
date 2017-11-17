@@ -63,7 +63,7 @@ class GeneralShapeletPsfApproxConfig(lsst.pex.config.Config):
         keytype=str,
         itemtype=GeneralPsfFitterConfig,
         doc="a dictionary of models that can be used to fit the PSF",
-        default={} # populated in setDefaults; can't do it on a single line
+        default={}  # populated in setDefaults; can't do it on a single line
     )
     sequence = lsst.pex.config.ListField(
         dtype=str,
@@ -156,6 +156,7 @@ class GeneralShapeletPsfApproxMixin(object):
         # Fit the first element in the sequence, using the PSFs moments to
         # initialize the parameters For every other element in the fitting
         # sequence, use the previous fit to initialize the parameters
+        lastResult = None
         for fitter, name in self.sequence:
             try:
                 if lastModel is None:
@@ -176,7 +177,7 @@ class GeneralShapeletPsfApproxMixin(object):
         # When we are done with all the fitters, raise the last error if there
         # was one. This gives the calling task a chance to do whatever it
         # wants
-        if not lastError is None:
+        if lastError is not None:
             raise lastError
 
     # This plugin doesn't need to set a flag on fail, because it should have

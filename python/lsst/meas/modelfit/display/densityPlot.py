@@ -366,7 +366,8 @@ class DensityPlot(object):
             self._axes[None, i].xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
             self._axes[i, None].yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator())
 
-    def _get_active(self): return self._active
+    def _get_active(self):
+        return self._active
 
     def _set_active(self, active):
         s = set(active)
@@ -483,8 +484,8 @@ class ExampleData(object):
         """
         i = self.dimensions.index(yDim)
         j = self.dimensions.index(xDim)
-        return (numpy.exp(-0.5*(((x-self.mu[j])/self.sigma[j])**2 + ((y-self.mu[i])/self.sigma[i])**2))
-                / (2.0*numpy.pi * self.sigma[j]*self.sigma[i]))
+        return (numpy.exp(-0.5*(((x-self.mu[j])/self.sigma[j])**2 + ((y-self.mu[i])/self.sigma[i])**2)) /
+                (2.0*numpy.pi * self.sigma[j]*self.sigma[i]))
 
 
 def demo():

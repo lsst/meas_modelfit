@@ -142,7 +142,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         msf = self.model.makeShapeletFunction(self.nonlinear, self.amplitudes, self.fixed)
         image0a = lsst.afw.image.ImageD(self.bbox0)
         msf.evaluate().addToImage(image0a)
-        self.assertFloatsAlmostEqual(image0a.getArray(), self.exposure0.getMaskedImage().getImage().getArray(),
+        self.assertFloatsAlmostEqual(image0a.getArray(),
+                                     self.exposure0.getMaskedImage().getImage().getArray(),
                                      rtol=1E-6, atol=1E-7, **ASSERT_CLOSE_KWDS)
 
     def testWarp(self):
@@ -256,6 +257,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()
