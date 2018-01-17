@@ -25,7 +25,6 @@ import numpy
 
 import lsst.utils.tests
 import lsst.shapelet
-import lsst.afw.geom.ellipses
 import lsst.afw.image
 import lsst.log
 import lsst.log.utils
@@ -64,8 +63,9 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         numpy.random.seed(500)
         crval = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
         crpix = lsst.afw.geom.Point2D(0.0, 0.0)
-        cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
-        dataWcs = lsst.afw.image.makeWcs(crval, crpix, cdelt, 0.0, 0.0, cdelt)
+        scale = 0.2 * lsst.afw.geom.arcseconds
+        cdMatrix = lsst.afw.geom.makeCdMatrix(scale=scale, flipX=True)
+        dataWcs = lsst.afw.geom.makeSkyWcs(crpix=crpix, crval=crval, cdMatrix=cdMatrix)
         dataCalib = lsst.afw.image.Calib()
         dataCalib.setFluxMag0(1e12)
         self.xyPosition = lsst.afw.geom.Point2D(1.1, -0.8)

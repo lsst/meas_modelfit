@@ -537,7 +537,7 @@ namespace {
 
 struct CModelStageData {
     afw::geom::Point2D measSysCenter;       // position of the object in image ("meas") coordinates
-    PTR(afw::coord::Coord) position;        // position of the object in ra,dec
+    afw::coord::IcrsCoord position;         // position of the object in ra,dec
     UnitSystem measSys;                     // coordinate systems for the image being measured
     UnitSystem fitSys;                      // coordinate systems for the model parameters
     LocalUnitTransform fitSysToMeasSys;     // coordinate transform from fitSys to measSys
@@ -554,8 +554,8 @@ struct CModelStageData {
         Model const & model
     ) :
         measSysCenter(center), position(exposure.getWcs()->pixelToSky(center)),
-        measSys(exposure), fitSys(*position, exposure.getCalib(), approxFlux),
-        fitSysToMeasSys(*position, fitSys, measSys),
+        measSys(exposure), fitSys(position, exposure.getCalib(), approxFlux),
+        fitSysToMeasSys(position, fitSys, measSys),
         parameters(ndarray::allocate(model.getNonlinearDim() + model.getAmplitudeDim())),
         nonlinear(parameters[ndarray::view(0, model.getNonlinearDim())]),
         amplitudes(parameters[ndarray::view(model.getNonlinearDim(), parameters.getSize<0>())]),
@@ -713,7 +713,7 @@ public:
             startTime = daf::base::DateTime::now().nsecs();
         }
         result.likelihood = std::make_shared<UnitTransformedLikelihood>(
-            model, data.fixed, data.fitSys, *data.position,
+            model, data.fixed, data.fitSys, data.position,
             exposure, footprint, data.psf,
             UnitTransformedLikelihoodControl(ctrl.usePixelWeights, ctrl.weightsMultiplier)
         );
@@ -797,7 +797,7 @@ public:
         afw::image::Exposure<Pixel> const & exposure, afw::detection::Footprint const & footprint
     ) const {
         result.likelihood = std::make_shared<UnitTransformedLikelihood>(
-            model, data.fixed, data.fitSys, *data.position,
+            model, data.fixed, data.fitSys, data.position,
             exposure, footprint, data.psf, UnitTransformedLikelihoodControl(ctrl.usePixelWeights)
         );
         ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(*result.likelihood, data.nonlinear);
@@ -875,7 +875,7 @@ public:
         fixed[ndarray::view(exp.model->getFixedDim(), model->getFixedDim())] = devData.fixed;
 
         UnitTransformedLikelihood likelihood(
-            model, fixed, expData.fitSys, *expData.position,
+            model, fixed, expData.fitSys, expData.position,
             exposure, footprint, expData.psf, UnitTransformedLikelihoodControl(false)
         );
         ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(likelihood, nonlinear);

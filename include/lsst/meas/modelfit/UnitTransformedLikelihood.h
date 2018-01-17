@@ -122,7 +122,7 @@ public:
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
-        afw::coord::Coord const & position,
+        afw::coord::IcrsCoord const & position,
         std::vector<PTR(EpochFootprint)> const & epochFootprintList,
         UnitTransformedLikelihoodControl const & ctrl
     );
@@ -143,7 +143,7 @@ public:
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
-        afw::coord::Coord const & position,
+        afw::coord::IcrsCoord const & position,
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,

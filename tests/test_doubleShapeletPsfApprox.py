@@ -31,6 +31,8 @@ import lsst.utils.tests
 import lsst.afw.detection
 import lsst.afw.image
 import lsst.afw.coord
+import lsst.afw.geom
+import lsst.afw.geom.ellipses
 import lsst.log
 import lsst.log.utils
 import lsst.meas.modelfit
@@ -57,13 +59,12 @@ class DoubleShapeletPsfApproxTestMixin(object):
         for name, value in kwds.items():
             setattr(self.ctrl, name, value)
         self.exposure = lsst.afw.image.ExposureF(1, 1)
-        self.exposure.setWcs(
-            lsst.afw.image.makeWcs(
-                lsst.afw.coord.IcrsCoord(45*lsst.afw.geom.degrees, 45*lsst.afw.geom.degrees),
-                lsst.afw.geom.Point2D(0.0, 0.0),
-                5E-5, 0.0, 0.0, 5E-5
-            )
-        )
+        scale = 5.0e-5 * lsst.afw.geom.degrees
+        wcs = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(0.0, 0.0),
+                                       crval=lsst.afw.coord.IcrsCoord(45*lsst.afw.geom.degrees,
+                                                                      45*lsst.afw.geom.degrees),
+                                       cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale))
+        self.exposure.setWcs(wcs)
         self.exposure.setPsf(self.psf)
 
     def tearDown(self):

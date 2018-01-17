@@ -49,11 +49,11 @@ PYBIND11_PLUGIN(unitSystem) {
     PyUnitSystem clsUnitSystem(mod, "UnitSystem");
     clsUnitSystem.def_readonly("wcs", &UnitSystem::wcs);
     clsUnitSystem.def_readonly("calib", &UnitSystem::calib);
-    clsUnitSystem.def(py::init<afw::coord::Coord const &, std::shared_ptr<afw::image::Calib const>, double>(),
+    clsUnitSystem.def(py::init<afw::coord::IcrsCoord const &, std::shared_ptr<afw::image::Calib const>, double>(),
                       "position"_a, "calibIn"_a, "flux"_a);
-    clsUnitSystem.def(py::init<afw::coord::Coord const &, Scalar>(), "position"_a, "mag"_a);
+    clsUnitSystem.def(py::init<afw::coord::IcrsCoord const &, Scalar>(), "position"_a, "mag"_a);
     clsUnitSystem.def(
-            py::init<std::shared_ptr<afw::image::Wcs const>, std::shared_ptr<afw::image::Calib const>>(),
+            py::init<std::shared_ptr<afw::geom::SkyWcs const>, std::shared_ptr<afw::image::Calib const>>(),
             "wcs"_a, "calib"_a);
     clsUnitSystem.def(py::init<afw::image::Exposure<float> const &>(), "exposure"_a);
     clsUnitSystem.def(py::init<afw::image::Exposure<double> const &>(), "exposure"_a);
@@ -62,7 +62,7 @@ PYBIND11_PLUGIN(unitSystem) {
     clsLocalUnitTransform.def_readonly("geometric", &LocalUnitTransform::geometric);
     clsLocalUnitTransform.def_readonly("flux", &LocalUnitTransform::flux);
     clsLocalUnitTransform.def_readonly("sb", &LocalUnitTransform::sb);
-    clsLocalUnitTransform.def(py::init<afw::coord::Coord const &, UnitSystem const &, UnitSystem const &>(),
+    clsLocalUnitTransform.def(py::init<afw::coord::IcrsCoord const &, UnitSystem const &, UnitSystem const &>(),
                               "position"_a, "source"_a, "destination"_a);
     clsLocalUnitTransform.def(py::init<>());
 

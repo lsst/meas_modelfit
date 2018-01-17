@@ -25,8 +25,8 @@ import numpy
 
 import lsst.utils.tests
 import lsst.shapelet.tests
+import lsst.afw.geom
 import lsst.afw.geom.ellipses
-from lsst.afw.geom import AffineXYTransform
 import lsst.afw.image
 import lsst.afw.math
 import lsst.afw.detection
@@ -82,8 +82,10 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.amplitudes = numpy.zeros(self.model.getAmplitudeDim(), dtype=lsst.meas.modelfit.Scalar)
         self.amplitudes[:] = self.flux
         # setup ideal exposure0: uses fit Wcs and Calib, has delta function PSF
-        cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
-        wcs0 = lsst.afw.image.makeWcs(self.position, lsst.afw.geom.Point2D(), cdelt, 0.0, 0.0, cdelt)
+        scale0 = 0.2*lsst.afw.geom.arcseconds
+        wcs0 = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(),
+                                        crval=self.position,
+                                        cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale0))
         calib0 = lsst.afw.image.Calib()
         calib0.setFluxMag0(10000)
         self.psf0 = makeGaussianFunction(0.0)
@@ -97,8 +99,10 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         addGaussian(self.exposure0, self.ellipse, self.flux, psf=self.psf0)
         self.exposure0.getMaskedImage().getVariance().set(1.0)
         # setup secondary exposure: 2x pixel scale, 3x gain, Gaussian PSF with sigma=2.5pix
-        cdelt = (0.4*lsst.afw.geom.arcseconds).asDegrees()
-        wcs1 = lsst.afw.image.makeWcs(self.position, lsst.afw.geom.Point2D(), cdelt, 0.0, 0.0, cdelt)
+        scale1 = 0.4 * lsst.afw.geom.arcseconds
+        wcs1 = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(),
+                                        crval=self.position,
+                                        cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale1))
         calib1 = lsst.afw.image.Calib()
         calib1.setFluxMag0(30000)
         self.sys1 = lsst.meas.modelfit.UnitSystem(wcs1, calib1)
@@ -165,9 +169,9 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         # exposure1b: warp exposure0 using warpImage with AffineTransform arguments
         exposure1b = lsst.afw.image.ExposureF(self.bbox1)
         exposure1b.setWcs(self.sys1.wcs)
-        xyTransform = AffineXYTransform(self.t01.geometric)
+        srcToDest = lsst.afw.geom.makeTransform(self.t01.geometric)
         lsst.afw.math.warpImage(exposure1b.getMaskedImage(), self.exposure0.getMaskedImage(),
-                                xyTransform, warpCtrl)
+                                srcToDest, warpCtrl)
         exposure1b.setCalib(self.sys1.calib)
         scaleExposure(exposure1b, self.t01.flux)
         self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),

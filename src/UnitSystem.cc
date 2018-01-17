@@ -30,11 +30,12 @@
 
 namespace lsst { namespace meas { namespace modelfit {
 
-UnitSystem::UnitSystem(afw::coord::Coord const & position,
+UnitSystem::UnitSystem(afw::coord::IcrsCoord const & position,
                        std::shared_ptr<const lsst::afw::image::Calib> calibIn,
                        double flux) {
-    double cdelt = (1.0*lsst::afw::geom::arcseconds).asDegrees();
-    wcs = afw::image::makeWcs(position, afw::geom::Point2D(0.0, 0.0), cdelt, 0.0, 0.0, cdelt);
+    auto scale = 1.0*lsst::afw::geom::arcseconds;
+    auto cdMatrix = afw::geom::makeCdMatrix(scale);
+    wcs = afw::geom::makeSkyWcs(afw::geom::Point2D(0.0, 0.0), position, cdMatrix);
     calibIn = validateCalib(calibIn);
     Scalar mag = calibIn->getMagnitude(flux);
     PTR(afw::image::Calib) calib_ = std::make_shared<afw::image::Calib>();
@@ -42,9 +43,10 @@ UnitSystem::UnitSystem(afw::coord::Coord const & position,
     calib = calib_;
 }
 
-UnitSystem::UnitSystem(afw::coord::Coord const & position, Scalar mag) {
-    double cdelt = (1.0*lsst::afw::geom::arcseconds).asDegrees();
-    wcs = afw::image::makeWcs(position, afw::geom::Point2D(0.0, 0.0), cdelt, 0.0, 0.0, cdelt);
+UnitSystem::UnitSystem(afw::coord::IcrsCoord const & position, Scalar mag) {
+    auto scale = 1.0*lsst::afw::geom::arcseconds;
+    auto cdMatrix = afw::geom::makeCdMatrix(scale);
+    wcs = afw::geom::makeSkyWcs(afw::geom::Point2D(0.0, 0.0), position, cdMatrix);
     PTR(afw::image::Calib) calib_ = std::make_shared<afw::image::Calib>();
     calib_->setFluxMag0(std::pow(10.0, mag/2.5));
     calib = calib_;
@@ -69,16 +71,12 @@ std::shared_ptr<const lsst::afw::image::Calib> UnitSystem::getDefaultCalib() {
 }
 
 LocalUnitTransform::LocalUnitTransform(
-    afw::coord::Coord const & position,
+    afw::coord::IcrsCoord const & position,
     UnitSystem const & source,
     UnitSystem const & destination
 ) :
-    geometric(
-        afw::image::XYTransformFromWcsPair(
-            destination.wcs,
-            source.wcs
-        ).linearizeForwardTransform(source.wcs->skyToPixel(position))
-    ),
+    geometric(afw::geom::linearizeTransform(*afw::geom::makeWcsPairTransform(*source.wcs, *destination.wcs),
+                                            source.wcs->skyToPixel(position))),
     flux(destination.calib->getFluxMag0().first / source.calib->getFluxMag0().first),
     sb(flux / geometric.getLinear().computeDeterminant())
 {}
