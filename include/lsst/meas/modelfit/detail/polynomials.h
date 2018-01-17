@@ -34,8 +34,8 @@ namespace lsst { namespace meas { namespace modelfit { namespace detail {
  * vectors evaluates the polynomial (or computes a derivative).
 */
 template <int N>
-struct Vandermonde {
-
+class Vandermonde {
+public:
     typedef Eigen::Matrix<double,1,N> RowVector;
 
     /// Return a row vector that product with a polynomial coefficient vector[
