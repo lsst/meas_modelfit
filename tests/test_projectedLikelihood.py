@@ -83,7 +83,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.amplitudes[:] = self.flux
         # setup ideal exposure0: uses fit Wcs and Calib, has delta function PSF
         scale0 = 0.2*lsst.afw.geom.arcseconds
-        wcs0 = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(),
+        self.crpix0 = lsst.afw.geom.Point2D(0, 0)
+        wcs0 = lsst.afw.geom.makeSkyWcs(crpix=self.crpix0,
                                         crval=self.position,
                                         cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale0))
         calib0 = lsst.afw.image.Calib()
@@ -107,7 +108,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         calib1.setFluxMag0(30000)
         self.sys1 = lsst.meas.modelfit.UnitSystem(wcs1, calib1)
         # transform object that maps between exposures (not including PSF)
-        self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.position, self.sys0, self.sys1)
+        self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.sys0.wcs.getPixelOrigin(), self.sys0, self.sys1)
         self.bbox1 = lsst.afw.geom.Box2I(self.bbox0)
         self.bbox1.grow(-60)
         self.spanSet1 = lsst.afw.geom.SpanSet(self.bbox1)

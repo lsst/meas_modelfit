@@ -88,7 +88,7 @@ struct LocalUnitTransform {
     double sb;
 
     LocalUnitTransform(
-        afw::coord::IcrsCoord const & position,
+        afw::geom::Point2D const & sourcePixel,
         UnitSystem const & source,
         UnitSystem const & destination
     );

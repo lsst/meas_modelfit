@@ -71,12 +71,12 @@ std::shared_ptr<const lsst::afw::image::Calib> UnitSystem::getDefaultCalib() {
 }
 
 LocalUnitTransform::LocalUnitTransform(
-    afw::coord::IcrsCoord const & position,
+    afw::geom::Point2D const & sourcePixel,
     UnitSystem const & source,
     UnitSystem const & destination
 ) :
     geometric(afw::geom::linearizeTransform(*afw::geom::makeWcsPairTransform(*source.wcs, *destination.wcs),
-                                            source.wcs->skyToPixel(position))),
+                                            sourcePixel)),
     flux(destination.calib->getFluxMag0().first / source.calib->getFluxMag0().first),
     sb(flux / geometric.getLinear().computeDeterminant())
 {}

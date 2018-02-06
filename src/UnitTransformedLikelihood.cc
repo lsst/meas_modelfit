@@ -180,6 +180,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     _impl->epochs.reserve(epochFootprintList.size());
     _impl->ellipses = model->makeEllipseVector();
     int dataOffset = 0;
+    afw::geom::Point2D fitPixel = fitSys.wcs->skyToPixel(position);
     for (
         std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochFootprintList.begin();
         imPtrIter != epochFootprintList.end();
@@ -189,7 +190,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
         int dataEnd = dataOffset + nPix;
         _impl->epochs.push_back(
             Impl::Epoch(
-                nPix, LocalUnitTransform(position, fitSys, (**imPtrIter).exposure),
+                nPix, LocalUnitTransform(fitPixel, fitSys, (**imPtrIter).exposure),
                 makeMatrixBuilders(model->getBasisVector(), (**imPtrIter).psf, (**imPtrIter).footprint)
             )
         );
@@ -222,9 +223,10 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     _weights = ndarray::allocate(totPixels);
     _unweightedData = ndarray::allocate(totPixels);
     _impl->ellipses = model->makeEllipseVector();
+    afw::geom::Point2D fitPixel = fitSys.wcs->skyToPixel(position);
     _impl->epochs.push_back(
         Impl::Epoch(
-            totPixels, LocalUnitTransform(position, fitSys, exposure),
+            totPixels, LocalUnitTransform(fitPixel, fitSys, exposure),
             makeMatrixBuilders(model->getBasisVector(), psf, footprint)
         )
     );

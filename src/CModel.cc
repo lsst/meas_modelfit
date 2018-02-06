@@ -555,7 +555,7 @@ struct CModelStageData {
     ) :
         measSysCenter(center), position(exposure.getWcs()->pixelToSky(center)),
         measSys(exposure), fitSys(position, exposure.getCalib(), approxFlux),
-        fitSysToMeasSys(position, fitSys, measSys),
+        fitSysToMeasSys(fitSys.wcs->getPixelOrigin(), fitSys, measSys),
         parameters(ndarray::allocate(model.getNonlinearDim() + model.getAmplitudeDim())),
         nonlinear(parameters[ndarray::view(0, model.getNonlinearDim())]),
         amplitudes(parameters[ndarray::view(model.getNonlinearDim(), parameters.getSize<0>())]),

@@ -62,8 +62,8 @@ PYBIND11_PLUGIN(unitSystem) {
     clsLocalUnitTransform.def_readonly("geometric", &LocalUnitTransform::geometric);
     clsLocalUnitTransform.def_readonly("flux", &LocalUnitTransform::flux);
     clsLocalUnitTransform.def_readonly("sb", &LocalUnitTransform::sb);
-    clsLocalUnitTransform.def(py::init<afw::coord::IcrsCoord const &, UnitSystem const &, UnitSystem const &>(),
-                              "position"_a, "source"_a, "destination"_a);
+    clsLocalUnitTransform.def(py::init<afw::geom::Point2D const &, UnitSystem const &, UnitSystem const &>(),
+                              "sourcePixel"_a, "source"_a, "destination"_a);
     clsLocalUnitTransform.def(py::init<>());
 
     return mod.ptr();
