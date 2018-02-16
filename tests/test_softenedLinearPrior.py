@@ -22,7 +22,6 @@ from builtins import range
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 import unittest
-import os
 import numpy
 
 import lsst.utils.tests
@@ -235,6 +234,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

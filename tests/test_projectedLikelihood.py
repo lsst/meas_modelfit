@@ -25,8 +25,8 @@ import numpy
 
 import lsst.utils.tests
 import lsst.shapelet.tests
+import lsst.afw.geom
 import lsst.afw.geom.ellipses
-from lsst.afw.geom import AffineXYTransform
 import lsst.afw.image
 import lsst.afw.math
 import lsst.afw.detection
@@ -82,8 +82,11 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.amplitudes = numpy.zeros(self.model.getAmplitudeDim(), dtype=lsst.meas.modelfit.Scalar)
         self.amplitudes[:] = self.flux
         # setup ideal exposure0: uses fit Wcs and Calib, has delta function PSF
-        cdelt = (0.2*lsst.afw.geom.arcseconds).asDegrees()
-        wcs0 = lsst.afw.image.makeWcs(self.position, lsst.afw.geom.Point2D(), cdelt, 0.0, 0.0, cdelt)
+        scale0 = 0.2*lsst.afw.geom.arcseconds
+        self.crpix0 = lsst.afw.geom.Point2D(0, 0)
+        wcs0 = lsst.afw.geom.makeSkyWcs(crpix=self.crpix0,
+                                        crval=self.position,
+                                        cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale0))
         calib0 = lsst.afw.image.Calib()
         calib0.setFluxMag0(10000)
         self.psf0 = makeGaussianFunction(0.0)
@@ -97,13 +100,15 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         addGaussian(self.exposure0, self.ellipse, self.flux, psf=self.psf0)
         self.exposure0.getMaskedImage().getVariance().set(1.0)
         # setup secondary exposure: 2x pixel scale, 3x gain, Gaussian PSF with sigma=2.5pix
-        cdelt = (0.4*lsst.afw.geom.arcseconds).asDegrees()
-        wcs1 = lsst.afw.image.makeWcs(self.position, lsst.afw.geom.Point2D(), cdelt, 0.0, 0.0, cdelt)
+        scale1 = 0.4 * lsst.afw.geom.arcseconds
+        wcs1 = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(),
+                                        crval=self.position,
+                                        cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale1))
         calib1 = lsst.afw.image.Calib()
         calib1.setFluxMag0(30000)
         self.sys1 = lsst.meas.modelfit.UnitSystem(wcs1, calib1)
         # transform object that maps between exposures (not including PSF)
-        self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.position, self.sys0, self.sys1)
+        self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.sys0.wcs.getPixelOrigin(), self.sys0, self.sys1)
         self.bbox1 = lsst.afw.geom.Box2I(self.bbox0)
         self.bbox1.grow(-60)
         self.spanSet1 = lsst.afw.geom.SpanSet(self.bbox1)
@@ -142,7 +147,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         msf = self.model.makeShapeletFunction(self.nonlinear, self.amplitudes, self.fixed)
         image0a = lsst.afw.image.ImageD(self.bbox0)
         msf.evaluate().addToImage(image0a)
-        self.assertFloatsAlmostEqual(image0a.getArray(), self.exposure0.getMaskedImage().getImage().getArray(),
+        self.assertFloatsAlmostEqual(image0a.getArray(),
+                                     self.exposure0.getMaskedImage().getImage().getArray(),
                                      rtol=1E-6, atol=1E-7, **ASSERT_CLOSE_KWDS)
 
     def testWarp(self):
@@ -164,9 +170,9 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         # exposure1b: warp exposure0 using warpImage with AffineTransform arguments
         exposure1b = lsst.afw.image.ExposureF(self.bbox1)
         exposure1b.setWcs(self.sys1.wcs)
-        xyTransform = AffineXYTransform(self.t01.geometric)
+        srcToDest = lsst.afw.geom.makeTransform(self.t01.geometric)
         lsst.afw.math.warpImage(exposure1b.getMaskedImage(), self.exposure0.getMaskedImage(),
-                                xyTransform, warpCtrl)
+                                srcToDest, warpCtrl)
         exposure1b.setCalib(self.sys1.calib)
         scaleExposure(exposure1b, self.t01.flux)
         self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
@@ -256,6 +262,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

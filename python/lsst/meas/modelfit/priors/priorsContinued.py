@@ -44,13 +44,13 @@ SemiEmpiricalPriorConfig = makeConfigClass(SemiEmpiricalPriorControl)
 SoftenedLinearPriorConfig = makeConfigClass(SoftenedLinearPriorControl)
 
 
-@continueClass
+@continueClass  # noqa
 class SemiEmpiricalPrior:
 
     ConfigClass = SemiEmpiricalPriorConfig
 
 
-@continueClass
+@continueClass  # noqa
 class SoftenedLinearPrior:
 
     ConfigClass = SoftenedLinearPriorConfig

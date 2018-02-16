@@ -81,11 +81,11 @@ class OptimizerTrackLayer(object):
     defaults = dict(
         accepted=dict(
             marker='.', linestyle='-', color='c',
-            markevery=(1, 1), # (start, stride): don't put a marker on the first point
+            markevery=(1, 1),  # (start, stride): don't put a marker on the first point
         ),
         rejected=dict(
             marker='.', linestyle='-', color='k', alpha=0.5,
-            markevery=3, # marker at every third point, so we only mark the rejected points
+            markevery=3,  # marker at every third point, so we only mark the rejected points
         ),
     )
 

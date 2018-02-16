@@ -22,7 +22,6 @@ from builtins import range
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 import unittest
-import os
 import numpy
 try:
     import scipy.integrate
@@ -138,8 +137,8 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             tg2 = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertEqual(tg1.getLogIntegral(), 0.0)
             self.assertFloatsAlmostEqual(tg1.getLogPeakAmplitude(),
-                                         (0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))
-                                          + numpy.log(tg1.getUntruncatedFraction())),
+                                         (0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma)) +
+                                          numpy.log(tg1.getUntruncatedFraction())),
                                          rtol=1E-13)
             self.assertFloatsAlmostEqual(tg2.getLogPeakAmplitude(),
                                          q0 + 0.5*numpy.dot(mu, gradient),
@@ -164,8 +163,8 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             mu = -numpy.dot(sigma, gradient)
             tg1 = lsst.meas.modelfit.TruncatedGaussian.fromStandardParameters(mu, sigma)
             self.assertFloatsAlmostEqual(tg1.getLogPeakAmplitude(),
-                                         (numpy.log(tg1.getUntruncatedFraction())
-                                          + 0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))),
+                                         (numpy.log(tg1.getUntruncatedFraction()) +
+                                          0.5*numpy.log(numpy.linalg.det(2.0*numpy.pi*sigma))),
                                          rtol=1E-13)
             self.assertEqual(tg1.getLogIntegral(), 0.0)
             self.check2d(mu, hessian, tg1)
@@ -201,6 +200,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

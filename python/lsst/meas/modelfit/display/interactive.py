@@ -1,6 +1,5 @@
 from past.builtins import basestring
 from builtins import object
-#!/usr/bin/env python
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -23,10 +22,7 @@ from builtins import object
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-import os
-import collections
 import numpy
-import copy
 
 import lsst.pipe.base
 import lsst.pex.config
@@ -40,9 +36,9 @@ from ..measureCoadd import MeasureCoaddTask
 from ..measureMulti import MeasureMultiTask
 from .. import modelfitLib
 
-from .densityPlot import *
-from .modelFitAdapters import *
-from .optimizerDisplay import *
+from .densityPlot import CrossPointsLayer, DensityPlot, HistogramLayer, SurfaceLayer
+from .modelFitAdapters import OptimizerDataAdapter, OptimizerTrackLayer, SamplingDataAdapter
+from .optimizerDisplay import OptimizerDisplay
 
 __all__ = ("Interactive", )
 

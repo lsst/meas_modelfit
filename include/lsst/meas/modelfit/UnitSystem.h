@@ -25,7 +25,7 @@
 #define LSST_MEAS_MODELFIT_UnitSystem_h_INCLUDED
 
 #include "lsst/afw/image/Exposure.h"
-#include "lsst/afw/image/Wcs.h"
+#include "lsst/afw/geom/SkyWcs.h"
 #include "lsst/afw/image/Calib.h"
 #include "lsst/afw/geom/AffineTransform.h"
 #include "lsst/afw/geom/XYTransform.h"
@@ -38,7 +38,7 @@ namespace lsst { namespace meas { namespace modelfit {
  *  @brief A simple struct that combines a Wcs and a Calib.
  */
 struct UnitSystem {
-    PTR(afw::image::Wcs const) wcs;
+    PTR(afw::geom::SkyWcs const) wcs;
     PTR(afw::image::Calib const) calib;
 
     /**
@@ -48,12 +48,12 @@ struct UnitSystem {
      *  set such that unit flux is the given magnitude.  See @ref modelfitUnits for an explanation
      *  of why we frequently use this system.
      */
-    UnitSystem(afw::coord::Coord const & position, std::shared_ptr<const lsst::afw::image::Calib> calibIn,
+    UnitSystem(afw::coord::IcrsCoord const & position, std::shared_ptr<const lsst::afw::image::Calib> calibIn,
                double flux);
-    UnitSystem(afw::coord::Coord const & position, Scalar mag);
+    UnitSystem(afw::coord::IcrsCoord const & position, Scalar mag);
 
     /// Construct a UnitSystem from a give Wcs and Calib
-    UnitSystem(PTR(afw::image::Wcs const) wcs_, PTR(afw::image::Calib const) calib_) :
+    UnitSystem(PTR(afw::geom::SkyWcs const) wcs_, PTR(afw::image::Calib const) calib_) :
         wcs(wcs_), calib(validateCalib(calib_))
     {}
 
@@ -88,7 +88,7 @@ struct LocalUnitTransform {
     double sb;
 
     LocalUnitTransform(
-        afw::coord::Coord const & position,
+        afw::geom::Point2D const & sourcePixel,
         UnitSystem const & source,
         UnitSystem const & destination
     );

@@ -47,9 +47,10 @@ class DefaultZeroPointTestCase(lsst.utils.tests.TestCase):
         calibWithZero = afwImage.Calib()
         calibWithZero.setFluxMag0(self.mag2Flux(25))
 
-        cdelt = (0.2*afwGeom.arcseconds).asDegrees()
-        position = afwCoord.IcrsCoord(45.0*afwGeom.degrees, 45.0*afwGeom.degrees)
-        wcs = afwImage.makeWcs(position, afwGeom.Point2D(), cdelt, 0.0, 0.0, cdelt)
+        scale = 0.2 * afwGeom.arcseconds
+        wcs = afwGeom.makeSkyWcs(crpix=afwGeom.Point2D(),
+                                 crval=afwCoord.IcrsCoord(45.0*afwGeom.degrees, 45.0*afwGeom.degrees),
+                                 cdMatrix=afwGeom.makeCdMatrix(scale=scale))
 
         self.unitNoZero = measModel.UnitSystem(wcs, calibNoZero)
         self.unitWithZero = measModel.UnitSystem(wcs, calibWithZero)
@@ -77,6 +78,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()
