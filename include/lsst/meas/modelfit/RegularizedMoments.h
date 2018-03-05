@@ -24,7 +24,6 @@
 #include <exception>
 #include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
 #include <Eigen/Dense>
 
@@ -51,6 +50,8 @@ struct Moments {
 
     ParameterVector getParameterVector();
 
+    bool aproxEqual(Moments const & other, double tol=1e-6);
+
     double zeroth;
     FirstMoment first;
     SecondMoment second;
@@ -76,5 +77,5 @@ struct SecondShapeMoment {
 
 // Tests for classes in anonymous name spaces
 std::pair<Moments, Moments> buildTestMoments();
-bool testAlphaX();
+bool testAlphaX(double tol=1e-6);
 }}} // Close namespace lsst::meas::modelfit

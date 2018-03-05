@@ -38,9 +38,9 @@ struct alphaX {
     static Moments::ParameterVector computeGradient(Moments Q, Moments W) {
         Moments::ParameterVector vec;
         vec(0, 0) = 0;
-        vec(1, 0) = W[4]^2−W[3]*W[5]+W[4]*Q[4]−W[3]Q[4]/
+        vec(1, 0) = (W[4]^2−W[3]*W[5]+W[4]*Q[4]−W[3]Q[4])/
                     (W[4]^2−W[3]*W[5]−W[5]*Q[3]+2*W[4]*Q[4]+Q[4]^2−(W[3]+Q[3])*Q[5]);
-        vec(2, 0) = −W[4]*Q[3]−W[3]*Q[4]/(W[4]^2−W[3]*W[4]−W[4]*Q[3]+2*W[4]*Q[4]+Q[4]^2−(W[3]+Q[3])*Q[5]);
+        vec(2, 0) = −1*(W[4]*Q[3]−W[3]*Q[4])/(W[4]^2−W[3]*W[4]−W[4]*Q[3]+2*W[4]*Q[4]+Q[4]^2−(W[3]+Q[3])*Q[5]);
 
         double vec3Top = W[2]*W[4]^3+W[1]*W[3]*W[5]^2−(Q[2]*W[4]−W[2]*W[4])*Q[4]^2−
                          (Q[1]*W[3]−W[1]*W[3])*Q[5]^2+(W[4]^2*W[5]−W[3]*W[5]^2)*Q[1]−
@@ -96,18 +96,29 @@ struct alphaX {
 };
 
 std::pair<Moments, Moments> buildTestMoments(){
-    Moments Q(6, 4, 3, 2, 4, 1);
-    Moments W(2, 4, 3.1, 2.5, 3.7, 1.2);
-    return std::make_pair<Q, W>;
+    Moments Q(6, 4, 3, 2, 1, 4);
+    Moments W(2, 4, 3.1, 2.5, 1.2, 3.7);
+    return std::make_tuple<Q, W>;
 }
 
-bool testAlphaX() {
+bool testAlphaX(double tol) {
     Moments Q, W;
     bool result = true;
     std::tie(Q, W) = buildTestMoments();
-    Moments::ParameterVector zeroRes = AlphaX.computeValue(Q, W)
+    double zeroRes = AlphaX.computeValue(Q, W)
     Moments::ParameterVector firstRes = AlphaX.computeGradient(Q, W)
-    zeroTruth =
+    Moments resMoments(firstRes)
+    zeroTruth = 4.00033545790003
+    firstTruth = Moments({0,
+                          0.557195571955720,
+                          −0.00335457900033546,
+                          −0.00411214444247764,
+                          0.00843596158202444,
+                          −0.0000506394012127103})
+    if (abs(zeroTruth - zeroRes) > tol) {
+        return false
+    }
+    return firstMoments.aproxEqual(firstTruth, tol)
 }
 
 
@@ -119,6 +130,32 @@ struct alphaY {
 
     static Moments::ParameterVector computeGradient(Moments Q, Moments W) {
         Moments::ParameterVector vec;
+        vec(0, 0) = 0;
+
+        vec(1, 0) = (Q[4]*W[5] - Q[5]*W[4])/
+                    (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])
+
+        vec(2, 0) = (Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])/
+                    (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])
+
+        double vec3Top = (Q[2]*W[5]−W[2]*W[5])*Q[4]^2+(Q[1]*W[4]−W[1]*W[4])*Q[5]^2+
+                         (Q[2]*W[4]*W[5]−W[2]*W[4]*W[5]−Q[1]*W[5]^2+W[1]*W[5]^2)*Q[4]−
+                         (Q[2]*W[4]^2−W[2]*W[4]^2−Q[1]*W[4]*W[5]+W[1]*W[4]*W[5]+
+                         (Q[2]*W[4]−W[2]*W[4]+Q[1]*W[5]−W[1]*W[5])*Q[4])*Q[5]
+
+        double vec3Bottom = Q[4]^4+4*Q[4]^3*W[4]+W[4]^4−2*W[3]W[4]^2*W[5]+
+                            Q[3]^2*W[5]^2+W[3]^2*W[5]^2+2*(3*W[4]^2−Q[3]*W[5]−W[3]*W[5])*Q[4]^2+
+                            (Q[3]^2+2*Q[3]*W[3]+W[3]^2)*Q[5]^2−2*(W[4]^2*W[5]−W[3]*W[5]^2)*Q[3]+
+                            4*(W[4]^3−Q[3]*W[4]*W[5]−W[3]*W[4]*W[5])*Q[4]−
+                            2*((Q[3]+W[3])*Q[4]^2+W[3]W[4]^2−Q[3]^2*W[5]−W[3]^2*W[5]+
+                            (W[4]^2−2*W[3]*W[5])*Q[3]+2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5]
+
+        vec(3, 0) = -1*vec3Top/vec3Bottom
+
+        vec4Top = W[2]*W[4]^3+W[1]*W[3]*W[5]^2−(Q[2]*W[4]−W[2]*W[4]+Q[1]*W[5]−W[1]*W[5])*Q[4]^2+
+                  (W[4]^2*W[5]−W[3]*W[5]^2)*Q[1]−(W[4]^3−W[3]*W[4]*W[5])*Q[2]+
+                  (Q[2]*W[4]*W[5]−W[2]*W[4]*W[5]−Q[1]*W[5]^2+W[1]*W[5]^2)*Q[3]+
+                  2*(W[2]*W[4]^2−W2W3W5−(W24−W3W5)Q2+(Q2W5−W2W5)Q3)Q4−(Q2W3W4−W2W3W4+2W1W24−W1W3W5−(2W24−W3W5)Q1+(Q2W4−W2W4+Q1W5−W1W5)Q3−2(Q1W4−W1W4)Q4)Q5−(W2W3W4+W1W24)W5
 
     }
 }
@@ -206,6 +243,15 @@ Moments::ParameterVector Moments::getParameterVector(){
     vec(4, 0) = second(0, 1);
     vec(5, 0) = second(1, 1);
     return vec
+}
+
+bool Moments:aproxEqual(Moments const & other, double tol) {
+    for (int i = 0; i < 6; ++i){
+        if (abs(*this[i] - other[i]) > tol) {
+            return false
+        }
+    }
+    return true
 }
 
 }}} // Close lsst::meas::modelfit
