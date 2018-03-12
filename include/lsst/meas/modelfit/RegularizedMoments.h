@@ -21,6 +21,7 @@
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include <cmath>
 #include <exception>
 #include <string>
 #include <tuple>
