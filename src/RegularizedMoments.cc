@@ -232,8 +232,146 @@ struct Norm {
     static Moments::ParameterVector computeGradient(Moments Q, Moments W) {
         Moments::ParameterVector vec;
 
-        double vec1Top = ((Q[2]−W[2])*Q[4]−(Q[1]−W[1])*Q[5]+Q[2]*W[4]−W[2]*W[4]−Q[1]*W[5]+W[1]*W[5])*std::exp(Q[2]^2*Q[3]^2*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])−Q[1]*Q[2]*Q[4]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+Q[1]^2*Q[5]^2*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])+Q[2]*Q[4]*W[1]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]−Q[1]*Q[5]*W[1]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+Q[5]*W[1]^22*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])−Q[2]*Q[3]*W[2]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+Q[1]*Q[4]*W[2]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]−Q[4]*W[1]*W[2]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+Q[3]*W[2]^22*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])+Q[2]^2*W[3]^2*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])−Q[2]*W[2]*W[3]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+W[2]^2*W[3]^2*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])−Q[1]*Q[2]*W[4]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+Q[2]*W[1]*W[4]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+Q[1]*W[2]*W[4]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]−W[1]*W[2]*W[4]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+Q[1]^2*W[5]^2*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])−Q[1]*W[1]*W[5]*Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]+W[1]^2*W[5]^2*(Q[4]^2−Q[3]*Q[5]−Q[5]*W[3]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]))
+        vec(0,0) = 0;
+
+        double vec1Top = ((Q[2]−W[2])*Q[4]−(Q[1]−W[1])*Q[5]+
+                          Q[2]*W[4]−W[2]*W[4]−Q[1]*W[5]+W[1]*W[5])*
+                         std::exp((Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                   2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                   (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                   W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5])/
+                                  (2*(Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])));
+        double vec1Bottom = std::sqrt(−4*pi^2*(Q[4]+W[4])2+4*pi^2*(Q[3]+W[3])(Q[5]+W[5]))(Q[4]^2−(Q[3]+W[3])*
+                            Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
+
+        vec(1,0) = -1*vec1Top/vec1Bottom;
+
+        double vec2Top = ((Q[2]−W[2])*Q[3]−(Q[1]−W[1])*Q[4]+
+                          Q[2]*W[3]−W[2]*W[3]−Q[1]*W[4]+W[1]*W[4])*
+                         std::exp((Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                   2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                   (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                   W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5])/
+                                  (2*(Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])));
+
+        double vec2Bottom = np.sqrt(−4*pi^2*(Q[4]+W[4])2+4*pi^2*(Q[3]+W[3])(Q[5]+W[5]))*
+                            (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
+
+        vec(2,0) = vec2Top/vec2Bottom; 
+
+        double vec3FirstTop = 2*pi^2*(Q[5]+W[5])*
+                              std::exp((Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                     2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                     (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                     W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5])/
+                                     (2*(Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])));
+
+        double vec3FirstBottom = (−4*pi^2*(Q[4]+W[4])2+4*pi^2*(Q[3]+W[3])(Q[5]+W[5]))^(3/2);
+
+        double vec3SecondTopFirst = (Q[2]^2−2*Q[2]*W[2]+W[2]^2)\
+                                    (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
+
+        double vec3SecondTopSecondTop = (Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                         2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                         (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                         W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5])(Q[5]+W[5]);
+
+        double vec3SecondTopSecondBottom = (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])^2;
+
+        double vec3SecondExpTop = Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                  2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                  (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                  W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5];
+
+        double vec3SecondExpBottom = 2*(Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
+
+        double vec3SecondBottom = 2*std::sqrt(−4*pi^2*(Q[4]+W[4])2+4*pi^2*(Q[3]+W[3])(Q[5]+W[5]));
+
+        vec(3,0) = -1*vec3FirstTop/vec3FirstBottom +
+                   ((vec3SecondTopFirst+(vec3SecondTopSecondTop)/(vec3SecondTopSecondBottom))*
+                    std::exp(vec3SecondExpTop/vec3SecondExpBottom))/vec3SecondBottom;
+
+        double vec4FirstTop = 4*pi^2*(Q[4]+W[4])*
+                              std::exp((Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                        2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                        (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                        W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5])/
+                                       (2*(Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])));
+        
+        double vec4FirstBottom = (−4*pi^2*(Q[4]+W[4])2+4*pi^2*(Q[3]+W[3])(Q[5]+W[5]))^(3/2);
+        
+        double vec4SecondTopFirst = ((Q[1]−W[1])*Q[2]−Q[1]*W[2]+W[1]*W[2])/
+                                    (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
+
+        double vec4SecondTopSecondTop = (Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                         2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                         (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                         W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5])(Q[4]+W[4]);
+
+        double vec4SecondTopSecondBottom = (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])^2;
+
+        double vec4SecondTopSecondExpTop = std::exp(Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+
+                                                    W[1]^2*W[5]+2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+
+                                                    Q[1]*W[4]−W[1]*W[4])*Q[2]+(Q[2]^2−2*Q[2]*W[2]+
+                                                    W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                                    W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5]);
+
+        double vec4SecondTopSecondExpBottom = 2*(Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
+
+        double vec4SecondBottom = std::sqrt(-4*pi^2*(Q[4]+W[4])2+4*pi^2*(Q[3]+W[3])(Q[5]+W[5]));
+
+        vec(4, 0) = vec4FirstTop/vec4FirstBottom - (vec4SecondTopFirst +
+                                                    vec4SecondTopSecondTop/vec4SecondTopSecondBottom*
+                                                    std::exp(vec4SecondTopSecondExpTop/
+                                                             vec4SecondTopSecondExpBottom))/
+                                                    vec4SecondBottom;
+
+        double vec5FirstTop = 4*pi^2*(Q[4]+W[4])*
+                              std::exp((Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                        2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                        (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                         W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5])/
+                                       (2*(Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])))
+
+        double vec5FirstBottom = (−4*pi^2*(Q[4]+W[4])2+4*pi^2*(Q[3]+W[3])(Q[5]+W[5]))^(3/2)
+
+        double vec5SecondTopFirst = (Q[1]^2−2*Q[1]*W[1]+W[1]^2)/
+                                    (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])
+
+        double vec5SecondTopSecondTop = (Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]
+                                         +2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−
+                                         W[1]*W[4])*Q[2]+(Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−
+                                         2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+W[1]*W[2])*Q[4]+(Q[1]^2−
+                                         2*Q[1]*W[1]+W[1]^2)*Q[5])(Q[3]+W[3])
+
+        double vec5SecondTopSecondBottom = (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])^2
+
+        double vec5SecondTopSecondExpTop = Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+W[1]^2*W[5]+
+                                           2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+Q[1]*W[4]−W[1]*W[4])*Q[2]+
+                                           (Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+
+                                           W[1]*W[2])*Q[4]+(Q[1]^2−2*Q[1]*W[1]+W[1]^2)*Q[5]
+
+        double vec5SecondTopSecondExpBottom = Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+
+                                              W[1]^2*W[5]+2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+
+                                              Q[1]*W[4]−W[1]*W[4])*Q[2]+(Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−
+                                              2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+W[1]*W[2])*Q[4]+(Q[1]^2−
+                                              2*Q[1]*W[1]+W[1]^2)*Q[5]
+
+        double vec5SecondBottom = 2*std::sqrt(Q[2]^2*W[3]+W[2]^2*W[3]−2*W[1]*W[2]W[4]+Q[1]^2*W[5]+
+                                              W[1]^2*W[5]+2*(W[2]*W[4]−W[1]*W[5])*Q[1]−2*(W[2]*W[3]+
+                                              Q[1]*W[4]−W[1]*W[4])*Q[2]+(Q[2]^2−2*Q[2]*W[2]+W[2]^2)*Q[3]−
+                                              2*((Q[1]−W[1])*Q[2]−Q[1]*W[2]+W[1]*W[2])*Q[4]+(Q[1]^2−
+                                              2*Q[1]*W[1]+W[1]^2)*Q[5])
+
+        vec(5, 0) = -1*vec5FistTop/vec5FistBottom +
+                    (vec5SecondTopFirst+(vec5SecondTopSecondTop/vec5SecondTopSecondBottom)*
+                    std::exp(vec5SecondTopSecondExpTop/vec5SecondTopSecondExpBottom))/
+                    vec5SecondBottom;
+
     }
+private:
+    using afw::geom::pi
+
 };
 }
 
@@ -309,5 +447,6 @@ bool Moments:aproxEqual(Moments const & other, double tol) {
     }
     return true
 }
+
 
 }}} // Close lsst::meas::modelfit

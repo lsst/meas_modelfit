@@ -28,6 +28,8 @@
 #include <vector>
 #include <Eigen/Dense>
 
+#include "lsst/afw/geom/geom.h"
+
 namespace lsst {
 namespace meas {
 namespace modelfit {
