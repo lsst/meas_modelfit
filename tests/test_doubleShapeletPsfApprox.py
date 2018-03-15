@@ -30,7 +30,6 @@ from io import StringIO
 import lsst.utils.tests
 import lsst.afw.detection
 import lsst.afw.image
-import lsst.afw.coord
 import lsst.afw.geom
 import lsst.afw.geom.ellipses
 import lsst.log
@@ -61,8 +60,7 @@ class DoubleShapeletPsfApproxTestMixin(object):
         self.exposure = lsst.afw.image.ExposureF(1, 1)
         scale = 5.0e-5 * lsst.afw.geom.degrees
         wcs = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(0.0, 0.0),
-                                       crval=lsst.afw.coord.IcrsCoord(45*lsst.afw.geom.degrees,
-                                                                      45*lsst.afw.geom.degrees),
+                                       crval=lsst.afw.geom.SpherePoint(45, 45, lsst.afw.geom.degrees),
                                        cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale))
         self.exposure.setWcs(wcs)
         self.exposure.setPsf(self.psf)

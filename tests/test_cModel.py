@@ -25,6 +25,7 @@ import numpy
 
 import lsst.utils.tests
 import lsst.shapelet
+import lsst.afw.geom
 import lsst.afw.image
 import lsst.log
 import lsst.log.utils
@@ -61,7 +62,7 @@ class CModelTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
         # Setup test data: a single point source, initially with no noise.
         numpy.random.seed(500)
-        crval = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
+        crval = lsst.afw.geom.SpherePoint(45.0, 45.0, lsst.afw.geom.degrees)
         crpix = lsst.afw.geom.Point2D(0.0, 0.0)
         scale = 0.2 * lsst.afw.geom.arcseconds
         cdMatrix = lsst.afw.geom.makeCdMatrix(scale=scale, flipX=True)

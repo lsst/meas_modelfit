@@ -69,7 +69,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         numpy.random.seed(500)
-        self.position = lsst.afw.coord.IcrsCoord(45.0*lsst.afw.geom.degrees, 45.0*lsst.afw.geom.degrees)
+        self.position = lsst.afw.geom.SpherePoint(45.0, 45.0, lsst.afw.geom.degrees)
         self.model = lsst.meas.modelfit.Model.makeGaussian(lsst.meas.modelfit.Model.FIXED_CENTER)
         self.ellipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(6.0, 5.0, numpy.pi/6))
         self.flux = 50.0
