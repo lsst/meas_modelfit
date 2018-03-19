@@ -49,6 +49,8 @@ struct Moments {
 
     Moments(double zero, FirstMoment first, SecondMoment second);
 
+    Moments(ParameterVector parameters);
+
     double operator[](int i);
 
     ParameterVector getParameterVector();
@@ -58,27 +60,35 @@ struct Moments {
     double zeroth;
     FirstMoment first;
     SecondMoment second;
+
 }
 
 struct ZerothShapeMoment {
-    static double computeValue(Moments Q, Moments W);
+    static double computeValue(Moments const & Q, Moments const & W);
 
-    static Moments::ParameterVector computeGradient(Moments Q, Moments W);
+    static Moments computeGradient(Moments const & Q, Moments const & W);
+
 };
 
 struct FirstShapeMoment {
-    static double computeValue(Moments Q, Moments W);
+    static double computeValue(Moments const & Q, Moments const & W);
 
-    static Moments::ParameterVector computeGradient(Moments Q, Moments W);
+    static Moments computeGradient(Moments const & Q, Moments const & W);
 };
 
 struct SecondShapeMoment {
-    static double computeValue(Moments Q, Moments W);
+    static double computeValue(Moments const & Q, Moments const & W);
 
-    static Moments::ParameterVector computeGradient(Moments Q, Moments W);
+    static Moments computeGradient(Moments const & Q, Moments const & W);
 };
 
 // Tests for classes in anonymous name spaces
-std::pair<Moments, Moments> buildTestMoments();
+bool testNorm(double tol=1e-6);
+
 bool testAlphaX(double tol=1e-6);
+bool testAlphaY(double tol=1e-6);
+
+bool testBetaX(double tol=1e-6);
+bool testBetaY(double tol=1e-6);
+bool testBetaXY(double tol=1e-6);
 }}} // Close namespace lsst::meas::modelfit
