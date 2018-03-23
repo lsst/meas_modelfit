@@ -30,7 +30,7 @@
 
 namespace lsst { namespace meas { namespace modelfit {
 
-UnitSystem::UnitSystem(afw::coord::IcrsCoord const & position,
+UnitSystem::UnitSystem(afw::geom::SpherePoint const & position,
                        std::shared_ptr<const lsst::afw::image::Calib> calibIn,
                        double flux) {
     auto scale = 1.0*lsst::afw::geom::arcseconds;
@@ -43,7 +43,7 @@ UnitSystem::UnitSystem(afw::coord::IcrsCoord const & position,
     calib = calib_;
 }
 
-UnitSystem::UnitSystem(afw::coord::IcrsCoord const & position, Scalar mag) {
+UnitSystem::UnitSystem(afw::geom::SpherePoint const & position, Scalar mag) {
     auto scale = 1.0*lsst::afw::geom::arcseconds;
     auto cdMatrix = afw::geom::makeCdMatrix(scale);
     wcs = afw::geom::makeSkyWcs(afw::geom::Point2D(0.0, 0.0), position, cdMatrix);

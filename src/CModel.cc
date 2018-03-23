@@ -29,6 +29,7 @@
 
 #include "lsst/afw/detection/FootprintSet.h"
 #include "lsst/afw/detection/Psf.h"
+#include "lsst/afw/geom/SpherePoint.h"
 #include "lsst/afw/math/LeastSquares.h"
 #include "lsst/shapelet/FunctorKeys.h"
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
@@ -537,7 +538,7 @@ namespace {
 
 struct CModelStageData {
     afw::geom::Point2D measSysCenter;       // position of the object in image ("meas") coordinates
-    afw::coord::IcrsCoord position;         // position of the object in ra,dec
+    afw::geom::SpherePoint position;        // position of the object in ICRS ra,dec
     UnitSystem measSys;                     // coordinate systems for the image being measured
     UnitSystem fitSys;                      // coordinate systems for the model parameters
     LocalUnitTransform fitSysToMeasSys;     // coordinate transform from fitSys to measSys

@@ -25,6 +25,7 @@
 #define LSST_MEAS_MODELFIT_UnitSystem_h_INCLUDED
 
 #include "lsst/afw/image/Exposure.h"
+#include "lsst/afw/geom/SpherePoint.h"
 #include "lsst/afw/geom/SkyWcs.h"
 #include "lsst/afw/image/Calib.h"
 #include "lsst/afw/geom/AffineTransform.h"
@@ -32,7 +33,9 @@
 
 #include "lsst/meas/modelfit/common.h"
 
-namespace lsst { namespace meas { namespace modelfit {
+namespace lsst {
+namespace meas {
+namespace modelfit {
 
 /**
  *  @brief A simple struct that combines a Wcs and a Calib.
@@ -48,24 +51,22 @@ struct UnitSystem {
      *  set such that unit flux is the given magnitude.  See @ref modelfitUnits for an explanation
      *  of why we frequently use this system.
      */
-    UnitSystem(afw::coord::IcrsCoord const & position, std::shared_ptr<const lsst::afw::image::Calib> calibIn,
+    UnitSystem(afw::geom::SpherePoint const& position, std::shared_ptr<const lsst::afw::image::Calib> calibIn,
                double flux);
-    UnitSystem(afw::coord::IcrsCoord const & position, Scalar mag);
+    UnitSystem(afw::geom::SpherePoint const& position, Scalar mag);
 
     /// Construct a UnitSystem from a give Wcs and Calib
-    UnitSystem(PTR(afw::geom::SkyWcs const) wcs_, PTR(afw::image::Calib const) calib_) :
-        wcs(wcs_), calib(validateCalib(calib_))
-    {}
+    UnitSystem(PTR(afw::geom::SkyWcs const) wcs_, PTR(afw::image::Calib const) calib_)
+            : wcs(wcs_), calib(validateCalib(calib_)) {}
 
     /// Construct a UnitSystem by extracting the Wcs and Calib from an Exposure (implicit)
     template <typename T>
-    UnitSystem(afw::image::Exposure<T> const & exposure) :
-        wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib()))
-    {}
+    UnitSystem(afw::image::Exposure<T> const& exposure)
+            : wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib())) {}
 
 private:
     std::shared_ptr<const lsst::afw::image::Calib> validateCalib(
-        std::shared_ptr<const lsst::afw::image::Calib> calib_);
+            std::shared_ptr<const lsst::afw::image::Calib> calib_);
     static std::shared_ptr<const lsst::afw::image::Calib> getDefaultCalib();
 };
 
@@ -77,7 +78,6 @@ private:
  *  AffineTransform and the photometric transform as a simple scaling.
  */
 struct LocalUnitTransform {
-
     /// Maps source pixel coordinates to destination pixel coordinates
     afw::geom::AffineTransform geometric;
 
@@ -87,17 +87,15 @@ struct LocalUnitTransform {
     /// Multiply source surface brightnesses by this to get destination surface brightnesses
     double sb;
 
-    LocalUnitTransform(
-        afw::geom::Point2D const & sourcePixel,
-        UnitSystem const & source,
-        UnitSystem const & destination
-    );
+    LocalUnitTransform(afw::geom::Point2D const& sourcePixel, UnitSystem const& source,
+                       UnitSystem const& destination);
 
     /// Construct an identity transform for both geometry and flux.
     LocalUnitTransform() : geometric(), flux(1.0), sb(1.0) {}
-
 };
 
-}}} // namespace lsst::meas::modelfit
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst
 
-#endif // !LSST_MEAS_MODELFIT_UnitSystem_h_INCLUDED
+#endif  // !LSST_MEAS_MODELFIT_UnitSystem_h_INCLUDED

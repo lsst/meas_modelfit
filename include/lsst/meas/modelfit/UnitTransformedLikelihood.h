@@ -30,6 +30,7 @@
 #include "ndarray.h"
 
 #include "lsst/pex/config.h"
+#include "lsst/afw/geom/SpherePoint.h"
 #include "lsst/afw/geom/ellipses/Ellipse.h"
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/detection/Footprint.h"
@@ -114,7 +115,7 @@ public:
      * @param[in] model             Object that defines the model to fit and its parameters.
      * @param[in] fixed             Model parameters that are held fixed.
      * @param[in] fitSys            Geometric and photometric system to fit in
-     * @param[in] position          Sky position of object being fit
+     * @param[in] position          ICRS sky position of object being fit
      * @param[in] epochFootprintList   List of shared pointers to EpochFootprint
      * @param[in] ctrl              Control object with various options
      */
@@ -122,7 +123,7 @@ public:
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
-        afw::coord::IcrsCoord const & position,
+        afw::geom::SpherePoint const & position,
         std::vector<PTR(EpochFootprint)> const & epochFootprintList,
         UnitTransformedLikelihoodControl const & ctrl
     );
@@ -133,7 +134,7 @@ public:
      * @param[in] model             Object that defines the model to fit and its parameters.
      * @param[in] fixed             Model parameters that are held fixed.
      * @param[in] fitSys            Geometric and photometric system to fit in
-     * @param[in] position          Sky position of object being fit
+     * @param[in] position          ICRS sky position of object being fit
      * @param[in] exposure          Exposure containing the data to fit
      * @param[in] footprint         Footprint that defines the pixels to include in the fit
      * @param[in] psf               Shapelet approximation to the PSF
@@ -143,7 +144,7 @@ public:
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
-        afw::coord::IcrsCoord const & position,
+        afw::geom::SpherePoint const & position,
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,

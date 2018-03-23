@@ -25,7 +25,6 @@ import unittest
 import numpy as np
 
 import lsst.afw.image as afwImage
-import lsst.afw.coord as afwCoord
 import lsst.afw.geom as afwGeom
 import lsst.meas.modelfit as measModel
 import lsst.utils
@@ -49,7 +48,7 @@ class DefaultZeroPointTestCase(lsst.utils.tests.TestCase):
 
         scale = 0.2 * afwGeom.arcseconds
         wcs = afwGeom.makeSkyWcs(crpix=afwGeom.Point2D(),
-                                 crval=afwCoord.IcrsCoord(45.0*afwGeom.degrees, 45.0*afwGeom.degrees),
+                                 crval=afwGeom.SpherePoint(45.0, 45.0, afwGeom.degrees),
                                  cdMatrix=afwGeom.makeCdMatrix(scale=scale))
 
         self.unitNoZero = measModel.UnitSystem(wcs, calibNoZero)
