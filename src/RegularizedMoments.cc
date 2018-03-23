@@ -29,6 +29,8 @@ namespace modelfit {
 
 namespace {
 
+using Moments = MomentsModel::Moments; 
+
 std::pair<Moments, Moments> buildTestMoments(){
     Moments Q(6, 4, 3, 2, 1, 4);
     Moments W(2, 4, 3.1, 2.5, 1.2, 3.7);
@@ -41,8 +43,8 @@ struct alphaX {
                (Q.second.inverse()*Q.first + W.second.inverse()*W.first)(0);
     }
 
-    static Moments::ParameterVector computeGradient(Moments const & Q, Moments const & W) {
-        Moments::ParameterVector vec;
+    static Moments computeGradient(Moments const & Q, Moments const & W) {
+        Moments vec;
         vec(0, 0) = 0;
         vec(1, 0) = −1*(Q[5]*W[3]−Q[4]*W[4]−W[4]^2+W[3]*W[5])/
                     (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
@@ -109,8 +111,8 @@ struct alphaY {
                (Q.second.inverse()*Q.first + W.second.inverse()*W.first)(1);
     }
 
-    static Moments:ParameterVector computeGradient(Moments const & Q, Moments const & W) {
-        Moments::ParameterVector vec;
+    static Moments computeGradient(Moments const & Q, Moments const & W) {
+        Moments vec;
         vec(0, 0) = 0;
 
         vec(1, 0) = (Q[4]*W[5] - Q[5]*W[4])/
@@ -177,8 +179,8 @@ struct BetaX {
                (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])
     }
 
-    static Moments::ParameterVector computeGradient(Moments const & Q, Moments const & W) {
-        Moments::ParameterVector vec;
+    static Moments computeGradient(Moments const & Q, Moments const & W) {
+        Moments vec;
 
         vec(0, 0) = 0;
         vec(1, 0) = 0;
@@ -214,8 +216,8 @@ struct BetaXY {
                (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5]);
     }
 
-    static Moments::ParameterVector computeGradient(Moments const & Q, Moments const & W) {
-        Moments::ParameterVector vec;
+    static Moments computeGradient(Moments const & Q, Moments const & W) {
+        Moments vec;
 
         vec(0, 0) = 0;
         vec(1, 0) = 0;
@@ -253,8 +255,8 @@ struct BetaY {
             (Q[4]^2−(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+W[4]^2−Q[3]*W[5]−W[3]*W[5])
     }
 
-    static Moments::ParameterVector computeGradient(Moments const & Q, Moments const & W) {
-        Moments::ParameterVector vec;
+    static Moments computeGradient(Moments const & Q, Moments const & W) {
+        Moments vec;
 
         vec(0, 0) = 0;
         vec(1, 0) = 0;
@@ -299,8 +301,8 @@ struct Norm {
 
     }
 
-    static Moments::ParameterVector computeGradient(Moments const & Q, Moments const & W) {
-        Moments::ParameterVector vec;
+    static Moments computeGradient(Moments const & Q, Moments const & W) {
+        Moments vec;
 
         vec(0,0) = 0;
 
@@ -446,12 +448,28 @@ private:
 
 };
 
-Moments makeBeta(Moments const & Q, Moments const & W) {
+MomentsModel::FirstMoment makeAlpha(Moments const & Q, Moments const & W) {
+    double x = AlphaX::computeValue(Q, W);
+    double y = AlphaY::computeValue(Q, W);
+
+    return MomentsModel::FirstMoment(x, y);
+};
+
+auto makeAlphaGrad(Moments const & Q, Moments const & W) {
+    x = AlphaX::computeGradient(Q, W);
+    y = AlphaY::computeGradient(Q, W);
+
+    return make_tuple(x, y);
+}
+
+
+
+MomentsModel::SecondMoment makeBeta(Moments const & Q, Moments const & W) {
     double x = BetaX::computeValue(Q, W);
     double xy = BetaXY::computeValue(Q, W);
     double y = BetaY::computeValue(Q, W);
 
-    Moments::SecondMoment beta;
+    MomentsModel::SecondMoment beta;
     
     beta(0, 0) = x;
     beta(1, 0) = xy;
@@ -466,14 +484,22 @@ auto makeBetaGrad(Moments const & Q, Moments const & W) {
                            BetaY::computeGadient(Q, W));
 }
 
+bool approxEqual(Moments const & first, Moments const & second, double tol=1e-6){
+    for (size_t i = 0; i < 6; ++i){
+        if (abs(first(i, 0) - second(i, 0)) > tol) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } //end anonymous
 
 bool testAlphaX(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = AlphaX.computeValue(Q, W);
-    Moments::ParameterVector firstRes = AlphaX.computeGradient(Q, W);
-    Moments resMoments(firstRes);
+    Moments firstRes = AlphaX.computeGradient(Q, W);
     zeroTruth = 4.00033545790003;
     Moments firstTruth({0,
                         0.557195571955720,
@@ -484,15 +510,14 @@ bool testAlphaX(double tol) {
     if (abs(zeroTruth - zeroRes) > tol) {
         return false;
     }
-    return firstMoments.aproxEqual(firstTruth, tol);
+    return approxEqual(firstMoments, firstTruth, tol);
 }
 
 bool testAlphaY(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = AlphaY.computeValue(Q, W);
-    Moments::ParameterVector firstRes = AlphaY.computeGradient(Q, W);
-    Moments resMoments(firstRes);
+    Moments firstRes = AlphaY.computeGradient(Q, W);
     double zeroTruth = 3.05300234820530;
     Moments firstTruth({0,
                         0.0369003690036900,
@@ -504,15 +529,14 @@ bool testAlphaY(double tol) {
     if (abs(zeroTruth - zeroRes) > tol) {
         return false
     }
-    return firstMoments.aproxEqual(firstTruth, tol)
+    return approxEqual(firstMoments, firstTruth, tol)
 }
 
 bool testBetaX(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = BetaX.computeValue(Q, W);
-    Moments::ParameterVector firstRes = BetaX.computeGradient(Q, W);
-    Moments resMoments(firstRes);
+    Moments firstRes = BetaX.computeGradient(Q, W);
     double zeroTruth = 1.11103656491110;
     Moments firstTruth({0,
                         0,
@@ -524,15 +548,14 @@ bool testBetaX(double tol) {
     if (abs(zeroTruth - zeroRes) > tol) {
         return false
     }
-    return firstMoments.aproxEqual(firstTruth, tol)
+    return approxEqual(firstMoments, firstTruth, tol)
 }
 
 bool testBetaXY(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = BetaXY.computeValue(Q, W);
-    Moments::ParameterVector firstRes = BetaXY.computeGradient(Q, W);
-    Moments resMoments(firstRes);
+    Moments firstRes = BetaXY.computeGradient(Q, W);
     double zeroTruth = 0.543777255954378;
     Moments firstTruth({0,
                         0,
@@ -544,15 +567,14 @@ bool testBetaXY(double tol) {
     if (abs(zeroTruth - zeroRes) > tol) {
         return false
     }
-    return firstMoments.aproxEqual(firstTruth, tol)
+    return approxEqual(firstMoments, firstTruth, tol)
 }
 
 bool testBetaY(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = BetaY.computeValue(Q, W);
-    Moments::ParameterVector firstRes = BetaY.computeGradient(Q, W);
-    Moments resMoments(firstRes);
+    Moments firstRes = BetaY.computeGradient(Q, W);
     double zeroTruth = 1.91680644079168;
     Moments firstTruth({0,
                         0,
@@ -564,7 +586,7 @@ bool testBetaY(double tol) {
     if (abs(zeroTruth - zeroRes) > tol) {
         return false
     }
-    return firstMoments.aproxEqual(firstTruth, tol)
+    return approxEqual(firstMoments, firstTruth, tol)
 }
 
 
@@ -572,8 +594,7 @@ bool testNorm(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = norm.computeValue(Q, W);
-    Moments::ParameterVector firstRes = norm.computeGradient(Q, W);
-    Moments resMoments(firstRes);
+    Moments firstRes = norm.computeGradient(Q, W);
     double zeroTruth = 0.0915084542604366/afw::geom::pi;
     Moments firstTruth({0,
                         -0.000675339145833491/afw::geom::pi,
@@ -585,26 +606,43 @@ bool testNorm(double tol) {
     if (abs(zeroTruth - zeroRes) > tol) {
         return false
     }
-    return firstMoments.aproxEqual(firstTruth, tol)
+    return approxEqual(firstMoments, firstTruth, tol)
 }
 
-static double ZerothShapeMoment::computeMoment(Moments const & Q, Moments const & W){
-    Moments::SecondMoment beta = makeBeta(Q, W);
-
-    double norm = Norm::computeValue(Q, W);
-
-    return 2*afw::geom::pi*Q[0]*beta.determinant()*norm;
+void MomentsModel::at(Moments const & inputQ) {
+   Q = Moments(inputQ); 
+   makeValue();
 }
 
-static Moments::ParameterVector ZerothShapeMoment::computeGradient(Moments const & Q, Moments const & W){
-    double norm = Norm::computeValue(Q, W);
-    Moments::ParameterVector normGrad = Norm::computeGradient(Q, W);
+void MomentsModel::makeValue() {
+    alpha = makeAlpha(Q, W);
+    beta = makeBeta(Q, W);
+    norm = Norm::computeValue(Q, W);
 
-    Moments::SecondMoment beta = makeBeta(Q, W);
-    Moments::ParameterVector betaXGrad, betaXYGrad, betaYGrad;
+    double zero = 2*afw::geom::pi*Q(0, 0)*beta.determinant()*norm;
+    FistMoment one = zero*alpha;
+    SecondMoment two = zero*(beta + alpha*alpha.transpose());
+
+    value = Moments(zero, one(0, 0), one(1, 0), two(0, 0), two(0, 1), two(1, 1));
+}
+
+Moments MomentsModel::computeValue() {
+    return value;
+}
+
+Jacobian MomentsModel::computeJacobian() {
+    // Calculate the matrices that will be needed for the rest of this
+    // function
+    Moments normGrad = Norm::computeGradient(Q, W);
+
+    Moments alphaXGrad, alphaYGrad;
+    std::tie(alphaXGrad, alphaYGrad;
+
+    Moments betaXGrad, betaXYGrad, betaYGrad;
     std::tie(betaXGrad, betaXYGrad, betaYGrad) = makeBetaGrad(Q, W);
 
-    Moments::ParameterVector vec;
+    // Calculate the gradient along the first moment
+    Moments zerothGrad;
     for (size_t i=0; i < 5; ++i) {
         // the first term in the equation is only needed for the derivative
         // with respect to Q_0, otherwise the term always is zero
@@ -613,95 +651,40 @@ static Moments::ParameterVector ZerothShapeMoment::computeGradient(Moments const
             accumulator += beta.determinant()*norm;
         }
 
-        accumulator += Q[0]*(betaXGrad[i]*beta(1,1) + beta(0,0)*betaYGrad[i] - 2*beta(1,0)*betaXY[i]);
+        accumulator += Q[0]*norm*(betaXGrad[i]*beta(1,1) + beta(0,0)*betaYGrad[i] - 2*beta(1,0)*betaXY[i]);
 
         accumulator += Q[0]*beta.determinant()*normGrad[i];
 
-        vec(i,0) = 2*afw::geom::pi*accumulator;
+        zerothGrad(i,0) = 2*afw::geom::pi*accumulator;
     }
-    return vec;
+
+    // Calculate the gradient along the two components of the first moment
+    Moments firstX, firstY;
+
+    firstX = alpha(0, 0)*zerothGrad + value(0, 0)*alphaXGrad;
+    firstY = alpha(1, 0)*zerothGrad + value(0, 0)*alphaYGrad;
+
+    // Calculate the gradient along each of the components of the second
+    // moment
+    SecondMoment modBeta = beta + alpha*alpha.transpose();
+
+    Moments secondX, secondXY, secondY;
+
+    secondX = modBeta(0, 0)*normGrad + value(0, 0)*(betaXGrad + 2*alpha(0, 0)*alphaXGrad);
+    secondXY = modBeta(0, 1)*normGrad + 
+               value(0, 0)*(betaXYGrad + 2*(alphaXGrad*alpha(1, 0) +alphaYGrad*alpha(0, 0)));
+    secondX = modBeta(1, 1)*normGrad + value(0, 0)*(betaYGrad + 2*alpha(1, 0)*alphaYGrad);
+
+    // Build the result and return it
+    Jacobian result;
+
+    result(0) = zerothGrad.transpose();
+    result(1) = firstX.transpose();
+    result(2) = firstY.transpose();
+    result(3) = secondX.transpose();
+    result(4) = secondXY.transpose();
+    result(5) = secondY.transpose();
+
+    return result;
 }
-
-
-template <typename iter>
-Moments::Moments(iter begin, iter end) {
-    auto checkIter = [&end](iter & begin) {
-        std::string errMessage("Input vector too short")
-        if (begin == end) {
-            throw std::length_error(errMessage);
-        }
-    }
-    // The first entry in the vector will be zeroth moment
-    // vec[0]
-    zeroth = *begin;
-    // The next two entries will be the first moment, i.e. x, y
-    // vec[1], vec[2]
-    checkIter(begin++);
-    double firstX = *begin;
-    checkIter(begin++);
-    double firstY = *begin;
-    first << firstX, firstY;
-    // The next three entries correspond to the second moment
-    // i.e. xx, xy, yy: vec[3], vec[4], vec[5]
-    checkIter(begin++);
-    double secondX = *begin;
-    checkIter(begin++);
-    double secondXY = *begin;
-    checkIter(begin++);
-    double secondY = *begin;
-    second << secondX, secondXY, secondY
-}
-
-Moments::Moments(std::vector<double> moments) {
-    Moments(moments.begin(), moments.end());
-}
-
-Moments::Moments(std::initializer_list<double> initList) {
-    Moments(initList.begin(), initList.end());
-}
-
-Moments::Moments(double zero, FirstMoment first, SecondMoment second): zero(zero), one(first), two(second){
-}
-
-Moments::Moments(ParameterVector params) {
-    zeroth = params(0, 0);
-
-    first << params(1, 0), params(2, 0);
-
-    second << params(3, 0), params(4, 0), params(4, 0), params(5, 0);
-}
-
-
-double Moments::operator[](int i){
-    switch(i) {
-        case 0: return zeroth;
-        case 1: return first(0, 0);
-        case 2: return first(1, 0);
-        case 3: return second(0, 0);
-        case 4: return second(0, 1);
-        case 5: return second(1, 1);
-    }
-}
-
-Moments::ParameterVector Moments::getParameterVector(){
-    Moments::ParameterVector vec;
-    vec(0, 0) = zeroth;
-    vec(1, 0) = first(1, 0);
-    vec(2, 0) = first(2, 0);
-    vec(3, 0) = second(0, 0);
-    vec(4, 0) = second(0, 1);
-    vec(5, 0) = second(1, 1);
-    return vec
-}
-
-bool Moments:aproxEqual(Moments const & other, double tol) {
-    for (int i = 0; i < 6; ++i){
-        if (abs(*this[i] - other[i]) > tol) {
-            return false
-        }
-    }
-    return true
-}
-
-
 }}} // Close lsst::meas::modelfit

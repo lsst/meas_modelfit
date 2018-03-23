@@ -34,52 +34,32 @@ namespace lsst {
 namespace meas {
 namespace modelfit {
 
-struct Moments {
-    using FirstMoment = Eigen::Matrix<double, 2, 1>
-    using SecondMoment = Eigen::Matrix<double, 2, 2>
-    using ParameterVector = Eigen::Matrix<double, 6, 1>
-    using ParameterMatrix = Eigen::Matrix<double, 6, 6>
+class MomentsModel {
+public:
+    using Moments = Eigen::Matrix<double, 6, 1>;
+    using Jacobian = Eigen::Matrix<double, 6, 6>;
+    using FistMoment = Eigen::Matrix<double, 2, 1>;
+    using SecondMoment = Eigen::Matrix<double, 2, 2>;
 
-    template <typename iter>
-    Moments(iter begin, iter end);
+    MomentsModel(Moments W): W(W) {
+    }
 
-    Moments(std::vector<double> moments);
+    void at(Moments const & Q);
 
-    Moments(std::initializer_list<double> initList);
+    Moments computeValue();
 
-    Moments(double zero, FirstMoment first, SecondMoment second);
+    Jacobian computeJacobian();
 
-    Moments(ParameterVector parameters);
+private:
+    void makeValue();
 
-    double operator[](int i);
+    Moments W, Q, value;
 
-    ParameterVector getParameterVector();
+    double norm;
 
-    bool aproxEqual(Moments const & other, double tol=1e-6);
+    FistMoment alpha;
 
-    double zeroth;
-    FirstMoment first;
-    SecondMoment second;
-
-}
-
-struct ZerothShapeMoment {
-    static double computeValue(Moments const & Q, Moments const & W);
-
-    static Moments computeGradient(Moments const & Q, Moments const & W);
-
-};
-
-struct FirstShapeMoment {
-    static double computeValue(Moments const & Q, Moments const & W);
-
-    static Moments computeGradient(Moments const & Q, Moments const & W);
-};
-
-struct SecondShapeMoment {
-    static double computeValue(Moments const & Q, Moments const & W);
-
-    static Moments computeGradient(Moments const & Q, Moments const & W);
+    SecondMoment beta;
 };
 
 // Tests for classes in anonymous name spaces
