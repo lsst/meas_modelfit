@@ -20,15 +20,10 @@
  * the GNU General Public License along with this program.  If not,
  * see <https://www.lsstcorp.org/LegalNotices/>.
  */
+#ifndef LSST_MEAS_MODELFIT_REGULARIZEDMOMENTS_H
+#define LSST_MEAS_MODELFIT_REGULARIZEDMOMENTS_H
 
-#include <cmath>
-#include <exception>
-#include <string>
-#include <tuple>
-#include <vector>
 #include <Eigen/Dense>
-
-#include "lsst/afw/geom/geom.h"
 
 namespace lsst {
 namespace meas {
@@ -38,15 +33,15 @@ class MomentsModel {
 public:
     using Moments = Eigen::Matrix<double, 6, 1>;
     using Jacobian = Eigen::Matrix<double, 6, 6>;
-    using FistMoment = Eigen::Matrix<double, 2, 1>;
+    using FirstMoment = Eigen::Matrix<double, 2, 1>;
     using SecondMoment = Eigen::Matrix<double, 2, 2>;
 
-    MomentsModel(Moments W): W(W) {
+    MomentsModel(Moments const & W): W(W) {
     }
 
     void at(Moments const & Q);
 
-    Moments computeValue();
+    Moments computeValues();
 
     Jacobian computeJacobian();
 
@@ -57,7 +52,7 @@ private:
 
     double norm;
 
-    FistMoment alpha;
+    FirstMoment alpha;
 
     SecondMoment beta;
 };
@@ -72,3 +67,6 @@ bool testBetaX(double tol=1e-6);
 bool testBetaY(double tol=1e-6);
 bool testBetaXY(double tol=1e-6);
 }}} // Close namespace lsst::meas::modelfit
+
+#endif // LSST_MEAS_MODELFIT_REGULARIZEDMOMENTS_H
+
