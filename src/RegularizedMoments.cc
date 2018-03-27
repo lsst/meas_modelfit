@@ -536,10 +536,8 @@ bool testAlphaY(double tol) {
                   0.00709458010990103;
 
     if (abs(zeroTruth - zeroRes) > tol) {
-        std::cout << "problem with value" << std::endl;
         return false;
     }
-    std::cout << "testing derivative" << std::endl;
     return approxEqual(firstRes, firstTruth, tol);
 }
 
@@ -634,19 +632,14 @@ void MomentsModel::makeValue() {
     beta = makeBeta(Q, W);
     norm = Norm::computeValue(Q, W);
 
-    std::cout << "beta det " << beta.determinant() << std::endl;
-    std::cout << "norm " << norm << std::endl;
     double zero = 2*afw::geom::PI*Q(0, 0)*beta.determinant()*norm;
-    std::cout << "zero " << zero << std::endl;
     FirstMoment one = zero*alpha;
     SecondMoment two = zero*(beta + alpha*alpha.transpose());
 
     value << zero, one(0, 0), one(1, 0), two(0, 0), two(0, 1), two(1, 1);
-    std::cout << "zero from value " << value(0,0) << std::endl;
 }
 
 Moments MomentsModel::computeValues() {
-    std::cout << "zero from values func " << value(0,0) << std::endl;
     return value;
 }
 
@@ -694,13 +687,6 @@ MomentsModel::Jacobian MomentsModel::computeJacobian() {
     secondXY = modBeta(0, 1)*normGrad + 
                value(0, 0)*(betaXYGrad + 2*(alphaXGrad*alpha(1, 0) +alphaYGrad*alpha(0, 0)));
     secondY = modBeta(1, 1)*normGrad + value(0, 0)*(betaYGrad + 2*alpha(1, 0)*alphaYGrad);
-
-    std::cout << "alpha x " << alphaXGrad << std::endl;
-    std::cout << "alpha y " << alphaYGrad << std::endl;
-
-    std::cout << "beta x " << betaXGrad << std::endl;
-    std::cout << "beta xy " << betaXYGrad << std::endl;
-    std::cout << "beta y " << betaYGrad << std::endl;
 
     // Build the result and return it
     Jacobian result;

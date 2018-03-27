@@ -16,7 +16,7 @@ scripts.BasicSConscript.pybind11(
      'integrals',
      'unitTransformedLikelihood',
      'cmodel/cmodel',
-     'regularizedMoments',
+     'regularizedMoments/regularizedMoments',
      ],
     addUnderscore=False
 )
