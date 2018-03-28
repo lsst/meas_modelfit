@@ -316,7 +316,11 @@ struct Norm {
         
         double expBottom = 2*(std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
 
-        double bottom = std::sqrt(-4*std::pow(pi,2)*std::pow((Q[4]+W[4]),2)+4*std::pow(pi,2)*(Q[3]+W[3])*(Q[5]+W[5]));
+        double bottom = 2*pi*std::sqrt((-1*std::pow((Q[4]+W[4]),2)+(Q[3]+W[3])*(Q[5]+W[5])));
+
+        std::cout << "expTop " << expTop << std::endl;
+        std::cout << "expBottom " << expBottom << std::endl;
+        std::cout << "bottom " << bottom << std::endl;
 
         return std::exp(expTop/expBottom)/bottom;
 
@@ -631,8 +635,10 @@ void MomentsModel::makeValue() {
     alpha = makeAlpha(Q, W);
     beta = makeBeta(Q, W);
     norm = Norm::computeValue(Q, W);
+    std::cout << "norm " << norm << std::endl;
+    std::cout << "beta " << beta << std::endl;
 
-    double zero = 2*afw::geom::PI*Q(0, 0)*beta.determinant()*norm;
+    double zero = Q(0, 0)*norm;
     FirstMoment one = zero*alpha;
     SecondMoment two = zero*(beta + alpha*alpha.transpose());
 
