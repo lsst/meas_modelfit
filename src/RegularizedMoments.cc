@@ -599,11 +599,11 @@ void MomentsModel::makeValue() {
     beta = makeBeta(Q, W);
     norm = Norm::computeValue(Q, W);
 
-    double zero = Q(0, 0)*norm;
+    double zero = Q[0]*norm;
     FirstMoment one = zero*alpha;
     SecondMoment two = zero*(beta + alpha*alpha.transpose());
 
-    value << zero, one(0, 0), one(1, 0), two(0, 0), two(0, 1), two(1, 1);
+    value << zero, one[0], one[1], two(0, 0), two(0, 1), two(1, 1);
 }
 
 Moments MomentsModel::computeValues() {
