@@ -318,10 +318,6 @@ struct Norm {
 
         double bottom = 2*pi*std::sqrt((-1*std::pow((Q[4]+W[4]),2)+(Q[3]+W[3])*(Q[5]+W[5])));
 
-        std::cout << "expTop " << expTop << std::endl;
-        std::cout << "expBottom " << expBottom << std::endl;
-        std::cout << "bottom " << bottom << std::endl;
-
         return std::exp(expTop/expBottom)/bottom;
 
     }
@@ -353,14 +349,21 @@ struct Norm {
 
         vec(2,0) = vec2Top/vec12Bottom; 
 
-        double vec3FirstTop = 2*std::pow(pi,2)*(Q[5]+W[5])*
-                              std::exp((std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+std::pow(W[1],2)*W[5]+
-                                     2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[2]+
-                                     (std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))*Q[3]-2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+
-                                     W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))*Q[5])/
-                                     (2*(std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])));
+        double bottomComp = 4*std::pow(pi,2)*((Q[3]+W[3])*(Q[5]+W[5]) - std::pow((Q[4]+W[4]),2));
+        double vec345FirstBottom = std::pow(bottomComp ,1.5);
+        double vec345SecondBottom = std::sqrt(bottomComp);
 
-        double vec345FirstBottom = std::pow((-4*std::pow(pi,2)*std::pow((Q[4]+W[4]),2)+4*std::pow(pi,2)*(Q[3]+W[3])*(Q[5]+W[5])),(3/2));
+        double vec345ExpTop = std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+std::pow(W[1],2)*W[5]+
+                                  2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[2]+
+                                  (std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))*Q[3]-2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+
+                                  W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))*Q[5];
+
+        double vec345ExpBottom = 2*(std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+
+        double vec345Exp = std::exp(vec345ExpTop/vec345ExpBottom);
+
+
+        double vec3FirstTop = 2*std::pow(pi,2)*(Q[5]+W[5])*vec345Exp;
 
         double vec3SecondTopFirst = (std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))/
                                     (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
@@ -372,25 +375,12 @@ struct Norm {
 
         double vec3SecondTopSecondBottom = std::pow((std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]),2);
 
-        double vec3SecondExpTop = std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+std::pow(W[1],2)*W[5]+
-                                  2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[2]+
-                                  (std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))*Q[3]-2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+
-                                  W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))*Q[5];
+        vec(3,0) = -1* vec3FirstTop/vec345FirstBottom +
+                   (vec3SecondTopFirst + vec3SecondTopSecondTop/vec3SecondTopSecondBottom*vec345Exp)/
+                   (2*vec345SecondBottom);
 
-        double vec3SecondExpBottom = 2*(std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+        double vec4FirstTop = 4*std::pow(pi,2)*(Q[4]+W[4])*vec345Exp;
 
-        double vec345SecondBottom = std::sqrt(-4*std::pow(pi,2)*std::pow((Q[4]+W[4]),2)+4*std::pow(pi,2)*(Q[3]+W[3])*(Q[5]+W[5]));
-
-        vec(3,0) = -1*vec3FirstTop/vec345FirstBottom +
-                   ((vec3SecondTopFirst+(vec3SecondTopSecondTop)/(vec3SecondTopSecondBottom))*
-                    std::exp(vec3SecondExpTop/vec3SecondExpBottom))/(2*vec345SecondBottom);
-
-        double vec4FirstTop = 4*std::pow(pi,2)*(Q[4]+W[4])*
-                              std::exp((std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+std::pow(W[1],2)*W[5]+
-                                        2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[2]+
-                                        (std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))*Q[3]-2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+
-                                        W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))*Q[5])/
-                                       (2*(std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])));
         
         double vec4SecondTopFirst = ((Q[1]-W[1])*Q[2]-Q[1]*W[2]+W[1]*W[2])/
                                     (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
@@ -402,27 +392,12 @@ struct Norm {
 
         double vec4SecondTopSecondBottom = std::pow((std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]),2);
 
-        double vec4SecondTopSecondExpTop = std::exp(std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+
-                                                    std::pow(W[1],2)*W[5]+2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+
-                                                    Q[1]*W[4]-W[1]*W[4])*Q[2]+(std::pow(Q[2],2)-2*Q[2]*W[2]+
-                                                    std::pow(W[2],2))*Q[3]-2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+
-                                                    W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))*Q[5]);
 
-        double vec4SecondTopSecondExpBottom = 2*(std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+        vec(4, 0) = vec4FirstTop/vec345FirstBottom - 
+                    (vec4SecondTopFirst + vec4SecondTopSecondTop/vec4SecondTopSecondBottom*vec345Exp)/
+                    vec345SecondBottom;
 
-
-        vec(4, 0) = vec4FirstTop/vec345FirstBottom - (vec4SecondTopFirst +
-                                                    vec4SecondTopSecondTop/vec4SecondTopSecondBottom*
-                                                    std::exp(vec4SecondTopSecondExpTop/
-                                                             vec4SecondTopSecondExpBottom))/
-                                                    vec345SecondBottom;
-
-        double vec5FirstTop = 4*std::pow(pi,2)*(Q[4]+W[4])*
-                              std::exp((std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+std::pow(W[1],2)*W[5]+
-                                        2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[2]+
-                                        (std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))*Q[3]-2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+
-                                         W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))*Q[5])/
-                                       (2*(std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])));
+        double vec5FirstTop = 2*std::pow(pi,2)*(Q[3]+W[3])*vec345Exp;
 
         double vec5SecondTopFirst = (std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))/
                                     (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
@@ -435,20 +410,8 @@ struct Norm {
 
         double vec5SecondTopSecondBottom = std::pow((std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]),2);
 
-        double vec5SecondTopSecondExpTop = std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+std::pow(W[1],2)*W[5]+
-                                           2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[2]+
-                                           (std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))*Q[3]-2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+
-                                           W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-2*Q[1]*W[1]+std::pow(W[1],2))*Q[5];
-
-        double vec5SecondTopSecondExpBottom = std::pow(Q[2],2)*W[3]+std::pow(W[2],2)*W[3]-2*W[1]*W[2]*W[4]+std::pow(Q[1],2)*W[5]+
-                                              std::pow(W[1],2)*W[5]+2*(W[2]*W[4]-W[1]*W[5])*Q[1]-2*(W[2]*W[3]+
-                                              Q[1]*W[4]-W[1]*W[4])*Q[2]+(std::pow(Q[2],2)-2*Q[2]*W[2]+std::pow(W[2],2))*Q[3]-
-                                              2*((Q[1]-W[1])*Q[2]-Q[1]*W[2]+W[1]*W[2])*Q[4]+(std::pow(Q[1],2)-
-                                              2*Q[1]*W[1]+std::pow(W[1],2))*Q[5];
-
         vec(5, 0) = -1*vec5FirstTop/vec345FirstBottom +
-                    (vec5SecondTopFirst+(vec5SecondTopSecondTop/vec5SecondTopSecondBottom)*
-                    std::exp(vec5SecondTopSecondExpTop/vec5SecondTopSecondExpBottom))/
+                    (vec5SecondTopFirst+(vec5SecondTopSecondTop/vec5SecondTopSecondBottom))*vec345Exp/
                     (2*vec345SecondBottom);
 
         return vec;
@@ -618,7 +581,7 @@ bool testNorm(double tol) {
                   0.00138137552556848/afw::geom::PI,
                   -0.0118159430257175/afw::geom::PI,
                   0.00674319680500958/afw::geom::PI,
-                  0.00689645127785071/afw::geom::PI;
+                  -0.00689645127785071/afw::geom::PI;
 
     if (abs(zeroTruth - zeroRes) > tol) {
         return false;
@@ -635,8 +598,6 @@ void MomentsModel::makeValue() {
     alpha = makeAlpha(Q, W);
     beta = makeBeta(Q, W);
     norm = Norm::computeValue(Q, W);
-    std::cout << "norm " << norm << std::endl;
-    std::cout << "beta " << beta << std::endl;
 
     double zero = Q(0, 0)*norm;
     FirstMoment one = zero*alpha;
@@ -662,26 +623,17 @@ MomentsModel::Jacobian MomentsModel::computeJacobian() {
 
     // Calculate the gradient along the first moment
     Moments zerothGrad;
-    for (size_t i=0; i < 5; ++i) {
-        // the first term in the equation is only needed for the derivative
-        // with respect to Q_0, otherwise the term always is zero
-        float accumulator = 0;
-        if (i == 0) {
-            accumulator += beta.determinant()*norm;
-        }
 
-        accumulator += Q[0]*norm*(betaXGrad[i]*beta(1,1) + beta(0,0)*betaYGrad[i] - 2*beta(1,0)*betaXYGrad[i]);
-
-        accumulator += Q[0]*beta.determinant()*normGrad[i];
-
-        zerothGrad(i,0) = 2*afw::geom::PI*accumulator;
-    }
+    // the first term in the equation is only needed for the derivative
+    // with respect to Q_0, otherwise the term always is zero
+    zerothGrad = Q[0]*normGrad;
+    zerothGrad[0] += norm;
 
     // Calculate the gradient along the two components of the first moment
     Moments firstX, firstY;
 
-    firstX = alpha(0, 0)*zerothGrad + value(0, 0)*alphaXGrad;
-    firstY = alpha(1, 0)*zerothGrad + value(0, 0)*alphaYGrad;
+    firstX = alpha[0]*zerothGrad + value[0]*alphaXGrad;
+    firstY = alpha[1]*zerothGrad + value[0]*alphaYGrad;
 
     // Calculate the gradient along each of the components of the second
     // moment
@@ -689,10 +641,10 @@ MomentsModel::Jacobian MomentsModel::computeJacobian() {
 
     Moments secondX, secondXY, secondY;
 
-    secondX = modBeta(0, 0)*normGrad + value(0, 0)*(betaXGrad + 2*alpha(0, 0)*alphaXGrad);
-    secondXY = modBeta(0, 1)*normGrad + 
-               value(0, 0)*(betaXYGrad + 2*(alphaXGrad*alpha(1, 0) +alphaYGrad*alpha(0, 0)));
-    secondY = modBeta(1, 1)*normGrad + value(0, 0)*(betaYGrad + 2*alpha(1, 0)*alphaYGrad);
+    secondX = modBeta(0, 0)*zerothGrad + value[0]*(betaXGrad + 2*alpha(0, 0)*alphaXGrad);
+    secondXY = modBeta(0, 1)*zerothGrad + 
+               value[0]*(betaXYGrad + 2*(alphaXGrad*alpha(1, 0) +alphaYGrad*alpha(0, 0)));
+    secondY = modBeta(1, 1)*zerothGrad + value[0]*(betaYGrad + 2*alpha(1, 0)*alphaYGrad);
 
     // Build the result and return it
     Jacobian result;
