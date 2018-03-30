@@ -46,12 +46,6 @@ std::tuple<Moments, Moments> buildTestMoments(){
     return std::make_tuple(Q, W);
 }
 
-SecondMoment extractSecond(Moments const & M) {
-    SecondMoment s;
-    s << M(3), M(4), M(4), M(5);
-    return s; 
-}
-
 struct AlphaX {
     static double computeValue(Moments const & Q, Moments const & W) {
         double valueTop = std::pow(Q[4],2)*W[1]+(std::pow(W[4],2)-W[3]*W[5])*Q[1]-(Q[2]*W[4]-W[2]*W[4]+W[1]*W[5])*Q[3]+
@@ -60,14 +54,12 @@ struct AlphaX {
         return valueTop/valueBottom;
     }
 
-    static Moments computeGradient(Moments const & Q, Moments const & W) {
+    static Moments computeGradient(Moments const & Q, Moments const & W, double muBottom, double sigBottom) {
         Moments vec;
         vec(0, 0) = 0;
-        vec(1, 0) = -1*(Q[5]*W[3]-Q[4]*W[4]-std::pow(W[4],2)+W[3]*W[5])/
-                    (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+        vec(1, 0) = -1*(Q[5]*W[3]-Q[4]*W[4]-std::pow(W[4],2)+W[3]*W[5])/muBottom;
 
-        vec(2, 0) = (Q[4]*W[3]-Q[3]*W[4])/
-                    (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+        vec(2, 0) = (Q[4]*W[3]-Q[3]*W[4])/muBottom;
 
         double vec3Top = W[2]*std::pow(W[4],3)+W[1]*W[3]*std::pow(W[5],2)-(Q[2]*W[4]-W[2]*W[4])*std::pow(Q[4],2)-
                          (Q[1]*W[3]-W[1]*W[3])*std::pow(Q[5],2)+(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[1]-
@@ -77,14 +69,7 @@ struct AlphaX {
                          (std::pow(W[4],2)-2*W[3]*W[5])*Q[1]+(Q[2]*W[3]-W[2]*W[3]+Q[1]*W[4]-
                          W[1]*W[4])*Q[4])*Q[5]-(W[2]*W[3]*W[4]+W[1]*std::pow(W[4],2))*W[5];
 
-        double vec3Bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+
-                            std::pow(W[3],2)*std::pow(W[5],2)+2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+
-                            (std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+
-                            4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-2*((Q[3]+W[3])*std::pow(Q[4],2)+
-                            W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+
-                            2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
-        vec(3, 0) = vec3Top/vec3Bottom;
+        vec(3, 0) = vec3Top/sigBottom;
 
         double vec4Top = W[2]*W[3]*std::pow(W[4],2)-W[1]*std::pow(W[4],3)+(Q[2]*W[3]-W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*std::pow(Q[4],2)+
                          (std::pow(W[4],3)-W[3]*W[4]*W[5])*Q[1]-(W[3]*std::pow(W[4],2)-std::pow(W[3],2)*W[5])*Q[2]+
@@ -95,29 +80,14 @@ struct AlphaX {
                          (Q[2]*W[3]-W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[3]-2*(Q[1]*W[3]-
                          W[1]*W[3])*Q[4])*Q[5]-(W[2]*std::pow(W[3],2)-W[1]*W[3]*W[4])*W[5];
 
-        double vec4Bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+
-                            std::pow(W[3],2)*std::pow(W[5],2)+2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+
-                            (std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+
-                            4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-2*((Q[3]+W[3])*std::pow(Q[4],2)+
-                            W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+
-                            2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
-        vec(4, 0) = -1*vec4Top/vec4Bottom;
+        vec(4, 0) = -1*vec4Top/sigBottom;
 
         double vec5Top = (Q[2]*W[4]-W[2]*W[4])*std::pow(Q[3],2)+(Q[1]*W[3]-W[1]*W[3])*std::pow(Q[4],2)+
                          (Q[2]*W[3]*W[4]-W[2]*W[3]*W[4]-Q[1]*std::pow(W[4],2)+W[1]*std::pow(W[4],2))*Q[3]-
                          (Q[2]*std::pow(W[3],2)-W[2]*std::pow(W[3],2)-Q[1]*W[3]*W[4]+W[1]*W[3]*W[4]+
                           (Q[2]*W[3]-W[2]*W[3]+Q[1]*W[4]-W[1]*W[4])*Q[3])*Q[4];
 
-        double vec5Bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+
-                            std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)+2*(3*std::pow(W[4],2)-Q[3]*W[5]-
-                            W[3]*W[5])*std::pow(Q[4],2)+(std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-
-                            2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-
-                            W[3]*W[4]*W[5])*Q[4]-2*((Q[3]+W[3])*std::pow(Q[4],2)+W[3]*std::pow(W[4],2)-
-                            std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+
-                            2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
-        vec(5, 0) = -1*vec5Top/vec5Bottom;
+        vec(5, 0) = -1*vec5Top/sigBottom;
         return vec;
     }
 };
@@ -132,29 +102,20 @@ struct AlphaY {
         return valueTop/valueBottom;
     }
 
-    static Moments computeGradient(Moments const & Q, Moments const & W) {
+    static Moments computeGradient(Moments const & Q, Moments const & W, double muBottom, double sigBottom) {
         Moments vec;
         vec(0, 0) = 0;
 
-        vec(1, 0) = (Q[4]*W[5] - Q[5]*W[4])/
-                    (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+        vec(1, 0) = (Q[4]*W[5] - Q[5]*W[4])/muBottom;
 
-        vec(2, 0) = (Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])/
-                    (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+        vec(2, 0) = (Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])/muBottom;
 
         double vec3Top = (Q[2]*W[5]-W[2]*W[5])*std::pow(Q[4],2)+(Q[1]*W[4]-W[1]*W[4])*std::pow(Q[5],2)+
                          (Q[2]*W[4]*W[5]-W[2]*W[4]*W[5]-Q[1]*std::pow(W[5],2)+W[1]*std::pow(W[5],2))*Q[4]-
                          (Q[2]*std::pow(W[4],2)-W[2]*std::pow(W[4],2)-Q[1]*W[4]*W[5]+W[1]*W[4]*W[5]+
                          (Q[2]*W[4]-W[2]*W[4]+Q[1]*W[5]-W[1]*W[5])*Q[4])*Q[5];
 
-        double vec3Bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+
-                            std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)+2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+
-                            (std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+
-                            4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-
-                            2*((Q[3]+W[3])*std::pow(Q[4],2)+W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+
-                            (std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
-        vec(3, 0) = -1*vec3Top/vec3Bottom;
+        vec(3, 0) = -1*vec3Top/sigBottom;
 
         double vec4Top = W[2]*std::pow(W[4],3)+W[1]*W[3]*std::pow(W[5],2)-(Q[2]*W[4]-W[2]*W[4]+Q[1]*W[5]-W[1]*W[5])*std::pow(Q[4],2)+
                          (std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[1]-(std::pow(W[4],3)-W[3]*W[4]*W[5])*Q[2]+
@@ -165,14 +126,7 @@ struct AlphaY {
                          W[2]*W[4]+Q[1]*W[5]-W[1]*W[5])*Q[3]-2*(Q[1]*W[4]-W[1]*W[4])*Q[4])*Q[5]-
                          (W[2]*W[3]*W[4]+W[1]*std::pow(W[4],2))*W[5];
 
-        double vec4Bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+
-                            std::pow(W[3],2)*std::pow(W[5],2)+2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+
-                            (std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+
-                            4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-2*((Q[3]+W[3])*std::pow(Q[4],2)+
-                            W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+
-                            2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
-        vec(4, 0) = vec4Top/vec4Bottom;
+        vec(4, 0) = vec4Top/sigBottom;
 
         double vec5Top = W[2]*W[3]*std::pow(W[4],2)-W[1]*std::pow(W[4],3)+(Q[2]*W[5]-W[2]*W[5])*std::pow(Q[3],2)+
                          (Q[1]*W[4]-W[1]*W[4])*std::pow(Q[4],2)+(std::pow(W[4],3)-W[3]*W[4]*W[5])*Q[1]-
@@ -182,14 +136,7 @@ struct AlphaY {
                          (2*std::pow(W[4],2)-W[3]*W[5])*Q[1]+(Q[2]*W[4]-W[2]*W[4]+Q[1]*W[5]-
                          W[1]*W[5])*Q[3])*Q[4]-(W[2]*std::pow(W[3],2)-W[1]*W[3]*W[4])*W[5];
 
-        double vec5Bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+
-                            std::pow(W[3],2)*std::pow(W[5],2)+2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+
-                            (std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+
-                            4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-2*((Q[3]+W[3])*std::pow(Q[4],2)+
-                            W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+
-                            2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
-        vec(5, 0) = -1*vec5Top/vec5Bottom;
+        vec(5, 0) = -1*vec5Top/sigBottom;
         return vec;
     }
 };
@@ -200,32 +147,26 @@ struct BetaX {
                (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
     }
 
-    static Moments computeGradient(Moments const & Q, Moments const & W) {
+    static Moments computeGradient(Moments const & Q, Moments const & W, double sigBottom) {
         Moments vec;
 
         vec(0, 0) = 0;
         vec(1, 0) = 0;
         vec(2, 0) = 0;
 
-        double bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)+
-                        2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+(std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-
-                        2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-
-                        2*((Q[3]+W[3])*std::pow(Q[4],2)+W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-
-                        2*W[3]*W[5])*Q[3]+2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
         double vec3Top = std::pow(Q[5],2)*std::pow(W[3],2)+std::pow(Q[4],2)*std::pow(W[4],2)+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(W[3],2)*std::pow(W[5],2)+
                          2*(std::pow(W[4],3)-W[3]*W[4]*W[5])*Q[4]-2*(Q[4]*W[3]*W[4]+W[3]*std::pow(W[4],2)-std::pow(W[3],2)*W[5])*Q[5];
 
-        vec(3, 0) = vec3Top/bottom;
+        vec(3, 0) = vec3Top/sigBottom;
 
         double vec4Top = 2*(std::pow(Q[4],2)*W[3]*W[4]-(std::pow(W[4],3)-W[3]*W[4]*W[5])*Q[3]-(Q[3]*std::pow(W[4],2)-W[3]*std::pow(W[4],2)+
                          std::pow(W[3],2)*W[5])*Q[4]-(Q[4]*std::pow(W[3],2)-Q[3]*W[3]*W[4])*Q[5]);
 
-        vec(4, 0) = vec4Top/bottom;
+        vec(4, 0) = vec4Top/sigBottom;
 
         double vec5Top = std::pow(Q[4],2)*std::pow(W[3],2)-2*Q[3]*Q[4]*W[3]*W[4]+std::pow(Q[3],2)*std::pow(W[4],2);
 
-        vec(5, 0) = vec5Top/bottom;
+        vec(5, 0) = vec5Top/sigBottom;
 
         return vec;
     }
@@ -237,34 +178,28 @@ struct BetaXY {
                (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
     }
 
-    static Moments computeGradient(Moments const & Q, Moments const & W) {
+    static Moments computeGradient(Moments const & Q, Moments const & W, double sigBottom) {
         Moments vec;
 
         vec(0, 0) = 0;
         vec(1, 0) = 0;
         vec(2, 0) = 0;
 
-        double bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)+
-                        2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+(std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-
-                        2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-
-                        2*((Q[3]+W[3])*std::pow(Q[4],2)+W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-
-                        2*W[3]*W[5])*Q[3]+2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
         double vec3Top = std::pow(Q[5],2)*W[3]*W[4]+std::pow(Q[4],2)*W[4]*W[5]+(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[4]-
                          (std::pow(W[4],3)-W[3]*W[4]*W[5]+(std::pow(W[4],2)+W[3]*W[5])*Q[4])*Q[5];
 
-        vec(3, 0) = vec3Top/bottom;
+        vec(3, 0) = vec3Top/sigBottom;
 
         double vec4Top = std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(W[3],2)*std::pow(W[5],2)+(std::pow(W[4],2)+W[3]*W[5])*std::pow(Q[4],2)-(std::pow(W[4],2)*W[5]-
                          W[3]*std::pow(W[5],2))*Q[3]+2*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-(2*Q[4]*W[3]*W[4]+
                          W[3]*std::pow(W[4],2)-std::pow(W[3],2)*W[5]-(std::pow(W[4],2)+W[3]*W[5])*Q[3])*Q[5];
 
-        vec(4, 0) = vec4Top/bottom;
+        vec(4, 0) = vec4Top/sigBottom;
 
         double vec5Top = std::pow(Q[4],2)*W[3]*W[4]+std::pow(Q[3],2)*W[4]*W[5]-(std::pow(W[4],3)-W[3]*W[4]*W[5])*Q[3]+(W[3]*std::pow(W[4],2)-
                          std::pow(W[3],2)*W[5]-(std::pow(W[4],2)+W[3]*W[5])*Q[3])*Q[4];
 
-        vec(5, 0) = vec5Top/bottom;
+        vec(5, 0) = vec5Top/sigBottom;
 
         return vec;
     }
@@ -276,32 +211,26 @@ struct BetaY {
             (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
     }
 
-    static Moments computeGradient(Moments const & Q, Moments const & W) {
+    static Moments computeGradient(Moments const & Q, Moments const & W, double sigBottom) {
         Moments vec;
 
         vec(0, 0) = 0;
         vec(1, 0) = 0;
         vec(2, 0) = 0;
 
-        double bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)+
-                        2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+(std::pow(Q[3],2)+2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-
-                        2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-
-                        2*((Q[3]+W[3])*std::pow(Q[4],2)+W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-
-                        2*W[3]*W[5])*Q[3]+2*(Q[3]*W[4]+W[3]*W[4])*Q[4])*Q[5];
-
         double vec3Top = std::pow(Q[5],2)*std::pow(W[4],2)-2*Q[4]*Q[5]*W[4]*W[5]+std::pow(Q[4],2)*std::pow(W[5],2);
 
-        vec(3, 0) = vec3Top/bottom;
+        vec(3, 0) = vec3Top/sigBottom;
 
         double vec4Top = 2*(std::pow(Q[4],2)*W[4]*W[5]+(std::pow(W[4],2)*W[5]-Q[3]*std::pow(W[5],2)-W[3]*std::pow(W[5],2))*Q[4]-(Q[4]*std::pow(W[4],2)+
                          std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[5]);
 
-        vec(4, 0) = vec4Top/bottom;
+        vec(4, 0) = vec4Top/sigBottom;
 
         double vec5Top = std::pow(Q[4],2)*std::pow(W[4],2)+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)-
                          2*(std::pow(W[4],2)*W[5]-W[3]*std::pow(W[5],2))*Q[3]+2*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4];
 
-        vec(5, 0) = vec5Top/bottom;
+        vec(5, 0) = vec5Top/sigBottom;
 
         return vec;
     }
@@ -429,14 +358,28 @@ MomentsModel::FirstMoment makeAlpha(Moments const & Q, Moments const & W) {
     return MomentsModel::FirstMoment(x, y);
 };
 
+auto makeAlphaGradDivisors(Moments const & Q, Moments const & W) {
+    double muBottom = (std::pow(Q[4],2)-(Q[3]+W[3])*Q[5]+2*Q[4]*W[4]+std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5]);
+    double sigBottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+
+                       std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)+
+                       2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+(std::pow(Q[3],2)+
+                       2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-2*(std::pow(W[4],2)*W[5]-W[3]*
+                       std::pow(W[5],2))*Q[3]+4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-
+                       2*((Q[3]+W[3])*std::pow(Q[4],2)+W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-
+                       std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+2*(Q[3]*W[4]+
+                       W[3]*W[4])*Q[4])*Q[5];
+    return std::make_tuple(muBottom, sigBottom);
+}
+
 auto makeAlphaGrad(Moments const & Q, Moments const & W) {
-    Moments x = AlphaX::computeGradient(Q, W);
-    Moments y = AlphaY::computeGradient(Q, W);
+    double muBottom, sigBottom;
+    std::tie(muBottom, sigBottom) = makeAlphaGradDivisors(Q, W);
+
+    Moments x = AlphaX::computeGradient(Q, W, muBottom, sigBottom);
+    Moments y = AlphaY::computeGradient(Q, W, muBottom, sigBottom);
 
     return std::make_tuple(x, y);
 }
-
-
 
 MomentsModel::SecondMoment makeBeta(Moments const & Q, Moments const & W) {
     double x = BetaX::computeValue(Q, W);
@@ -453,9 +396,22 @@ MomentsModel::SecondMoment makeBeta(Moments const & Q, Moments const & W) {
     return beta;
 }
 
+double makeBetaGradDivisor(Moments const & Q, Moments const & W) {
+     double bottom = std::pow(Q[4],4)+4*std::pow(Q[4],3)*W[4]+std::pow(W[4],4)-2*W[3]*std::pow(W[4],2)*W[5]+
+                        std::pow(Q[3],2)*std::pow(W[5],2)+std::pow(W[3],2)*std::pow(W[5],2)+
+                        2*(3*std::pow(W[4],2)-Q[3]*W[5]-W[3]*W[5])*std::pow(Q[4],2)+(std::pow(Q[3],2)+
+                        2*Q[3]*W[3]+std::pow(W[3],2))*std::pow(Q[5],2)-2*(std::pow(W[4],2)*W[5]-
+                        W[3]*std::pow(W[5],2))*Q[3]+4*(std::pow(W[4],3)-Q[3]*W[4]*W[5]-W[3]*W[4]*W[5])*Q[4]-
+                        2*((Q[3]+W[3])*std::pow(Q[4],2)+W[3]*std::pow(W[4],2)-std::pow(Q[3],2)*W[5]-
+                        std::pow(W[3],2)*W[5]+(std::pow(W[4],2)-2*W[3]*W[5])*Q[3]+2*(Q[3]*W[4]+W[3]*W[4])*
+                        Q[4])*Q[5];
+    return bottom;
+}
+
 auto makeBetaGrad(Moments const & Q, Moments const & W) {
-    return std::make_tuple(BetaX::computeGradient(Q, W), BetaXY::computeGradient(Q, W),
-                           BetaY::computeGradient(Q, W));
+    double bottom = makeBetaGradDivisor(Q, W);
+    return std::make_tuple(BetaX::computeGradient(Q, W, bottom), BetaXY::computeGradient(Q, W, bottom),
+                           BetaY::computeGradient(Q, W, bottom));
 }
 
 bool approxEqual(Moments const & first, Moments const & second, double tol=1e-6){
@@ -473,7 +429,9 @@ bool testAlphaX(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = AlphaX::computeValue(Q, W);
-    Moments firstRes = AlphaX::computeGradient(Q, W);
+    double muBottom, sigBottom;
+    std::tie(muBottom, sigBottom) = makeAlphaGradDivisors(Q, W);
+    Moments firstRes = AlphaX::computeGradient(Q, W, muBottom, sigBottom);
     double zeroTruth = 4.00033545790003;
     Moments firstTruth;
     firstTruth << 0,
@@ -492,7 +450,9 @@ bool testAlphaY(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = AlphaY::computeValue(Q, W);
-    Moments firstRes = AlphaY::computeGradient(Q, W);
+    double muBottom, sigBottom;
+    std::tie(muBottom, sigBottom) = makeAlphaGradDivisors(Q, W);
+    Moments firstRes = AlphaY::computeGradient(Q, W, muBottom, sigBottom);
     double zeroTruth = 3.05300234820530;
     Moments firstTruth;
     firstTruth << 0,
@@ -512,7 +472,8 @@ bool testBetaX(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = BetaX::computeValue(Q, W);
-    Moments firstRes = BetaX::computeGradient(Q, W);
+    double bottom = makeBetaGradDivisor(Q, W);
+    Moments firstRes = BetaX::computeGradient(Q, W, bottom);
     double zeroTruth = 1.11103656491110;
     Moments firstTruth;
     firstTruth << 0,
@@ -532,7 +493,8 @@ bool testBetaXY(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = BetaXY::computeValue(Q, W);
-    Moments firstRes = BetaXY::computeGradient(Q, W);
+    double bottom = makeBetaGradDivisor(Q, W);
+    Moments firstRes = BetaXY::computeGradient(Q, W, bottom);
     double zeroTruth = 0.543777255954378;
     Moments firstTruth;
     firstTruth << 0,
@@ -552,7 +514,8 @@ bool testBetaY(double tol) {
     Moments Q, W;
     std::tie(Q, W) = buildTestMoments();
     double zeroRes = BetaY::computeValue(Q, W);
-    Moments firstRes = BetaY::computeGradient(Q, W);
+    double bottom = makeBetaGradDivisor(Q, W);
+    Moments firstRes = BetaY::computeGradient(Q, W, bottom);
     double zeroTruth = 1.91680644079168;
     Moments firstTruth;
     firstTruth << 0,
