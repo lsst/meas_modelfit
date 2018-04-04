@@ -57,6 +57,46 @@ private:
     SecondMoment beta;
 };
 
+class ShapePrior {
+public:
+    using Moments = MomentsModel::Moments;
+    using SecondMoment = MomentsModel::SecondMoment;
+
+    virtual void at(SecondMoment second, double flux) = 0;
+
+    virtual double computeLogProbability() const = 0;
+
+    virtual Moments computeLogDerivative() const = 0;
+};
+
+
+class ClassificationPrior {
+public:
+    virtual double pStar(double flux) const = 0;
+};
+
+class StarGalaxyPrior : ShapePrior {
+public:
+    void at(SecondMoment second, double flux) override;
+
+    double computeLogProbability() const override;
+
+    double Moments computeLogDerivative() const override;
+
+    StarGalaxyPrior(std::unique_ptr<ShapePrior> galaxyPrior, std::unique_ptr<ClassificationPrior> classify,
+                    SecondMoment psfMoments, double psfFuzz):_galaxy(std::move(galaxyPrior)), 
+                                                             _classification(std::move(classify)),
+                                                             _psf(psfMoments), _psfFuzz(psfFuzz){
+    };
+
+
+private:
+        std::unique_ptr<ShapePrior> _galaxy;
+        std::unique_ptr<ClassificationPrior _classification;
+        SecondMoment _psf;
+        double _psfFuzz;
+};
+
 // Tests for classes in anonymous name spaces
 bool testNorm(double tol=1e-6);
 
