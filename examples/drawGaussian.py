@@ -86,6 +86,7 @@ def display(tg, nSamples=5000, strategy=None):
     p.draw()
     return p
 
+
 if __name__ == "__main__":
     if True:
         angle = -numpy.pi/6

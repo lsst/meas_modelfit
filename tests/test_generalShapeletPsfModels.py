@@ -23,7 +23,6 @@
 import unittest
 import numpy
 import os
-import time
 
 import lsst.utils.tests
 import lsst.shapelet
@@ -182,6 +181,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()
