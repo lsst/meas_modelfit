@@ -29,7 +29,6 @@
 #include "lsst/afw/geom/SkyWcs.h"
 #include "lsst/afw/image/Calib.h"
 #include "lsst/afw/geom/AffineTransform.h"
-#include "lsst/afw/geom/XYTransform.h"
 
 #include "lsst/meas/modelfit/common.h"
 
