@@ -1,5 +1,5 @@
-from builtins import range
 #!/usr/bin/env python
+from builtins import range
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -24,7 +24,6 @@ from builtins import range
 
 import numpy
 from matplotlib import pyplot
-import mpl_toolkits.mplot3d
 
 import lsst.meas.modelfit
 
@@ -32,13 +31,13 @@ rng = lsst.afw.math.Random()
 
 
 def makeRandomMixture(nDim, nComponents, df=float("inf")):
-    l = lsst.meas.modelfit.Mixture[nDim].ComponentList()
+    componentList = lsst.meas.modelfit.Mixture[nDim].ComponentList()
     for i in range(nComponents):
         mu = numpy.random.randn(nDim)*4
         a = numpy.random.randn(nDim+1, nDim)
         sigma = numpy.dot(a.transpose(), a) + numpy.identity(nDim)
-        l.append(lsst.meas.modelfit.Mixture[nDim].Component(numpy.random.rand(), mu, sigma))
-    return lsst.meas.modelfit.Mixture[nDim](l, df)
+        componentList.append(lsst.meas.modelfit.Mixture[nDim].Component(numpy.random.rand(), mu, sigma))
+    return lsst.meas.modelfit.Mixture[nDim](componentList, df)
 
 
 def initPlot1(fig, x, w):
@@ -101,6 +100,7 @@ def finishPlot2(initData):
     axes2.set_ylim(-15, 15)
     axes2.set_xlim(-15, 15)
 
+
 initPlot = {1: initPlot1, 2: initPlot2}
 plotMixture = {1: plotMixture1, 2: plotMixture2}
 finishPlot = {1: finishPlot1, 2: finishPlot2}
@@ -139,10 +139,10 @@ def doTestEM(inMixture, label, nSamples=100000, scatter=0.8, nIterations=50, imp
 
 
 if __name__ == "__main__":
-    #m1 = makeRandomMixture(1, 3)
-    #doTestEM(m1, "3x Gaussian, 1-d, uniform weights")
-    #m2 = makeRandomMixture(1, 3, df=4)
-    #doTestEM(m2, "3x Student's T, 1-d, uniform weights")
+    # m1 = makeRandomMixture(1, 3)
+    # doTestEM(m1, "3x Gaussian, 1-d, uniform weights")
+    # m2 = makeRandomMixture(1, 3, df=4)
+    # doTestEM(m2, "3x Student's T, 1-d, uniform weights")
     m3 = makeRandomMixture(2, 3)
     doTestEM(m3, "3x Gaussian, 2-d, uniform weights")
     doTestEM(m3, "3x Gaussian, 2-d, importance weights", importanceSample=True)

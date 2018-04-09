@@ -218,7 +218,7 @@ def reconstructCModel(exposure, record, config):
     # fetch the aperture corrections, if this fails set it to one
     try:
         apCorr = record.get("{}_apCorr".format(baseName))
-    except:
+    except Exception:
         print("Warning, problem retrieving aperture correction, using a value"
               " of 1")
         apCorr = 1

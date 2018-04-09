@@ -47,13 +47,13 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
 
     @staticmethod
     def makeRandomMixture(nDim, nComponents, df=float("inf")):
-        l = []
+        componentList = []
         for i in range(nComponents):
             mu = numpy.random.randn(nDim)*4
             a = numpy.random.randn(nDim+1, nDim)
             sigma = numpy.dot(a.transpose(), a) + numpy.identity(nDim)
-            l.append(lsst.meas.modelfit.Mixture.Component(numpy.random.rand(), mu, sigma))
-        return lsst.meas.modelfit.Mixture(nDim, l, df)
+            componentList.append(lsst.meas.modelfit.Mixture.Component(numpy.random.rand(), mu, sigma))
+        return lsst.meas.modelfit.Mixture(nDim, componentList, df)
 
     def testSwig(self):
         """Test that Swig correctly wrapped tricky things.
@@ -75,8 +75,8 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         self.assertFloatsAlmostEqual(m1.evaluate(m1[1], numpy.array([0.0], dtype=float)),
                                      m1[1].weight*(2.0*numpy.pi)**(-0.5))
         self.assertFloatsAlmostEqual(m1.evaluate(numpy.array([0.0], dtype=float)),
-                                     (m1[0].weight*numpy.exp(-0.125)/2 + m1[1].weight + m1[2].weight)
-                                     * (2.0*numpy.pi)**(-0.5))
+                                     (m1[0].weight*numpy.exp(-0.125)/2 + m1[1].weight + m1[2].weight) *
+                                     (2.0*numpy.pi)**(-0.5))
 
     def testGaussian(self):
         """Test that our implementations for a single-component Gaussian are correct.
@@ -88,8 +88,8 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         x = numpy.random.randn(20, 2)
         p = numpy.zeros(20, dtype=float)
         m.evaluate(x, p)
-        z = ((x - mu)[:, numpy.newaxis, :] * fisher[numpy.newaxis, :, :, ]
-             * (x - mu)[:, :, numpy.newaxis]).sum(axis=2).sum(axis=1)
+        z = ((x - mu)[:, numpy.newaxis, :] * fisher[numpy.newaxis, :, :, ] *
+             (x - mu)[:, :, numpy.newaxis]).sum(axis=2).sum(axis=1)
         self.assertFloatsAlmostEqual(p, numpy.exp(-0.5*z) / numpy.linalg.det(2*numpy.pi*sigma)**0.5)
         x = numpy.zeros((1000000, 2), dtype=float)
         m.draw(self.rng, x)
@@ -185,6 +185,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()

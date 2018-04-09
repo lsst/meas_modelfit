@@ -65,6 +65,7 @@ def fitPsfImage(image, fitters):
         n += 1
     printResidualStatistics(image, msf, n)
 
+
 ctrls = [
     lsst.meas.modelfit.GeneralPsfFitterControl(),
     lsst.meas.modelfit.GeneralPsfFitterControl(),
@@ -98,6 +99,7 @@ def main(filenames):
         image.getArray()[:, :] /= image.getArray()[:, :].max()
         print(filename)
         fitPsfImage(image, fitters)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
