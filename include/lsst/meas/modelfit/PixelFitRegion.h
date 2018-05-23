@@ -26,6 +26,7 @@
 
 #include "lsst/pex/config.h"
 #include "lsst/meas/modelfit/common.h"
+#include "lsst/afw/geom/Point.h"
 #include "lsst/afw/image/Mask.h"
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/geom/ellipses.h"

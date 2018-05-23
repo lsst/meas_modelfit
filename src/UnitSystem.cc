@@ -26,6 +26,7 @@
 #include "boost/format.hpp"
 #include <memory>
 
+#include "lsst/afw/geom/transformFactory.h"
 #include "lsst/meas/modelfit/UnitSystem.h"
 
 namespace lsst { namespace meas { namespace modelfit {

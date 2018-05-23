@@ -27,6 +27,7 @@
 
 #include "boost/math/special_functions/gamma.hpp"
 
+#include "lsst/afw/geom/Angle.h"
 #include "lsst/pex/exceptions.h"
 #include "lsst/meas/modelfit/SemiEmpiricalPrior.h"
 #include "lsst/meas/modelfit/detail/polynomials.h"
