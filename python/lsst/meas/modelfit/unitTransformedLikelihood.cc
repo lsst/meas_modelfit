@@ -24,7 +24,6 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/pex/config/python.h"
@@ -55,11 +54,6 @@ PYBIND11_PLUGIN(unitTransformedLikelihood) {
     py::module::import("lsst.meas.modelfit.unitSystem");
 
     py::module mod("unitTransformedLikelihood");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     PyUnitTransformedLikelihoodControl clsControl(mod, "UnitTransformedLikelihoodControl");
     LSST_DECLARE_CONTROL_FIELD(clsControl, UnitTransformedLikelihoodControl, usePixelWeights);

@@ -23,7 +23,6 @@
 
 #include "pybind11/pybind11.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/meas/modelfit/Sampler.h"
@@ -48,11 +47,6 @@ PYBIND11_PLUGIN(sampler) {
     py::module::import("lsst.meas.modelfit.likelihood");
 
     py::module mod("sampler");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     PySamplingObjective clsSamplingObjective(mod, "SamplingObjective");
     clsSamplingObjective.def("getParameterDim", &SamplingObjective::getParameterDim);

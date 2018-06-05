@@ -26,7 +26,6 @@
 
 #include <sstream>  // Python.h must come before even system headers
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 #include "ndarray/eigen.h"
 
@@ -137,11 +136,6 @@ PYBIND11_PLUGIN(mixture) {
     py::module::import("lsst.afw.math");
 
     py::module mod("mixture");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     auto clsMixtureComponent = declareMixtureComponent(mod);
     auto clsMixtureUpdateRestriction = declareMixtureUpdateRestriction(mod);

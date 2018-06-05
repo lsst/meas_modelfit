@@ -23,7 +23,6 @@
 
 #include "pybind11/pybind11.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/pex/config/python.h"
@@ -214,11 +213,6 @@ PYBIND11_PLUGIN(cmodel) {
     py::module::import("lsst.meas.modelfit.unitTransformedLikelihood");
 
     py::module mod("cmodel");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     declareCModelStageControl(mod);
     auto clsControl = declareCModelControl(mod);

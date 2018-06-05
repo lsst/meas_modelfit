@@ -24,7 +24,6 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/meas/modelfit/Model.h"
@@ -47,11 +46,6 @@ PYBIND11_PLUGIN(model) {
     py::module::import("lsst.meas.modelfit.unitSystem");
 
     py::module mod("model");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     PyModel cls(mod, "Model");
 
