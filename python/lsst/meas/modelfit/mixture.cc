@@ -110,7 +110,11 @@ static PyMixture declareMixture(py::module &mod) {
                                 Mixture::evaluate,
             "x"_a, "p"_a);
     cls.def("evaluateComponents", &Mixture::evaluateComponents, "x"_a, "p"_a);
-    cls.def("evaluateDerivatives", &Mixture::evaluateDerivatives, "x"_a, "gradient"_a, "hessian"_a);
+    cls.def("evaluateDerivatives",
+            (void (Mixture::*)(ndarray::Array<Scalar const, 1, 1> const &,
+                               ndarray::Array<Scalar,1,1> const &,
+                               ndarray::Array<Scalar,2,1> const &) const)
+            &Mixture::evaluateDerivatives, "x"_a, "gradient"_a, "hessian"_a);
     cls.def("draw", &Mixture::draw, "rng"_a, "x"_a);
     cls.def("updateEM", (void (Mixture::*)(ndarray::Array<Scalar const, 2, 1> const &,
                                            ndarray::Array<Scalar const, 1, 0> const &, Scalar, Scalar)) &
