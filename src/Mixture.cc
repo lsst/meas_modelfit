@@ -214,35 +214,69 @@ void Mixture::evaluateComponents(
 }
 
 void Mixture::evaluateDerivatives(
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & x,
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & gradient,
+    Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> & hessian
+) const {
+    evaluateDerivativesImpl(x, gradient, &hessian);
+}
+
+void Mixture::evaluateDerivatives(
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & x,
+    Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & gradient
+) const {
+    evaluateDerivativesImpl<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>,
+                            Eigen::Matrix<Scalar, Eigen::Dynamic, 1>,
+                            Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>> (x, gradient, nullptr, false);
+}
+
+void Mixture::evaluateDerivatives(
     ndarray::Array<Scalar const,1,1> const & x,
     ndarray::Array<Scalar,1,1> const & gradient,
     ndarray::Array<Scalar,2,1> const & hessian
 ) const {
+    auto hessianEigen = hessian.asEigen();
+    auto gradientEigen = gradient.asEigen();
+    evaluateDerivativesImpl(x.asEigen(), gradientEigen, &hessianEigen);
+}
+
+template <typename A, typename B, typename C>
+void Mixture::evaluateDerivativesImpl(
+    A const & x,
+    B & gradient,
+    C * hessian,
+    bool computeHessian
+) const {
     LSST_THROW_IF_NE(
-        x.getSize<0>(), _dim,
+        x.size(), _dim,
         pex::exceptions::LengthError,
         "Size of x array (%d) does not dimension of mixture (%d)"
     );
     LSST_THROW_IF_NE(
-        gradient.getSize<0>(), _dim,
+        gradient.rows(), _dim,
         pex::exceptions::LengthError,
         "Size of gradient array (%d) does not dimension of mixture (%d)"
     );
-    LSST_THROW_IF_NE(
-        hessian.getSize<0>(), _dim,
-        pex::exceptions::LengthError,
-        "Number of rows of hessian array (%d) does not dimension of mixture (%d)"
-    );
-    LSST_THROW_IF_NE(
-        hessian.getSize<1>(), _dim,
-        pex::exceptions::LengthError,
-        "Number of columns of hessian array (%d) does not dimension of mixture (%d)"
-    );
-    gradient.deep() = 0.0;
-    hessian.deep() = 0.0;
+    gradient.setZero();
+
+    if (computeHessian) {
+        size_t rows = hessian->rows();
+        size_t columns = hessian->cols();
+        LSST_THROW_IF_NE(
+            rows, _dim,
+            pex::exceptions::LengthError,
+            "Number of rows of hessian array (%d) does not dimension of mixture (%d)"
+        );
+        LSST_THROW_IF_NE(
+            columns, _dim,
+            pex::exceptions::LengthError,
+            "Number of columns of hessian array (%d) does not dimension of mixture (%d)"
+        );
+        hessian->setZero();
+    }
     Eigen::MatrixXd sigmaInv(_dim, _dim);
     for (ComponentList::const_iterator i = _components.begin(); i != _components.end(); ++i) {
-        _workspace = x.asEigen() - i->_mu;
+        _workspace = x - i->_mu;
         i->_sigmaLLT.matrixL().solveInPlace(_workspace);
         Scalar z = _workspace.squaredNorm();
         i->_sigmaLLT.matrixL().adjoint().solveInPlace(_workspace);
@@ -251,13 +285,17 @@ void Mixture::evaluateDerivatives(
         i->_sigmaLLT.matrixL().adjoint().solveInPlace(sigmaInv);
         Scalar f = _evaluate(z) / i->_sqrtDet;
         if (_isGaussian) {
-            gradient.asEigen() += -i->weight * f * _workspace;
-            hessian.asEigen() += i->weight * f * (_workspace * _workspace.adjoint() - sigmaInv);
+            gradient += -i->weight * f * _workspace;
+            if (computeHessian) {
+                *hessian += i->weight * f * (_workspace * _workspace.adjoint() - sigmaInv);
+            }
         } else {
             double v = (_dim + _df) / (_df + z);
             double u = v*v*(1.0 + 2.0/(_dim + _df));
-            gradient.asEigen() += -i->weight * f * v * _workspace;
-            hessian.asEigen() += i->weight * f * (u * _workspace * _workspace.adjoint() - v * sigmaInv);
+            gradient += -i->weight * f * v * _workspace;
+            if (computeHessian) {
+                *hessian += i->weight * f * (u * _workspace * _workspace.adjoint() - v * sigmaInv);
+            }
         }
     }
 }

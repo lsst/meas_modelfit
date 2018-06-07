@@ -28,6 +28,7 @@
 
 #include "Eigen/Cholesky"
 #include "Eigen/StdVector"
+#include "Eigen/Dense"
 
 #include "ndarray.h"
 
@@ -249,6 +250,30 @@ public:
     ) const;
 
     /**
+     *  @brief Evaluate the derivative of the distribution at the given point
+     *
+     *  @param[in]  x         point to evaluate the derivative, with size equal to the number of dimensions
+     *  @param[in]  gradient  1st derivative array to fill
+     *  @param[in]  hessian   2nd derivative array to fill
+     */
+    void evaluateDerivatives(
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & x,
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & gradient,
+        Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> & hessian
+    ) const;
+
+    /**
+     *  @brief Evaluate the derivative of the distribution at the given point
+     *
+     *  @param[in]  x         point to evaluate the derivative, with size equal to the number of dimensions
+     *  @param[in]  gradient  1st derivative array to fill
+     */
+   void evaluateDerivatives(
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & x,
+        Eigen::Matrix<Scalar, Eigen::Dynamic, 1> & gradient
+    ) const;
+
+    /**
      *  @brief Draw random variates from the distribution.
      *
      *  @param[in,out] rng random number generator
@@ -347,6 +372,11 @@ protected:
     virtual void write(OutputArchiveHandle & handle) const;
 
 private:
+    template <typename A, typename B, typename C>
+    void evaluateDerivativesImpl(A const & x,
+                                 B & gradient,
+                                 C * hessian,
+                                 bool computeHessian = true) const;
 
     template <typename Derived>
     Scalar _computeZ(Component const & component, Eigen::MatrixBase<Derived> const & x) const {
