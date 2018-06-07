@@ -362,7 +362,7 @@ Optimizer::Optimizer(
 }
 
 void Optimizer::_computeDerivatives() {
-    ndarray::EigenView<Scalar,2,-2> resDer(_residualDerivative);
+    auto resDer = _residualDerivative.asEigen();
     resDer.setZero();
     _next.parameters.deep() = _current.parameters;
     if (!_objective->differentiateResiduals(_current.parameters, _residualDerivative)) {
