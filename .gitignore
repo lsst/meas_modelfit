@@ -18,6 +18,7 @@ version.py
 .cache
 .pytest_cache
 pytest_session.txt
+.coverage
 tests/.cache/*
 tests/.tests
 tests/reference/bvn
