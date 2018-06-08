@@ -283,22 +283,24 @@ public:
         Scalar oAlpha = parameters[1] * _normalization;
         Scalar iR2 = parameters[2] * parameters[2];
         Scalar oR2 = parameters[3] * parameters[3];
-        residuals.asEigen<Eigen::ArrayXpr>() = _data
-            - (iAlpha/iR2)*(_arg/iR2).exp()
-            - (oAlpha/oR2)*(_arg/oR2).exp();
+        auto argEigen = _arg.asEigen<Eigen::ArrayXpr>();
+        residuals.asEigen<Eigen::ArrayXpr>() = _data.asEigen<Eigen::ArrayXpr>()
+            - (iAlpha/iR2)*(argEigen/iR2).exp()
+            - (oAlpha/oR2)*(argEigen/oR2).exp();
     }
 
     virtual bool differentiateResiduals(
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,2,-2> const & derivatives
     ) const {
-        ndarray::EigenView<Scalar,2,-2,Eigen::ArrayXpr> d(derivatives);
+        auto d = derivatives.asEigen<Eigen::ArrayXpr>();
+        auto argEigen = _arg.asEigen<Eigen::ArrayXpr>();
         Scalar iR2 = parameters[2] * parameters[2];
         Scalar oR2 = parameters[3] * parameters[3];
-        d.col(0) = - (_normalization/iR2)*(_arg/iR2).exp();
-        d.col(1) = - (_normalization/oR2)*(_arg/oR2).exp();
-        d.col(2) = -2.0*d.col(0)*(_arg/iR2 + 1.0)*parameters[0]/parameters[2];
-        d.col(3) = -2.0*d.col(1)*(_arg/oR2 + 1.0)*parameters[1]/parameters[3];
+        d.col(0) = - (_normalization/iR2)*(argEigen/iR2).exp();
+        d.col(1) = - (_normalization/oR2)*(argEigen/oR2).exp();
+        d.col(2) = -2.0*d.col(0)*(argEigen/iR2 + 1.0)*parameters[0]/parameters[2];
+        d.col(3) = -2.0*d.col(1)*(argEigen/oR2 + 1.0)*parameters[1]/parameters[3];
         return true;
     }
 
@@ -325,8 +327,8 @@ private:
     Scalar _maxRadius;
     Scalar _minRadiusDiff;
     Scalar _normalization;
-    ndarray::EigenView<Scalar,1,1,Eigen::ArrayXpr> _data;
-    ndarray::EigenView<Scalar,1,1,Eigen::ArrayXpr> _arg;
+    ndarray::Array<Scalar,1,1> _data;  // ArrayXpr
+    ndarray::Array<Scalar,1,1> _arg;  // ArrayXpr
 };
 
 } // anonymous

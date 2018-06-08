@@ -613,9 +613,7 @@ struct WeightSums {
     ) : fluxInner(0.0), fluxVar(0.0), norm(0.0)
     {
         assert(modelMatrix.getSize<1>() == 1);
-        run(modelMatrix.transpose()[0].asEigen<Eigen::ArrayXpr>(),
-            data.asEigen<Eigen::ArrayXpr>(),
-            variance.asEigen<Eigen::ArrayXpr>());
+        run(modelMatrix.transpose()[0], data, variance);
     }
 
     WeightSums(
@@ -624,20 +622,21 @@ struct WeightSums {
         ndarray::Array<Pixel const,1,1> const & variance
     ) : fluxInner(0.0), fluxVar(0.0), norm(0.0)
     {
-        run(model.asEigen<Eigen::ArrayXpr>(),
-            data.asEigen<Eigen::ArrayXpr>(),
-            variance.asEigen<Eigen::ArrayXpr>());
+        run(model, data, variance);
     }
 
     void run(
-        ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & model,
-        ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & data,
-        ndarray::EigenView<Pixel const,1,1,Eigen::ArrayXpr> const & variance
+        ndarray::Array<Pixel const,1,1> const & model,
+        ndarray::Array<Pixel const,1,1> const & data,
+        ndarray::Array<Pixel const,1,1> const & variance
     ) {
-        double w = model.sum();
-        double wd = (model*data).sum();
-        double ww = model.square().sum();
-        double wwv = (model.square()*variance).sum();
+        auto modelEigen = model.asEigen<Eigen::ArrayXpr>();
+        auto dataEigen = data.asEigen<Eigen::ArrayXpr>();
+        auto varianceEigen = variance.asEigen<Eigen::ArrayXpr>();
+        double w = modelEigen.sum();
+        double wd = (modelEigen*dataEigen).sum();
+        double ww = modelEigen.square().sum();
+        double wwv = (modelEigen.square()*varianceEigen).sum();
         norm = w/ww;
         fluxInner = wd*norm;
         fluxVar = wwv*norm*norm;
