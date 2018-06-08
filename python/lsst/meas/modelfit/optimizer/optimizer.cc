@@ -23,7 +23,6 @@
 
 #include "pybind11/pybind11.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/pex/config/python.h"
@@ -174,11 +173,6 @@ PYBIND11_PLUGIN(optimizer) {
     py::module::import("lsst.meas.modelfit.priors");
 
     py::module mod("optimizer");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     auto clsObjective = declareOptimizerObjective(mod);
     auto clsControl = declareOptimizerControl(mod);

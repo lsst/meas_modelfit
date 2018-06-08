@@ -23,7 +23,6 @@
 
 #include "pybind11/pybind11.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/pex/config/python.h"
@@ -115,11 +114,6 @@ PYBIND11_PLUGIN(priors) {
     py::module::import("lsst.meas.modelfit.mixture");
 
     py::module mod("priors");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     declarePrior(mod);
     declareMixturePrior(mod);

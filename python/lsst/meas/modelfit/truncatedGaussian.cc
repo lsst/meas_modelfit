@@ -24,7 +24,6 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
@@ -69,11 +68,6 @@ PYBIND11_PLUGIN(truncatedGaussian) {
     py::module::import("lsst.afw.math");
 
     py::module mod("truncatedGaussian");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     PyTruncatedGaussian cls(mod, "TruncatedGaussian");
     py::enum_<TruncatedGaussian::SampleStrategy>(cls, "SampleStrategy")

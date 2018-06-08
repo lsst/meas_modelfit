@@ -327,8 +327,8 @@ private:
     Scalar _maxRadius;
     Scalar _minRadiusDiff;
     Scalar _normalization;
-    ndarray::Array<Scalar,1,1> _data;  // ArrayXpr
-    ndarray::Array<Scalar,1,1> _arg;  // ArrayXpr
+    ndarray::Array<Scalar,1,1> _data;
+    ndarray::Array<Scalar,1,1> _arg;
 };
 
 } // anonymous

@@ -23,7 +23,6 @@
 
 #include "pybind11/pybind11.h"
 
-#include "numpy/arrayobject.h"
 #include "ndarray/pybind11.h"
 
 #include "lsst/meas/modelfit/Likelihood.h"
@@ -42,11 +41,6 @@ PYBIND11_PLUGIN(likelihood) {
     py::module::import("lsst.meas.modelfit.model");
 
     py::module mod("likelihood");
-
-    if (_import_array() < 0) {
-        PyErr_SetString(PyExc_ImportError, "numpy.core.multiarray failed to import");
-        return nullptr;
-    }
 
     PyLikelihood cls(mod, "Likelihood");
     cls.def("getDataDim", &Likelihood::getDataDim);
