@@ -368,7 +368,7 @@ void Model::transformParameters(
         i->transform(transform.geometric).inPlace();
     }
     readEllipses(ellipses.begin(), nonlinear.begin(), fixed.begin());
-    amplitudes.asEigen() *= transform.flux;
+    ndarray::asEigenMatrix(amplitudes) *= transform.flux;
 }
 
 

@@ -180,7 +180,7 @@ void Mixture::evaluate(
     ndarray::Array<Scalar const,2,1>::Iterator ix = x.begin(), xEnd = x.end();
     ndarray::Array<Scalar,1,0>::Iterator ip = p.begin();
     for (; ix != xEnd; ++ix, ++ip) {
-        *ip = evaluate(ix->asEigen());
+        *ip = evaluate(ndarray::asEigenMatrix(*ix));
     }
 }
 
@@ -208,7 +208,7 @@ void Mixture::evaluateComponents(
     for (; ix != xEnd; ++ix, ++ip) {
         ndarray::Array<Scalar,2,1>::Reference::Iterator jp = ip->begin();
         for (const_iterator j = begin(); j != end(); ++j, ++jp) {
-            *jp = evaluate(*j, ix->asEigen());
+            *jp = evaluate(*j, ndarray::asEigenMatrix(*ix));
         }
     }
 }
@@ -242,7 +242,7 @@ void Mixture::evaluateDerivatives(
     hessian.deep() = 0.0;
     Eigen::MatrixXd sigmaInv(_dim, _dim);
     for (ComponentList::const_iterator i = _components.begin(); i != _components.end(); ++i) {
-        _workspace = x.asEigen() - i->_mu;
+        _workspace = ndarray::asEigenMatrix(x) - i->_mu;
         i->_sigmaLLT.matrixL().solveInPlace(_workspace);
         Scalar z = _workspace.squaredNorm();
         i->_sigmaLLT.matrixL().adjoint().solveInPlace(_workspace);
@@ -251,13 +251,14 @@ void Mixture::evaluateDerivatives(
         i->_sigmaLLT.matrixL().adjoint().solveInPlace(sigmaInv);
         Scalar f = _evaluate(z) / i->_sqrtDet;
         if (_isGaussian) {
-            gradient.asEigen() += -i->weight * f * _workspace;
-            hessian.asEigen() += i->weight * f * (_workspace * _workspace.adjoint() - sigmaInv);
+            ndarray::asEigenMatrix(gradient) += -i->weight * f * _workspace;
+            ndarray::asEigenMatrix(hessian) += i->weight * f * (_workspace * _workspace.adjoint() - sigmaInv);
         } else {
             double v = (_dim + _df) / (_df + z);
             double u = v*v*(1.0 + 2.0/(_dim + _df));
-            gradient.asEigen() += -i->weight * f * v * _workspace;
-            hessian.asEigen() += i->weight * f * (u * _workspace * _workspace.adjoint() - v * sigmaInv);
+            ndarray::asEigenMatrix(gradient) += -i->weight * f * v * _workspace;
+            ndarray::asEigenMatrix(hessian) +=
+                    i->weight * f * (u * _workspace * _workspace.adjoint() - v * sigmaInv);
         }
     }
 }
@@ -282,9 +283,9 @@ void Mixture::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x
             _workspace[j] = rng.gaussian();
         }
         if (_isGaussian) {
-            ix->asEigen() = component._mu + (component._sigmaLLT.matrixL() * _workspace);
+            ndarray::asEigenMatrix(*ix) = component._mu + (component._sigmaLLT.matrixL() * _workspace);
         } else {
-            ix->asEigen() = component._mu
+            ndarray::asEigenMatrix(*ix) = component._mu
                 + std::sqrt(_df/rng.chisq(_df)) * (component._sigmaLLT.matrixL() * _workspace);
         }
     }
@@ -313,7 +314,7 @@ void Mixture::updateEM(
     for (int i = 0; i < nSamples; ++i) {
         Scalar pSum = 0.0;
         for (int k = 0; k < nComponents; ++k) {
-            double z = _computeZ(_components[k], x[i].asEigen());
+            double z = _computeZ(_components[k], ndarray::asEigenMatrix(x[i]));
             pSum += p(i, k) = _components[k].weight*_evaluate(z)/_components[k]._sqrtDet;
             if (!_isGaussian) {
                 gamma(i, k) = (_df + _dim) / (_df + z);
@@ -326,11 +327,11 @@ void Mixture::updateEM(
             double weight = _components[k].weight = p.col(k).sum();
             Vector & mu = _components[k]._mu;
             Matrix sigma = Matrix::Zero(_dim, _dim);
-            mu = (p.col(k).adjoint() * x.asEigen()) / weight;
+            mu = (p.col(k).adjoint() * ndarray::asEigenMatrix(x)) / weight;
             restriction.restrictMu(mu);
             Vector dx = Vector::Zero(_dim);
             for (int i = 0; i < nSamples; ++i) {
-                dx = x[i].asEigen() - mu;
+                dx = ndarray::asEigenMatrix(x[i]) - mu;
                 sigma.selfadjointView<Eigen::Lower>().rankUpdate(dx, p(i, k));
             }
             sigma /= weight;
@@ -343,12 +344,12 @@ void Mixture::updateEM(
             Vector & mu = _components[k]._mu;
             Matrix sigma = Matrix::Zero(_dim, _dim);
             mu =
-                ((p.col(k).array() * gamma.col(k).array()).matrix().adjoint() * x.asEigen())
+                ((p.col(k).array() * gamma.col(k).array()).matrix().adjoint() * ndarray::asEigenMatrix(x))
                 / p.col(k).dot(gamma.col(k));
             restriction.restrictMu(mu);
             Vector dx = Vector::Zero(_dim);
             for (int i = 0; i < nSamples; ++i) {
-                dx = x[i].asEigen() - mu;
+                dx = ndarray::asEigenMatrix(x[i]) - mu;
                 sigma.selfadjointView<Eigen::Lower>().rankUpdate(dx, gamma(i, k) * p(i, k));
             }
             sigma /= weight;

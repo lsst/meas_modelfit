@@ -283,8 +283,8 @@ public:
         Scalar oAlpha = parameters[1] * _normalization;
         Scalar iR2 = parameters[2] * parameters[2];
         Scalar oR2 = parameters[3] * parameters[3];
-        auto argEigen = _arg.asEigen<Eigen::ArrayXpr>();
-        residuals.asEigen<Eigen::ArrayXpr>() = _data.asEigen<Eigen::ArrayXpr>()
+        auto argEigen = ndarray::asEigenArray(_arg);
+        ndarray::asEigenArray(residuals) = ndarray::asEigenArray(_data)
             - (iAlpha/iR2)*(argEigen/iR2).exp()
             - (oAlpha/oR2)*(argEigen/oR2).exp();
     }
@@ -293,8 +293,8 @@ public:
         ndarray::Array<Scalar const,1,1> const & parameters,
         ndarray::Array<Scalar,2,-2> const & derivatives
     ) const {
-        auto d = derivatives.asEigen<Eigen::ArrayXpr>();
-        auto argEigen = _arg.asEigen<Eigen::ArrayXpr>();
+        auto d = ndarray::asEigenArray(derivatives);
+        auto argEigen = ndarray::asEigenArray(_arg);
         Scalar iR2 = parameters[2] * parameters[2];
         Scalar oR2 = parameters[3] * parameters[3];
         d.col(0) = - (_normalization/iR2)*(argEigen/iR2).exp();
@@ -422,8 +422,10 @@ void DoubleShapeletPsfApproxAlgorithm::fitShapelets(
         fitMatrix[ndarray::view()(n1 - 1, n1 + n2 - 2)] = outerMatrix[ndarray::view()(1, n2)];
     }
     // Subtract the zeroth-order model from the data.
-    data.asEigen() -= innerMatrix.asEigen().col(0)*innerComponent.getCoefficients()[0];
-    data.asEigen() -= outerMatrix.asEigen().col(0)*outerComponent.getCoefficients()[0];
+    ndarray::asEigenMatrix(data) -=
+            ndarray::asEigenMatrix(innerMatrix).col(0) * innerComponent.getCoefficients()[0];
+    ndarray::asEigenMatrix(data) -=
+            ndarray::asEigenMatrix(outerMatrix).col(0) * outerComponent.getCoefficients()[0];
     // Finaly, we can do the fit, and stuff the fitted coefficients back into the result.
     auto lstsq = afw::math::LeastSquares::fromDesignMatrix(fitMatrix, data);
     if (n1 > 1) {

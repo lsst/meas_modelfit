@@ -96,12 +96,12 @@ static PyMixture declareMixture(py::module &mod) {
     cls.def("evaluate",
             [](Mixture const &self, MixtureComponent const &component,
                ndarray::Array<Scalar, 1, 0> const &array) -> Scalar {
-                return self.evaluate(component, array.asEigen());
+                return self.evaluate(component, ndarray::asEigenMatrix(array));
             },
             "component"_a, "x"_a);
     cls.def("evaluate",
             [](Mixture const &self, ndarray::Array<Scalar, 1, 0> const &array) -> Scalar {
-                return self.evaluate(array.asEigen());
+                return self.evaluate(ndarray::asEigenMatrix(array));
             },
             "x"_a);
     cls.def("evaluate", (void (Mixture::*)(ndarray::Array<Scalar const, 2, 1> const &,
