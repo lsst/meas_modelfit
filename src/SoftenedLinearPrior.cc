@@ -137,7 +137,7 @@ Scalar SoftenedLinearPrior::evaluate(
     ndarray::Array<Scalar const,1,1> const & nonlinear,
     ndarray::Array<Scalar const,1,1> const & amplitudes
 ) const {
-    if ((amplitudes.asEigen<Eigen::ArrayXpr>() < 0.0).any()) {
+    if ((ndarray::asEigenArray(amplitudes) < 0.0).any()) {
         return 0.0;
     } else {
         return _evaluate(nonlinear);
@@ -164,7 +164,7 @@ void SoftenedLinearPrior::evaluateDerivatives(
     amplitudeHessian.deep() = 0.0;
     crossHessian.deep() = 0.0;
 
-    if ((amplitudes.asEigen<Eigen::ArrayXpr>() < 0.0).any()) {
+    if ((ndarray::asEigenArray(amplitudes) < 0.0).any()) {
         return;
     }
 
@@ -233,8 +233,8 @@ Scalar SoftenedLinearPrior::maximize(
     ndarray::Array<Scalar,1,1> const & amplitudes
 ) const {
     TruncatedGaussian tg = TruncatedGaussian::fromSeriesParameters(0.0, gradient, hessian);
-    amplitudes.asEigen() = tg.maximize();
-    return tg.evaluateLog()(amplitudes.asEigen()) - std::log(_evaluate(nonlinear));
+    ndarray::asEigenMatrix(amplitudes) = tg.maximize();
+    return tg.evaluateLog()(ndarray::asEigenMatrix(amplitudes)) - std::log(_evaluate(nonlinear));
 }
 
 void SoftenedLinearPrior::drawAmplitudes(

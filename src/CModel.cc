@@ -52,8 +52,8 @@ Pixel computeFluxInFootprint(
     // We're only using the flux to provide a scale for the problem that eases some numerical problems,
     // so for objects with SNR < 1, it's probably better to use the RMS than the flux, since the latter
     // can be negative.
-    Pixel a = flat.asEigen<Eigen::ArrayXpr>().sum();
-    Pixel b = std::sqrt(flat.asEigen<Eigen::ArrayXpr>().square().sum());
+    Pixel a = ndarray::asEigenArray(flat).sum();
+    Pixel b = std::sqrt(ndarray::asEigenArray(flat).square().sum());
     return std::max(a, b);
 }
 
@@ -630,9 +630,9 @@ struct WeightSums {
         ndarray::Array<Pixel const,1,1> const & data,
         ndarray::Array<Pixel const,1,1> const & variance
     ) {
-        auto modelEigen = model.asEigen<Eigen::ArrayXpr>();
-        auto dataEigen = data.asEigen<Eigen::ArrayXpr>();
-        auto varianceEigen = variance.asEigen<Eigen::ArrayXpr>();
+        auto modelEigen = ndarray::asEigenArray(model);
+        auto dataEigen = ndarray::asEigenArray(data);
+        auto varianceEigen = ndarray::asEigenArray(variance);
         double w = modelEigen.sum();
         double wd = (modelEigen*dataEigen).sum();
         double ww = modelEigen.square().sum();
@@ -806,11 +806,11 @@ public:
             result.likelihood->getUnweightedData()
         );
         data.amplitudes.deep() = lstsq.getSolution();
-        result.objective
-            = 0.5*(
-                result.likelihood->getUnweightedData().asEigen().cast<Scalar>()
-                - modelMatrix.asEigen().cast<Scalar>() * lstsq.getSolution().asEigen()
-            ).squaredNorm();
+        result.objective =
+                0.5 * (ndarray::asEigenMatrix(result.likelihood->getUnweightedData()).cast<Scalar>() -
+                       ndarray::asEigenMatrix(modelMatrix).cast<Scalar>() *
+                               ndarray::asEigenMatrix(data.amplitudes))
+                              .squaredNorm();
 
         WeightSums sums(modelMatrix, result.likelihood->getUnweightedData(), result.likelihood->getVariance());
 
@@ -878,12 +878,15 @@ public:
             model, fixed, expData.fitSys, expData.position,
             exposure, footprint, expData.psf, UnitTransformedLikelihoodControl(false)
         );
-        ndarray::Array<Pixel,2,-1> modelMatrix = makeModelMatrix(likelihood, nonlinear);
-        Vector gradient = -(modelMatrix.asEigen().adjoint() *
-            likelihood.getUnweightedData().asEigen()).cast<Scalar>();
+        auto unweightedData = likelihood.getUnweightedData();
+        ndarray::Array<Pixel, 2, -1> modelMatrix = makeModelMatrix(likelihood, nonlinear);
+        Vector gradient = -(ndarray::asEigenMatrix(modelMatrix).adjoint() *
+                            ndarray::asEigenMatrix(unweightedData))
+                                   .cast<Scalar>();
         Matrix hessian = Matrix::Zero(likelihood.getAmplitudeDim(), likelihood.getAmplitudeDim());
-        hessian.selfadjointView<Eigen::Lower>().rankUpdate(modelMatrix.asEigen().adjoint().cast<Scalar>());
-        Scalar q0 = 0.5*likelihood.getUnweightedData().asEigen().squaredNorm();
+        hessian.selfadjointView<Eigen::Lower>().rankUpdate(
+                ndarray::asEigenMatrix(modelMatrix).adjoint().cast<Scalar>());
+        Scalar q0 = 0.5 * ndarray::asEigenMatrix(unweightedData).squaredNorm();
 
         // Use truncated Gaussian to compute the maximum-likelihood amplitudes with the constraint
         // that all amplitude must be >= 0
@@ -904,8 +907,8 @@ public:
         // on the two components, which means the actual uncertainty is neither Gaussian nor symmetric,
         // which is a lot harder to compute and a lot harder to use.
         ndarray::Array<Pixel,1,1> model = ndarray::allocate(likelihood.getDataDim());
-        model.asEigen() = modelMatrix.asEigen() * amplitudes.cast<Pixel>();
-        WeightSums sums(model, likelihood.getUnweightedData(), likelihood.getVariance());
+        ndarray::asEigenMatrix(model) = ndarray::asEigenMatrix(modelMatrix) * amplitudes.cast<Pixel>();
+        WeightSums sums(model, unweightedData, likelihood.getVariance());
         result.fluxInner = sums.fluxInner;
         result.fluxSigma = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
         result.flags[CModelResult::FAILED] = false;

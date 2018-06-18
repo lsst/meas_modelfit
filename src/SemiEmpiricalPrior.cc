@@ -350,7 +350,7 @@ Scalar SemiEmpiricalPrior::evaluate(
     ndarray::Array<Scalar const,1,1> const & nonlinear,
     ndarray::Array<Scalar const,1,1> const & amplitudes
 ) const {
-    if ((amplitudes.asEigen<Eigen::ArrayXpr>() < 0.0).any()) {
+    if ((ndarray::asEigenArray(amplitudes) < 0.0).any()) {
         return 0.0;
     } else {
         return _impl->eta.p(nonlinear[0], nonlinear[1]) * _impl->lnR.p(nonlinear[2]);
@@ -373,7 +373,7 @@ void SemiEmpiricalPrior::evaluateDerivatives(
     amplitudeHessian.deep() = 0.0;
     crossHessian.deep() = 0.0;
 
-    if ((amplitudes.asEigen<Eigen::ArrayXpr>() < 0.0).any()) {
+    if ((ndarray::asEigenArray(amplitudes) < 0.0).any()) {
         return;
     }
 
@@ -420,8 +420,8 @@ Scalar SemiEmpiricalPrior::maximize(
     ndarray::Array<Scalar,1,1> const & amplitudes
 ) const {
     TruncatedGaussian tg = TruncatedGaussian::fromSeriesParameters(0.0, gradient, hessian);
-    amplitudes.asEigen() = tg.maximize();
-    return tg.evaluateLog()(amplitudes.asEigen()) -
+    ndarray::asEigenMatrix(amplitudes) = tg.maximize();
+    return tg.evaluateLog()(ndarray::asEigenMatrix(amplitudes)) -
         std::log(_impl->eta.p(nonlinear[0], nonlinear[1]) * _impl->lnR.p(nonlinear[2]));
 }
 

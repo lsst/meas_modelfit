@@ -292,10 +292,12 @@ public:
                 }
             }
         }
-        nonlinearHessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(nonlinearGradient.asEigen());
-        nonlinearHessian.asEigen() = nonlinearHessian.asEigen().selfadjointView<Eigen::Lower>();
-        nonlinearGradient.asEigen() *= p;
-        nonlinearHessian.asEigen() *= p;
+        auto nonlinearHessianMatrixMap = ndarray::asEigenMatrix(nonlinearHessian);
+        auto nonlinearGradientMatrixMap = ndarray::asEigenMatrix(nonlinearGradient);
+        nonlinearHessianMatrixMap.selfadjointView<Eigen::Lower>().rankUpdate(nonlinearGradientMatrixMap);
+        nonlinearHessianMatrixMap = nonlinearHessianMatrixMap.selfadjointView<Eigen::Lower>();
+        nonlinearGradientMatrixMap *= p;
+        nonlinearHessianMatrixMap *= p;
         amplitudeGradient.deep() = 0.0;
         amplitudeHessian.deep() = 0.0;
         crossHessian.deep() = 0.0;
@@ -377,7 +379,7 @@ GeneralPsfFitter::GeneralPsfFitter(GeneralPsfFitterControl const & ctrl) :
         int dim = shapelet::computeSize(i->second.order);
         PTR(shapelet::MultiShapeletBasis) basis = std::make_shared<shapelet::MultiShapeletBasis>(dim);
         ndarray::Array<double,2,2> matrix = ndarray::allocate(dim, dim);
-        matrix.asEigen().setIdentity();
+        ndarray::asEigenMatrix(matrix).setIdentity();
         basis->addComponent(1.0, i->second.order, matrix);
         basisVector.push_back(basis);
 
@@ -631,7 +633,7 @@ public:
             _builders[i](modelMatrix[ndarray::view()(amplitudeOffset, amplitudeEnd)], _ellipses[i]);
             amplitudeOffset = amplitudeEnd;
         }
-        modelMatrix.asEigen() /= _sigma;
+        ndarray::asEigenMatrix(modelMatrix) /= _sigma;
     }
 
 private:

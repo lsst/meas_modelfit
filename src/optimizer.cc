@@ -46,7 +46,7 @@ void OptimizerObjective::fillObjectiveValueGrid(
     ndarray::Array<Scalar,1,1> residuals = ndarray::allocate(dataSize);
     for (int i = 0, n = output.getSize<0>(); i < n; ++i) {
         computeResiduals(grid[i], residuals);
-        output[i] = 0.5*residuals.asEigen().squaredNorm();
+        output[i] = 0.5*ndarray::asEigenMatrix(residuals).squaredNorm();
         if (hasPrior()) {
             Scalar prior = computePrior(grid[i]);
             output[i] -= std::log(prior);
@@ -77,9 +77,10 @@ public:
         int nlDim = _likelihood->getNonlinearDim();
         int ampDim = _likelihood->getAmplitudeDim();
         _likelihood->computeModelMatrix(_modelMatrix, parameters[ndarray::view(0, nlDim)]);
-        residuals.asEigen() = _modelMatrix.asEigen().cast<Scalar>()
-            * parameters[ndarray::view(nlDim, nlDim+ampDim)].asEigen();
-        residuals.asEigen() -= _likelihood->getData().asEigen().cast<Scalar>();
+        ndarray::asEigenMatrix(residuals) = ndarray::asEigenMatrix(_modelMatrix).cast<Scalar>()
+            * ndarray::asEigenMatrix(parameters[ndarray::view(nlDim, nlDim+ampDim)]);
+        auto likelihoodData = _likelihood->getData();
+        ndarray::asEigenMatrix(residuals) -= ndarray::asEigenMatrix(likelihoodData).cast<Scalar>();
     }
 
     bool hasPrior() const override { return static_cast<bool>(_prior); }
@@ -310,10 +311,12 @@ void OptimizerHistoryRecorder::fillObjectiveModelGrid(
     Vector gradient(parameters.getSize());
     Matrix hessian(parameters.getSize(), parameters.getSize());
     Vector s(parameters.getSize());
-    Vector current = record.get(parameters).asEigen();
+    // currentNdArray must be a local variable because it owns the data in `current`
+    auto currentNdArray = record.get(parameters);
+    Vector current = ndarray::asEigenMatrix(currentNdArray);
     unpackDerivatives(record, gradient, hessian);
     for (int i = 0, n = output.getSize<0>(); i < n; ++i) {
-        s = grid[i].asEigen() - current;
+        s = ndarray::asEigenMatrix(grid[i]) - current;
         output[i] = q + s.dot(gradient + 0.5*hessian*s);
     }
 }
@@ -350,7 +353,7 @@ Optimizer::Optimizer(
     _current.parameters.deep() = parameters;
     _next.parameters.deep() = parameters;
     _objective->computeResiduals(_current.parameters, _current.residuals);
-    _current.objectiveValue = 0.5*_current.residuals.asEigen().squaredNorm();
+    _current.objectiveValue = 0.5*ndarray::asEigenMatrix(_current.residuals).squaredNorm();
     if (_objective->hasPrior()) {
         _current.priorValue = _objective->computePrior(_current.parameters);
         _current.objectiveValue -= std::log(_current.priorValue);
@@ -358,11 +361,11 @@ Optimizer::Optimizer(
     LOGL_DEBUG(trace3Logger, "Initial objective value is %g", _current.objectiveValue);
     _sr1b.setZero();
     _computeDerivatives();
-    _hessian.asEigen() = _hessian.asEigen().selfadjointView<Eigen::Lower>();
+    ndarray::asEigenMatrix(_hessian) = ndarray::asEigenMatrix(_hessian).selfadjointView<Eigen::Lower>();
 }
 
 void Optimizer::_computeDerivatives() {
-    auto resDer = _residualDerivative.asEigen();
+    auto resDer = ndarray::asEigenMatrix(_residualDerivative);
     resDer.setZero();
     _next.parameters.deep() = _current.parameters;
     if (!_objective->differentiateResiduals(_current.parameters, _residualDerivative)) {
@@ -372,7 +375,9 @@ void Optimizer::_computeDerivatives() {
                 + _ctrl.numDiffAbsStep;
             _next.parameters[n] += numDiffStep;
             _objective->computeResiduals(_next.parameters, _next.residuals);
-            resDer.col(n) = (_next.residuals.asEigen() - _current.residuals.asEigen()) / numDiffStep;
+            resDer.col(n) =
+                    (ndarray::asEigenMatrix(_next.residuals) - ndarray::asEigenMatrix(_current.residuals)) /
+                    numDiffStep;
             _next.parameters[n] = _current.parameters[n];
         }
     }
@@ -381,21 +386,22 @@ void Optimizer::_computeDerivatives() {
     if (_objective->hasPrior()) {
         _objective->differentiatePrior(_current.parameters, _gradient, _hessian);
         // objective evaluates P(x); we want -ln P(x) and associated derivatives
-        _gradient.asEigen() /= -_current.priorValue;
-        _hessian.asEigen() /= -_current.priorValue;
-        _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(_gradient.asEigen(), 1.0);
+        ndarray::asEigenMatrix(_gradient) /= -_current.priorValue;
+        ndarray::asEigenMatrix(_hessian) /= -_current.priorValue;
+        ndarray::asEigenMatrix(_hessian).selfadjointView<Eigen::Lower>().rankUpdate(
+                ndarray::asEigenMatrix(_gradient), 1.0);
     }
     if (!_ctrl.noSR1Term) {
-        _sr1jtr = resDer.adjoint() * _current.residuals.asEigen();
-        _gradient.asEigen() += _sr1jtr;
+        _sr1jtr = resDer.adjoint() * ndarray::asEigenMatrix(_current.residuals);
+        ndarray::asEigenMatrix(_gradient) += _sr1jtr;
     } else {
-        _gradient.asEigen() += resDer.adjoint() * _current.residuals.asEigen();
+        ndarray::asEigenMatrix(_gradient) += resDer.adjoint() * ndarray::asEigenMatrix(_current.residuals);
     }
-    _hessian.asEigen().selfadjointView<Eigen::Lower>().rankUpdate(resDer.adjoint(), 1.0);
+    ndarray::asEigenMatrix(_hessian).selfadjointView<Eigen::Lower>().rankUpdate(resDer.adjoint(), 1.0);
 }
 
 void Optimizer::removeSR1Term() {
-   _hessian.asEigen() -= _sr1b;
+   ndarray::asEigenMatrix(_hessian) -= _sr1b;
 }
 
 bool Optimizer::_stepImpl(
@@ -406,9 +412,9 @@ bool Optimizer::_stepImpl(
     LOG_LOGGER trace5Logger = LOG_GET("TRACE5.meas.modelfit.optimizer.Optimizer");
     LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.optimizer.Optimizer");
     _state &= ~int(STATUS);
-    if (_gradient.asEigen().lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
+    if (ndarray::asEigenMatrix(_gradient).lpNorm<Eigen::Infinity>() <= _ctrl.gradientThreshold) {
         LOGL_DEBUG(trace3Logger, "max(gradient)=%g below threshold; declaring convergence",
-                   _gradient.asEigen().lpNorm<Eigen::Infinity>());
+                   ndarray::asEigenMatrix(_gradient).lpNorm<Eigen::Infinity>());
         _state |= CONVERGED_GRADZERO;
         return false;
     }
@@ -420,8 +426,9 @@ bool Optimizer::_stepImpl(
         solveTrustRegion(
             _step, _hessian, _gradient, _trustRadius, _ctrl.trustRegionSolverTolerance
         );
-        _next.parameters.asEigen() = _current.parameters.asEigen() + _step.asEigen();
-        double stepLength = _step.asEigen().norm();
+        ndarray::asEigenMatrix(_next.parameters) =
+                ndarray::asEigenMatrix(_current.parameters) + ndarray::asEigenMatrix(_step);
+        double stepLength = ndarray::asEigenMatrix(_step).norm();
         if (std::isnan(stepLength)) {
             LOGL_DEBUG(trace3Logger, "NaN encountered in step length");
             _state |= FAILED_NAN;
@@ -456,11 +463,11 @@ bool Optimizer::_stepImpl(
             }
         }
         _objective->computeResiduals(_next.parameters, _next.residuals);
-        _next.objectiveValue += 0.5*_next.residuals.asEigen().squaredNorm();
+        _next.objectiveValue += 0.5*ndarray::asEigenMatrix(_next.residuals).squaredNorm();
         double actualChange = _next.objectiveValue - _current.objectiveValue;
-        double predictedChange = _step.asEigen().dot(
-            _gradient.asEigen() + 0.5*_hessian.asEigen()*_step.asEigen()
-        );
+        double predictedChange = ndarray::asEigenMatrix(_step).dot(ndarray::asEigenMatrix(_gradient) +
+                                                                   0.5 * ndarray::asEigenMatrix(_hessian) *
+                                                                           ndarray::asEigenMatrix(_step));
         double rho = actualChange / predictedChange;
         if (std::isnan(rho)) {
             LOGL_DEBUG(trace5Logger, "NaN encountered in rho");
@@ -479,17 +486,16 @@ bool Optimizer::_stepImpl(
             _computeDerivatives();
             if (!_ctrl.noSR1Term) {
                 _sr1v += _sr1jtr;
-                double vs = _sr1v.dot(_step.asEigen());
+                double vs = _sr1v.dot(ndarray::asEigenMatrix(_step));
                 if (vs >= (_ctrl.skipSR1UpdateThreshold * _sr1v.norm() * stepLength + 1.0)) {
                     _sr1b.selfadjointView<Eigen::Lower>().rankUpdate(_sr1v, 1.0 / vs);
                 }
-                _hessian.asEigen() += _sr1b;
+                ndarray::asEigenMatrix(_hessian) += _sr1b;
             }
-            _hessian.asEigen() = _hessian.asEigen().selfadjointView<Eigen::Lower>();
-            if (
-                rho > _ctrl.trustRegionGrowReductionRatio &&
-                (stepLength/_trustRadius) > _ctrl.trustRegionGrowStepFraction
-            ) {
+            ndarray::asEigenMatrix(_hessian) =
+                    ndarray::asEigenMatrix(_hessian).selfadjointView<Eigen::Lower>();
+            if (rho > _ctrl.trustRegionGrowReductionRatio &&
+                (stepLength / _trustRadius) > _ctrl.trustRegionGrowStepFraction) {
                 _state |= STATUS_TR_INCREASED;
                 _trustRadius *= _ctrl.trustRegionGrowFactor;
                 LOGL_DEBUG(trace5Logger, "Increasing trust radius to %g", _trustRadius);
@@ -568,17 +574,17 @@ void solveTrustRegion(
     double const r2min = r2 * (1.0 - tolerance) * (1.0 - tolerance);
     double const r2max = r2 * (1.0 + tolerance) * (1.0 + tolerance);
     int const d = g.getSize<0>();
-    Eigen::SelfAdjointEigenSolver<Matrix> eigh(F.asEigen());
+    Eigen::SelfAdjointEigenSolver<Matrix> eigh(ndarray::asEigenMatrix(F));
     double const threshold = ROOT_EPS * eigh.eigenvalues()[d - 1];
-    Vector qtg = eigh.eigenvectors().adjoint() * g.asEigen();
+    Vector qtg = eigh.eigenvectors().adjoint() * ndarray::asEigenMatrix(g);
     Vector tmp(d);
     double mu = 0.0;
     double xsn = 0.0;
     if (eigh.eigenvalues()[0] >= threshold) {
         LOGL_DEBUG(trace5Logger, "Starting with full-rank matrix");
         tmp = (eigh.eigenvalues().array().inverse() * qtg.array()).matrix();
-        x.asEigen() = -eigh.eigenvectors() * tmp;
-        xsn = x.asEigen().squaredNorm();
+        ndarray::asEigenMatrix(x) = -eigh.eigenvectors() * tmp;
+        xsn = ndarray::asEigenMatrix(x).squaredNorm();
         if (xsn <= r2max) {
             LOGL_DEBUG(trace5Logger, "Ending with unconstrained solution");
             // unconstrained solution is within the constraint; no more work to do
@@ -590,9 +596,9 @@ void solveTrustRegion(
         int n = 0;
         while (eigh.eigenvalues()[++n] < threshold);
         LOGL_DEBUG(trace5Logger, "Starting with %d zero eigenvalue(s) (of %d)", n, d);
-        if ((qtg.head(n).array() < ROOT_EPS * g.asEigen().lpNorm<Eigen::Infinity>()).all()) {
-            x.asEigen() = -eigh.eigenvectors().rightCols(n) * tmp.tail(n);
-            xsn = x.asEigen().squaredNorm();
+        if ((qtg.head(n).array() < ROOT_EPS * ndarray::asEigenMatrix(g).lpNorm<Eigen::Infinity>()).all()) {
+            ndarray::asEigenMatrix(x) = -eigh.eigenvectors().rightCols(n) * tmp.tail(n);
+            xsn = ndarray::asEigenMatrix(x).squaredNorm();
             if (xsn < r2min) {
                 // Nocedal and Wright's "Hard Case", which is actually
                 // easier: Q_1^T g is zero (where the columns of Q_1
@@ -601,15 +607,15 @@ void solveTrustRegion(
                 // and we can add a multiple of any column of Q_1 to x
                 // to get ||x|| == r.  If ||x|| > r, we can find the
                 // solution with the usual iteration by increasing \mu.
-                double tau = std::sqrt(r*r - x.asEigen().squaredNorm());
-                x.asEigen() += tau * eigh.eigenvectors().col(0);
+                double tau = std::sqrt(r*r - ndarray::asEigenMatrix(x).squaredNorm());
+                ndarray::asEigenMatrix(x) += tau * eigh.eigenvectors().col(0);
                 LOGL_DEBUG(trace5Logger, "Ending; Q_1^T g == 0, and ||x|| < r");
                 return;
             }
             LOGL_DEBUG(trace5Logger, "Continuing; Q_1^T g == 0, but ||x|| > r");
         } else {
-            x.asEigen() = -eigh.eigenvectors() * tmp;
-            xsn = x.asEigen().squaredNorm();
+            ndarray::asEigenMatrix(x) = -eigh.eigenvectors() * tmp;
+            xsn = ndarray::asEigenMatrix(x).squaredNorm();
             LOGL_DEBUG(trace5Logger, "Continuing; Q_1^T g != 0, ||x||=%f");
         }
     }
@@ -619,8 +625,8 @@ void solveTrustRegion(
         mu += xsn*(std::sqrt(xsn) / r - 1.0)
             / (qtg.array().square() / (eigh.eigenvalues().array() + mu).cube()).sum();
         tmp = ((eigh.eigenvalues().array() + mu).inverse() * qtg.array()).matrix();
-        x.asEigen() = -eigh.eigenvectors() * tmp;
-        xsn = x.asEigen().squaredNorm();
+        ndarray::asEigenMatrix(x) = -eigh.eigenvectors() * tmp;
+        xsn = ndarray::asEigenMatrix(x).squaredNorm();
     }
     LOGL_DEBUG(trace5Logger, "Ending at mu=%f, ||x||=%f, r=%f", mu, std::sqrt(xsn), r);
     return;

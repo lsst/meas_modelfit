@@ -116,8 +116,8 @@ void setupArrays(
     unweightedData.deep() = data;
     // Convert from variance to weights (1/sigma); this is actually the usual inverse-variance
     // weighting, because we implicitly square it later.
-    weights.asEigen<Eigen::ArrayXpr>() =
-        variance.asEigen<Eigen::ArrayXpr>().sqrt().inverse() * weightsMultiplier;
+    ndarray::asEigenArray(weights) =
+        ndarray::asEigenArray(variance).sqrt().inverse() * weightsMultiplier;
     if (!usePixelWeights) {
         // If we're not using per-pixel weights, we need to use a constant non-unit weight instead,
         // which we compute as the geometric mean of the per-pixel weights.  The choice of geometric
@@ -125,9 +125,9 @@ void setupArrays(
         // we average the variances or average the weights, but there's no real statistical
         // motivation for making the weights uniform (we do it to prevent model bias) and hence no
         // rigorous choice.
-        weights.deep() = std::exp(weights.asEigen<Eigen::ArrayXpr>().log().sum() / weights.getSize<0>());
+        weights.deep() = std::exp(ndarray::asEigenArray(weights).log().sum() / weights.getSize<0>());
     }
-    data.asEigen<Eigen::ArrayXpr>() *= weights.asEigen<Eigen::ArrayXpr>();
+    ndarray::asEigenArray(data) *= ndarray::asEigenArray(weights);
 }
 
 } // anonymous
@@ -264,7 +264,7 @@ void UnitTransformedLikelihood::computeModelMatrix(
         dataOffset = dataEnd;
     }
     if (doApplyWeights) {
-        modelMatrix.asEigen<Eigen::ArrayXpr>().colwise() *= _weights.asEigen<Eigen::ArrayXpr>();
+        ndarray::asEigenArray(modelMatrix).colwise() *= ndarray::asEigenArray(_weights);
     }
 }
 

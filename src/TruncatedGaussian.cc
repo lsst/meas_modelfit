@@ -308,7 +308,7 @@ TruncatedGaussianLogEvaluator::TruncatedGaussianLogEvaluator(TruncatedGaussian c
 {}
 
 Scalar TruncatedGaussianLogEvaluator::operator()(ndarray::Array<Scalar const,1,1> const & alpha) const {
-    return (*this)(alpha.asEigen());
+    return (*this)(ndarray::asEigenMatrix(alpha));
 }
 
 void TruncatedGaussianLogEvaluator::operator()(
@@ -321,14 +321,14 @@ void TruncatedGaussianLogEvaluator::operator()(
         "Size of inputs (%d) does not match size of outputs (%d)"
     );
     for (int i = 0, n = alpha.getSize<0>(); i < n; ++i) {
-        output[i] = (*this)(alpha[i].asEigen());
+        output[i] = (*this)(ndarray::asEigenMatrix(alpha[i]));
     }
 }
 
 // -------- Evaluator class ---------------------------------------------------------------------------------
 
 Scalar TruncatedGaussianEvaluator::operator()(ndarray::Array<Scalar const,1,1> const & alpha) const {
-    return (*this)(alpha.asEigen());
+    return (*this)(ndarray::asEigenMatrix(alpha));
 }
 
 void TruncatedGaussianEvaluator::operator()(
@@ -341,7 +341,7 @@ void TruncatedGaussianEvaluator::operator()(
         "Size of inputs (%d) does not match size of outputs (%d)"
     );
     for (int i = 0, n = alpha.getSize<0>(); i < n; ++i) {
-        output[i] = (*this)(alpha[i].asEigen());
+        output[i] = (*this)(ndarray::asEigenMatrix(alpha[i]));
     }
 }
 
@@ -389,8 +389,8 @@ public:
             for (int j = 0; j < _workspace.size(); ++j) {
                 _workspace[j] = rng.gaussian();
             }
-            alpha.asEigen() = _rootSigma * _workspace + _mu;
-        } while ((alpha.asEigen<Eigen::ArrayXpr>() < 0.0).any());
+            ndarray::asEigenMatrix(alpha) = _rootSigma * _workspace + _mu;
+        } while ((ndarray::asEigenArray(alpha) < 0.0).any());
         return 1.0;
     }
 
@@ -468,12 +468,12 @@ public:
             // because we'd have to undo that shift and scale to evaluate the proposal.
             alpha[j] = draw1d(rng, _Ap[j]);
         }
-        Scalar logProposal = 0.5*alpha.asEigen().squaredNorm() + _pNorm;
+        Scalar logProposal = 0.5*ndarray::asEigenMatrix(alpha).squaredNorm() + _pNorm;
         // Now that we've evaluated the proposal, we apply the scaling and shifting
-        alpha.asEigen<Eigen::ArrayXpr>() *= _rootD.array();
-        alpha.asEigen() += _mu;
+        ndarray::asEigenArray(alpha) *= _rootD.array();
+        ndarray::asEigenMatrix(alpha) += _mu;
         // Call private Evaluator base class, divide by integral (in log space)
-        Scalar logActual = (*this)(alpha.asEigen()) - _lnAf;
+        Scalar logActual = (*this)(ndarray::asEigenMatrix(alpha)) - _lnAf;
         return std::exp(logProposal - logActual);
     }
 
