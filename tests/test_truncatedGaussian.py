@@ -56,7 +56,7 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             self.assertFloatsAlmostEqual(logEvaluator(mu), tg.getLogPeakAmplitude())
             self.assertGreater(logEvaluator(mu+eps), tg.getLogPeakAmplitude())
             self.assertGreater(logEvaluator(mu-eps), tg.getLogPeakAmplitude())
-        peak = numpy.array([tg.maximize()])  # workaround NumPy automatic-scalarification
+        peak = tg.maximize()
         self.assertGreater(evaluator(peak), 0.0)
         self.assertLess(evaluator(peak+eps), evaluator(peak))
         self.assertLess(evaluator(peak-eps), evaluator(peak))
