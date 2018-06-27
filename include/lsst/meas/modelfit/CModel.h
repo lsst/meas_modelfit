@@ -234,7 +234,7 @@ struct CModelControl {
         fallbackInitialMomentsPsfFactor(1.5)
     {
         initial.nComponents = 3; // use very rough model in initial fit
-        initial.optimizer.gradientThreshold = 1E-2; // with coarse convergence criteria
+        initial.optimizer.gradientThreshold = 1E-3; // with slightly coarser convergence criteria
         initial.optimizer.minTrustRadiusThreshold = 1E-2;
         initial.usePixelWeights = true;
         dev.profileName = "luv";
