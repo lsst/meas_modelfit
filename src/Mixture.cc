@@ -282,12 +282,10 @@ void Mixture::draw(afw::math::Random & rng, ndarray::Array<Scalar,2,1> const & x
         for (int j = 0; j < _dim; ++j) {
             _workspace[j] = rng.gaussian();
         }
-        if (_isGaussian) {
-            ndarray::asEigenMatrix(*ix) = component._mu + (component._sigmaLLT.matrixL() * _workspace);
-        } else {
-            ndarray::asEigenMatrix(*ix) = component._mu
-                + std::sqrt(_df/rng.chisq(_df)) * (component._sigmaLLT.matrixL() * _workspace);
+        if (!_isGaussian) {
+            _workspace *= std::sqrt(_df/rng.chisq(_df));
         }
+        ndarray::asEigenMatrix(*ix) = component._mu + (component._sigmaLLT.matrixL() * _workspace);
     }
 }
 
