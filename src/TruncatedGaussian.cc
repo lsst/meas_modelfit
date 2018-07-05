@@ -262,7 +262,9 @@ Vector TruncatedGaussian::maximize() const {
             ++k;
         }
     }
-    if (k > 0) {
+    if (n == k) {
+        result.setZero();
+    } else if (k > 0) {
         Eigen::VectorXi indices(n);
         for (int i = 0, j1 = 0, j2 = n - k; i < n; ++i) {
             if (result[i] < 0.0) {
