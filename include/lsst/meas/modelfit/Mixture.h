@@ -336,7 +336,7 @@ public:
         return os;
     }
 
-    virtual bool isPersistable() const { return true; }
+    virtual bool isPersistable() const noexcept override { return true; }
 
 protected:
 
