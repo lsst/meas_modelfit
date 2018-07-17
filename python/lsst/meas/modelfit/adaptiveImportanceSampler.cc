@@ -42,9 +42,7 @@ using PyImportanceSamplerControl =
 using PyAdaptiveImportanceSampler =
         py::class_<AdaptiveImportanceSampler, std::shared_ptr<AdaptiveImportanceSampler>, Sampler>;
 
-PYBIND11_PLUGIN(adaptiveImportanceSampler) {
-    py::module mod("adaptiveImportanceSampler");
-
+PYBIND11_MODULE(adaptiveImportanceSampler, mod) {
     py::module::import("lsst.afw.table");
     py::module::import("lsst.afw.math");
     py::module::import("lsst.meas.modelfit.sampler");
@@ -68,9 +66,8 @@ PYBIND11_PLUGIN(adaptiveImportanceSampler) {
                                      &AdaptiveImportanceSampler::computeNormalizedPerplexity);
     clsAdaptiveImportanceSampler.def("computeEffectiveSampleSizeFraction",
                                      &AdaptiveImportanceSampler::computeEffectiveSampleSizeFraction);
-
-    return mod.ptr();
 }
+
 }
 }
 }

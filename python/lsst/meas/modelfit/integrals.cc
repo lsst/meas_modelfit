@@ -33,12 +33,11 @@ namespace meas {
 namespace modelfit {
 namespace {
 
-PYBIND11_PLUGIN(integrals) {
-    py::module mod("integrals");
+PYBIND11_MODULE(integrals, mod) {
     mod.def("phid", &detail::phid);
     mod.def("bvnu", &detail::bvnu);
-    return mod.ptr();
 }
+
 }
 }
 }

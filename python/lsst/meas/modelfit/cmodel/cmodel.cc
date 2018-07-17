@@ -203,7 +203,7 @@ static PyCModelAlgorithm declareCModelAlgorithm(py::module &mod) {
     return cls;
 }
 
-PYBIND11_PLUGIN(cmodel) {
+PYBIND11_MODULE(cmodel, mod) {
     py::module::import("lsst.afw.geom.ellipses");
     py::module::import("lsst.afw.detection");
     py::module::import("lsst.meas.modelfit.model");
@@ -212,8 +212,6 @@ PYBIND11_PLUGIN(cmodel) {
     py::module::import("lsst.meas.modelfit.pixelFitRegion");
     py::module::import("lsst.meas.modelfit.unitTransformedLikelihood");
 
-    py::module mod("cmodel");
-
     declareCModelStageControl(mod);
     auto clsControl = declareCModelControl(mod);
     declareCModelStageResult(mod);
@@ -221,9 +219,8 @@ PYBIND11_PLUGIN(cmodel) {
     auto clsAlgorithm = declareCModelAlgorithm(mod);
     clsAlgorithm.attr("Control") = clsControl;
     clsAlgorithm.attr("Result") = clsResult;
-
-    return mod.ptr();
 }
+
 }
 }
 }
