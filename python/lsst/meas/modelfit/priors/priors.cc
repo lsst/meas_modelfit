@@ -110,18 +110,15 @@ static void declareSoftenedLinearPrior(py::module &mod) {
     // virtual methods already wrapped by Prior base class
 }
 
-PYBIND11_PLUGIN(priors) {
+PYBIND11_MODULE(priors, mod) {
     py::module::import("lsst.meas.modelfit.mixture");
-
-    py::module mod("priors");
 
     declarePrior(mod);
     declareMixturePrior(mod);
     declareSemiEmpiricalPrior(mod);
     declareSoftenedLinearPrior(mod);
-
-    return mod.ptr();
 }
+
 }
 }
 }

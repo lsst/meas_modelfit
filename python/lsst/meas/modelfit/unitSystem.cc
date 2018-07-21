@@ -36,10 +36,8 @@ namespace {
 using PyUnitSystem = py::class_<UnitSystem, std::shared_ptr<UnitSystem>>;
 using PyLocalUnitTransform = py::class_<LocalUnitTransform, std::shared_ptr<LocalUnitTransform>>;
 
-PYBIND11_PLUGIN(unitSystem) {
+PYBIND11_MODULE(unitSystem, mod) {
     py::module::import("lsst.afw.image");
-
-    py::module mod("unitSystem");
 
     // Data member wrappers in this module are intentionally read-only;
     // setting them in Python should never be necessary and hence always
@@ -65,9 +63,8 @@ PYBIND11_PLUGIN(unitSystem) {
     clsLocalUnitTransform.def(py::init<afw::geom::Point2D const &, UnitSystem const &, UnitSystem const &>(),
                               "sourcePixel"_a, "source"_a, "destination"_a);
     clsLocalUnitTransform.def(py::init<>());
-
-    return mod.ptr();
 }
+
 }
 }
 }

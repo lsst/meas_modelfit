@@ -167,12 +167,10 @@ static PyOptimizer declareOptimizer(py::module &mod) {
     return cls;
 }
 
-PYBIND11_PLUGIN(optimizer) {
+PYBIND11_MODULE(optimizer, mod) {
     py::module::import("lsst.meas.modelfit.model");
     py::module::import("lsst.meas.modelfit.likelihood");
     py::module::import("lsst.meas.modelfit.priors");
-
-    py::module mod("optimizer");
 
     auto clsObjective = declareOptimizerObjective(mod);
     auto clsControl = declareOptimizerControl(mod);
@@ -183,9 +181,8 @@ PYBIND11_PLUGIN(optimizer) {
     cls.attr("HistoryRecorder") = clsHistoryRecorder;
 
     mod.def("solveTrustRegion", &solveTrustRegion, "x"_a, "F"_a, "g"_a, "r"_a, "tolerance"_a);
-
-    return mod.ptr();
 }
+
 }
 }
 }

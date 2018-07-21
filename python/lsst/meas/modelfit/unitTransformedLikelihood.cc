@@ -45,15 +45,13 @@ using PyEpochFootprint = py::class_<EpochFootprint, std::shared_ptr<EpochFootpri
 using PyUnitTransformedLikelihood =
         py::class_<UnitTransformedLikelihood, std::shared_ptr<UnitTransformedLikelihood>, Likelihood>;
 
-PYBIND11_PLUGIN(unitTransformedLikelihood) {
+PYBIND11_MODULE(unitTransformedLikelihood, mod) {
     py::module::import("lsst.afw.geom.ellipses");
     py::module::import("lsst.afw.detection");
     py::module::import("lsst.afw.image");
     py::module::import("lsst.meas.modelfit.model");
     py::module::import("lsst.meas.modelfit.likelihood");
     py::module::import("lsst.meas.modelfit.unitSystem");
-
-    py::module mod("unitTransformedLikelihood");
 
     PyUnitTransformedLikelihoodControl clsControl(mod, "UnitTransformedLikelihoodControl");
     LSST_DECLARE_CONTROL_FIELD(clsControl, UnitTransformedLikelihoodControl, usePixelWeights);
@@ -80,9 +78,8 @@ PYBIND11_PLUGIN(unitTransformedLikelihood) {
                      afw::geom::SpherePoint const &, std::vector<std::shared_ptr<EpochFootprint>> const &,
                      UnitTransformedLikelihoodControl const &>(),
             "model"_a, "fixed"_a, "fitSys"_a, "position"_a, "epochFootprintList"_a, "ctrl"_a);
-
-    return mod.ptr();
 }
+
 }
 }
 }

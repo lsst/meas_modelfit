@@ -36,10 +36,8 @@ namespace {
 
 using PyMultiModel = py::class_<MultiModel, std::shared_ptr<MultiModel>, Model>;
 
-PYBIND11_PLUGIN(multiModel) {
+PYBIND11_MODULE(multiModel, mod) {
     py::module::import("lsst.meas.modelfit.model");
-
-    py::module mod("multiModel");
 
     PyMultiModel cls(mod, "MultiModel");
     cls.def(py::init<ModelVector, MultiModel::NameVector const &>(), "components"_a, "prefixes"_a);
@@ -47,9 +45,8 @@ PYBIND11_PLUGIN(multiModel) {
 
     // All other MultiModel methods are virtuals already inherited from
     // wrappers for Model.
-
-    return mod.ptr();
 }
+
 }
 }
 }

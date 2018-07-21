@@ -133,19 +133,16 @@ static PyMixture declareMixture(py::module &mod) {
     return cls;
 }
 
-PYBIND11_PLUGIN(mixture) {
+PYBIND11_MODULE(mixture, mod) {
     py::module::import("lsst.afw.math");
-
-    py::module mod("mixture");
 
     auto clsMixtureComponent = declareMixtureComponent(mod);
     auto clsMixtureUpdateRestriction = declareMixtureUpdateRestriction(mod);
     auto clsMixture = declareMixture(mod);
     clsMixture.attr("Component") = clsMixtureComponent;
     clsMixture.attr("UpdateRestriction") = clsMixtureUpdateRestriction;
-
-    return mod.ptr();
 }
+
 }
 }
 }

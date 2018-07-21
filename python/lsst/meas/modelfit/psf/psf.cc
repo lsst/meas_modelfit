@@ -151,20 +151,17 @@ void declareGeneral(py::module &mod) {
     // MultiShapeletPsfLikelihood intentionally not exposed to Python.
 }
 
-PYBIND11_PLUGIN(psf) {
+PYBIND11_MODULE(psf, mod) {
     py::module::import("lsst.afw.image");
     py::module::import("lsst.afw.geom.ellipses");
     py::module::import("lsst.meas.base");
     py::module::import("lsst.shapelet");
     py::module::import("lsst.meas.modelfit.optimizer");
 
-    py::module mod("psf");
-
     declareDoubleShapelet(mod);
     declareGeneral(mod);
-
-    return mod.ptr();
 }
+
 }
 }
 }

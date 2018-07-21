@@ -65,10 +65,8 @@ static PyClass declareEvaluator(py::module &mod, std::string const &name) {
     return cls;
 }
 
-PYBIND11_PLUGIN(truncatedGaussian) {
+PYBIND11_MODULE(truncatedGaussian, mod) {
     py::module::import("lsst.afw.math");
-
-    py::module mod("truncatedGaussian");
 
     PyTruncatedGaussian cls(mod, "TruncatedGaussian");
     py::enum_<TruncatedGaussian::SampleStrategy>(cls, "SampleStrategy")
@@ -108,9 +106,8 @@ PYBIND11_PLUGIN(truncatedGaussian) {
                    "rng"_a, "alpha"_a, "weights"_a, "multiplyWeights"_a = false);
 
     cls.attr("Sampler") = clsSampler;
-
-    return mod.ptr();
 }
+
 }
 }
 }

@@ -37,10 +37,8 @@ namespace {
 
 using PyLikelihood = py::class_<Likelihood, std::shared_ptr<Likelihood>>;
 
-PYBIND11_PLUGIN(likelihood) {
+PYBIND11_MODULE(likelihood, mod) {
     py::module::import("lsst.meas.modelfit.model");
-
-    py::module mod("likelihood");
 
     PyLikelihood cls(mod, "Likelihood");
     cls.def("getDataDim", &Likelihood::getDataDim);
@@ -55,9 +53,8 @@ PYBIND11_PLUGIN(likelihood) {
     cls.def("getModel", &Likelihood::getModel);
     cls.def("computeModelMatrix", &Likelihood::computeModelMatrix, "modelMatrix"_a, "nonlinear"_a,
             "doApplyWeights"_a = true);
-
-    return mod.ptr();
 }
+
 }
 }
 }

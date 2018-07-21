@@ -39,12 +39,10 @@ namespace {
 using PyPixelFitRegionControl = py::class_<PixelFitRegionControl, std::shared_ptr<PixelFitRegionControl>>;
 using PyPixelFitRegion = py::class_<PixelFitRegion, std::shared_ptr<PixelFitRegion>>;
 
-PYBIND11_PLUGIN(pixelFitRegion) {
+PYBIND11_MODULE(pixelFitRegion, mod) {
     py::module::import("lsst.afw.image");
     py::module::import("lsst.afw.detection");
     py::module::import("lsst.afw.geom.ellipses");
-
-    py::module mod("pixelFitRegion");
 
     using Control = PixelFitRegionControl;
 
@@ -76,9 +74,8 @@ PYBIND11_PLUGIN(pixelFitRegion) {
     cls.def_readonly("maxBadPixelFraction", &PixelFitRegion::maxBadPixelFraction);
     cls.def_readonly("usedMinEllipse", &PixelFitRegion::usedMinEllipse);
     cls.def_readonly("usedMaxEllipse", &PixelFitRegion::usedMaxEllipse);
-
-    return mod.ptr();
 }
+
 }
 }
 }

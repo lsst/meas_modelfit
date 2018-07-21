@@ -40,12 +40,10 @@ namespace {
 
 using PyModel = py::class_<Model, std::shared_ptr<Model>>;
 
-PYBIND11_PLUGIN(model) {
+PYBIND11_MODULE(model, mod) {
     py::module::import("lsst.shapelet");
     py::module::import("lsst.meas.modelfit.priors");
     py::module::import("lsst.meas.modelfit.unitSystem");
-
-    py::module mod("model");
 
     PyModel cls(mod, "Model");
 
@@ -87,9 +85,8 @@ PYBIND11_PLUGIN(model) {
             "ellipses"_a, "nonlinear"_a, "fixed"_a);
     cls.def("transformParameters", &Model::transformParameters, "transform"_a, "nonlinear"_a, "amplitudes"_a,
             "fixed"_a);
-
-    return mod.ptr();
 }
+
 }
 }
 }
