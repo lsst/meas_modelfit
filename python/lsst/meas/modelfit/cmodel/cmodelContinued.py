@@ -101,7 +101,7 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
         self.algorithm = CModelAlgorithm(name, config.makeControl(), schemaMapper)
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
-        if refWcs != exposure.getWcs():
+        if False and refWcs != exposure.getWcs():  # Disabled: DM-15181
             raise lsst.meas.base.FatalAlgorithmError(
                 "CModel forced measurement currently requires the measurement image to have the same"
                 " Wcs as the reference catalog (this is a temporary limitation)."
