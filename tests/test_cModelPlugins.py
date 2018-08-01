@@ -72,13 +72,13 @@ class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase, lsst.utils.tests.Te
             self.assertFalse(measRecord.get("modelfit_CModel_dev_flag"))
             self.assertFalse(measRecord.get("modelfit_CModel_flag"))
             self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_flux"), trueFlux, rtol=0.5)
-            self.assertGreater(measRecord.get("modelfit_CModel_fluxSigma"), 0.0)
+            self.assertGreater(measRecord.get("modelfit_CModel_fluxErr"), 0.0)
             self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_initial_flux"), trueFlux, rtol=0.5)
-            self.assertGreater(measRecord.get("modelfit_CModel_initial_fluxSigma"), 0.0)
+            self.assertGreater(measRecord.get("modelfit_CModel_initial_fluxErr"), 0.0)
             self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_exp_flux"), trueFlux, rtol=0.5)
-            self.assertGreater(measRecord.get("modelfit_CModel_exp_fluxSigma"), 0.0)
+            self.assertGreater(measRecord.get("modelfit_CModel_exp_fluxErr"), 0.0)
             self.assertFloatsAlmostEqual(measRecord.get("modelfit_CModel_dev_flux"), trueFlux, rtol=0.5)
-            self.assertGreater(measRecord.get("modelfit_CModel_dev_fluxSigma"), 0.0)
+            self.assertGreater(measRecord.get("modelfit_CModel_dev_fluxErr"), 0.0)
 
     def testPlugins(self):
         """Test that the plugin for single-frame measurement works, then use those outputs to test

@@ -117,7 +117,7 @@ static PyCModelStageResult declareCModelStageResult(py::module &mod) {
     cls.def_readonly("objfunc", &CModelStageResult::objfunc);
     cls.def_readonly("likelihood", &CModelStageResult::likelihood);
     cls.def_readonly("flux", &CModelStageResult::flux);
-    cls.def_readonly("fluxSigma", &CModelStageResult::fluxSigma);
+    cls.def_readonly("fluxErr", &CModelStageResult::fluxErr);
     cls.def_readonly("fluxInner", &CModelStageResult::fluxInner);
     cls.def_readonly("objective", &CModelStageResult::objective);
     cls.def_readonly("time", &CModelStageResult::time);
@@ -156,7 +156,7 @@ static PyCModelResult declareCModelResult(py::module &mod) {
     // they should only be set by the C++ algorithm code that uses
     // this class to communicate its outputs.
     cls.def_readonly("flux", &CModelResult::flux);
-    cls.def_readonly("fluxSigma", &CModelResult::fluxSigma);
+    cls.def_readonly("fluxErr", &CModelResult::fluxErr);
     cls.def_readonly("fluxInner", &CModelResult::fluxInner);
     cls.def_readonly("fracDev", &CModelResult::fracDev);
     cls.def_readonly("objective", &CModelResult::objective);
