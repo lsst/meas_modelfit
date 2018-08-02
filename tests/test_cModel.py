@@ -70,7 +70,8 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         dataCalib = lsst.afw.image.Calib()
         dataCalib.setFluxMag0(1e12)
         self.xyPosition = lsst.afw.geom.Point2D(1.1, -0.8)
-        bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
+        bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100),
+                                   invert=False)
         self.exposure = lsst.afw.image.ExposureF(bbox)
         self.exposure.setWcs(dataWcs)
         self.exposure.setCalib(dataCalib)

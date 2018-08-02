@@ -90,7 +90,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         calib0 = lsst.afw.image.Calib()
         calib0.setFluxMag0(10000)
         self.psf0 = makeGaussianFunction(0.0)
-        self.bbox0 = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
+        self.bbox0 = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100),
+                                         invert=False)
         self.spanSet0 = lsst.afw.geom.SpanSet(self.bbox0)
         self.footprint0 = lsst.afw.detection.Footprint(self.spanSet0)
         self.exposure0 = lsst.afw.image.ExposureF(self.bbox0)
