@@ -308,7 +308,7 @@ struct CModelStageResult {
     PTR(OptimizerObjective) objfunc;  ///< Objective class used by the optimizer
     PTR(UnitTransformedLikelihood) likelihood; ///< Object used to evaluate models and compare to data.
     Scalar flux;         ///< Flux measured from just this stage fit.
-    Scalar fluxSigma;    ///< Flux uncertainty from just this stage fit.
+    Scalar fluxErr;    ///< Flux uncertainty from just this stage fit.
     Scalar fluxInner;    ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar objective;    ///< Value of the objective function at the best fit point: chisq/2 - ln(prior)
     Scalar time;         ///< Time spent in this fit in seconds.
@@ -357,7 +357,7 @@ struct CModelResult {
     CModelResult();
 
     Scalar flux;       ///< Flux from the final linear fit
-    Scalar fluxSigma;  ///< Flux uncertainty from the final linear fit
+    Scalar fluxErr;  ///< Flux uncertainty from the final linear fit
     Scalar fluxInner;  ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar fracDev;    ///< Fraction of flux from the final linear fit in the de Vaucouleur component
                        ///  (always between 0 and 1).

@@ -54,7 +54,7 @@ def computePsfFlux(centroid, exposure):
     record = table.makeRecord()
     record.set(pointKey, centroid)
     algorithm.measure(record, exposure)
-    return record.get("base_PsfFlux_flux"), record.get("base_PsfFlux_fluxSigma")
+    return record.get("base_PsfFlux_flux"), record.get("base_PsfFlux_fluxErr")
 
 
 class CModelTestCase(lsst.utils.tests.TestCase):
@@ -104,22 +104,22 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         var = 1E-16
         self.exposure.getMaskedImage().getVariance().getArray()[:, :] = var
         psfImage = self.exposure.getPsf().computeKernelImage(self.xyPosition).getArray()
-        expectedFluxSigma = var**0.5 * (psfImage**2).sum()**(-0.5)
+        expectedFluxErr = var**0.5 * (psfImage**2).sum()**(-0.5)
         result = algorithm.apply(
             self.exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
             self.xyPosition, self.exposure.getPsf().computeShape()
         )
         self.assertFalse(result.initial.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.initial.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.initial.fluxSigma, expectedFluxSigma, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.initial.fluxErr, expectedFluxErr, rtol=0.01)
         self.assertLess(result.initial.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.exp.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.exp.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.exp.fluxSigma, expectedFluxSigma, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.exp.fluxErr, expectedFluxErr, rtol=0.01)
         self.assertLess(result.exp.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.dev.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.dev.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.dev.fluxSigma, expectedFluxSigma, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.dev.fluxErr, expectedFluxErr, rtol=0.01)
         self.assertLess(result.dev.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.flux, self.trueFlux, rtol=0.01)
@@ -141,9 +141,9 @@ class CModelTestCase(lsst.utils.tests.TestCase):
                 exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
                 self.xyPosition, self.exposure.getPsf().computeShape()
             )
-            psfFlux, psfFluxSigma = computePsfFlux(self.xyPosition, exposure)
+            psfFlux, psfFluxErr = computePsfFlux(self.xyPosition, exposure)
             self.assertFloatsAlmostEqual(psfFlux, cmodel.flux, rtol=0.1/fluxFactor**0.5)
-            self.assertFloatsAlmostEqual(psfFluxSigma, cmodel.fluxSigma, rtol=0.1/fluxFactor**0.5)
+            self.assertFloatsAlmostEqual(psfFluxErr, cmodel.fluxErr, rtol=0.1/fluxFactor**0.5)
 
 
 class TestMemory(lsst.utils.tests.MemoryTestCase):

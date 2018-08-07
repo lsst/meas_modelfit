@@ -98,7 +98,7 @@ PTR(Prior) CModelStageControl::getPrior() const {
 
 CModelStageResult::CModelStageResult() :
     flux(std::numeric_limits<Scalar>::quiet_NaN()),
-    fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
+    fluxErr(std::numeric_limits<Scalar>::quiet_NaN()),
     fluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
     objective(std::numeric_limits<Scalar>::quiet_NaN()),
     ellipse(std::numeric_limits<Scalar>::quiet_NaN(), std::numeric_limits<Scalar>::quiet_NaN(),
@@ -109,7 +109,7 @@ CModelStageResult::CModelStageResult() :
 
 CModelResult::CModelResult() :
     flux(std::numeric_limits<Scalar>::quiet_NaN()),
-    fluxSigma(std::numeric_limits<Scalar>::quiet_NaN()),
+    fluxErr(std::numeric_limits<Scalar>::quiet_NaN()),
     fluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
     fracDev(std::numeric_limits<Scalar>::quiet_NaN()),
     objective(std::numeric_limits<Scalar>::quiet_NaN())
@@ -141,9 +141,9 @@ struct CModelStageKeys {
                 "count"
             )
         ),
-        fluxSigma(
+        fluxErr(
             schema.addField<meas::base::FluxErrElement>(
-                schema.join(prefix, "fluxSigma"),
+                schema.join(prefix, "fluxErr"),
                 "flux uncertainty from the " + stage + " fit",
                 "count"
             )
@@ -226,7 +226,7 @@ struct CModelStageKeys {
         std::string const & prefix
     ) :
         flux(schema[prefix]["flux"]),
-        fluxSigma(schema[prefix]["fluxSigma"]),
+        fluxErr(schema[prefix]["fluxErr"]),
         fluxFlag(schema[prefix]["flag"]),
         nonlinear(schema[prefix]["nonlinear"]),
         fixed(schema[prefix]["fixed"])
@@ -246,7 +246,7 @@ struct CModelStageKeys {
 
     void copyResultToRecord(CModelStageResult const & result, afw::table::BaseRecord & record) {
         record.set(flux, result.flux);
-        record.set(fluxSigma, result.fluxSigma);
+        record.set(fluxErr, result.fluxErr);
         record.set(fluxFlag, result.flags[CModelStageResult::FAILED]);
         record.set(fluxInner, result.fluxInner);
         if (objective.isValid()) {
@@ -294,7 +294,7 @@ struct CModelStageKeys {
     }
 
     afw::table::Key<meas::base::Flux> flux;
-    afw::table::Key<meas::base::FluxErrElement> fluxSigma;
+    afw::table::Key<meas::base::FluxErrElement> fluxErr;
     afw::table::Key<afw::table::Flag> fluxFlag;
     afw::table::Key<Scalar> fluxInner;
     afw::table::QuadrupoleKey ellipse;
@@ -330,9 +330,9 @@ struct CModelKeys {
                 "flux from the final cmodel fit"
             )
         ),
-        fluxSigma(
+        fluxErr(
             schema.addField<meas::base::FluxErrElement>(
-                schema.join(prefix, "fluxSigma"),
+                schema.join(prefix, "fluxErr"),
                 "flux uncertainty from the final cmodel fit"
             )
         ),
@@ -456,7 +456,7 @@ struct CModelKeys {
         exp.copyResultToRecord(result.exp, record);
         dev.copyResultToRecord(result.dev, record);
         record.set(flux, result.flux);
-        record.set(fluxSigma, result.fluxSigma);
+        record.set(fluxErr, result.fluxErr);
         if (ellipse.isValid()) {
             double u = 1.0 - result.fracDev;
             double v = result.fracDev;
@@ -514,7 +514,7 @@ struct CModelKeys {
     CModelStageKeys dev;
     shapelet::MultiShapeletFunctionKey psf;
     afw::table::Key<meas::base::Flux> flux;
-    afw::table::Key<meas::base::FluxErrElement> fluxSigma;
+    afw::table::Key<meas::base::FluxErrElement> fluxErr;
     afw::table::Key<afw::table::Flag> fluxFlag;
     afw::table::Key<Scalar> fluxInner;
     afw::table::Key<Scalar> fracDev;
@@ -696,7 +696,7 @@ public:
         // flux is just the amplitude converted from fitSys to measSys
         result.flux = data.amplitudes[0] * data.fitSysToMeasSys.flux;
         result.fluxInner = sums.fluxInner;
-        result.fluxSigma = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
+        result.fluxErr = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
         // to compute the ellipse, we need to first read the nonlinear parameters into the workspace
         // ellipse vector, then transform from fitSys to measSys.
         model->writeEllipses(data.nonlinear.begin(), data.fixed.begin(), ellipses.begin());
@@ -910,7 +910,7 @@ public:
         ndarray::asEigenMatrix(model) = ndarray::asEigenMatrix(modelMatrix) * amplitudes.cast<Pixel>();
         WeightSums sums(model, unweightedData, likelihood.getVariance());
         result.fluxInner = sums.fluxInner;
-        result.fluxSigma = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
+        result.fluxErr = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
         result.flags[CModelResult::FAILED] = false;
         result.fracDev = amplitudes[1] / amplitudes.sum();
         result.objective = tg.evaluateLog()(amplitudes);
