@@ -954,7 +954,7 @@ public:
         // Convert ellipse from moments to half-light using the ratio for this profile
         deconvolvedEllipse.getCore().scale(1.0 / initial.profile->getMomentsRadiusFactor());
         // Transform the deconvolved ellipse from MeasSys to FitSys
-        deconvolvedEllipse.transform(data.fitSysToMeasSys.geometric.invert()).inPlace();
+        deconvolvedEllipse.transform(data.fitSysToMeasSys.geometric.inverted()).inPlace();
         // Convert to the ellipse parametrization used by the Model (assigning to an ellipse converts
         // between parametrizations)
         assert(initial.ellipses.size() == 1u); // should be true of all Models that come from RadialProfiles

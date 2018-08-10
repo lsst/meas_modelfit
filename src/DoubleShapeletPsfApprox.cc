@@ -208,7 +208,7 @@ void DoubleShapeletPsfApproxAlgorithm::fitMoments(
             INVALID_MOMENTS.number
         );
     }
-    result.transformInPlace(ellipse.getGridTransform().invert());
+    result.transformInPlace(ellipse.getGridTransform().inverted());
     result.normalize(sum);
     afw::geom::ellipses::Axes axesInner(result.getComponents()[0].getEllipse().getCore());
     afw::geom::ellipses::Axes axesOuter(result.getComponents()[1].getEllipse().getCore());
