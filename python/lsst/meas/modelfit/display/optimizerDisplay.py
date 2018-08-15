@@ -1,5 +1,3 @@
-from builtins import range
-from builtins import object
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -33,7 +31,7 @@ from .. import modelfitLib
 __all__ = ("OptimizerDisplay", )
 
 
-class OptimizerIterationDisplay(object):
+class OptimizerIterationDisplay:
 
     def __init__(self, parent, sample):
         self.parent = parent
@@ -70,7 +68,7 @@ class OptimizerIterationDisplay(object):
         return self._objectiveModel
 
 
-class OptimizerDisplay(object):
+class OptimizerDisplay:
 
     def __init__(self, history, model, objective, steps=11):
         self.recorder = modelfitLib.OptimizerHistoryRecorder(history.schema)
@@ -100,7 +98,7 @@ class OptimizerDisplay(object):
         return OptimizerDisplayFigure(self, xDim=xDim, yDim=yDim, n=n)
 
 
-class OptimizerDisplayFigure(object):
+class OptimizerDisplayFigure:
 
     def __init__(self, parent, xDim, yDim, n=0):
         self.parent = parent

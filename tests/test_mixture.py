@@ -1,5 +1,3 @@
-from builtins import zip
-from builtins import range
 #
 # LSST Data Management System
 #

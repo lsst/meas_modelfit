@@ -1,5 +1,3 @@
-from builtins import zip
-from builtins import object
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -29,7 +27,7 @@ from .. import modelfitLib
 __all__ = ("SamplingDataAdapter", "OptimizerTrackLayer", "OptimizerDataAdapter",)
 
 
-class ModelFitDataAdapter(object):
+class ModelFitDataAdapter:
 
     def __init__(self, record):
         self.record = record
@@ -76,7 +74,7 @@ class SamplingDataAdapter(ModelFitDataAdapter):
         self.upper = {dim: ranges[i, 1] for i, dim in enumerate(self.dimensions)}
 
 
-class OptimizerTrackLayer(object):
+class OptimizerTrackLayer:
 
     defaults = dict(
         accepted=dict(

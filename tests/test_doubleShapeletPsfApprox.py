@@ -1,5 +1,3 @@
-from builtins import range
-from builtins import object
 #
 # LSST Data Management System
 #
@@ -42,7 +40,7 @@ lsst.log.utils.traceSetAt("meas.modelfit.optimizer.Optimizer", -1)
 lsst.log.utils.traceSetAt("meas.modelfit.optimizer.solveTrustRegion", -1)
 
 
-class DoubleShapeletPsfApproxTestMixin(object):
+class DoubleShapeletPsfApproxTestMixin:
 
     Algorithm = lsst.meas.modelfit.DoubleShapeletPsfApproxAlgorithm
 

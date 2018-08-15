@@ -32,8 +32,6 @@ the ExampleData class provided here, and use the provided HistogramLayer and Sur
 classes directly.  In more complicated cases, users may want to create their own Layer classes,
 which may define their own relationship with the data object.
 """
-from builtins import range
-from builtins import object
 
 import collections
 import numpy
@@ -62,7 +60,7 @@ def mergeDefaults(kwds, defaults):
     return copy
 
 
-class HistogramLayer(object):
+class HistogramLayer:
     """A Layer class for DensityPlot for gridded histograms, drawing bar plots in 1-d and
     colormapped large-pixel images in 2-d.
 
@@ -137,7 +135,7 @@ class HistogramLayer(object):
                            origin='lower', **self.kwds2d)
 
 
-class ScatterLayer(object):
+class ScatterLayer:
     """A Layer class that plots individual points in 2-d, and does nothing in 1-d.
 
     Relies on two data object attributes:
@@ -171,7 +169,7 @@ class ScatterLayer(object):
         return axes.scatter(*args, **self.kwds)
 
 
-class SurfaceLayer(object):
+class SurfaceLayer:
     """A Layer class for analytic N-d distributions that can be evaluated in 1-d or 2-d slices.
 
     The 2-d slices are drawn as contours, and the 1-d slices are drawn as simple curves.
@@ -230,7 +228,7 @@ class SurfaceLayer(object):
             return axes.contour(xg, yg, z, 6, **self.kwds2d)
 
 
-class CrossPointsLayer(object):
+class CrossPointsLayer:
     """A layer that marks a few points with axis-length vertical and horizontal lines.
 
     This relies on a "points" data object attribute.
@@ -267,7 +265,7 @@ class CrossPointsLayer(object):
         return artists
 
 
-class DensityPlot(object):
+class DensityPlot:
     """An object that manages a matrix of matplotlib.axes.Axes objects that represent a set of 1-d and 2-d
     slices through an N-d density.
     """
@@ -437,7 +435,7 @@ class DensityPlot(object):
         self.figure.canvas.draw()
 
 
-class ExampleData(object):
+class ExampleData:
     """An example data object for DensityPlot, demonstrating the necessarity interface.
 
     There are two levels of requirements for a data object.  First are the attributes

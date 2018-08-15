@@ -21,8 +21,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from __future__ import print_function
-from builtins import object
 import numpy
 import matplotlib
 
@@ -34,7 +32,7 @@ rng = lsst.afw.math.Random()
 log = lsst.pex.logging.Debug("meas.modelfit.TruncatedGaussian", 10)
 
 
-class TruncatedGaussianData(object):
+class TruncatedGaussianData:
 
     def __init__(self, tg, nSamples, strategy=None):
         self.tg = tg
