@@ -1,4 +1,3 @@
-from builtins import zip
 #
 # LSST Data Management System
 #

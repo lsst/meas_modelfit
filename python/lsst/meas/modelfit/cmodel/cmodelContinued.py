@@ -19,7 +19,6 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-from __future__ import absolute_import, division, print_function
 
 # The Plugin classes here are accessed via registries, not direct imports.
 __all__ = ("CModelStageConfig", "CModelConfig")

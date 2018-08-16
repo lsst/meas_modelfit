@@ -1,5 +1,3 @@
-from past.builtins import basestring
-from builtins import object
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
@@ -159,7 +157,7 @@ class Interactive(object):
         """
         likelihood = self.task.makeLikelihood(self.inputs, record)
 
-        if isinstance(nonlinear, basestring):
+        if isinstance(nonlinear, str):
             nonlinear = record.get(nonlinear + ".nonlinear")
         else:
             assert nonlinear.shape == (likelihood.getNonlinearDim(),)
@@ -168,7 +166,7 @@ class Interactive(object):
                              dtype=modelfitLib.Pixel).transpose()
         likelihood.computeModelMatrix(matrix, nonlinear, doApplyWeights)
 
-        if isinstance(amplitudes, basestring):
+        if isinstance(amplitudes, str):
             amplitudes = record.get(amplitudes + ".amplitudes")
         else:
             assert amplitudes.shape == (likelihood.getAmplitudeDim(),)

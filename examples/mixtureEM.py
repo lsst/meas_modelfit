@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from builtins import range
 #
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.

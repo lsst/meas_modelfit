@@ -23,9 +23,6 @@
 """
 A script to be used when profiling and debugging large-catalog IO.
 """
-from __future__ import print_function
-from builtins import range
-
 import resource
 import os
 import lsst.meas.modelfit

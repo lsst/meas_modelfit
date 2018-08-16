@@ -21,8 +21,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from __future__ import absolute_import, division, print_function
-
 # all new classes here are accessed via registries, not direct imports.
 __all__ = (
     "GeneralPsfFitterComponentConfig",
@@ -106,7 +104,7 @@ class GeneralShapeletPsfApproxConfig(lsst.pex.config.Config):
                 )
 
 
-class GeneralShapeletPsfApproxMixin(object):
+class GeneralShapeletPsfApproxMixin:
     """Mixin base class for fitting shapelet approximations to the PSF model
 
     This class does almost all of the work for its two derived classes,
