@@ -97,9 +97,9 @@ PTR(Prior) CModelStageControl::getPrior() const {
 // ------------------- Result Objects -----------------------------------------------------------------------
 
 CModelStageResult::CModelStageResult() :
-    flux(std::numeric_limits<Scalar>::quiet_NaN()),
-    fluxErr(std::numeric_limits<Scalar>::quiet_NaN()),
-    fluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
+    instFlux(std::numeric_limits<Scalar>::quiet_NaN()),
+    instFluxErr(std::numeric_limits<Scalar>::quiet_NaN()),
+    instFluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
     objective(std::numeric_limits<Scalar>::quiet_NaN()),
     ellipse(std::numeric_limits<Scalar>::quiet_NaN(), std::numeric_limits<Scalar>::quiet_NaN(),
             std::numeric_limits<Scalar>::quiet_NaN(), false)
@@ -108,9 +108,9 @@ CModelStageResult::CModelStageResult() :
 }
 
 CModelResult::CModelResult() :
-    flux(std::numeric_limits<Scalar>::quiet_NaN()),
-    fluxErr(std::numeric_limits<Scalar>::quiet_NaN()),
-    fluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
+    instFlux(std::numeric_limits<Scalar>::quiet_NaN()),
+    instFluxErr(std::numeric_limits<Scalar>::quiet_NaN()),
+    instFluxInner(std::numeric_limits<Scalar>::quiet_NaN()),
     fracDev(std::numeric_limits<Scalar>::quiet_NaN()),
     objective(std::numeric_limits<Scalar>::quiet_NaN())
 {
@@ -134,16 +134,16 @@ struct CModelStageKeys {
         bool isForced,
         CModelStageControl const & ctrl
     ) :
-        flux(
-            schema.addField<meas::base::Flux>(
-                schema.join(prefix, "flux"),
+        instFlux(
+            schema.addField<meas::base::InstFlux>(
+                schema.join(prefix, "instFlux"),
                 "flux from the " + stage + " fit",
                 "count"
             )
         ),
-        fluxErr(
-            schema.addField<meas::base::FluxErrElement>(
-                schema.join(prefix, "fluxErr"),
+        instFluxErr(
+            schema.addField<meas::base::InstFluxErrElement>(
+                schema.join(prefix, "instFluxErr"),
                 "flux uncertainty from the " + stage + " fit",
                 "count"
             )
@@ -154,7 +154,7 @@ struct CModelStageKeys {
                 "flag set when the flux for the " + stage + " flux failed"
             )
         ),
-        fluxInner(
+        instFluxInner(
             schema.addField<Scalar>(
                 schema.join(prefix, "flux", "inner"),
                 "flux within the fit region, with no extrapolation"
@@ -225,8 +225,8 @@ struct CModelStageKeys {
         afw::table::Schema const & schema,
         std::string const & prefix
     ) :
-        flux(schema[prefix]["flux"]),
-        fluxErr(schema[prefix]["fluxErr"]),
+        instFlux(schema[prefix]["instFlux"]),
+        instFluxErr(schema[prefix]["instFluxErr"]),
         fluxFlag(schema[prefix]["flag"]),
         nonlinear(schema[prefix]["nonlinear"]),
         fixed(schema[prefix]["fixed"])
@@ -245,10 +245,10 @@ struct CModelStageKeys {
     }
 
     void copyResultToRecord(CModelStageResult const & result, afw::table::BaseRecord & record) {
-        record.set(flux, result.flux);
-        record.set(fluxErr, result.fluxErr);
+        record.set(instFlux, result.instFlux);
+        record.set(instFluxErr, result.instFluxErr);
         record.set(fluxFlag, result.flags[CModelStageResult::FAILED]);
-        record.set(fluxInner, result.fluxInner);
+        record.set(instFluxInner, result.instFluxInner);
         if (objective.isValid()) {
             record.set(objective, result.objective);
         }
@@ -293,10 +293,10 @@ struct CModelStageKeys {
         return false;
     }
 
-    afw::table::Key<meas::base::Flux> flux;
-    afw::table::Key<meas::base::FluxErrElement> fluxErr;
+    afw::table::Key<meas::base::InstFlux> instFlux;
+    afw::table::Key<meas::base::InstFluxErrElement> instFluxErr;
     afw::table::Key<afw::table::Flag> fluxFlag;
-    afw::table::Key<Scalar> fluxInner;
+    afw::table::Key<Scalar> instFluxInner;
     afw::table::QuadrupoleKey ellipse;
     afw::table::Key<Scalar> objective;
     afw::table::Key<afw::table::Flag> flags[CModelStageResult::N_FLAGS];
@@ -324,15 +324,15 @@ struct CModelKeys {
         // Unlike all the other keys, we expect the psf keys to already be present in the schema,
         // and we just retrieve them, because they're created and filled by another plugin.
         psf(schema[ctrl.psfName]),
-        flux(
-            schema.addField<meas::base::Flux>(
-                schema.join(prefix, "flux"),
+        instFlux(
+            schema.addField<meas::base::InstFlux>(
+                schema.join(prefix, "instFlux"),
                 "flux from the final cmodel fit"
             )
         ),
-        fluxErr(
-            schema.addField<meas::base::FluxErrElement>(
-                schema.join(prefix, "fluxErr"),
+        instFluxErr(
+            schema.addField<meas::base::InstFluxErrElement>(
+                schema.join(prefix, "instFluxErr"),
                 "flux uncertainty from the final cmodel fit"
             )
         ),
@@ -342,9 +342,9 @@ struct CModelKeys {
                 "flag set if the final cmodel fit (or any previous fit) failed"
             )
         ),
-        fluxInner(
+        instFluxInner(
             schema.addField<Scalar>(
-                schema.join(prefix, "flux", "inner"),
+                schema.join(prefix, "instFlux", "inner"),
                 "flux within the fit region, with no extrapolation"
             )
         ),
@@ -455,8 +455,8 @@ struct CModelKeys {
         initial.copyResultToRecord(result.initial, record);
         exp.copyResultToRecord(result.exp, record);
         dev.copyResultToRecord(result.dev, record);
-        record.set(flux, result.flux);
-        record.set(fluxErr, result.fluxErr);
+        record.set(instFlux, result.instFlux);
+        record.set(instFluxErr, result.instFluxErr);
         if (ellipse.isValid()) {
             double u = 1.0 - result.fracDev;
             double v = result.fracDev;
@@ -464,7 +464,7 @@ struct CModelKeys {
             record.set(ellipse.getIyy(), u*result.exp.ellipse.getIyy() + v*result.dev.ellipse.getIyy());
             record.set(ellipse.getIxy(), u*result.exp.ellipse.getIxy() + v*result.dev.ellipse.getIxy());
         }
-        record.set(fluxInner, result.fluxInner);
+        record.set(instFluxInner, result.instFluxInner);
         record.set(fracDev, result.fracDev);
         record.set(objective, result.objective);
         if (initialFitRegion.isValid()) {
@@ -513,10 +513,10 @@ struct CModelKeys {
     CModelStageKeys exp;
     CModelStageKeys dev;
     shapelet::MultiShapeletFunctionKey psf;
-    afw::table::Key<meas::base::Flux> flux;
-    afw::table::Key<meas::base::FluxErrElement> fluxErr;
+    afw::table::Key<meas::base::InstFlux> instFlux;
+    afw::table::Key<meas::base::InstFluxErrElement> instFluxErr;
     afw::table::Key<afw::table::Flag> fluxFlag;
-    afw::table::Key<Scalar> fluxInner;
+    afw::table::Key<Scalar> instFluxInner;
     afw::table::Key<Scalar> fracDev;
     afw::table::Key<Scalar> objective;
     afw::table::QuadrupoleKey initialFitRegion;
@@ -610,7 +610,7 @@ struct WeightSums {
         ndarray::Array<Pixel const,2,-1> const & modelMatrix,
         ndarray::Array<Pixel const,1,1> const & data,
         ndarray::Array<Pixel const,1,1> const & variance
-    ) : fluxInner(0.0), fluxVar(0.0), norm(0.0)
+    ) : instFluxInner(0.0), fluxVar(0.0), norm(0.0)
     {
         assert(modelMatrix.getSize<1>() == 1);
         run(modelMatrix.transpose()[0], data, variance);
@@ -620,7 +620,7 @@ struct WeightSums {
         ndarray::Array<Pixel const,1,1> const & model,
         ndarray::Array<Pixel const,1,1> const & data,
         ndarray::Array<Pixel const,1,1> const & variance
-    ) : fluxInner(0.0), fluxVar(0.0), norm(0.0)
+    ) : instFluxInner(0.0), fluxVar(0.0), norm(0.0)
     {
         run(model, data, variance);
     }
@@ -638,11 +638,11 @@ struct WeightSums {
         double ww = modelEigen.square().sum();
         double wwv = (modelEigen.square()*varianceEigen).sum();
         norm = w/ww;
-        fluxInner = wd*norm;
+        instFluxInner = wd*norm;
         fluxVar = wwv*norm*norm;
     }
 
-    double fluxInner;
+    double instFluxInner;
     double fluxVar;
     double norm;
 };
@@ -694,9 +694,9 @@ public:
         result.amplitudes = data.amplitudes;
         result.fixed = data.fixed;
         // flux is just the amplitude converted from fitSys to measSys
-        result.flux = data.amplitudes[0] * data.fitSysToMeasSys.flux;
-        result.fluxInner = sums.fluxInner;
-        result.fluxErr = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
+        result.instFlux = data.amplitudes[0] * data.fitSysToMeasSys.flux;
+        result.instFluxInner = sums.instFluxInner;
+        result.instFluxErr = std::sqrt(sums.fluxVar)*result.instFlux/result.instFluxInner;
         // to compute the ellipse, we need to first read the nonlinear parameters into the workspace
         // ellipse vector, then transform from fitSys to measSys.
         model->writeEllipses(data.nonlinear.begin(), data.fixed.begin(), ellipses.begin());
@@ -892,7 +892,7 @@ public:
         // that all amplitude must be >= 0
         TruncatedGaussian tg = TruncatedGaussian::fromSeriesParameters(q0, gradient, hessian);
         Vector amplitudes = tg.maximize();
-        result.flux = expData.fitSysToMeasSys.flux * amplitudes.sum();
+        result.instFlux = expData.fitSysToMeasSys.flux * amplitudes.sum();
 
         // To compute the error on the flux, we treat the best-fit composite profile as a continuous
         // aperture and compute the uncertainty on that aperture flux.
@@ -909,8 +909,8 @@ public:
         ndarray::Array<Pixel,1,1> model = ndarray::allocate(likelihood.getDataDim());
         ndarray::asEigenMatrix(model) = ndarray::asEigenMatrix(modelMatrix) * amplitudes.cast<Pixel>();
         WeightSums sums(model, unweightedData, likelihood.getVariance());
-        result.fluxInner = sums.fluxInner;
-        result.fluxErr = std::sqrt(sums.fluxVar)*result.flux/result.fluxInner;
+        result.instFluxInner = sums.instFluxInner;
+        result.instFluxErr = std::sqrt(sums.fluxVar)*result.instFlux/result.instFluxInner;
         result.flags[CModelResult::FAILED] = false;
         result.fracDev = amplitudes[1] / amplitudes.sum();
         result.objective = tg.evaluateLog()(amplitudes);
@@ -990,7 +990,7 @@ public:
         keys->checkBadReferenceFlag(record);
         // Check for unflagged NaNs.  Warn if we see any so we can fix the underlying problem, and
         // then flag them anyway.
-        if (std::isnan(record.get(keys->flux)) && !record.get(keys->flags[CModelResult::FAILED])) {
+        if (std::isnan(record.get(keys->instFlux)) && !record.get(keys->flags[CModelResult::FAILED])) {
             // We throw a non-MeasurementError exception so the measurement error *will* log a warning.
             throw LSST_EXCEPT(
                 pex::exceptions::LogicError,
@@ -1359,8 +1359,8 @@ void CModelAlgorithm::measure(
     }
     // If PsfFlux has been run, use that for approx flux; otherwise we'll compute it ourselves.
     Scalar approxFlux = -1.0;
-    if (measRecord.getTable()->getPsfFluxKey().isValid() && !measRecord.getPsfFluxFlag()) {
-        approxFlux = measRecord.getPsfFlux();
+    if (measRecord.getTable()->getPsfFluxSlot().isValid() && !measRecord.getPsfFluxFlag()) {
+        approxFlux = measRecord.getPsfInstFlux();
     }
     // If KronFlux has been run, use the Kron radius to initialize the fit region.
     Scalar kronRadius = -1.0;
@@ -1389,8 +1389,8 @@ void CModelAlgorithm::measure(
     shapelet::MultiShapeletFunction psf = _processInputs(measRecord, exposure);
     // If PsfFlux has been run, use that for approx flux; otherwise we'll compute it ourselves.
     Scalar approxFlux = -1.0;
-    if (measRecord.getTable()->getPsfFluxKey().isValid() && !measRecord.getPsfFluxFlag()) {
-        approxFlux = measRecord.getPsfFlux();
+    if (measRecord.getTable()->getPsfFluxSlot().isValid() && !measRecord.getPsfFluxFlag()) {
+        approxFlux = measRecord.getPsfInstFlux();
     }
     try {
         Result refResult = _impl->refKeys->copyRecordToResult(refRecord);

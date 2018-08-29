@@ -200,7 +200,7 @@ def reconstructCModel(exposure, record, config):
     center = record.getCentroid()
     position = exposure.getWcs().pixelToSky(center)
     measSys = measMod.UnitSystem(exposure)
-    approxFlux = record.get("base_PsfFlux_flux")
+    approxFlux = record.get("base_PsfFlux_instFlux")
     fitSys = measMod.UnitSystem(position, exposure.getCalib(), approxFlux)
     fitSysToMeasSys = measMod.LocalUnitTransform(center, fitSys, measSys)
 
@@ -211,7 +211,7 @@ def reconstructCModel(exposure, record, config):
                      for p in range(3)]
     fixedKeys = ["{}_{{model}}_fixed_{p}".format(baseName, p=p)
                  for p in range(2)]
-    fluxKey = "{}_{{model}}_flux".format(baseName)
+    fluxKey = "{}_{{model}}_instFlux".format(baseName)
 
     # fetch the aperture corrections, if this fails set it to one
     try:
@@ -247,7 +247,7 @@ def reconstructCModel(exposure, record, config):
 
     # Get joint shapelet model
     fracDev = record.get("{}_fracDev".format(baseName))
-    jointFlux = np.array([record.get("{}_flux".format(baseName))])
+    jointFlux = np.array([record.get("{}_instFlux".format(baseName))])
     jointFlux /= apCorr
     devJointShapelet = ctrl.dev.getModel()\
         .makeShapeletFunction(devNonLinearParams, jointFlux*fracDev,

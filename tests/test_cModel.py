@@ -54,7 +54,7 @@ def computePsfFlux(centroid, exposure):
     record = table.makeRecord()
     record.set(pointKey, centroid)
     algorithm.measure(record, exposure)
-    return record.get("base_PsfFlux_flux"), record.get("base_PsfFlux_fluxErr")
+    return record.get("base_PsfFlux_instFlux"), record.get("base_PsfFlux_instFluxErr")
 
 
 class CModelTestCase(lsst.utils.tests.TestCase):
@@ -110,19 +110,19 @@ class CModelTestCase(lsst.utils.tests.TestCase):
             self.xyPosition, self.exposure.getPsf().computeShape()
         )
         self.assertFalse(result.initial.flags[result.FAILED])
-        self.assertFloatsAlmostEqual(result.initial.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.initial.fluxErr, expectedFluxErr, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.initial.instFlux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.initial.instFluxErr, expectedFluxErr, rtol=0.01)
         self.assertLess(result.initial.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.exp.flags[result.FAILED])
-        self.assertFloatsAlmostEqual(result.exp.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.exp.fluxErr, expectedFluxErr, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.exp.instFlux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.exp.instFluxErr, expectedFluxErr, rtol=0.01)
         self.assertLess(result.exp.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.dev.flags[result.FAILED])
-        self.assertFloatsAlmostEqual(result.dev.flux, self.trueFlux, rtol=0.01)
-        self.assertFloatsAlmostEqual(result.dev.fluxErr, expectedFluxErr, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.dev.instFlux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.dev.instFluxErr, expectedFluxErr, rtol=0.01)
         self.assertLess(result.dev.ellipse.getDeterminantRadius(), 0.2)
         self.assertFalse(result.flags[result.FAILED])
-        self.assertFloatsAlmostEqual(result.flux, self.trueFlux, rtol=0.01)
+        self.assertFloatsAlmostEqual(result.instFlux, self.trueFlux, rtol=0.01)
 
     def testVsPsfFlux(self):
         """Test that CModel produces results comparable to PsfFlux when run
@@ -142,8 +142,8 @@ class CModelTestCase(lsst.utils.tests.TestCase):
                 self.xyPosition, self.exposure.getPsf().computeShape()
             )
             psfFlux, psfFluxErr = computePsfFlux(self.xyPosition, exposure)
-            self.assertFloatsAlmostEqual(psfFlux, cmodel.flux, rtol=0.1/fluxFactor**0.5)
-            self.assertFloatsAlmostEqual(psfFluxErr, cmodel.fluxErr, rtol=0.1/fluxFactor**0.5)
+            self.assertFloatsAlmostEqual(psfFlux, cmodel.instFlux, rtol=0.1/fluxFactor**0.5)
+            self.assertFloatsAlmostEqual(psfFluxErr, cmodel.instFluxErr, rtol=0.1/fluxFactor**0.5)
 
 
 class TestMemory(lsst.utils.tests.MemoryTestCase):

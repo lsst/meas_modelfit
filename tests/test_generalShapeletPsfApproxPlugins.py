@@ -48,7 +48,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.shape = None
         config.slots.psfFlux = None
         config.slots.apFlux = None
-        config.slots.instFlux = None
+        config.slots.gaussianFlux = None
         config.slots.modelFlux = None
         config.slots.calibFlux = None
         config.doReplaceWithNoise = False
@@ -105,7 +105,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.shape = None
         config.slots.psfFlux = None
         config.slots.apFlux = None
-        config.slots.instFlux = None
+        config.slots.gaussianFlux = None
         config.slots.modelFlux = None
         config.doReplaceWithNoise = False
         config.slots.centroid = "base_TransformedCentroid"
