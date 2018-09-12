@@ -29,11 +29,24 @@
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/afw/table/io/InputArchive.h"
 #include "lsst/afw/table/io/CatalogVector.h"
+#include "lsst/afw/table/io/Persistable.cc"
 #include "lsst/meas/modelfit/Mixture.h"
 
 namespace tbl = lsst::afw::table;
 
-namespace lsst { namespace meas { namespace modelfit {
+namespace lsst {
+namespace afw {
+namespace table {
+namespace io {
+
+template std::shared_ptr<meas::modelfit::Mixture> PersistableFacade<meas::modelfit::Mixture>::dynamicCast(
+        std::shared_ptr<Persistable> const&);
+
+}  // namespace io
+}  // namespace table
+}  // namespace afw
+namespace meas {
+namespace modelfit {
 
 void MixtureComponent::setSigma(Matrix const & sigma) {
     _sigmaLLT.compute(sigma);
