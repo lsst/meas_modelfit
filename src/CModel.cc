@@ -135,14 +135,14 @@ struct CModelStageKeys {
         CModelStageControl const & ctrl
     ) :
         instFlux(
-            schema.addField<meas::base::InstFlux>(
+            schema.addField<meas::base::Flux>(
                 schema.join(prefix, "instFlux"),
                 "flux from the " + stage + " fit",
                 "count"
             )
         ),
         instFluxErr(
-            schema.addField<meas::base::InstFluxErrElement>(
+            schema.addField<meas::base::FluxErrElement>(
                 schema.join(prefix, "instFluxErr"),
                 "flux uncertainty from the " + stage + " fit",
                 "count"
@@ -293,8 +293,8 @@ struct CModelStageKeys {
         return false;
     }
 
-    afw::table::Key<meas::base::InstFlux> instFlux;
-    afw::table::Key<meas::base::InstFluxErrElement> instFluxErr;
+    afw::table::Key<meas::base::Flux> instFlux;
+    afw::table::Key<meas::base::FluxErrElement> instFluxErr;
     afw::table::Key<afw::table::Flag> fluxFlag;
     afw::table::Key<Scalar> instFluxInner;
     afw::table::QuadrupoleKey ellipse;
@@ -325,13 +325,13 @@ struct CModelKeys {
         // and we just retrieve them, because they're created and filled by another plugin.
         psf(schema[ctrl.psfName]),
         instFlux(
-            schema.addField<meas::base::InstFlux>(
+            schema.addField<meas::base::Flux>(
                 schema.join(prefix, "instFlux"),
                 "flux from the final cmodel fit"
             )
         ),
         instFluxErr(
-            schema.addField<meas::base::InstFluxErrElement>(
+            schema.addField<meas::base::FluxErrElement>(
                 schema.join(prefix, "instFluxErr"),
                 "flux uncertainty from the final cmodel fit"
             )
@@ -513,8 +513,8 @@ struct CModelKeys {
     CModelStageKeys exp;
     CModelStageKeys dev;
     shapelet::MultiShapeletFunctionKey psf;
-    afw::table::Key<meas::base::InstFlux> instFlux;
-    afw::table::Key<meas::base::InstFluxErrElement> instFluxErr;
+    afw::table::Key<meas::base::Flux> instFlux;
+    afw::table::Key<meas::base::FluxErrElement> instFluxErr;
     afw::table::Key<afw::table::Flag> fluxFlag;
     afw::table::Key<Scalar> instFluxInner;
     afw::table::Key<Scalar> fracDev;
