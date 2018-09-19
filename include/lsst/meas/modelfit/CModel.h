@@ -307,9 +307,9 @@ struct CModelStageResult {
     PTR(Prior) prior;    ///< Bayesian priors on the parameters (defined fully by Control struct)
     PTR(OptimizerObjective) objfunc;  ///< Objective class used by the optimizer
     PTR(UnitTransformedLikelihood) likelihood; ///< Object used to evaluate models and compare to data.
-    Scalar flux;         ///< Flux measured from just this stage fit.
-    Scalar fluxErr;    ///< Flux uncertainty from just this stage fit.
-    Scalar fluxInner;    ///< Flux measured strictly within the fit region (no extrapolation).
+    Scalar instFlux;         ///< Flux measured from just this stage fit.
+    Scalar instFluxErr;    ///< Flux uncertainty from just this stage fit.
+    Scalar instFluxInner;    ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar objective;    ///< Value of the objective function at the best fit point: chisq/2 - ln(prior)
     Scalar time;         ///< Time spent in this fit in seconds.
     afw::geom::ellipses::Quadrupole ellipse;  ///< Best fit half-light ellipse in pixel coordinates
@@ -356,9 +356,9 @@ struct CModelResult {
 
     CModelResult();
 
-    Scalar flux;       ///< Flux from the final linear fit
-    Scalar fluxErr;  ///< Flux uncertainty from the final linear fit
-    Scalar fluxInner;  ///< Flux measured strictly within the fit region (no extrapolation).
+    Scalar instFlux;       ///< Flux from the final linear fit
+    Scalar instFluxErr;  ///< Flux uncertainty from the final linear fit
+    Scalar instFluxInner;  ///< Flux measured strictly within the fit region (no extrapolation).
     Scalar fracDev;    ///< Fraction of flux from the final linear fit in the de Vaucouleur component
                        ///  (always between 0 and 1).
     Scalar objective;  ///< Objective value at the best-fit point (chisq/2)

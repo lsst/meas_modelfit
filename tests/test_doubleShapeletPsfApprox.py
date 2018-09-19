@@ -73,7 +73,7 @@ class DoubleShapeletPsfApproxTestMixin:
         config.slots.shape = None
         config.slots.psfFlux = None
         config.slots.apFlux = None
-        config.slots.instFlux = None
+        config.slots.gaussianFlux = None
         config.slots.modelFlux = None
         config.slots.calibFlux = None
         config.doReplaceWithNoise = False
