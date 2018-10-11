@@ -156,8 +156,9 @@ struct CModelStageKeys {
         ),
         instFluxInner(
             schema.addField<Scalar>(
-                schema.join(prefix, "flux", "inner"),
-                "flux within the fit region, with no extrapolation"
+                schema.join(prefix, "instFlux", "inner"),
+                "flux within the fit region, with no extrapolation",
+                "count"
             )
         )
     {
@@ -327,13 +328,15 @@ struct CModelKeys {
         instFlux(
             schema.addField<meas::base::Flux>(
                 schema.join(prefix, "instFlux"),
-                "flux from the final cmodel fit"
+                "flux from the final cmodel fit",
+                "count"
             )
         ),
         instFluxErr(
             schema.addField<meas::base::FluxErrElement>(
                 schema.join(prefix, "instFluxErr"),
-                "flux uncertainty from the final cmodel fit"
+                "flux uncertainty from the final cmodel fit",
+                "count"
             )
         ),
         fluxFlag(
@@ -345,7 +348,8 @@ struct CModelKeys {
         instFluxInner(
             schema.addField<Scalar>(
                 schema.join(prefix, "instFlux", "inner"),
-                "flux within the fit region, with no extrapolation"
+                "flux within the fit region, with no extrapolation",
+                "count"
             )
         ),
         fracDev(
