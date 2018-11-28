@@ -365,11 +365,11 @@ public:
 
 protected:
 
-    virtual std::string getPythonModule() const { return "lsst.meas.modelfit"; }
+    std::string getPythonModule() const override { return "lsst.meas.modelfit"; }
 
-    virtual std::string getPersistenceName() const;
+    std::string getPersistenceName() const override;
 
-    virtual void write(OutputArchiveHandle & handle) const;
+    void write(OutputArchiveHandle & handle) const override;
 
 private:
     template <typename A, typename B, typename C>
