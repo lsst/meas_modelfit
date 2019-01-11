@@ -33,7 +33,7 @@ classes directly.  In more complicated cases, users may want to create their own
 which may define their own relationship with the data object.
 """
 
-import collections
+import collections.abc
 import numpy
 import matplotlib.cm
 import matplotlib.pyplot
@@ -270,7 +270,7 @@ class DensityPlot:
     slices through an N-d density.
     """
 
-    class LayerDict(collections.MutableMapping):
+    class LayerDict(collections.abc.MutableMapping):
 
         def __init__(self, parent):
             self._dict = dict()
