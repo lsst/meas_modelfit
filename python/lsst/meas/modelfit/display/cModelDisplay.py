@@ -31,9 +31,9 @@ def displayReconstructedCmodel(exposure, record, config, display="mpl"):
         If the display backend specified is not implemented
     """
 
-    if display is "mpl":
+    if display == "mpl":
         displayReconstrucedCmodelMpl(exposure, record, config)
-    elif display is "afw":
+    elif display == "afw":
         raise NotImplementedError("The afw display backend is not yet "
                                   "implemented")
     else:
