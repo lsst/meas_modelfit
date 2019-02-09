@@ -9,5 +9,4 @@ meas_modelfit documentation preview
 .. toctree::
    :maxdepth: 1
 
-   meas_modelfit/index
    lsst.meas.modelfit/index
