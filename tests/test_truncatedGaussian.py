@@ -158,7 +158,7 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             gradient = -numpy.dot(model.transpose(), data)
             hessian = numpy.dot(model.transpose(), model)
             sigma = numpy.linalg.inv(hessian)
-            self.assertFloatsAlmostEqual(numpy.linalg.inv(sigma), hessian)
+            self.assertFloatsAlmostEqual(numpy.linalg.inv(sigma), hessian, rtol=1E-15, atol=1E-15)
             mu = -numpy.dot(sigma, gradient)
             tg1 = lsst.meas.modelfit.TruncatedGaussian.fromStandardParameters(mu, sigma)
             self.assertFloatsAlmostEqual(tg1.getLogPeakAmplitude(),
