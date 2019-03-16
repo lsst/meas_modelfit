@@ -27,7 +27,7 @@
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/geom/SpherePoint.h"
 #include "lsst/afw/geom/SkyWcs.h"
-#include "lsst/afw/image/Calib.h"
+#include "lsst/afw/image/PhotoCalib.h"
 #include "lsst/afw/geom/AffineTransform.h"
 
 #include "lsst/meas/modelfit/common.h"
@@ -37,11 +37,11 @@ namespace meas {
 namespace modelfit {
 
 /**
- *  @brief A simple struct that combines a Wcs and a Calib.
+ *  @brief A simple struct that combines a Wcs and a PhotoCalib.
  */
 struct UnitSystem {
-    PTR(afw::geom::SkyWcs const) wcs;
-    PTR(afw::image::Calib const) calib;
+    std::shared_ptr<afw::geom::SkyWcs const> wcs;
+    std::shared_ptr<afw::image::PhotoCalib const> photoCalib;
 
     /**
      *  @brief Construct a "standard" UnitSystem
@@ -50,29 +50,30 @@ struct UnitSystem {
      *  set such that unit flux is the given magnitude.  See @ref modelfitUnits for an explanation
      *  of why we frequently use this system.
      */
-    UnitSystem(afw::geom::SpherePoint const& position, std::shared_ptr<const lsst::afw::image::Calib> calibIn,
-               double flux);
+    UnitSystem(afw::geom::SpherePoint const& position,
+               std::shared_ptr<const afw::image::PhotoCalib> photoCalib, double flux);
     UnitSystem(afw::geom::SpherePoint const& position, Scalar mag);
 
-    /// Construct a UnitSystem from a give Wcs and Calib
-    UnitSystem(PTR(afw::geom::SkyWcs const) wcs_, PTR(afw::image::Calib const) calib_)
-            : wcs(wcs_), calib(validateCalib(calib_)) {}
+    /// Construct a UnitSystem from a given Wcs and PhotoCalib
+    UnitSystem(std::shared_ptr<afw::geom::SkyWcs const> wcs_,
+               std::shared_ptr<afw::image::PhotoCalib const> photoCalib)
+            : wcs(wcs_), photoCalib(validatePhotoCalib(photoCalib)) {}
 
-    /// Construct a UnitSystem by extracting the Wcs and Calib from an Exposure (implicit)
+    /// Construct a UnitSystem by extracting the Wcs and PhotoCalib from an Exposure (implicit)
     template <typename T>
     UnitSystem(afw::image::Exposure<T> const& exposure)
-            : wcs(exposure.getWcs()), calib(validateCalib(exposure.getCalib())) {}
+            : wcs(exposure.getWcs()), photoCalib(validatePhotoCalib(exposure.getCalib())) {}
 
 private:
-    std::shared_ptr<const lsst::afw::image::Calib> validateCalib(
-            std::shared_ptr<const lsst::afw::image::Calib> calib_);
-    static std::shared_ptr<const lsst::afw::image::Calib> getDefaultCalib();
+    std::shared_ptr<const afw::image::PhotoCalib> validatePhotoCalib(
+            std::shared_ptr<const afw::image::PhotoCalib> photoCalib);
+    static std::shared_ptr<const afw::image::PhotoCalib> getDefaultPhotoCalib();
 };
 
 /**
  *  @brief A local mapping between two UnitSystems
  *
- *  LocalUnitTransform is "local" because it linearizes the Wcs and evaluates the Calib transform
+ *  LocalUnitTransform is "local" because it linearizes the Wcs and evaluates the PhotoCalib transform
  *  at a particular predifined point, allowing it to represent the geometric transform as an
  *  AffineTransform and the photometric transform as a simple scaling.
  */

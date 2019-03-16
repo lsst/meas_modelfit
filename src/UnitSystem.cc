@@ -29,57 +29,49 @@
 #include "lsst/afw/geom/transformFactory.h"
 #include "lsst/meas/modelfit/UnitSystem.h"
 
-namespace lsst { namespace meas { namespace modelfit {
+namespace lsst {
+namespace meas {
+namespace modelfit {
 
-UnitSystem::UnitSystem(afw::geom::SpherePoint const & position,
-                       std::shared_ptr<const lsst::afw::image::Calib> calibIn,
-                       double flux) {
-    auto scale = 1.0*lsst::afw::geom::arcseconds;
+UnitSystem::UnitSystem(afw::geom::SpherePoint const& position,
+                       std::shared_ptr<const lsst::afw::image::PhotoCalib> photoCalib_, double flux) {
+    auto scale = 1.0 * lsst::afw::geom::arcseconds;
     auto cdMatrix = afw::geom::makeCdMatrix(scale);
     wcs = afw::geom::makeSkyWcs(afw::geom::Point2D(0.0, 0.0), position, cdMatrix);
-    calibIn = validateCalib(calibIn);
-    Scalar mag = calibIn->getMagnitude(flux);
-    PTR(afw::image::Calib) calib_ = std::make_shared<afw::image::Calib>();
-    calib_->setFluxMag0(std::pow(10.0, mag/2.5));
-    calib = calib_;
+    photoCalib_ = validatePhotoCalib(photoCalib_);
+    Scalar mag = photoCalib_->instFluxToMagnitude(flux);
+    photoCalib = afw::image::makePhotoCalibFromCalibZeroPoint(std::pow(10.0, mag / 2.5), 0.0);
 }
 
-UnitSystem::UnitSystem(afw::geom::SpherePoint const & position, Scalar mag) {
-    auto scale = 1.0*lsst::afw::geom::arcseconds;
+UnitSystem::UnitSystem(afw::geom::SpherePoint const& position, Scalar mag) {
+    auto scale = 1.0 * lsst::afw::geom::arcseconds;
     auto cdMatrix = afw::geom::makeCdMatrix(scale);
     wcs = afw::geom::makeSkyWcs(afw::geom::Point2D(0.0, 0.0), position, cdMatrix);
-    PTR(afw::image::Calib) calib_ = std::make_shared<afw::image::Calib>();
-    calib_->setFluxMag0(std::pow(10.0, mag/2.5));
-    calib = calib_;
+    photoCalib = afw::image::makePhotoCalibFromCalibZeroPoint(std::pow(10.0, mag / 2.5), 0.0);
 }
 
-std::shared_ptr<const lsst::afw::image::Calib> UnitSystem::validateCalib(
-    std::shared_ptr<const lsst::afw::image::Calib> calib_) {
-    if (calib_->getFluxMag0().first == 0.0){
-        return getDefaultCalib();
-    } else{
-        return calib_;
+std::shared_ptr<const lsst::afw::image::PhotoCalib> UnitSystem::validatePhotoCalib(
+        std::shared_ptr<const lsst::afw::image::PhotoCalib> photoCalib_) {
+    if (photoCalib_->getCalibrationMean() == 0.0) {
+        return getDefaultPhotoCalib();
+    } else {
+        return photoCalib_;
     }
 }
 
-std::shared_ptr<const lsst::afw::image::Calib> UnitSystem::getDefaultCalib() {
-    // Create a default calib object with a zero-point set to magnitude 27
-    static std::shared_ptr<const lsst::afw::image::Calib> tmp =
-                                                        std::make_shared<const lsst::afw::image::Calib>(
-                                                        std::pow(10.0, 27.0/2.5)
-                                                        );
-    return tmp;
+std::shared_ptr<const lsst::afw::image::PhotoCalib> UnitSystem::getDefaultPhotoCalib() {
+    // Create a photoCalib object with a zero-point set to magnitude 27
+    return afw::image::makePhotoCalibFromCalibZeroPoint(std::pow(10.0, 27.0 / 2.5), 0.0);
 }
 
-LocalUnitTransform::LocalUnitTransform(
-    afw::geom::Point2D const & sourcePixel,
-    UnitSystem const & source,
-    UnitSystem const & destination
-) :
-    geometric(afw::geom::linearizeTransform(*afw::geom::makeWcsPairTransform(*source.wcs, *destination.wcs),
-                                            sourcePixel)),
-    flux(destination.calib->getFluxMag0().first / source.calib->getFluxMag0().first),
-    sb(flux / geometric.getLinear().computeDeterminant())
-{}
+LocalUnitTransform::LocalUnitTransform(afw::geom::Point2D const& sourcePixel, UnitSystem const& source,
+                                       UnitSystem const& destination)
+        : geometric(afw::geom::linearizeTransform(
+                  *afw::geom::makeWcsPairTransform(*source.wcs, *destination.wcs), sourcePixel)),
+          flux(destination.photoCalib->getInstFluxAtZeroMagnitude() /
+               source.photoCalib->getInstFluxAtZeroMagnitude()),
+          sb(flux / geometric.getLinear().computeDeterminant()) {}
 
-}}} // namespace lsst::meas::modelfit
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

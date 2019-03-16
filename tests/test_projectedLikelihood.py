@@ -81,21 +81,20 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.model.readEllipses(ev, self.nonlinear, self.fixed)
         self.amplitudes = numpy.zeros(self.model.getAmplitudeDim(), dtype=lsst.meas.modelfit.Scalar)
         self.amplitudes[:] = self.flux
-        # setup ideal exposure0: uses fit Wcs and Calib, has delta function PSF
+        # setup ideal exposure0: uses fit Wcs and PhotoCalib, has delta function PSF
         scale0 = 0.2*lsst.afw.geom.arcseconds
         self.crpix0 = lsst.afw.geom.Point2D(0, 0)
         wcs0 = lsst.afw.geom.makeSkyWcs(crpix=self.crpix0,
                                         crval=self.position,
                                         cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale0))
-        calib0 = lsst.afw.image.Calib()
-        calib0.setFluxMag0(10000)
+        photoCalib0 = lsst.afw.image.PhotoCalib(10)
         self.psf0 = makeGaussianFunction(0.0)
         self.bbox0 = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
         self.spanSet0 = lsst.afw.geom.SpanSet(self.bbox0)
         self.footprint0 = lsst.afw.detection.Footprint(self.spanSet0)
         self.exposure0 = lsst.afw.image.ExposureF(self.bbox0)
         self.exposure0.setWcs(wcs0)
-        self.exposure0.setCalib(calib0)
+        self.exposure0.setPhotoCalib(photoCalib0)
         self.sys0 = lsst.meas.modelfit.UnitSystem(self.exposure0)
         addGaussian(self.exposure0, self.ellipse, self.flux, psf=self.psf0)
         self.exposure0.getMaskedImage().getVariance().set(1.0)
@@ -104,9 +103,8 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         wcs1 = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(),
                                         crval=self.position,
                                         cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale1))
-        calib1 = lsst.afw.image.Calib()
-        calib1.setFluxMag0(30000)
-        self.sys1 = lsst.meas.modelfit.UnitSystem(wcs1, calib1)
+        photoCalib1 = lsst.afw.image.PhotoCalib(30)
+        self.sys1 = lsst.meas.modelfit.UnitSystem(wcs1, photoCalib1)
         # transform object that maps between exposures (not including PSF)
         self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.sys0.wcs.getPixelOrigin(), self.sys0, self.sys1)
         self.bbox1 = lsst.afw.geom.Box2I(self.bbox0)
@@ -162,7 +160,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         exposure1a = lsst.afw.image.ExposureF(self.bbox1)
         exposure1a.setWcs(self.sys1.wcs)
         lsst.afw.math.warpExposure(exposure1a, self.exposure0, warpCtrl)
-        exposure1a.setCalib(self.sys1.calib)
+        exposure1a.setPhotoCalib(self.sys1.photoCalib)
         scaleExposure(exposure1a, self.t01.flux)
         self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
                                      exposure1a.getMaskedImage().getImage().getArray(),
@@ -173,7 +171,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         srcToDest = lsst.afw.geom.makeTransform(self.t01.geometric)
         lsst.afw.math.warpImage(exposure1b.getMaskedImage(), self.exposure0.getMaskedImage(),
                                 srcToDest, warpCtrl)
-        exposure1b.setCalib(self.sys1.calib)
+        exposure1b.setPhotoCalib(self.sys1.photoCalib)
         scaleExposure(exposure1b, self.t01.flux)
         self.assertFloatsAlmostEqual(exposure1.getMaskedImage().getImage().getArray(),
                                      exposure1b.getMaskedImage().getImage().getArray(),
@@ -230,7 +228,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         addGaussian(exposure1, self.ellipse.transform(self.t01.geometric), self.flux * self.t01.flux,
                     psf=self.psf1)
         exposure1.setWcs(self.sys1.wcs)
-        exposure1.setCalib(self.sys1.calib)
+        exposure1.setPhotoCalib(self.sys1.photoCalib)
         var = numpy.random.rand(self.bbox1.getHeight(), self.bbox1.getWidth()) + 2.0
         exposure1.getMaskedImage().getVariance().getArray()[:, :] = var
         ctrl = lsst.meas.modelfit.UnitTransformedLikelihoodControl()

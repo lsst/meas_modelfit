@@ -67,13 +67,12 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         scale = 0.2 * lsst.afw.geom.arcseconds
         cdMatrix = lsst.afw.geom.makeCdMatrix(scale=scale, flipX=True)
         dataWcs = lsst.afw.geom.makeSkyWcs(crpix=crpix, crval=crval, cdMatrix=cdMatrix)
-        dataCalib = lsst.afw.image.Calib()
-        dataCalib.setFluxMag0(1e12)
+        photoCalib = lsst.afw.image.PhotoCalib(4.0)
         self.xyPosition = lsst.afw.geom.Point2D(1.1, -0.8)
         bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
         self.exposure = lsst.afw.image.ExposureF(bbox)
         self.exposure.setWcs(dataWcs)
-        self.exposure.setCalib(dataCalib)
+        self.exposure.setPhotoCalib(photoCalib)
         self.trueFlux = 65.0
         self.psfSigma = 2.0
         psf = lsst.afw.detection.GaussianPsf(25, 25, self.psfSigma)
