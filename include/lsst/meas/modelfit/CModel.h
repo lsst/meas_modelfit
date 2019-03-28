@@ -24,6 +24,9 @@
 #ifndef LSST_MEAS_MODELFIT_CModelFit_h_INCLUDED
 #define LSST_MEAS_MODELFIT_CModelFit_h_INCLUDED
 
+#include <bitset>
+#include <string>
+
 #include "ndarray.h"
 
 #include "lsst/pex/config.h"
