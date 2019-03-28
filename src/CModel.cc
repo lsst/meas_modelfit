@@ -22,6 +22,7 @@
  */
 #include <cstdlib>
 #include <memory>
+#include <bitset>
 
 #include "boost/filesystem/path.hpp"
 
