@@ -81,7 +81,7 @@ namespace lsst { namespace meas { namespace modelfit {
  *  @section cmodelUnits Units
  *
  *  Unlike most measurement algorithms, CModel requires the Exposure it is given to have both a Wcs and
- *  a Calib.  This is because it makes use of Bayesian priors, and hence it has to know the relationship
+ *  a PhotoCalib.  This is because it makes use of Bayesian priors, and hence it has to know the relationship
  *  between the raw units of the image (pixel and count) and the global units in which the priors are defined.
  *
  *  In fact, all of the nonlinear fits in CModel are done in a special, local coordinate system, defined
@@ -445,7 +445,7 @@ public:
     /**
      *  Run the CModel algorithm on an image, supplying inputs directly and returning outputs in a Result.
      *
-     *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and Calib.
+     *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and PhotoCalib.
      *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
      *  @param[in]   center       Centroid of the source to be fit.
      *  @param[in]   moments      Non-PSF-corrected moments of the source, used to initialize the model
@@ -472,7 +472,7 @@ public:
      *  Run the CModel algorithm in forced mode on an image, supplying inputs directly and returning
      *  outputs in a Result.
      *
-     *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and Calib.
+     *  @param[in]   exposure     Image to measure.  Must have a valid Psf, Wcs and PhotoCalib.
      *  @param[in]   psf          multi-shapelet approximation to the PSF at the position of the source
      *  @param[in]   center       Centroid of the source to be fit.
      *  @param[in]   reference    Result object from a previous, non-forced run of CModelAlgorithm.
@@ -495,7 +495,7 @@ public:
      *                             shape of the source, a MultiShapeletFunction PSF, and an approximate
      *                             estimate of the (via the PsfFlux slot), and to which all outputs will
      *                             be written.
-     *  @param[in]     exposure    Image to be measured.  Must have a valid Psf, Wcs, and Calib.
+     *  @param[in]     exposure    Image to be measured.  Must have a valid Psf, Wcs, and PhotoCalib.
      *
      *  To run this method, the CModelAlgorithm instance must have been created using the constructor
      *  that takes a Schema argument, and that Schema must match the Schema of the SourceRecord passed here.
@@ -512,7 +512,7 @@ public:
      *                             the source, a MultiShapeletFunction PSF, and an approximate
      *                             estimate of the (via the PsfFlux slot), and to which all outputs will
      *                             be written.
-     *  @param[in]     exposure    Image to be measured.  Must have a valid Psf, Wcs, and Calib.
+     *  @param[in]     exposure    Image to be measured.  Must have a valid Psf, Wcs, and PhotoCalib.
      *  @param[in]     refRecord   A SourceRecord that contains the outputs of a previous non-forced run
      *                             of CModelAlgorithm (which may have taken place on an image with a
      *                             different Wcs).

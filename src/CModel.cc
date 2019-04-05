@@ -560,7 +560,7 @@ struct CModelStageData {
         Model const & model
     ) :
         measSysCenter(center), position(exposure.getWcs()->pixelToSky(center)),
-        measSys(exposure), fitSys(position, exposure.getCalib(), approxFlux),
+        measSys(exposure), fitSys(position, exposure.getPhotoCalib(), approxFlux),
         fitSysToMeasSys(fitSys.wcs->getPixelOrigin(), fitSys, measSys),
         parameters(ndarray::allocate(model.getNonlinearDim() + model.getAmplitudeDim())),
         nonlinear(parameters[ndarray::view(0, model.getNonlinearDim())]),
@@ -1315,10 +1315,10 @@ shapelet::MultiShapeletFunction CModelAlgorithm::_processInputs(
             "Exposure has no Wcs"
         );
     }
-    if (!exposure.getCalib() || exposure.getCalib()->getFluxMag0().first == 0.0) {
+    if (!exposure.getPhotoCalib() || exposure.getPhotoCalib()->getCalibrationMean() == 0.0) {
         throw LSST_EXCEPT(
             meas::base::FatalAlgorithmError,
-            "Exposure has no valid Calib"
+            "Exposure has no valid PhotoCalib"
         );
     }
     if (!exposure.getPsf()) {

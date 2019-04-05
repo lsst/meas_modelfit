@@ -201,7 +201,7 @@ def reconstructCModel(exposure, record, config):
     position = exposure.getWcs().pixelToSky(center)
     measSys = measMod.UnitSystem(exposure)
     approxFlux = record.get("base_PsfFlux_instFlux")
-    fitSys = measMod.UnitSystem(position, exposure.getCalib(), approxFlux)
+    fitSys = measMod.UnitSystem(position, exposure.getPhotoCalib(), approxFlux)
     fitSysToMeasSys = measMod.LocalUnitTransform(center, fitSys, measSys)
 
     # Build the Shapelet objects

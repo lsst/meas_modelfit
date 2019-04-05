@@ -28,7 +28,7 @@
 #include <memory>
 #include "ndarray/eigen.h"
 
-#include "lsst/afw/image/Calib.h"
+#include "lsst/afw/image/PhotoCalib.h"
 #include "lsst/shapelet/MatrixBuilder.h"
 #include "lsst/meas/modelfit/UnitTransformedLikelihood.h"
 

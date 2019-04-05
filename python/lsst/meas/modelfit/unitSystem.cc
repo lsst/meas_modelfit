@@ -45,14 +45,14 @@ PYBIND11_MODULE(unitSystem, mod) {
 
     PyUnitSystem clsUnitSystem(mod, "UnitSystem");
     clsUnitSystem.def_readonly("wcs", &UnitSystem::wcs);
-    clsUnitSystem.def_readonly("calib", &UnitSystem::calib);
+    clsUnitSystem.def_readonly("photoCalib", &UnitSystem::photoCalib);
     clsUnitSystem.def(
-            py::init<afw::geom::SpherePoint const &, std::shared_ptr<afw::image::Calib const>, double>(),
+            py::init<afw::geom::SpherePoint const &, std::shared_ptr<afw::image::PhotoCalib const>, double>(),
             "position"_a, "calibIn"_a, "flux"_a);
     clsUnitSystem.def(py::init<afw::geom::SpherePoint const &, Scalar>(), "position"_a, "mag"_a);
     clsUnitSystem.def(
-            py::init<std::shared_ptr<afw::geom::SkyWcs const>, std::shared_ptr<afw::image::Calib const>>(),
-            "wcs"_a, "calib"_a);
+            py::init<std::shared_ptr<afw::geom::SkyWcs const>, std::shared_ptr<afw::image::PhotoCalib const>>(),
+            "wcs"_a, "photoCalib"_a);
     clsUnitSystem.def(py::init<afw::image::Exposure<float> const &>(), "exposure"_a);
     clsUnitSystem.def(py::init<afw::image::Exposure<double> const &>(), "exposure"_a);
 
