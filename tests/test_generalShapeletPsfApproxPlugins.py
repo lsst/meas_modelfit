@@ -26,6 +26,7 @@ import os
 
 import lsst.utils.tests
 import lsst.shapelet
+import lsst.geom
 import lsst.afw.geom.ellipses
 import lsst.afw.table
 import lsst.afw.detection
@@ -89,7 +90,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
-        measRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
+        measRecord.set(self.centroidKey, lsst.geom.Point2D(20.0, 20.0))
         task.run(measCat, self.exposure)
         keySingleGaussian = lsst.shapelet.MultiShapeletFunctionKey(
             self.schema["modelfit"]["GeneralShapeletPsfApprox"]["SingleGaussian"]
@@ -114,7 +115,7 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.copyColumns = {"id": "objectId", "parent": "parentObjectId"}
         refCat = lsst.afw.table.SourceCatalog(self.schema)
         refRecord = refCat.addNew()
-        refRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
+        refRecord.set(self.centroidKey, lsst.geom.Point2D(20.0, 20.0))
         refWcs = self.exposure.getWcs()  # same as measurement Wcs
         task = lsst.meas.base.ForcedMeasurementTask(config=config, refSchema=self.schema)
         measCat = task.generateMeasCat(self.exposure, refCat, refWcs)
@@ -137,11 +138,11 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measRecord = measCat.addNew()
         psfImage = lsst.afw.image.ImageD(os.path.join(self.psfDir, "galsimPsf_0.9.fits"))
         psfImage.getArray()[0, 0] = numpy.nan
-        psfImage.setXY0(lsst.afw.geom.Point2I(0, 0))
+        psfImage.setXY0(lsst.geom.Point2I(0, 0))
         kernel = lsst.afw.math.FixedKernel(psfImage)
         psf = lsst.meas.algorithms.KernelPsf(kernel)
         self.exposure.setPsf(psf)
-        center = lsst.afw.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
+        center = lsst.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
         measRecord.set(self.centroidKey, center)
         task.run(measCat, self.exposure)
         self.assertTrue(measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_flag"))
@@ -159,11 +160,11 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
         psfImage = lsst.afw.image.ImageD(os.path.join(self.psfDir, "galsimPsf_0.9.fits"))
-        psfImage.setXY0(lsst.afw.geom.Point2I(0, 0))
+        psfImage.setXY0(lsst.geom.Point2I(0, 0))
         kernel = lsst.afw.math.FixedKernel(psfImage)
         psf = lsst.meas.algorithms.KernelPsf(kernel)
         self.exposure.setPsf(psf)
-        center = lsst.afw.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
+        center = lsst.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
         measRecord.set(self.centroidKey, center)
         task.run(measCat, self.exposure)
         self.assertTrue(measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_flag"))
@@ -181,11 +182,11 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
         psfImage = lsst.afw.image.ImageD(os.path.join(self.psfDir, "galsimPsf_0.9.fits"))
-        psfImage.setXY0(lsst.afw.geom.Point2I(0, 0))
+        psfImage.setXY0(lsst.geom.Point2I(0, 0))
         kernel = lsst.afw.math.FixedKernel(psfImage)
         psf = lsst.meas.algorithms.KernelPsf(kernel)
         self.exposure.setPsf(psf)
-        center = lsst.afw.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
+        center = lsst.geom.Point2D(psfImage.getArray().shape[0]/2, psfImage.getArray().shape[1]/2)
         measRecord.set(self.centroidKey, center)
         task.run(measCat, self.exposure)
         self.assertTrue(measRecord.get("modelfit_GeneralShapeletPsfApprox_Full_flag"))

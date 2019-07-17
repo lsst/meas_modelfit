@@ -26,6 +26,7 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.afw.geom
+import lsst.geom
 import lsst.afw.image
 import lsst.log
 import lsst.log.utils
@@ -62,14 +63,14 @@ class CModelTestCase(lsst.utils.tests.TestCase):
     def setUp(self):
         # Setup test data: a single point source, initially with no noise.
         numpy.random.seed(500)
-        crval = lsst.afw.geom.SpherePoint(45.0, 45.0, lsst.afw.geom.degrees)
-        crpix = lsst.afw.geom.Point2D(0.0, 0.0)
-        scale = 0.2 * lsst.afw.geom.arcseconds
+        crval = lsst.geom.SpherePoint(45.0, 45.0, lsst.geom.degrees)
+        crpix = lsst.geom.Point2D(0.0, 0.0)
+        scale = 0.2 * lsst.geom.arcseconds
         cdMatrix = lsst.afw.geom.makeCdMatrix(scale=scale, flipX=True)
         dataWcs = lsst.afw.geom.makeSkyWcs(crpix=crpix, crval=crval, cdMatrix=cdMatrix)
         photoCalib = lsst.afw.image.PhotoCalib(4.0)
-        self.xyPosition = lsst.afw.geom.Point2D(1.1, -0.8)
-        bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
+        self.xyPosition = lsst.geom.Point2D(1.1, -0.8)
+        bbox = lsst.geom.Box2I(lsst.geom.Point2I(-100, -100), lsst.geom.Point2I(100, 100))
         self.exposure = lsst.afw.image.ExposureF(bbox)
         self.exposure.setWcs(dataWcs)
         self.exposure.setPhotoCalib(photoCalib)

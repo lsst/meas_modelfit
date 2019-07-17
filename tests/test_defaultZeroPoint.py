@@ -25,6 +25,7 @@ import numpy as np
 
 import lsst.afw.image as afwImage
 import lsst.afw.geom as afwGeom
+import lsst.geom as geom
 import lsst.meas.modelfit as measModel
 import lsst.utils
 
@@ -44,9 +45,9 @@ class DefaultZeroPointTestCase(lsst.utils.tests.TestCase):
         photoCalibNoZero = afwImage.PhotoCalib()
         photoCalibWithZero = afwImage.makePhotoCalibFromCalibZeroPoint(self.mag2Flux(25))
 
-        scale = 0.2 * afwGeom.arcseconds
-        wcs = afwGeom.makeSkyWcs(crpix=afwGeom.Point2D(),
-                                 crval=afwGeom.SpherePoint(45.0, 45.0, afwGeom.degrees),
+        scale = 0.2 * geom.arcseconds
+        wcs = afwGeom.makeSkyWcs(crpix=geom.Point2D(),
+                                 crval=geom.SpherePoint(45.0, 45.0, geom.degrees),
                                  cdMatrix=afwGeom.makeCdMatrix(scale=scale))
 
         self.unitNoZero = measModel.UnitSystem(wcs, photoCalibNoZero)

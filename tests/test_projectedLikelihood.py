@@ -25,6 +25,7 @@ import numpy
 
 import lsst.utils.tests
 import lsst.shapelet.tests
+import lsst.geom
 import lsst.afw.geom
 import lsst.afw.geom.ellipses
 import lsst.afw.image
@@ -69,7 +70,7 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
 
     def setUp(self):
         numpy.random.seed(500)
-        self.position = lsst.afw.geom.SpherePoint(45.0, 45.0, lsst.afw.geom.degrees)
+        self.position = lsst.geom.SpherePoint(45.0, 45.0, lsst.geom.degrees)
         self.model = lsst.meas.modelfit.Model.makeGaussian(lsst.meas.modelfit.Model.FIXED_CENTER)
         self.ellipse = lsst.afw.geom.ellipses.Ellipse(lsst.afw.geom.ellipses.Axes(6.0, 5.0, numpy.pi/6))
         self.flux = 50.0
@@ -82,14 +83,14 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.amplitudes = numpy.zeros(self.model.getAmplitudeDim(), dtype=lsst.meas.modelfit.Scalar)
         self.amplitudes[:] = self.flux
         # setup ideal exposure0: uses fit Wcs and PhotoCalib, has delta function PSF
-        scale0 = 0.2*lsst.afw.geom.arcseconds
-        self.crpix0 = lsst.afw.geom.Point2D(0, 0)
+        scale0 = 0.2*lsst.geom.arcseconds
+        self.crpix0 = lsst.geom.Point2D(0, 0)
         wcs0 = lsst.afw.geom.makeSkyWcs(crpix=self.crpix0,
                                         crval=self.position,
                                         cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale0))
         photoCalib0 = lsst.afw.image.PhotoCalib(10)
         self.psf0 = makeGaussianFunction(0.0)
-        self.bbox0 = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(-100, -100), lsst.afw.geom.Point2I(100, 100))
+        self.bbox0 = lsst.geom.Box2I(lsst.geom.Point2I(-100, -100), lsst.geom.Point2I(100, 100))
         self.spanSet0 = lsst.afw.geom.SpanSet(self.bbox0)
         self.footprint0 = lsst.afw.detection.Footprint(self.spanSet0)
         self.exposure0 = lsst.afw.image.ExposureF(self.bbox0)
@@ -99,15 +100,15 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         addGaussian(self.exposure0, self.ellipse, self.flux, psf=self.psf0)
         self.exposure0.getMaskedImage().getVariance().set(1.0)
         # setup secondary exposure: 2x pixel scale, 3x gain, Gaussian PSF with sigma=2.5pix
-        scale1 = 0.4 * lsst.afw.geom.arcseconds
-        wcs1 = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(),
+        scale1 = 0.4 * lsst.geom.arcseconds
+        wcs1 = lsst.afw.geom.makeSkyWcs(crpix=lsst.geom.Point2D(),
                                         crval=self.position,
                                         cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale1))
         photoCalib1 = lsst.afw.image.PhotoCalib(30)
         self.sys1 = lsst.meas.modelfit.UnitSystem(wcs1, photoCalib1)
         # transform object that maps between exposures (not including PSF)
         self.t01 = lsst.meas.modelfit.LocalUnitTransform(self.sys0.wcs.getPixelOrigin(), self.sys0, self.sys1)
-        self.bbox1 = lsst.afw.geom.Box2I(self.bbox0)
+        self.bbox1 = lsst.geom.Box2I(self.bbox0)
         self.bbox1.grow(-60)
         self.spanSet1 = lsst.afw.geom.SpanSet(self.bbox1)
         self.footprint1 = lsst.afw.detection.Footprint(self.spanSet1)

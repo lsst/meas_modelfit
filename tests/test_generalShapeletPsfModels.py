@@ -26,6 +26,7 @@ import os
 
 import lsst.utils.tests
 import lsst.shapelet
+import lsst.geom
 import lsst.afw.geom.ellipses
 import lsst.afw.table
 import lsst.afw.detection
@@ -81,8 +82,8 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=self.schema)
         measCat = lsst.afw.table.SourceCatalog(self.schema)
         measRecord = measCat.addNew()
-        measRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
-        measRecord.set(self.centroidKey, lsst.afw.geom.Point2D(20.0, 20.0))
+        measRecord.set(self.centroidKey, lsst.geom.Point2D(20.0, 20.0))
+        measRecord.set(self.centroidKey, lsst.geom.Point2D(20.0, 20.0))
         task.run(measCat, self.exposure)
         return measRecord
 
