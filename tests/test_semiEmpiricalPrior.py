@@ -25,14 +25,7 @@ import os
 import numpy
 
 import lsst.utils.tests
-import lsst.shapelet
-import lsst.afw.geom.ellipses
 import lsst.meas.modelfit
-
-try:
-    import scipy.integrate
-except ImportError:
-    scipy = None
 
 
 class SemiEmpiricalPriorTestCase(lsst.utils.tests.TestCase):

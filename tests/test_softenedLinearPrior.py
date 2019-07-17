@@ -24,8 +24,6 @@ import unittest
 import numpy
 
 import lsst.utils.tests
-import lsst.shapelet
-import lsst.afw.geom.ellipses
 import lsst.log
 import lsst.log.utils
 import lsst.meas.modelfit

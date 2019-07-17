@@ -25,10 +25,6 @@ import unittest
 import numpy
 
 import lsst.utils.tests
-import lsst.afw.geom.ellipses
-import lsst.afw.image
-import lsst.afw.detection
-import lsst.shapelet.tests
 import lsst.meas.modelfit
 
 try:
@@ -53,8 +49,8 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
             componentList.append(lsst.meas.modelfit.Mixture.Component(numpy.random.rand(), mu, sigma))
         return lsst.meas.modelfit.Mixture(nDim, componentList, df)
 
-    def testSwig(self):
-        """Test that Swig correctly wrapped tricky things.
+    def testWrappers(self):
+        """Test that we correctly wrapped tricky things.
         """
         l1 = []
         l1.append(lsst.meas.modelfit.MixtureComponent(1))
@@ -93,16 +89,19 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         m.draw(self.rng, x)
         self.assertFloatsAlmostEqual(x.mean(axis=0), mu, rtol=2E-2)
         self.assertFloatsAlmostEqual(numpy.cov(x, rowvar=False), sigma, rtol=3E-2)
-        if scipy is None:
-            return
+
+    @unittest.skipIf(scipy is None, "Test requires SciPy")
+    def testGaussianSciPy(self):
+        m = self.makeRandomMixture(2, 1)
+        x = numpy.zeros((1000000, 2), dtype=float)
+        m.draw(self.rng, x)
         self.assertGreater(scipy.stats.normaltest(x[:, 0])[1], 0.05)
         self.assertGreater(scipy.stats.normaltest(x[:, 1])[1], 0.05)
 
+    @unittest.skipIf(scipy is None, "Test requires SciPy")
     def testStudentsT(self):
         """Test that our implementations for a single-component Student's T are correct.
         """
-        if scipy is None:
-            return
         for df in [4, 8]:
             m = self.makeRandomMixture(1, 1, df=df)
             mu = m[0].getMu()

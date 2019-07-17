@@ -123,9 +123,8 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             return evaluator(numpy.array([x, y]))
         return scipy.integrate.dblquad(func, 0.0, numpy.Inf, lambda x: 0.0, lambda x: numpy.Inf)
 
+    @unittest.skipIf(scipy is None, "Test requires SciPy")
     def test1d(self):
-        if scipy is None:
-            return
         for i in range(5):
             sigma = (numpy.random.randn(1, 1)**2 + 1)*5
             mu = (numpy.random.randn(1))*3
@@ -145,9 +144,8 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             self.check1d(mu, hessian, tg1)
             self.check1d(mu, hessian, tg2)
 
+    @unittest.skipIf(scipy is None, "Test requires SciPy")
     def test2d(self):
-        if scipy is None:
-            return
         for i in range(5):
             x = numpy.linspace(-1, 1, 5)
             model = numpy.zeros((x.size, 2), dtype=float)
@@ -173,9 +171,8 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
                                          rtol=1E-13)
             self.check2d(mu, hessian, tg2)
 
+    @unittest.skipIf(scipy is None, "Test requires SciPy")
     def testDegenerate(self):
-        if scipy is None:
-            return
         for i in range(5):
             x = numpy.linspace(-1, 1, 5)
             model = numpy.zeros((x.size, 2), dtype=float)
@@ -185,7 +182,7 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
             q0 = 0.5*float(numpy.dot(data, data))
             gradient = -numpy.dot(model.transpose(), data)
             hessian = numpy.dot(model.transpose(), model)
-            mu, _, _, _ = numpy.linalg.lstsq(model, data)
+            mu, _, _, _ = numpy.linalg.lstsq(model, data, rcond=None)
             tg = lsst.meas.modelfit.TruncatedGaussian.fromSeriesParameters(q0, gradient, hessian)
             self.assertFloatsAlmostEqual(tg.getLogPeakAmplitude(),
                                          q0+0.5*numpy.dot(mu, gradient),

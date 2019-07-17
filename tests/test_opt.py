@@ -22,7 +22,6 @@ from builtins import range
 # see <https://www.lsstcorp.org/LegalNotices/>.
 #
 import unittest
-import os
 import numpy
 
 import lsst.utils.tests
@@ -33,6 +32,7 @@ import lsst.meas.modelfit
 #   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
 lsst.log.utils.traceSetAt("meas.modelfit.optimizer", 5)
 log = lsst.log.Log.getLogger("meas.modelfit.optimizer")
+
 
 class OptimizerTestCase(lsst.utils.tests.TestCase):
 
@@ -81,6 +81,7 @@ class TestMemory(lsst.utils.tests.MemoryTestCase):
 
 def setup_module(module):
     lsst.utils.tests.init()
+
 
 if __name__ == "__main__":
     lsst.utils.tests.init()
