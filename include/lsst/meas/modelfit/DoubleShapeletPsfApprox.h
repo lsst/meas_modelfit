@@ -24,6 +24,7 @@
 #ifndef LSST_MEAS_MODELFIT_DoubleShapeletPsfApprox_h_INCLUDED
 #define LSST_MEAS_MODELFIT_DoubleShapeletPsfApprox_h_INCLUDED
 
+#include "lsst/afw/geom.h"
 #include "lsst/shapelet/FunctorKeys.h"
 #include "lsst/meas/base/Algorithm.h"
 #include "lsst/meas/base/InputUtilities.h"
