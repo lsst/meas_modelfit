@@ -47,9 +47,9 @@ PYBIND11_MODULE(unitSystem, mod) {
     clsUnitSystem.def_readonly("wcs", &UnitSystem::wcs);
     clsUnitSystem.def_readonly("photoCalib", &UnitSystem::photoCalib);
     clsUnitSystem.def(
-            py::init<afw::geom::SpherePoint const &, std::shared_ptr<afw::image::PhotoCalib const>, double>(),
+            py::init<geom::SpherePoint const &, std::shared_ptr<afw::image::PhotoCalib const>, double>(),
             "position"_a, "calibIn"_a, "flux"_a);
-    clsUnitSystem.def(py::init<afw::geom::SpherePoint const &, Scalar>(), "position"_a, "mag"_a);
+    clsUnitSystem.def(py::init<geom::SpherePoint const &, Scalar>(), "position"_a, "mag"_a);
     clsUnitSystem.def(
             py::init<std::shared_ptr<afw::geom::SkyWcs const>, std::shared_ptr<afw::image::PhotoCalib const>>(),
             "wcs"_a, "photoCalib"_a);
@@ -60,7 +60,7 @@ PYBIND11_MODULE(unitSystem, mod) {
     clsLocalUnitTransform.def_readonly("geometric", &LocalUnitTransform::geometric);
     clsLocalUnitTransform.def_readonly("flux", &LocalUnitTransform::flux);
     clsLocalUnitTransform.def_readonly("sb", &LocalUnitTransform::sb);
-    clsLocalUnitTransform.def(py::init<afw::geom::Point2D const &, UnitSystem const &, UnitSystem const &>(),
+    clsLocalUnitTransform.def(py::init<geom::Point2D const &, UnitSystem const &, UnitSystem const &>(),
                               "sourcePixel"_a, "source"_a, "destination"_a);
     clsLocalUnitTransform.def(py::init<>());
 }

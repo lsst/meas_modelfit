@@ -31,6 +31,7 @@
 #include "lsst/meas/modelfit/Model.h"
 #include "lsst/meas/modelfit/Prior.h"
 #include "lsst/meas/modelfit/Likelihood.h"
+#include "lsst/geom.h"
 #include "lsst/afw/geom.h"
 #include "lsst/afw/table/Source.h"
 #include "lsst/meas/base/exceptions.h"
@@ -316,7 +317,7 @@ public:
 
     MultiShapeletPsfLikelihood(
         ndarray::Array<Pixel const,2,1> const & image,
-        afw::geom::Point2I const & xy0,
+        geom::Point2I const & xy0,
         PTR(Model) model,
         Scalar sigma,
         ndarray::Array<Scalar const,1,1> const & fixed

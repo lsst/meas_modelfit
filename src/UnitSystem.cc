@@ -33,20 +33,20 @@ namespace lsst {
 namespace meas {
 namespace modelfit {
 
-UnitSystem::UnitSystem(afw::geom::SpherePoint const& position,
+UnitSystem::UnitSystem(geom::SpherePoint const& position,
                        std::shared_ptr<const lsst::afw::image::PhotoCalib> photoCalib_, double flux) {
-    auto scale = 1.0 * lsst::afw::geom::arcseconds;
+    auto scale = 1.0 * lsst::geom::arcseconds;
     auto cdMatrix = afw::geom::makeCdMatrix(scale);
-    wcs = afw::geom::makeSkyWcs(afw::geom::Point2D(0.0, 0.0), position, cdMatrix);
+    wcs = afw::geom::makeSkyWcs(geom::Point2D(0.0, 0.0), position, cdMatrix);
     photoCalib_ = validatePhotoCalib(photoCalib_);
     Scalar mag = photoCalib_->instFluxToMagnitude(flux);
     photoCalib = afw::image::makePhotoCalibFromCalibZeroPoint(std::pow(10.0, mag / 2.5), 0.0);
 }
 
-UnitSystem::UnitSystem(afw::geom::SpherePoint const& position, Scalar mag) {
-    auto scale = 1.0 * lsst::afw::geom::arcseconds;
+UnitSystem::UnitSystem(geom::SpherePoint const& position, Scalar mag) {
+    auto scale = 1.0 * lsst::geom::arcseconds;
     auto cdMatrix = afw::geom::makeCdMatrix(scale);
-    wcs = afw::geom::makeSkyWcs(afw::geom::Point2D(0.0, 0.0), position, cdMatrix);
+    wcs = afw::geom::makeSkyWcs(geom::Point2D(0.0, 0.0), position, cdMatrix);
     photoCalib = afw::image::makePhotoCalibFromCalibZeroPoint(std::pow(10.0, mag / 2.5), 0.0);
 }
 
@@ -64,7 +64,7 @@ std::shared_ptr<const lsst::afw::image::PhotoCalib> UnitSystem::getDefaultPhotoC
     return afw::image::makePhotoCalibFromCalibZeroPoint(std::pow(10.0, 27.0 / 2.5), 0.0);
 }
 
-LocalUnitTransform::LocalUnitTransform(afw::geom::Point2D const& sourcePixel, UnitSystem const& source,
+LocalUnitTransform::LocalUnitTransform(geom::Point2D const& sourcePixel, UnitSystem const& source,
                                        UnitSystem const& destination)
         : geometric(afw::geom::linearizeTransform(
                   *afw::geom::makeWcsPairTransform(*source.wcs, *destination.wcs), sourcePixel)),

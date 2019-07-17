@@ -25,10 +25,10 @@
 #define LSST_MEAS_MODELFIT_UnitSystem_h_INCLUDED
 
 #include "lsst/afw/image/Exposure.h"
-#include "lsst/afw/geom/SpherePoint.h"
+#include "lsst/geom/SpherePoint.h"
 #include "lsst/afw/geom/SkyWcs.h"
 #include "lsst/afw/image/PhotoCalib.h"
-#include "lsst/afw/geom/AffineTransform.h"
+#include "lsst/geom/AffineTransform.h"
 
 #include "lsst/meas/modelfit/common.h"
 
@@ -50,9 +50,9 @@ struct UnitSystem {
      *  set such that unit flux is the given magnitude.  See @ref modelfitUnits for an explanation
      *  of why we frequently use this system.
      */
-    UnitSystem(afw::geom::SpherePoint const& position,
+    UnitSystem(geom::SpherePoint const& position,
                std::shared_ptr<const afw::image::PhotoCalib> photoCalib, double flux);
-    UnitSystem(afw::geom::SpherePoint const& position, Scalar mag);
+    UnitSystem(geom::SpherePoint const& position, Scalar mag);
 
     /// Construct a UnitSystem from a given Wcs and PhotoCalib
     UnitSystem(std::shared_ptr<afw::geom::SkyWcs const> wcs_,
@@ -79,7 +79,7 @@ private:
  */
 struct LocalUnitTransform {
     /// Maps source pixel coordinates to destination pixel coordinates
-    afw::geom::AffineTransform geometric;
+    geom::AffineTransform geometric;
 
     /// Multiply source fluxes by this to get destination fluxes
     double flux;
@@ -87,7 +87,7 @@ struct LocalUnitTransform {
     /// Multiply source surface brightnesses by this to get destination surface brightnesses
     double sb;
 
-    LocalUnitTransform(afw::geom::Point2D const& sourcePixel, UnitSystem const& source,
+    LocalUnitTransform(geom::Point2D const& sourcePixel, UnitSystem const& source,
                        UnitSystem const& destination);
 
     /// Construct an identity transform for both geometry and flux.

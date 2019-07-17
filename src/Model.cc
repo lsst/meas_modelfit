@@ -163,7 +163,7 @@ public:
         Scalar const * nonlinearIter, Scalar const * fixedIter,
         EllipseIterator ellipseIter
     ) const override {
-        afw::geom::Point2D center(nonlinearIter[getNonlinearDim()-2], nonlinearIter[getNonlinearDim()-1]);
+        geom::Point2D center(nonlinearIter[getNonlinearDim()-2], nonlinearIter[getNonlinearDim()-1]);
         for (int i = 0; i < getBasisCount(); ++i, ++ellipseIter) {
             if (getBasisVector()[i]) {
                 ellipseIter->getCore().readParameters(nonlinearIter);
@@ -233,7 +233,7 @@ public:
                 ellipseIter->getCore().readParameters(nonlinearIter);
                 nonlinearIter += 3;
             }
-            ellipseIter->setCenter(afw::geom::Point2D(centerIter[0], centerIter[1]));
+            ellipseIter->setCenter(geom::Point2D(centerIter[0], centerIter[1]));
             centerIter += 2;
         }
     }

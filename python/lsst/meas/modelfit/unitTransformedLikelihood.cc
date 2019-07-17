@@ -69,13 +69,13 @@ PYBIND11_MODULE(unitTransformedLikelihood, mod) {
     PyUnitTransformedLikelihood clsUnitTransformedLikelihood(mod, "UnitTransformedLikelihood");
     clsUnitTransformedLikelihood.def(
             py::init<std::shared_ptr<Model>, ndarray::Array<Scalar const, 1, 1> const &, UnitSystem const &,
-                     afw::geom::SpherePoint const &, afw::image::Exposure<Pixel> const &,
+                     geom::SpherePoint const &, afw::image::Exposure<Pixel> const &,
                      afw::detection::Footprint const &, shapelet::MultiShapeletFunction const &,
                      UnitTransformedLikelihoodControl const &>(),
             "model"_a, "fixed"_a, "fitSys"_a, "position"_a, "exposure"_a, "footprint"_a, "psf"_a, "ctrl"_a);
     clsUnitTransformedLikelihood.def(
             py::init<std::shared_ptr<Model>, ndarray::Array<Scalar const, 1, 1> const &, UnitSystem const &,
-                     afw::geom::SpherePoint const &, std::vector<std::shared_ptr<EpochFootprint>> const &,
+                     geom::SpherePoint const &, std::vector<std::shared_ptr<EpochFootprint>> const &,
                      UnitTransformedLikelihoodControl const &>(),
             "model"_a, "fixed"_a, "fitSys"_a, "position"_a, "epochFootprintList"_a, "ctrl"_a);
 }

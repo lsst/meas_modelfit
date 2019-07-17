@@ -30,7 +30,7 @@
 
 #include "lsst/afw/detection/FootprintSet.h"
 #include "lsst/afw/detection/Psf.h"
-#include "lsst/afw/geom/SpherePoint.h"
+#include "lsst/geom/SpherePoint.h"
 #include "lsst/afw/math/LeastSquares.h"
 #include "lsst/shapelet/FunctorKeys.h"
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
@@ -542,8 +542,8 @@ struct CModelKeys {
 namespace {
 
 struct CModelStageData {
-    afw::geom::Point2D measSysCenter;       // position of the object in image ("meas") coordinates
-    afw::geom::SpherePoint position;        // position of the object in ICRS ra,dec
+    geom::Point2D measSysCenter;       // position of the object in image ("meas") coordinates
+    geom::SpherePoint position;        // position of the object in ICRS ra,dec
     UnitSystem measSys;                     // coordinate systems for the image being measured
     UnitSystem fitSys;                      // coordinate systems for the model parameters
     LocalUnitTransform fitSysToMeasSys;     // coordinate transform from fitSys to measSys
@@ -555,7 +555,7 @@ struct CModelStageData {
 
     CModelStageData(
         afw::image::Exposure<Pixel> const & exposure,
-        Scalar approxFlux, afw::geom::Point2D const & center,
+        Scalar approxFlux, geom::Point2D const & center,
         shapelet::MultiShapeletFunction const & psf_,
         Model const & model
     ) :
@@ -954,7 +954,7 @@ public:
         }
         afw::geom::ellipses::Ellipse deconvolvedEllipse(
             deconvolvedMoments,
-            afw::geom::Point2D(data.measSysCenter - psfEllipse.getCenter())
+            geom::Point2D(data.measSysCenter - psfEllipse.getCenter())
         );
         // Convert ellipse from moments to half-light using the ratio for this profile
         deconvolvedEllipse.getCore().scale(1.0 / initial.profile->getMomentsRadiusFactor());
@@ -1044,7 +1044,7 @@ CModelAlgorithm::CModelAlgorithm(Control const & ctrl) :
 CModelAlgorithm::Result CModelAlgorithm::apply(
     afw::image::Exposure<Pixel> const & exposure,
     shapelet::MultiShapeletFunction const & psf,
-    afw::geom::Point2D const & center,
+    geom::Point2D const & center,
     afw::geom::ellipses::Quadrupole const & moments,
     Scalar approxFlux,
     Scalar kronRadius,
@@ -1059,7 +1059,7 @@ void CModelAlgorithm::_applyImpl(
     Result & result,
     afw::image::Exposure<Pixel> const & exposure,
     shapelet::MultiShapeletFunction const & psf,
-    afw::geom::Point2D const & center,
+    geom::Point2D const & center,
     afw::geom::ellipses::Quadrupole const & moments,
     Scalar approxFlux,
     Scalar kronRadius,
@@ -1069,7 +1069,7 @@ void CModelAlgorithm::_applyImpl(
     afw::geom::ellipses::Quadrupole psfMoments;
     try {
         psfMoments = psf.evaluate().computeMoments().getCore();
-    } catch (afw::geom::SingularTransformException const& exc) {
+    } catch (geom::SingularTransformException const& exc) {
         throw LSST_EXCEPT(
             meas::base::MeasurementError,
             std::string("Singular transform in shapelets: ") + exc.what(),
@@ -1157,7 +1157,7 @@ void CModelAlgorithm::_applyImpl(
 CModelAlgorithm::Result CModelAlgorithm::applyForced(
     afw::image::Exposure<Pixel> const & exposure,
     shapelet::MultiShapeletFunction const & psf,
-    afw::geom::Point2D const & center,
+    geom::Point2D const & center,
     CModelResult const & reference,
     Scalar approxFlux
 ) const {
@@ -1199,7 +1199,7 @@ void CModelAlgorithm::_applyForcedImpl(
     Result & result,
     afw::image::Exposure<Pixel> const & exposure,
     shapelet::MultiShapeletFunction const & psf,
-    afw::geom::Point2D const & center,
+    geom::Point2D const & center,
     CModelResult const & reference,
     Scalar approxFlux
 ) const {
@@ -1344,7 +1344,7 @@ void CModelAlgorithm::measure(
             result.flags[Result::NO_SHAPE] = true;
             try {
                 moments = psf.evaluate().computeMoments().getCore();
-            } catch (afw::geom::SingularTransformException const& exc) {
+            } catch (geom::SingularTransformException const& exc) {
                 throw LSST_EXCEPT(
                     meas::base::MeasurementError,
                     std::string("Singular transform in shapelets: ") + exc.what(),

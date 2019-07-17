@@ -80,7 +80,7 @@ public:
     {}
 
     Scalar p(Scalar eta1, Scalar eta2) const {
-        return _m.p(std::sqrt(eta1*eta1 + eta2*eta2))/(2*afw::geom::PI);
+        return _m.p(std::sqrt(eta1*eta1 + eta2*eta2))/(2*geom::PI);
     }
 
     Eigen::Vector2d d1(Scalar eta1, Scalar eta2) const {
@@ -90,7 +90,7 @@ public:
             r[0] = eta1/eta;
             r[1] = eta2/eta;
         }
-        return _m.d1(eta)*r/(2*afw::geom::PI);;
+        return _m.d1(eta)*r/(2*geom::PI);;
     }
 
     Eigen::Matrix2d d2(Scalar eta1, Scalar eta2) const {
@@ -105,7 +105,7 @@ public:
             r(1,1) = c1*c1*d1 + c2*c2*d2;
             r(0,1) = r(1,0) = c1*c2*(d2 - d1);
         }
-        r /= (2*afw::geom::PI);
+        r /= (2*geom::PI);
         return r;
     }
 
@@ -191,7 +191,7 @@ public:
 
     Scalar integrate(Scalar x0, Scalar x1) const {
         if (x0 == _mu && x1 == std::numeric_limits<Scalar>::infinity()) {
-            return 0.5*std::sqrt(afw::geom::PI*_nu)*boost::math::tgamma_delta_ratio(0.5*_nu, 0.5)*_sigma;
+            return 0.5*std::sqrt(geom::PI*_nu)*boost::math::tgamma_delta_ratio(0.5*_nu, 0.5)*_sigma;
         }
         // Should never get here, since the code in this file will only evaluate at the above endpoints,
         // but we should be careful in case we try to use this elsewhere in the future.
