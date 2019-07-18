@@ -29,6 +29,7 @@
 
 #include "ndarray.h"
 
+#include "lsst/geom.h"
 #include "lsst/pex/config.h"
 #include "lsst/meas/base/exceptions.h"
 #include "lsst/afw/table/Source.h"
@@ -461,7 +462,7 @@ public:
     Result apply(
         afw::image::Exposure<Pixel> const & exposure,
         shapelet::MultiShapeletFunction const & psf,
-        afw::geom::Point2D const & center,
+        geom::Point2D const & center,
         afw::geom::ellipses::Quadrupole const & moments,
         Scalar approxFlux=-1,
         Scalar kronRadius=-1,
@@ -483,7 +484,7 @@ public:
     Result applyForced(
         afw::image::Exposure<Pixel> const & exposure,
         shapelet::MultiShapeletFunction const & psf,
-        afw::geom::Point2D const & center,
+        geom::Point2D const & center,
         Result const & reference,
         Scalar approxFlux=-1
     ) const;
@@ -552,7 +553,7 @@ private:
         Result & result,
         afw::image::Exposure<Pixel> const & exposure,
         shapelet::MultiShapeletFunction const & psf,
-        afw::geom::Point2D const & center,
+        geom::Point2D const & center,
         afw::geom::ellipses::Quadrupole const & moments,
         Scalar approxFlux,
         Scalar kronRadius=-1,
@@ -565,7 +566,7 @@ private:
         Result & result,
         afw::image::Exposure<Pixel> const & exposure,
         shapelet::MultiShapeletFunction const & psf,
-        afw::geom::Point2D const & center,
+        geom::Point2D const & center,
         Result const & reference,
         Scalar approxFlux
     ) const;

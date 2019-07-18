@@ -26,7 +26,7 @@
 
 #include "lsst/pex/config.h"
 #include "lsst/meas/modelfit/common.h"
-#include "lsst/afw/geom/Point.h"
+#include "lsst/geom/Point.h"
 #include "lsst/afw/image/Mask.h"
 #include "lsst/afw/detection/Footprint.h"
 #include "lsst/afw/geom/ellipses.h"
@@ -121,7 +121,7 @@ public:
         afw::geom::ellipses::Quadrupole const & psfMoments
     );
 
-    void applyMask(afw::image::Mask<> const & mask, afw::geom::Point2D const & center);
+    void applyMask(afw::image::Mask<> const & mask, geom::Point2D const & center);
 
     afw::geom::ellipses::Quadrupole ellipse;
     PTR(afw::detection::Footprint) footprint;
@@ -141,4 +141,3 @@ private:
 }}} // lsst::meas::modelfit
 
 #endif // !LSST_MEAS_MODELFIT_PixelFitRegion_h_INCLUDED
-

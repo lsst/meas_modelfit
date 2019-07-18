@@ -23,10 +23,6 @@
 import unittest
 import os
 import numpy
-try:
-    import scipy.integrate
-except ImportError:
-    scipy = None
 
 import lsst.utils.tests
 import lsst.meas.modelfit

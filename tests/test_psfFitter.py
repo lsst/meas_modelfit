@@ -27,7 +27,7 @@ import numpy
 
 import lsst.utils.tests
 import lsst.shapelet
-import lsst.afw.geom.ellipses
+import lsst.geom
 import lsst.log
 import lsst.log.utils
 import lsst.meas.modelfit
@@ -48,7 +48,7 @@ def computeMoments(image):
     maskedImage = lsst.afw.image.MaskedImageD(image)
     result = lsst.meas.base.SdssShapeAlgorithm.computeAdaptiveMoments(
         maskedImage,
-        lsst.afw.geom.Point2D(0.0, 0.0)
+        lsst.geom.Point2D(0.0, 0.0)
     )
     return result.getShape()
 

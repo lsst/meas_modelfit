@@ -28,6 +28,7 @@ from io import StringIO
 import lsst.utils.tests
 import lsst.afw.detection
 import lsst.afw.image
+import lsst.geom
 import lsst.afw.geom
 import lsst.afw.geom.ellipses
 import lsst.log
@@ -56,9 +57,9 @@ class DoubleShapeletPsfApproxTestMixin:
         for name, value in kwds.items():
             setattr(self.ctrl, name, value)
         self.exposure = lsst.afw.image.ExposureF(1, 1)
-        scale = 5.0e-5 * lsst.afw.geom.degrees
-        wcs = lsst.afw.geom.makeSkyWcs(crpix=lsst.afw.geom.Point2D(0.0, 0.0),
-                                       crval=lsst.afw.geom.SpherePoint(45, 45, lsst.afw.geom.degrees),
+        scale = 5.0e-5 * lsst.geom.degrees
+        wcs = lsst.afw.geom.makeSkyWcs(crpix=lsst.geom.Point2D(0.0, 0.0),
+                                       crval=lsst.geom.SpherePoint(45, 45, lsst.geom.degrees),
                                        cdMatrix=lsst.afw.geom.makeCdMatrix(scale=scale))
         self.exposure.setWcs(wcs)
         self.exposure.setPsf(self.psf)
@@ -160,7 +161,7 @@ class DoubleShapeletPsfApproxTestMixin:
         task = lsst.meas.base.SingleFrameMeasurementTask(config=config, schema=schema)
         measCat = lsst.afw.table.SourceCatalog(schema)
         measRecord = measCat.addNew()
-        measRecord.set(centroidKey, lsst.afw.geom.Point2D(0.0, 0.0))
+        measRecord.set(centroidKey, lsst.geom.Point2D(0.0, 0.0))
         task.run(measCat, self.exposure)
         self.assertFalse(measRecord.get("modelfit_DoubleShapeletPsfApprox_flag"))
         key = lsst.shapelet.MultiShapeletFunctionKey(schema["modelfit"]["DoubleShapeletPsfApprox"])
@@ -181,7 +182,7 @@ class DoubleShapeletPsfApproxTestMixin:
         refSchema.getAliasMap().set("slot_Centroid", "centroid")
         refCat = lsst.afw.table.SourceCatalog(refSchema)
         refRecord = refCat.addNew()
-        refRecord.set(refCentroidKey, lsst.afw.geom.Point2D(0.0, 0.0))
+        refRecord.set(refCentroidKey, lsst.geom.Point2D(0.0, 0.0))
         refWcs = self.exposure.getWcs()  # same as measurement Wcs
         task = lsst.meas.base.ForcedMeasurementTask(config=config, refSchema=refSchema)
         measCat = task.generateMeasCat(self.exposure, refCat, refWcs)

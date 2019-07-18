@@ -158,7 +158,7 @@ bool PixelFitRegion::applyEllipse(
     return constrained;
 }
 
-void PixelFitRegion::applyMask(afw::image::Mask<> const & mask, afw::geom::Point2D const & center) {
+void PixelFitRegion::applyMask(afw::image::Mask<> const & mask, geom::Point2D const & center) {
     Scalar originalArea = ellipse.getArea();
     footprint = std::make_shared<afw::detection::Footprint>(
         afw::geom::SpanSet::fromShape(afw::geom::ellipses::Ellipse(ellipse, center)),

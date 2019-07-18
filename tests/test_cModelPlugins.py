@@ -23,6 +23,7 @@
 import unittest
 
 import lsst.afw.geom
+import lsst.geom
 import lsst.afw.table
 import lsst.utils.tests
 import lsst.meas.modelfit
@@ -43,13 +44,13 @@ class CModelTestCase(lsst.meas.base.tests.AlgorithmTestCase, lsst.utils.tests.Te
     """
 
     def setUp(self):
-        self.bbox = lsst.afw.geom.Box2I(lsst.afw.geom.Point2I(0, 0),
-                                        lsst.afw.geom.Extent2I(200, 100))
+        self.bbox = lsst.geom.Box2I(lsst.geom.Point2I(0, 0),
+                                    lsst.geom.Extent2I(200, 100))
         self.dataset = lsst.meas.base.tests.TestDataset(self.bbox)
         # first source is a point
-        self.dataset.addSource(100000.0, lsst.afw.geom.Point2D(50.1, 49.8))
+        self.dataset.addSource(100000.0, lsst.geom.Point2D(50.1, 49.8))
         # second source is extended
-        self.dataset.addSource(100000.0, lsst.afw.geom.Point2D(149.9, 50.3),
+        self.dataset.addSource(100000.0, lsst.geom.Point2D(149.9, 50.3),
                                lsst.afw.geom.ellipses.Quadrupole(8, 9, 3))
 
     def tearDown(self):

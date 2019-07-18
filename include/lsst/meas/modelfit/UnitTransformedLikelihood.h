@@ -30,7 +30,7 @@
 #include "ndarray.h"
 
 #include "lsst/pex/config.h"
-#include "lsst/afw/geom/SpherePoint.h"
+#include "lsst/geom/SpherePoint.h"
 #include "lsst/afw/geom/ellipses/Ellipse.h"
 #include "lsst/afw/image/Exposure.h"
 #include "lsst/afw/detection/Footprint.h"
@@ -123,7 +123,7 @@ public:
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
-        afw::geom::SpherePoint const & position,
+        geom::SpherePoint const & position,
         std::vector<PTR(EpochFootprint)> const & epochFootprintList,
         UnitTransformedLikelihoodControl const & ctrl
     );
@@ -144,7 +144,7 @@ public:
         PTR(Model) model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
-        afw::geom::SpherePoint const & position,
+        geom::SpherePoint const & position,
         afw::image::Exposure<Pixel> const & exposure,
         afw::detection::Footprint const & footprint,
         shapelet::MultiShapeletFunction const & psf,

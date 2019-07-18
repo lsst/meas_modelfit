@@ -156,7 +156,7 @@ public:
         BuilderVector builders;
     };
 
-    Impl() : scratch(afw::geom::ellipses::Quadrupole(), afw::geom::Point2D()) {}
+    Impl() : scratch(afw::geom::ellipses::Quadrupole(), geom::Point2D()) {}
 
     std::vector<Epoch> epochs;
     Model::EllipseVector ellipses;
@@ -167,7 +167,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     PTR(Model) model,
     ndarray::Array<Scalar const,1,1> const & fixed,
     UnitSystem const & fitSys,
-    afw::geom::SpherePoint const & position,
+    geom::SpherePoint const & position,
     std::vector<PTR(EpochFootprint)> const & epochFootprintList,
     UnitTransformedLikelihoodControl const & ctrl
 ) : Likelihood(model, fixed), _impl(new Impl()) {
@@ -180,7 +180,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     _impl->epochs.reserve(epochFootprintList.size());
     _impl->ellipses = model->makeEllipseVector();
     int dataOffset = 0;
-    afw::geom::Point2D fitPixel = fitSys.wcs->skyToPixel(position);
+    geom::Point2D fitPixel = fitSys.wcs->skyToPixel(position);
     for (
         std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochFootprintList.begin();
         imPtrIter != epochFootprintList.end();
@@ -211,7 +211,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     PTR(Model) model,
     ndarray::Array<Scalar const,1,1> const & fixed,
     UnitSystem const & fitSys,
-    afw::geom::SpherePoint const & position,
+    geom::SpherePoint const & position,
     afw::image::Exposure<Pixel> const & exposure,
     afw::detection::Footprint const & footprint,
     shapelet::MultiShapeletFunction const & psf,
@@ -223,7 +223,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     _weights = ndarray::allocate(totPixels);
     _unweightedData = ndarray::allocate(totPixels);
     _impl->ellipses = model->makeEllipseVector();
-    afw::geom::Point2D fitPixel = fitSys.wcs->skyToPixel(position);
+    geom::Point2D fitPixel = fitSys.wcs->skyToPixel(position);
     _impl->epochs.push_back(
         Impl::Epoch(
             totPixels, LocalUnitTransform(fitPixel, fitSys, exposure),

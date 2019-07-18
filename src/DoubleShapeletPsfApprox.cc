@@ -23,6 +23,7 @@
 #include <array>
 
 #include "lsst/shapelet/MatrixBuilder.h"
+#include "lsst/geom.h"
 #include "lsst/afw/math/LeastSquares.h"
 #include "lsst/afw/detection/Psf.h"
 #include "lsst/afw/table/Source.h"
@@ -79,7 +80,7 @@ public:
     Scalar getSum() const { return _m0; }
 
     afw::geom::ellipses::Ellipse getEllipse() const {
-        afw::geom::Point2D center(_mx/_m0, _my/_m0);
+        geom::Point2D center(_mx/_m0, _my/_m0);
         afw::geom::ellipses::Quadrupole quadrupole(
             _mxx/_m0 - center.getX()*center.getX(),
             _myy/_m0 - center.getY()*center.getY(),
@@ -131,12 +132,12 @@ public:
     GaussianArgFunctor(
         ndarray::Array<Scalar,1,1> const & data,
         ndarray::Array<Scalar,1,1> const & arg,
-        afw::geom::AffineTransform const * gt
+        geom::AffineTransform const * gt
     ) : _dataIter(data.begin()), _argIter(arg.begin()), _gt(gt) {}
 
     void operator()(Scalar value, Scalar x, Scalar y) {
         *_dataIter = value;
-        *_argIter = -0.5*(*_gt)(afw::geom::Point2D(x, y)).asEigen().squaredNorm();
+        *_argIter = -0.5*(*_gt)(geom::Point2D(x, y)).asEigen().squaredNorm();
         ++_dataIter;
         ++_argIter;
     }
@@ -144,7 +145,7 @@ public:
 private:
     ndarray::Array<Scalar,1,1>::Iterator _dataIter;
     ndarray::Array<Scalar,1,1>::Iterator _argIter;
-    afw::geom::AffineTransform const * _gt;
+    geom::AffineTransform const * _gt;
 };
 
 } // anonymous
@@ -268,11 +269,11 @@ public:
         // We now compute most of the exponential argument to the Gaussian function up
         // front (everything but the factor of 1/r^2), since that won't change as
         // the parameters change.
-        afw::geom::AffineTransform gt = moments.getGridTransform();
+        geom::AffineTransform gt = moments.getGridTransform();
         GaussianArgFunctor func(_data.shallow(), _arg.shallow(), &gt);
         applyPixelFunctor(image, func);
         _normalization = gt.getLinear().computeDeterminant() * shapelet::ShapeletFunction::FLUX_FACTOR /
-            (2.0*afw::geom::PI);
+            (2.0*geom::PI);
     }
 
     virtual void computeResiduals(
