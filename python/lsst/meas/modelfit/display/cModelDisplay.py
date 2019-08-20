@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import lsst.afw.image as afwImage
+from lsst.geom import Point2D
 import lsst.meas.modelfit as measMod
 import lsst.shapelet as shapelet
 
@@ -124,14 +125,14 @@ def buildCModelImages(exposure, record, config):
 
     Returns
     -------
-    subImage : `lsst.afw.image.ImageF`
+    subImage : `lsst.afw.image.ImageD`
         Sub image of the original data taken from a region defined by the
         bounding box of the footprint for the object defined in the given
         source record
-    devIm : `lsst.afw.image.ImageF`
+    devIm : `lsst.afw.image.ImageD`
         Image created from the dev component of the CModel for the supplied
         record at the same pixel locations as subImage
-    expIm: `lsst.afw.image.ImageF`
+    expIm: `lsst.afw.image.ImageD`
         Image created from the exp component of the CModel for the supplied
         record at the same pixel locations as subImage
     jointIm :
@@ -142,7 +143,7 @@ def buildCModelImages(exposure, record, config):
     dev, exp, jointDev, jointExp = reconstructCModel(exposure, record, config)
     # Get exposure cutout
     footBBox = record.getFootprint().getBBox()
-    subImage = afwImage.ImageF(exposure.getImage(), footBBox)
+    subImage = afwImage.ImageD(exposure.getImage().convertD(), footBBox)
 
     # Build the psf
     shapeletPsfKey = shapelet.MultiShapeletFunctionKey(
@@ -150,17 +151,17 @@ def buildCModelImages(exposure, record, config):
     psfApprox = record.get(shapeletPsfKey)
 
     # Build the dev Image from the shapelet function
-    devIm = afwImage.ImageF(footBBox)
+    devIm = afwImage.ImageD(footBBox)
     dev = dev.convolve(psfApprox)
     dev.evaluate().addToImage(devIm)
 
     # Build the exp image from the shapelet function
-    expIm = afwImage.ImageF(footBBox)
+    expIm = afwImage.ImageD(footBBox)
     exp = exp.convolve(psfApprox)
     exp.evaluate().addToImage(expIm)
 
     # Build the joint image from the shapelet function
-    jointIm = afwImage.ImageF(footBBox)
+    jointIm = afwImage.ImageD(footBBox)
     jointDev = jointDev.convolve(psfApprox)
     jointExp = jointExp.convolve(psfApprox)
     jointDev.evaluate().addToImage(jointIm)
@@ -202,7 +203,7 @@ def reconstructCModel(exposure, record, config):
     measSys = measMod.UnitSystem(exposure)
     approxFlux = record.get("base_PsfFlux_instFlux")
     fitSys = measMod.UnitSystem(position, exposure.getPhotoCalib(), approxFlux)
-    fitSysToMeasSys = measMod.LocalUnitTransform(center, fitSys, measSys)
+    fitSysToMeasSys = measMod.LocalUnitTransform(Point2D(0, 0), fitSys, measSys)
 
     # Build the Shapelet objects
     ctrl = config.makeControl()
