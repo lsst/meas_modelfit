@@ -62,7 +62,7 @@ struct UnitSystem {
     /// Construct a UnitSystem by extracting the Wcs and PhotoCalib from an Exposure (implicit)
     template <typename T>
     UnitSystem(afw::image::Exposure<T> const& exposure)
-            : wcs(exposure.getWcs()), photoCalib(validatePhotoCalib(exposure.getCalib())) {}
+            : wcs(exposure.getWcs()), photoCalib(validatePhotoCalib(exposure.getPhotoCalib())) {}
 
 private:
     std::shared_ptr<const afw::image::PhotoCalib> validatePhotoCalib(
