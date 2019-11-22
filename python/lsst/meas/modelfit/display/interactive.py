@@ -41,7 +41,7 @@ from .optimizerDisplay import OptimizerDisplay
 __all__ = ("Interactive", )
 
 
-class Interactive(object):
+class Interactive:
     """Interactive analysis helper class
 
     This class manages a butler, calexp, modelfits catalog, and an instance
