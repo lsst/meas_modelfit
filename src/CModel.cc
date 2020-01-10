@@ -218,6 +218,10 @@ struct CModelStageKeys {
             "numerical underflow or overflow in model evaluation; usually this means the prior was "
             "insufficient to regularize the fit, or all pixel values were zero."
         );
+        flags[CModelStageResult::NO_FLUX] = schema.addField<afw::table::Flag>(
+            schema.join(prefix, "flag", "noFlux"),
+            "no flux was measured on the image; this means the error will be non-finite."
+        );
         flags[CModelStageResult::FAILED] = fluxFlag; // these flags refer to the same underlying field
     }
 
@@ -438,6 +442,10 @@ struct CModelKeys {
         flags[CModelResult::BAD_CENTROID] = schema.addField<afw::table::Flag>(
             schema.join(prefix, "flag", "badCentroid"),
             "input centroid was not within the fit region (probably because it's not within the Footprint)"
+        );
+        flags[CModelResult::NO_FLUX] = schema.addField<afw::table::Flag>(
+            schema.join(prefix, "flag", "noFlux"),
+            "no flux was measured on the image; this means the error will be non-finite."
         );
     }
 
@@ -701,6 +709,9 @@ public:
         // flux is just the amplitude converted from fitSys to measSys
         result.instFlux = data.amplitudes[0] * data.fitSysToMeasSys.flux;
         result.instFluxInner = sums.instFluxInner;
+        if (result.instFluxInner == 0.0) {
+            result.flags[CModelStageResult::NO_FLUX] = true;
+        }
         result.instFluxErr = std::sqrt(sums.fluxVar)*result.instFlux/result.instFluxInner;
         // to compute the ellipse, we need to first read the nonlinear parameters into the workspace
         // ellipse vector, then transform from fitSys to measSys.
@@ -916,7 +927,12 @@ public:
         WeightSums sums(model, unweightedData, likelihood.getVariance());
         result.instFluxInner = sums.instFluxInner;
         result.instFluxErr = std::sqrt(sums.fluxVar)*result.instFlux/result.instFluxInner;
-        result.flags[CModelResult::FAILED] = false;
+        if (result.instFluxInner == 0.0) {
+            result.flags[CModelResult::NO_FLUX] = true;
+            result.flags[CModelResult::FAILED] = true;
+        } else {
+            result.flags[CModelResult::FAILED] = false;
+        }
         result.fracDev = amplitudes[1] / amplitudes.sum();
         result.objective = tg.evaluateLog()(amplitudes);
     }
