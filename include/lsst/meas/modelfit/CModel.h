@@ -302,6 +302,7 @@ struct CModelStageResult {
         NUMERIC_ERROR,   ///< Optimizer encountered a numerical error (something likely went to infinity).
                          ///  Result will be unusable; implies FAILED.
         BAD_REFERENCE,   ///< Reference fit failed, so forced fit will fail as well.
+        NO_FLUX,         ///< No flux was measured.
         N_FLAGS          ///< Non-flag counter to indicate the number of flags
     };
 
@@ -355,6 +356,7 @@ struct CModelResult {
         NO_SHAPELET_PSF,         ///< Set if the Psf shapelet approximation failed.
         BAD_CENTROID,            ///< Input centroid did not land within the fit region.
         BAD_REFERENCE,           ///< Reference fit failed, so forced fit will fail as well.
+        NO_FLUX,                 ///< No flux was measured.
         N_FLAGS                  ///< Non-flag counter to indicate the number of flags
     };
 

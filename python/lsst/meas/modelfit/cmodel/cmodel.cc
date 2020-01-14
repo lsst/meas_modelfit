@@ -107,6 +107,7 @@ static PyCModelStageResult declareCModelStageResult(py::module &mod) {
     cls.attr("MAX_ITERATIONS") = py::cast(int(CModelStageResult::MAX_ITERATIONS));
     cls.attr("NUMERIC_ERROR") = py::cast(int(CModelStageResult::NUMERIC_ERROR));
     cls.attr("BAD_REFERENCE") = py::cast(int(CModelStageResult::BAD_REFERENCE));
+    cls.attr("NO_FLUX") = py::cast(int(CModelStageResult::NO_FLUX));
     cls.attr("N_FLAGS") = py::cast(int(CModelStageResult::N_FLAGS));
 
     // Data members are intentionally read-only from the Python side;
@@ -151,6 +152,7 @@ static PyCModelResult declareCModelResult(py::module &mod) {
             py::cast(int(CModelResult::REGION_USED_INITIAL_ELLIPSE_MIN));
     cls.attr("REGION_USED_INITIAL_ELLIPSE_MAX") =
             py::cast(int(CModelResult::REGION_USED_INITIAL_ELLIPSE_MAX));
+    cls.attr("NO_FLUX") = py::cast(int(CModelResult::NO_FLUX));
 
     // Data members are intentionally read-only from the Python side;
     // they should only be set by the C++ algorithm code that uses
