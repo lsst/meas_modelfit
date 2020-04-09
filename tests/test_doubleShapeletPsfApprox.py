@@ -113,8 +113,8 @@ class DoubleShapeletPsfApproxTestMixin:
         )
         self.assertLess(
             self.ctrl.minRadiusDiff,
-            (msf.getComponents()[1].getEllipse().getCore().getDeterminantRadius() -
-             msf.getComponents()[0].getEllipse().getCore().getDeterminantRadius())
+            (msf.getComponents()[1].getEllipse().getCore().getDeterminantRadius()
+             - msf.getComponents()[0].getEllipse().getCore().getDeterminantRadius())
         )
 
     def checkRatios(self, msf):

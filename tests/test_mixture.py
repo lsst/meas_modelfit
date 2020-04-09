@@ -69,8 +69,8 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         self.assertFloatsAlmostEqual(m1.evaluate(m1[1], numpy.array([0.0], dtype=float)),
                                      m1[1].weight*(2.0*numpy.pi)**(-0.5))
         self.assertFloatsAlmostEqual(m1.evaluate(numpy.array([0.0], dtype=float)),
-                                     (m1[0].weight*numpy.exp(-0.125)/2 + m1[1].weight + m1[2].weight) *
-                                     (2.0*numpy.pi)**(-0.5))
+                                     (m1[0].weight*numpy.exp(-0.125)/2 + m1[1].weight + m1[2].weight)
+                                     * (2.0*numpy.pi)**(-0.5))
 
     def testGaussian(self):
         """Test that our implementations for a single-component Gaussian are correct.
@@ -82,8 +82,8 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         x = numpy.random.randn(20, 2)
         p = numpy.zeros(20, dtype=float)
         m.evaluate(x, p)
-        z = ((x - mu)[:, numpy.newaxis, :] * fisher[numpy.newaxis, :, :, ] *
-             (x - mu)[:, :, numpy.newaxis]).sum(axis=2).sum(axis=1)
+        z = ((x - mu)[:, numpy.newaxis, :] * fisher[numpy.newaxis, :, :, ]
+             * (x - mu)[:, :, numpy.newaxis]).sum(axis=2).sum(axis=1)
         self.assertFloatsAlmostEqual(p, numpy.exp(-0.5*z) / numpy.linalg.det(2*numpy.pi*sigma)**0.5)
         x = numpy.zeros((1000000, 2), dtype=float)
         m.draw(self.rng, x)
