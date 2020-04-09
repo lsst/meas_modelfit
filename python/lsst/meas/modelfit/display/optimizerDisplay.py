@@ -126,7 +126,7 @@ class OptimizerDisplayFigure:
             z=numpy.array([iteration.sample.get(self.zKey) for iteration in self.parent.track]),
         )
         self.n = n
-        self.figure = matplotlib.pyplot.figure("%s vs %s" % (xDim, yDim), figsize=(16, 8))
+        self.figure = matplotlib.pyplot.figure(f"{xDim} vs {yDim}", figsize=(16, 8))
         self.figure.subplots_adjust(left=0.025, right=0.975, bottom=0.08, top=0.95, wspace=0.12)
         self.axes3d = self.figure.add_subplot(1, 2, 1, projection='3d')
         self.axes3d.autoscale(False)
