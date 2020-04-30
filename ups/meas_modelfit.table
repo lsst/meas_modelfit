@@ -1,15 +1,11 @@
 setupRequired(afw)
 setupRequired(meas_algorithms)
 setupRequired(meas_base)
-setupRequired(numpy)
 setupRequired(log)
-setupRequired(scons)
 setupRequired(sconsUtils)
 setupRequired(shapelet)
-setupRequired(pybind11)
 setupRequired(geom)
 
-setupOptional(matplotlib)
 
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
