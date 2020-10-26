@@ -40,14 +40,14 @@ SemiEmpiricalPriorConfig = makeConfigClass(SemiEmpiricalPriorControl)
 SoftenedLinearPriorConfig = makeConfigClass(SoftenedLinearPriorControl)
 
 
-@continueClass  # noqa
-class SemiEmpiricalPrior:
+@continueClass  # noqa: F811 (FIXME: remove for py 3.8+)
+class SemiEmpiricalPrior:  # noqa: F811
 
     ConfigClass = SemiEmpiricalPriorConfig
 
 
-@continueClass  # noqa
-class SoftenedLinearPrior:
+@continueClass  # noqa: F811 (FIXME: remove for py 3.8+)
+class SoftenedLinearPrior:  # noqa: F811
 
     ConfigClass = SoftenedLinearPriorConfig
 
