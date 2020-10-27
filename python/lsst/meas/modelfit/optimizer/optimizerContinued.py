@@ -37,8 +37,8 @@ class OptimizerControl:
     ConfigClass = OptimizerConfig
 
 
-@continueClass  # noqa
-class Optimizer:
+@continueClass  # noqa: F811 (FIXME: remove for py 3.8+)
+class Optimizer:  # noqa: F811
 
     ConfigClass = OptimizerConfig
 
