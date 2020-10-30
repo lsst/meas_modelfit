@@ -1354,8 +1354,8 @@ void CModelAlgorithm::measure(
     // Read the shapelet approximation to the PSF, load/verify other inputs from the SourceRecord
     shapelet::MultiShapeletFunction psf = _processInputs(measRecord, exposure);
     afw::geom::ellipses::Quadrupole moments;
-    if (!measRecord.getTable()->getShapeKey().isValid() ||
-        (measRecord.getTable()->getShapeFlagKey().isValid() && measRecord.getShapeFlag())) {
+    if (!measRecord.getTable()->getShapeSlot().getMeasKey().isValid() ||
+        (measRecord.getTable()->getShapeSlot().getFlagKey().isValid() && measRecord.getShapeFlag())) {
         if (getControl().fallbackInitialMomentsPsfFactor > 0.0) {
             result.flags[Result::NO_SHAPE] = true;
             try {

@@ -44,8 +44,7 @@ namespace {
 using PyMixtureComponent = py::class_<MixtureComponent>;
 using PyMixtureUpdateRestriction =
         py::class_<MixtureUpdateRestriction, std::shared_ptr<MixtureUpdateRestriction>>;
-using PyMixture = py::class_<Mixture, std::shared_ptr<Mixture>, afw::table::io::PersistableFacade<Mixture>,
-                             afw::table::io::Persistable>;
+using PyMixture = py::class_<Mixture, std::shared_ptr<Mixture>>;
 
 static PyMixtureComponent declareMixtureComponent(py::module &mod) {
     PyMixtureComponent cls(mod, "MixtureComponent");
@@ -75,8 +74,8 @@ static PyMixtureUpdateRestriction declareMixtureUpdateRestriction(py::module &mo
 }
 
 static PyMixture declareMixture(py::module &mod) {
-    afw::table::io::python::declarePersistableFacade<Mixture>(mod, "Mixture");
     PyMixture cls(mod, "Mixture");
+    afw::table::io::python::addPersistableMethods<Mixture>(cls);
     cls.def("__iter__", [](Mixture &self) { return py::make_iterator(self.begin(), self.end()); },
             py::keep_alive<0, 1>());
     cls.def("__getitem__",
