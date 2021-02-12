@@ -132,12 +132,12 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         del self.psf1
 
     def checkLikelihood(self, likelihood, data):
-        self.assertFloatsAlmostEqual(likelihood.getData().reshape(data.shape), data, rtol=1E-6,
+        self.assertFloatsAlmostEqual(likelihood.getData().reshape(data.shape), data, rtol=1E-6, atol=1E-6,
                                      **ASSERT_CLOSE_KWDS)
         matrix = numpy.zeros((1, likelihood.getDataDim()), dtype=lsst.meas.modelfit.Pixel).transpose()
         likelihood.computeModelMatrix(matrix, self.nonlinear)
         model = numpy.dot(matrix, self.amplitudes)
-        self.assertFloatsAlmostEqual(model.reshape(data.shape), data, rtol=1E-6, atol=1E-7,
+        self.assertFloatsAlmostEqual(model.reshape(data.shape), data, rtol=1E-6, atol=1E-6,
                                      **ASSERT_CLOSE_KWDS)
 
     def testModel(self):
