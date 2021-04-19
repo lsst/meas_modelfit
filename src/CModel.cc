@@ -23,8 +23,7 @@
 #include <cstdlib>
 #include <memory>
 #include <bitset>
-
-#include "boost/filesystem/path.hpp"
+#include <filesystem>
 
 #include "ndarray/eigen.h"
 
@@ -77,10 +76,10 @@ PTR(Prior) CModelStageControl::getPrior() const {
                 "MEAS_MODELFIT_DIR environment variable not defined; cannot find persisted Priors"
             );
         }
-        boost::filesystem::path priorPath
-            = boost::filesystem::path(pkgDir)
-            / boost::filesystem::path("data")
-            / boost::filesystem::path(priorName + ".fits");
+        std::filesystem::path priorPath
+            = std::filesystem::path(pkgDir)
+            / std::filesystem::path("data")
+            / std::filesystem::path(priorName + ".fits");
         PTR(Mixture) mixture = Mixture::readFits(priorPath.string());
         return std::make_shared<MixturePrior>(mixture, "single-ellipse");
     } else if (priorSource == "LINEAR") {
