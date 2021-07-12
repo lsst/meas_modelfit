@@ -35,7 +35,7 @@ namespace lsst { namespace meas { namespace modelfit {
 class MixturePrior : public Prior {
 public:
 
-    explicit MixturePrior(PTR(Mixture const) mixture, std::string const & tag="");
+    explicit MixturePrior(std::shared_ptr<Mixture const> mixture, std::string const & tag="");
 
     /// @copydoc Prior::evaluate
     Scalar evaluate(
@@ -85,10 +85,10 @@ public:
      */
     static MixtureUpdateRestriction const & getUpdateRestriction();
 
-    PTR(Mixture const) getMixture() const { return _mixture; }
+    std::shared_ptr<Mixture const> getMixture() const { return _mixture; }
 
 private:
-    PTR(Mixture const) _mixture;
+    std::shared_ptr<Mixture const> _mixture;
 };
 
 }}} // namespace lsst::meas::modelfit

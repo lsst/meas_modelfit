@@ -160,10 +160,10 @@ public:
     virtual int getComponentCount() const { return size(); }
 
     /// Project the distribution onto the given dimensions (marginalize over all others)
-    PTR(Mixture) project(int dim) const;
+    std::shared_ptr<Mixture> project(int dim) const;
 
     /// Project the distribution onto the given dimensions (marginalize over all others)
-    PTR(Mixture) project(int dim1, int dim2) const;
+    std::shared_ptr<Mixture> project(int dim1, int dim2) const;
 
     /// Return the number of dimensions
     int getDimension() const { return _dim; }
@@ -342,7 +342,7 @@ public:
     );
 
     /// Polymorphic deep copy
-    virtual PTR(Mixture) clone() const;
+    virtual std::shared_ptr<Mixture> clone() const;
 
     /**
      *  @brief Construct a mixture model.

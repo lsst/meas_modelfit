@@ -64,7 +64,7 @@ Scalar computeRobustWeights(afw::table::BaseCatalog & samples, afw::table::Key<S
 
 AdaptiveImportanceSampler::AdaptiveImportanceSampler(
     afw::table::Schema & sampleSchema,
-    PTR(afw::math::Random) rng,
+    std::shared_ptr<afw::math::Random> rng,
     std::map<int,ImportanceSamplerControl> const & ctrls,
     bool doSaveIterations
 ) :
@@ -106,7 +106,7 @@ AdaptiveImportanceSampler::AdaptiveImportanceSampler(
 
 void AdaptiveImportanceSampler::run(
     SamplingObjective const & objective,
-    PTR(Mixture) proposal,
+    std::shared_ptr<Mixture> proposal,
     afw::table::BaseCatalog & samples
 ) const {
     LOG_LOGGER trace3Logger = LOG_GET("TRACE3.meas.modelfit.AdaptiveImportanceSampler");
@@ -130,7 +130,7 @@ void AdaptiveImportanceSampler::run(
             ndarray::Array<Scalar,1,1> probability = ndarray::allocate(ctrl.nSamples);
             proposal->evaluate(parameters, probability);
             for (int k = 0; k < ctrl.nSamples; ++k) {
-                PTR(afw::table::BaseRecord) record = samples.addNew();
+                std::shared_ptr<afw::table::BaseRecord> record = samples.addNew();
                 double objectiveValue = objective(parameters[k], *record);
                 if (std::isfinite(objectiveValue)) {
                     subSamples.push_back(record);

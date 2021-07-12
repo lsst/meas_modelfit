@@ -27,7 +27,7 @@
 
 namespace lsst { namespace meas { namespace modelfit {
 
-SamplingObjective::SamplingObjective(PTR(Likelihood) likelihood) :
+SamplingObjective::SamplingObjective(std::shared_ptr<Likelihood> likelihood) :
     _likelihood(likelihood),
     _modelMatrix(ndarray::allocate(likelihood->getDataDim(), likelihood->getAmplitudeDim()))
 {}

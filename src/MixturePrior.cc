@@ -33,7 +33,7 @@ namespace lsst { namespace meas { namespace modelfit {
 
 //------------- MixturePrior --------------------------------------------------------------------------------
 
-MixturePrior::MixturePrior(PTR(Mixture const) mixture, std::string const & tag) :
+MixturePrior::MixturePrior(std::shared_ptr<Mixture const> mixture, std::string const & tag) :
     Prior(tag), _mixture(mixture)
 {}
 

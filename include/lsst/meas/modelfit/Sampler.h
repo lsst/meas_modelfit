@@ -43,9 +43,9 @@ public:
     virtual ~SamplingObjective() {}
 
 protected:
-    explicit SamplingObjective(PTR(Likelihood) likelihood);
+    explicit SamplingObjective(std::shared_ptr<Likelihood> likelihood);
 
-    PTR(Likelihood) _likelihood;
+    std::shared_ptr<Likelihood> _likelihood;
     ndarray::Array<Pixel,2,-1> _modelMatrix;
 };
 
@@ -54,7 +54,7 @@ public:
 
     virtual void run(
         SamplingObjective const & objective,
-        PTR(Mixture) proposal,
+        std::shared_ptr<Mixture> proposal,
         afw::table::BaseCatalog & samples
     ) const = 0;
 

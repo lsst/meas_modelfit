@@ -192,7 +192,7 @@ public:
      *                           Probably the result of a call to
      *                           Psf::computeKernelImage().
      */
-    static PTR(OptimizerObjective) makeObjective(
+    static std::shared_ptr<OptimizerObjective> makeObjective(
         afw::geom::ellipses::Ellipse const & moments,
         Control const & ctrl,
         afw::image::Image<Scalar> const & psfImage

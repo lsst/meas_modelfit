@@ -116,7 +116,7 @@ void MixtureComponent::_stream(std::ostream & os, int offset) const {
     os << pad << "  sigma=" << getSigma().format(sigmaFormat) << " )" << std::endl;
 }
 
-PTR(Mixture) Mixture::project(int dim) const {
+std::shared_ptr<Mixture> Mixture::project(int dim) const {
     ComponentList components;
     components.reserve(size());
     for (const_iterator i = begin(); i != end(); ++i) {
@@ -125,7 +125,7 @@ PTR(Mixture) Mixture::project(int dim) const {
     return std::make_shared<Mixture>(1, components, _df);
 }
 
-PTR(Mixture) Mixture::project(int dim1, int dim2) const {
+std::shared_ptr<Mixture> Mixture::project(int dim1, int dim2) const {
     ComponentList components;
     components.reserve(size());
     for (const_iterator i = begin(); i != end(); ++i) {
@@ -431,7 +431,7 @@ void Mixture::updateEM(
     updateEM(x, w, restriction, tau1, tau2);
 }
 
-PTR(Mixture) Mixture::clone() const {
+std::shared_ptr<Mixture> Mixture::clone() const {
     return std::make_shared<Mixture>(*this);
 }
 
@@ -509,7 +509,7 @@ public:
 class MixtureFactory : public tbl::io::PersistableFactory {
 public:
 
-    virtual PTR(tbl::io::Persistable)
+    virtual std::shared_ptr<tbl::io::Persistable>
     read(InputArchive const & archive, CatalogVector const & catalogs) const {
         LSST_ARCHIVE_ASSERT(catalogs.size() == 1u);
         LSST_ARCHIVE_ASSERT(catalogs.front().size() >= 1u);
@@ -548,7 +548,7 @@ std::string Mixture::getPersistenceName() const { return getMixturePersistenceNa
 void Mixture::write(OutputArchiveHandle & handle) const {
     MixturePersistenceKeys const keys(_dim);
     tbl::BaseCatalog catalog = handle.makeCatalog(keys.schema);
-    PTR(tbl::BaseRecord) record = catalog.addNew();
+    std::shared_ptr<tbl::BaseRecord> record = catalog.addNew();
     record->set(keys.weight, _df);
     for (const_iterator i = begin(); i != end(); ++i) {
         record = catalog.addNew();

@@ -38,7 +38,7 @@ class Prior;
 
 struct LocalUnitTransform;
 
-typedef std::vector<PTR(Model)> ModelVector;
+typedef std::vector<std::shared_ptr<Model>> ModelVector;
 
 /**
  *  @brief Abstract base class and concrete factories that define multi-shapelet galaxy models
@@ -63,7 +63,7 @@ public:
     };
 
     typedef std::vector<std::string> NameVector;
-    typedef std::vector<PTR(shapelet::MultiShapeletBasis)> BasisVector;
+    typedef std::vector<std::shared_ptr<shapelet::MultiShapeletBasis>> BasisVector;
     typedef std::vector<afw::geom::ellipses::Ellipse> EllipseVector;
     typedef std::vector<afw::geom::ellipses::Ellipse>::iterator EllipseIterator;
     typedef std::vector<afw::geom::ellipses::Ellipse>::const_iterator EllipseConstIterator;
@@ -83,7 +83,7 @@ public:
      *                                 fixed center (FIXED_CENTER), the same center (SINGLE_CENTER), or
      *                                 independent centers (MULTI_CENTER).
      */
-    static PTR(Model) make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center);
+    static std::shared_ptr<Model> make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center);
 
     /**
      *  Construct a concrete Model instance with a single ellipse and multishapelet basis
@@ -104,7 +104,7 @@ public:
      *  afw::geom::ellipses::SeparableConformalShearLogTraceRadius.  For the basis objects provided
      *  by lsst.shapelet.tractor, that generally means that logR=0 corresponds to the half-light radius.
      */
-    static PTR(Model) make(PTR(shapelet::MultiShapeletBasis) basis, CenterEnum center);
+    static std::shared_ptr<Model> make(std::shared_ptr<shapelet::MultiShapeletBasis> basis, CenterEnum center);
 
     /**
      *  Construct a concrete Model instance that represents a single elliptical Gaussian function.
@@ -118,7 +118,7 @@ public:
      *                                 (i.e. radius=1 corresponds to a model in which the radius parameter
      *                                 is ln(sigma)).
      */
-    static PTR(Model) makeGaussian(CenterEnum center, double radius=1.0);
+    static std::shared_ptr<Model> makeGaussian(CenterEnum center, double radius=1.0);
 
     /// Return the number of free nonlinear parameters
     int getNonlinearDim() const { return _nonlinearNames.size(); }
@@ -152,7 +152,7 @@ public:
     ) const;
 
     /// Given an arbitrary prior, return one compatible with this Model or throw LogicError
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const = 0;
+    virtual std::shared_ptr<Prior> adaptPrior(std::shared_ptr<Prior> prior) const = 0;
 
     /**
      *  Return an uninitialized vector of afw::geom::ellipses::Ellipse with the parametrization expected

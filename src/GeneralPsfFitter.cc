@@ -76,7 +76,7 @@ public:
         ComponentVector components
     ) : Model(basisVector, nonlinearNames, amplitudeNames, fixedNames), _components(components) {}
 
-    virtual PTR(Prior) adaptPrior(PTR(Prior) prior) const {
+    virtual std::shared_ptr<Prior> adaptPrior(std::shared_ptr<Prior> prior) const {
         if (prior->getTag() != "PSF") {
             throw LSST_EXCEPT(pex::exceptions::LogicError, "Invalid prior for this model");
         }
@@ -377,7 +377,7 @@ GeneralPsfFitter::GeneralPsfFitter(GeneralPsfFitterControl const & ctrl) :
 
         // Construct a MultiShapeletBasis with a single shapelet basis with this component
         int dim = shapelet::computeSize(i->second.order);
-        PTR(shapelet::MultiShapeletBasis) basis = std::make_shared<shapelet::MultiShapeletBasis>(dim);
+        std::shared_ptr<shapelet::MultiShapeletBasis> basis = std::make_shared<shapelet::MultiShapeletBasis>(dim);
         ndarray::Array<double,2,2> matrix = ndarray::allocate(dim, dim);
         ndarray::asEigenMatrix(matrix).setIdentity();
         basis->addComponent(1.0, i->second.order, matrix);
@@ -433,9 +433,9 @@ shapelet::MultiShapeletFunctionKey GeneralPsfFitter::addFields(
 
 shapelet::MultiShapeletFunction GeneralPsfFitter::adapt(
     shapelet::MultiShapeletFunction const & previousFit,
-    PTR(Model) previousModel
+    std::shared_ptr<Model> previousModel
 ) const {
-    PTR(GeneralPsfFitterModel) m = std::dynamic_pointer_cast<GeneralPsfFitterModel>(previousModel);
+    std::shared_ptr<GeneralPsfFitterModel> m = std::dynamic_pointer_cast<GeneralPsfFitterModel>(previousModel);
     if (!m) {
         throw LSST_EXCEPT(
             pex::exceptions::InvalidParameterError,
@@ -478,10 +478,10 @@ shapelet::MultiShapeletFunction GeneralPsfFitter::apply(
 
     std::static_pointer_cast<GeneralPsfFitterModel>(_model)->fillParameters(initial, nonlinear, amplitudes, fixed);
 
-    PTR(Likelihood) likelihood = std::make_shared<MultiShapeletPsfLikelihood>(
+    std::shared_ptr<Likelihood> likelihood = std::make_shared<MultiShapeletPsfLikelihood>(
         image.getArray(), image.getXY0(), _model, noiseSigma, fixed
     );
-    PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(likelihood, _prior);
+    std::shared_ptr<OptimizerObjective> objective = OptimizerObjective::makeFromLikelihood(likelihood, _prior);
     Optimizer optimizer(objective, parameters, _ctrl.optimizer);
     optimizer.run();
 
@@ -648,7 +648,7 @@ private:
 MultiShapeletPsfLikelihood::MultiShapeletPsfLikelihood(
     ndarray::Array<Pixel const,2,1> const & image,
     geom::Point2I const & xy0,
-    PTR(Model) model,
+    std::shared_ptr<Model> model,
     Scalar sigma,
     ndarray::Array<Scalar const,1,1> const & fixed
 ) :

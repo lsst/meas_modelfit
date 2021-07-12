@@ -69,7 +69,7 @@ MultiModel::MultiModel(ModelVector components, NameVector const & prefixes) :
     _components(components)
 {}
 
-PTR(Prior) MultiModel::adaptPrior(PTR(Prior) prior) const {
+std::shared_ptr<Prior> MultiModel::adaptPrior(std::shared_ptr<Prior> prior) const {
     throw LSST_EXCEPT(
         pex::exceptions::LogicError,
         "adaptPrior not implemented for MultiModel"

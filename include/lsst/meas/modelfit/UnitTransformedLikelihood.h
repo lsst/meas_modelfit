@@ -120,11 +120,11 @@ public:
      * @param[in] ctrl              Control object with various options
      */
     explicit UnitTransformedLikelihood(
-        PTR(Model) model,
+        std::shared_ptr<Model> model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
         geom::SpherePoint const & position,
-        std::vector<PTR(EpochFootprint)> const & epochFootprintList,
+        std::vector<std::shared_ptr<EpochFootprint>> const & epochFootprintList,
         UnitTransformedLikelihoodControl const & ctrl
     );
 
@@ -141,7 +141,7 @@ public:
      * @param[in] ctrl              Control object with various options
      */
     explicit UnitTransformedLikelihood(
-        PTR(Model) model,
+        std::shared_ptr<Model> model,
         ndarray::Array<Scalar const,1,1> const & fixed,
         UnitSystem const & fitSys,
         geom::SpherePoint const & position,

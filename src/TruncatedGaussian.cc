@@ -83,7 +83,7 @@ TruncatedGaussian TruncatedGaussian::fromSeriesParameters(
              % n % hessian.rows() % hessian.cols()).str()
         );
     }
-    PTR(Impl) impl = std::make_shared<Impl>(n);
+    std::shared_ptr<Impl> impl = std::make_shared<Impl>(n);
     if (n == 1) {
         Scalar g = gradient[0];
         Scalar H = hessian(0,0);
@@ -199,7 +199,7 @@ TruncatedGaussian TruncatedGaussian::fromStandardParameters(
              % n % covariance.rows() % covariance.cols()).str()
         );
     }
-    PTR(Impl) impl = std::make_shared<Impl>(n);
+    std::shared_ptr<Impl> impl = std::make_shared<Impl>(n);
     if (n == 1) {
         Scalar mu = mean[0];
         Scalar Sigma = covariance(0,0);

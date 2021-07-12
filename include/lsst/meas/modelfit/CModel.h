@@ -157,9 +157,9 @@ struct CModelStageControl {
         return shapelet::RadialProfile::get(profileName);
     }
 
-    PTR(Model) getModel() const;
+    std::shared_ptr<Model> getModel() const;
 
-    PTR(Prior) getPrior() const;
+    std::shared_ptr<Prior> getPrior() const;
 
     LSST_CONTROL_FIELD(
         profileName, std::string,
@@ -308,10 +308,10 @@ struct CModelStageResult {
 
     CModelStageResult();
 
-    PTR(Model) model;    ///< Model object that defines the parametrization (defined fully by Control struct)
-    PTR(Prior) prior;    ///< Bayesian priors on the parameters (defined fully by Control struct)
-    PTR(OptimizerObjective) objfunc;  ///< Objective class used by the optimizer
-    PTR(UnitTransformedLikelihood) likelihood; ///< Object used to evaluate models and compare to data.
+    std::shared_ptr<Model> model;    ///< Model object that defines the parametrization (defined fully by Control struct)
+    std::shared_ptr<Prior> prior;    ///< Bayesian priors on the parameters (defined fully by Control struct)
+    std::shared_ptr<OptimizerObjective> objfunc;  ///< Objective class used by the optimizer
+    std::shared_ptr<UnitTransformedLikelihood> likelihood; ///< Object used to evaluate models and compare to data.
     Scalar instFlux;         ///< Flux measured from just this stage fit.
     Scalar instFluxErr;    ///< Flux uncertainty from just this stage fit.
     Scalar instFluxInner;    ///< Flux measured strictly within the fit region (no extrapolation).
@@ -583,7 +583,7 @@ private:
     class Impl;
 
     Control _ctrl;
-    PTR(Impl) _impl;
+    std::shared_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::meas::modelfit

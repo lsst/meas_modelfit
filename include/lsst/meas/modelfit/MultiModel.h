@@ -47,7 +47,7 @@ public:
     ModelVector const & getComponents() const { return _components; }
 
     /// @copydoc Model::adaptPrior
-    PTR(Prior) adaptPrior(PTR(Prior) prior) const override;
+    std::shared_ptr<Prior> adaptPrior(std::shared_ptr<Prior> prior) const override;
 
     /// @copydoc Model::makeEllipseVector
     EllipseVector makeEllipseVector() const override;

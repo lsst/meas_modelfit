@@ -102,7 +102,7 @@ public:
     ndarray::Array<Pixel const,1,1> getVariance() const { return _variance; }
 
     /// Return an object that defines the model and its parameters
-    PTR(Model) getModel() const { return _model; }
+    std::shared_ptr<Model> getModel() const { return _model; }
 
     /**
      *  @brief Evaluate the model for the given vector of nonlinear parameters.
@@ -135,7 +135,7 @@ public:
 
 protected:
 
-    Likelihood(PTR(Model) model, ndarray::Array<Scalar const,1,1> const & fixed) :
+    Likelihood(std::shared_ptr<Model> model, ndarray::Array<Scalar const,1,1> const & fixed) :
         _model(model), _fixed(fixed) {
         LSST_THROW_IF_NE(
             fixed.getSize<0>(), static_cast<std::size_t>(model->getFixedDim()),
@@ -144,7 +144,7 @@ protected:
         );
     }
 
-    PTR(Model) _model;
+    std::shared_ptr<Model> _model;
     ndarray::Array<Scalar const,1,1> _fixed;
     ndarray::Array<Pixel,1,1> _data;
     ndarray::Array<Pixel,1,1> _unweightedData;

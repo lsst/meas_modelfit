@@ -234,9 +234,9 @@ private:
 
     class Impl;
 
-    explicit TruncatedGaussian(PTR(Impl) impl) : _impl(impl) {}
+    explicit TruncatedGaussian(std::shared_ptr<Impl> impl) : _impl(impl) {}
 
-    PTR(Impl) _impl;
+    std::shared_ptr<Impl> _impl;
 };
 
 /**
@@ -336,7 +336,7 @@ public:
     class Impl; // public so we can inherit from it in the .cc file
 
 private:
-    PTR(Impl) _impl;
+    std::shared_ptr<Impl> _impl;
 };
 
 inline TruncatedGaussian::Sampler TruncatedGaussian::sample(SampleStrategy strategy) const {
