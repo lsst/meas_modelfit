@@ -61,13 +61,13 @@ Pixel computeFluxInFootprint(
 
 //-------------------- Control Objects ----------------------------------------------------------------------
 
-PTR(Model) CModelStageControl::getModel() const {
+std::shared_ptr<Model> CModelStageControl::getModel() const {
     return Model::make(getProfile().getBasis(nComponents, maxRadius), Model::FIXED_CENTER);
 }
 
-PTR(Prior) CModelStageControl::getPrior() const {
+    std::shared_ptr<Prior> CModelStageControl::getPrior() const {
     if (priorSource == "NONE") {
-        return PTR(Prior)();
+        return std::shared_ptr<Prior>();
     } else if (priorSource == "FILE") {
         char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR");
         if (!pkgDir) {
@@ -80,7 +80,7 @@ PTR(Prior) CModelStageControl::getPrior() const {
             = std::filesystem::path(pkgDir)
             / std::filesystem::path("data")
             / std::filesystem::path(priorName + ".fits");
-        PTR(Mixture) mixture = Mixture::readFits(priorPath.string());
+        std::shared_ptr<Mixture> mixture = Mixture::readFits(priorPath.string());
         return std::make_shared<MixturePrior>(mixture, "single-ellipse");
     } else if (priorSource == "LINEAR") {
         return std::make_shared<SoftenedLinearPrior>(linearPriorConfig);
@@ -667,11 +667,11 @@ struct WeightSums {
 class CModelStageImpl {
 public:
     shapelet::RadialProfile const * profile; // what profile we're trying to fit (ref to singleton)
-    PTR(Model) model;                        // defition of parameters, and how to map to Gaussians
-    PTR(Prior) prior;                        // Bayesian prior on parameters
+    std::shared_ptr<Model> model;                        // defition of parameters, and how to map to Gaussians
+    std::shared_ptr<Prior> prior;                        // Bayesian prior on parameters
     mutable Model::EllipseVector ellipses;   // workspace for asking Model to turn parameters into ellipses
-    PTR(afw::table::BaseTable) historyTable;       // optimizer trace Table object
-    PTR(OptimizerHistoryRecorder) historyRecorder; // optimizer trace keys/handler
+    std::shared_ptr<afw::table::BaseTable> historyTable;       // optimizer trace Table object
+    std::shared_ptr<OptimizerHistoryRecorder> historyRecorder; // optimizer trace keys/handler
 
     explicit CModelStageImpl(CModelStageControl const & ctrl) :
         profile(&ctrl.getProfile()),
@@ -732,7 +732,7 @@ public:
             exposure, footprint, data.psf,
             UnitTransformedLikelihoodControl(ctrl.usePixelWeights, ctrl.weightsMultiplier)
         );
-        PTR(OptimizerObjective) objective = OptimizerObjective::makeFromLikelihood(result.likelihood, prior);
+        std::shared_ptr<OptimizerObjective> objective = OptimizerObjective::makeFromLikelihood(result.likelihood, prior);
         result.objfunc = objective;
         Optimizer optimizer(objective, data.parameters, ctrl.optimizer);
         try {
@@ -847,11 +847,11 @@ public:
     CModelStageImpl initial;  // Implementation object for initial nonlinear fitting stage
     CModelStageImpl exp;      // Implementation object for exponential nonlinear fitting stage
     CModelStageImpl dev;      // Implementation object for de Vaucouleur nonlinear fitting stage
-    PTR(Model) model;         // Model object used in final two-component linear fit
-    PTR(CModelKeys) keys;     // Key object used to map Result objects to SourceRecord outputs
+    std::shared_ptr<Model> model;         // Model object used in final two-component linear fit
+    std::shared_ptr<CModelKeys> keys;     // Key object used to map Result objects to SourceRecord outputs
                               // and extract shapelet PSF approximation.  May be null, depending
                               // on the CModelAlgorithm ctor called
-    PTR(CModelKeys) refKeys;  // Key object used to retreive reference ellipses in forced mode
+    std::shared_ptr<CModelKeys> refKeys;  // Key object used to retreive reference ellipses in forced mode
 
     explicit Impl(CModelControl const & ctrl) :
         initial(ctrl.initial), exp(ctrl.exp), dev(ctrl.dev)

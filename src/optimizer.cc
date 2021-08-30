@@ -62,7 +62,7 @@ namespace {
 class LikelihoodOptimizerObjective : public OptimizerObjective {
 public:
 
-    LikelihoodOptimizerObjective(PTR(Likelihood) likelihood, PTR(Prior) prior) :
+    LikelihoodOptimizerObjective(std::shared_ptr<Likelihood> likelihood, std::shared_ptr<Prior> prior) :
         OptimizerObjective(
             likelihood->getDataDim(), likelihood->getNonlinearDim() + likelihood->getAmplitudeDim()
         ),
@@ -112,16 +112,16 @@ public:
     }
 
 private:
-    PTR(Likelihood) _likelihood;
-    PTR(Prior) _prior;
+    std::shared_ptr<Likelihood> _likelihood;
+    std::shared_ptr<Prior> _prior;
     ndarray::Array<Pixel,2,-1> _modelMatrix;
 };
 
 } // anonymous
 
-PTR(OptimizerObjective) OptimizerObjective::makeFromLikelihood(
-    PTR(Likelihood) likelihood,
-    PTR(Prior) prior
+std::shared_ptr<OptimizerObjective> OptimizerObjective::makeFromLikelihood(
+    std::shared_ptr<Likelihood> likelihood,
+    std::shared_ptr<Prior> prior
 ) {
     return std::make_shared<LikelihoodOptimizerObjective>(likelihood, prior);
 }
@@ -145,7 +145,7 @@ void Optimizer::IterationData::swap(IterationData & other) {
 
 OptimizerHistoryRecorder::OptimizerHistoryRecorder(
     afw::table::Schema & schema,
-    PTR(Model) model,
+    std::shared_ptr<Model> model,
     bool doSaveDerivatives
 ) :
     outer(
@@ -220,7 +220,7 @@ void OptimizerHistoryRecorder::apply(
     afw::table::BaseCatalog & history,
     Optimizer const & optimizer
 ) const {
-    PTR(afw::table::BaseRecord) record = history.addNew();
+    std::shared_ptr<afw::table::BaseRecord> record = history.addNew();
     record->set(outer, outerIterCount);
     record->set(inner, innerIterCount);
     record->set(state, optimizer.getState());
@@ -324,7 +324,7 @@ void OptimizerHistoryRecorder::fillObjectiveModelGrid(
 // ----------------- Optimizer ------------------------------------------------------------------------------
 
 Optimizer::Optimizer(
-    PTR(Objective const) objective,
+    std::shared_ptr<Objective const> objective,
     ndarray::Array<Scalar const,1,1> const & parameters,
     Control const & ctrl
 ) :

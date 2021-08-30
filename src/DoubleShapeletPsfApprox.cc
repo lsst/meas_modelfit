@@ -334,7 +334,7 @@ private:
 
 } // anonymous
 
-PTR(OptimizerObjective) DoubleShapeletPsfApproxAlgorithm::makeObjective(
+std::shared_ptr<OptimizerObjective> DoubleShapeletPsfApproxAlgorithm::makeObjective(
     afw::geom::ellipses::Ellipse const & moments,
     Control const & ctrl,
     afw::image::Image<Scalar> const & psfImage
@@ -451,7 +451,7 @@ void DoubleShapeletPsfApproxAlgorithm::measure(
         );
     }
     auto position = _centroidExtractor(measRecord, _flagHandler);
-    PTR(afw::detection::Psf::Image) psfImage;
+    std::shared_ptr<afw::detection::Psf::Image> psfImage;
     try {
         psfImage = psf->computeKernelImage(position);
     } catch (pex::exceptions::Exception & err) {

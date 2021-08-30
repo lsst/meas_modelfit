@@ -86,7 +86,7 @@ public:
         Model(basisVector, nonlinearNames, amplitudeNames, getFixedNames())
     {}
 
-    PTR(Prior) adaptPrior(PTR(Prior) prior) const override {
+    std::shared_ptr<Prior> adaptPrior(std::shared_ptr<Prior> prior) const override {
         if (prior->getTag() != "single-ellipse") {
             throw LSST_EXCEPT(
                 pex::exceptions::LogicError,
@@ -148,7 +148,7 @@ public:
         Model(basisVector, nonlinearNames, amplitudeNames, NameVector())
     {}
 
-    PTR(Prior) adaptPrior(PTR(Prior) prior) const override {
+    std::shared_ptr<Prior> adaptPrior(std::shared_ptr<Prior> prior) const override {
         throw LSST_EXCEPT(
             pex::exceptions::LogicError,
             "adaptPrior not implemented for SingleCenterModel"
@@ -212,7 +212,7 @@ public:
         _centerParameterOffset(getNonlinearDim() - getBasisVector().size()*2)
     {}
 
-    PTR(Prior) adaptPrior(PTR(Prior) prior) const override {
+    std::shared_ptr<Prior> adaptPrior(std::shared_ptr<Prior> prior) const override {
         throw LSST_EXCEPT(
             pex::exceptions::LogicError,
             "adaptPrior not implemented for MultiCenterModel"
@@ -372,7 +372,7 @@ void Model::transformParameters(
 }
 
 
-PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center) {
+std::shared_ptr<Model> Model::make(BasisVector basisVector, NameVector const & prefixes, CenterEnum center) {
     LSST_THROW_IF_NE(
         basisVector.size(), prefixes.size(),
         pex::exceptions::LengthError,
@@ -421,7 +421,7 @@ PTR(Model) Model::make(BasisVector basisVector, NameVector const & prefixes, Cen
     );
 }
 
-PTR(Model) Model::make(PTR(shapelet::MultiShapeletBasis) basis, CenterEnum center) {
+std::shared_ptr<Model> Model::make(std::shared_ptr<shapelet::MultiShapeletBasis> basis, CenterEnum center) {
     NameVector nonlinearNames;
     NameVector amplitudeNames;
     if (basis) {
@@ -447,8 +447,8 @@ PTR(Model) Model::make(PTR(shapelet::MultiShapeletBasis) basis, CenterEnum cente
     );
 }
 
-PTR(Model) Model::makeGaussian(CenterEnum center, double radius) {
-    PTR(shapelet::MultiShapeletBasis) basis = std::make_shared<shapelet::MultiShapeletBasis>(1);
+std::shared_ptr<Model> Model::makeGaussian(CenterEnum center, double radius) {
+    std::shared_ptr<shapelet::MultiShapeletBasis> basis = std::make_shared<shapelet::MultiShapeletBasis>(1);
     ndarray::Array<double,2,2> matrix = ndarray::allocate(1, 1);
     matrix[0][0] = 1.0;
     basis->addComponent(radius, 0, matrix);

@@ -56,9 +56,9 @@ public:
      *  however, so simple problems where analytic derivatives are easy to
      *  implement may merit a custom OptimizerObjective.
      */
-    static PTR(OptimizerObjective) makeFromLikelihood(
-        PTR(Likelihood) likelihood,
-        PTR(Prior) prior = PTR(Prior)()
+    static std::shared_ptr<OptimizerObjective> makeFromLikelihood(
+        std::shared_ptr<Likelihood> likelihood,
+        std::shared_ptr<Prior> prior = std::shared_ptr<Prior>()
     );
 
     /**
@@ -300,7 +300,7 @@ public:
 
     OptimizerHistoryRecorder(
         afw::table::Schema & schema,
-        PTR(Model) model,
+        std::shared_ptr<Model> model,
         bool doRecordDerivatives
     );
 
@@ -424,12 +424,12 @@ public:
     };
 
     Optimizer(
-        PTR(Objective const) objective,
+        std::shared_ptr<Objective const> objective,
         ndarray::Array<Scalar const,1,1> const & parameters,
         Control const & ctrl
     );
 
-    PTR(Objective const) getObjective() const { return _objective; }
+    std::shared_ptr<Objective const> getObjective() const { return _objective; }
 
     Control const & getControl() const { return _ctrl; }
 
@@ -486,7 +486,7 @@ private:
     void _computeDerivatives();
 
     int _state;
-    PTR(Objective const) _objective;
+    std::shared_ptr<Objective const> _objective;
     Control _ctrl;
     double _trustRadius;
     IterationData _current;

@@ -43,7 +43,7 @@ typedef std::vector< shapelet::MatrixBuilderFactory<Pixel> > FactoryVector;
  * Function intended for use with std algorithms to compute the cumulative sum
  * of the number of pixels in a sequence of EpochFootprints
  */
-int componentPixelSum(int partialNumPixels, CONST_PTR(EpochFootprint) const &epochImagePtr) {
+int componentPixelSum(int partialNumPixels, std::shared_ptr<EpochFootprint const> const &epochImagePtr) {
     return partialNumPixels + epochImagePtr->footprint.getArea();
 }
 
@@ -164,11 +164,11 @@ public:
 };
 
 UnitTransformedLikelihood::UnitTransformedLikelihood(
-    PTR(Model) model,
+    std::shared_ptr<Model> model,
     ndarray::Array<Scalar const,1,1> const & fixed,
     UnitSystem const & fitSys,
     geom::SpherePoint const & position,
-    std::vector<PTR(EpochFootprint)> const & epochFootprintList,
+    std::vector<std::shared_ptr<EpochFootprint>> const & epochFootprintList,
     UnitTransformedLikelihoodControl const & ctrl
 ) : Likelihood(model, fixed), _impl(new Impl()) {
     int totPixels = std::accumulate(epochFootprintList.begin(), epochFootprintList.end(),
@@ -182,7 +182,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
     int dataOffset = 0;
     geom::Point2D fitPixel = fitSys.wcs->skyToPixel(position);
     for (
-        std::vector<PTR(EpochFootprint)>::const_iterator imPtrIter = epochFootprintList.begin();
+        std::vector<std::shared_ptr<EpochFootprint>>::const_iterator imPtrIter = epochFootprintList.begin();
         imPtrIter != epochFootprintList.end();
         ++imPtrIter
     ) {
@@ -208,7 +208,7 @@ UnitTransformedLikelihood::UnitTransformedLikelihood(
 }
 
 UnitTransformedLikelihood::UnitTransformedLikelihood(
-    PTR(Model) model,
+    std::shared_ptr<Model> model,
     ndarray::Array<Scalar const,1,1> const & fixed,
     UnitSystem const & fitSys,
     geom::SpherePoint const & position,

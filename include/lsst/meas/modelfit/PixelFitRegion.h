@@ -124,7 +124,7 @@ public:
     void applyMask(afw::image::Mask<> const & mask, geom::Point2D const & center);
 
     afw::geom::ellipses::Quadrupole ellipse;
-    PTR(afw::detection::Footprint) footprint;
+    std::shared_ptr<afw::detection::Footprint> footprint;
     bool usedFootprintArea;
     bool usedPsfArea;
     bool maxArea;

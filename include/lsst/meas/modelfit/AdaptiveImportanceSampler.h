@@ -82,14 +82,14 @@ public:
      */
     AdaptiveImportanceSampler(
         afw::table::Schema & sampleSchema,
-        PTR(afw::math::Random) rng,
+        std::shared_ptr<afw::math::Random> rng,
         std::map<int,ImportanceSamplerControl> const & ctrls,
         bool doSaveIterations=false
     );
 
     void run(
         SamplingObjective const & objective,
-        PTR(Mixture) proposal,
+        std::shared_ptr<Mixture> proposal,
         afw::table::BaseCatalog & samples
     ) const override;
 
@@ -99,7 +99,7 @@ public:
 
 private:
     bool _doSaveIterations;
-    PTR(afw::math::Random)  _rng;
+    std::shared_ptr<afw::math::Random>  _rng;
     std::map<int,ImportanceSamplerControl> _ctrls;
     afw::table::Key<Scalar> _weightKey;
     afw::table::Key<Scalar> _objectiveKey;

@@ -132,7 +132,7 @@ private:
 
     struct Impl;
 
-    PTR(Impl) _impl;
+    std::shared_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::meas::modelfit

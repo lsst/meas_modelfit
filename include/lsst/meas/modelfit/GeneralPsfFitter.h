@@ -171,7 +171,7 @@ public:
      *  define the center of the prior; the "nonlinear" parameters are the free-to-vary ellipse
      *  parameters minus the corresponding initial values.
      */
-    PTR(Model) getModel() const { return _model; }
+    std::shared_ptr<Model> getModel() const { return _model; }
 
     /**
      *  Return the Prior object that corresponds to the configuration.
@@ -179,7 +179,7 @@ public:
      *  This Prior class only supports evaluate() and evaluateDerivatives(), reflecting the fact
      *  that we only intend to use it with a Optimizer, not a Sampler.
      */
-    PTR(Prior) getPrior() const { return _prior; }
+    std::shared_ptr<Prior> getPrior() const { return _prior; }
 
     /**
      *  Adapt a differently-configured previous fit to be used as an starting point for this GeneralPsfFitter.
@@ -195,7 +195,7 @@ public:
      */
     shapelet::MultiShapeletFunction adapt(
         shapelet::MultiShapeletFunction const & previousFit,
-        PTR(Model) previousModel
+        std::shared_ptr<Model> previousModel
     ) const;
 
     //@{
@@ -260,8 +260,8 @@ public:
 
 private:
     GeneralPsfFitterControl _ctrl;
-    PTR(Model) _model;
-    PTR(Prior) _prior;
+    std::shared_ptr<Model> _model;
+    std::shared_ptr<Prior> _prior;
 };
 
 class GeneralPsfFitterAlgorithm : public GeneralPsfFitter {
@@ -318,7 +318,7 @@ public:
     MultiShapeletPsfLikelihood(
         ndarray::Array<Pixel const,2,1> const & image,
         geom::Point2I const & xy0,
-        PTR(Model) model,
+        std::shared_ptr<Model> model,
         Scalar sigma,
         ndarray::Array<Scalar const,1,1> const & fixed
     );
