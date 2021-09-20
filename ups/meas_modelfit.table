@@ -5,6 +5,7 @@ setupRequired(log)
 setupRequired(sconsUtils)
 setupRequired(shapelet)
 setupRequired(geom)
+setupRequired(cpputils)
 
 
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
