@@ -131,13 +131,22 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         del self.footprint1
         del self.psf1
 
-    def checkLikelihood(self, likelihood, data):
-        self.assertFloatsAlmostEqual(likelihood.getData().reshape(data.shape), data, rtol=1E-6,
+    def checkLikelihood(self, likelihood, data, rtol=1E-6, atol=None):
+        # default for rtol is 1E-6 and atol = 1E-7 for the second check
+        # this allow to override for a specific testcase
+        extra_flag1 = dict()
+        extra_flag2 = dict()
+        if atol is None:
+            extra_flag2['atol'] = 1E-7
+        else:
+            extra_flag1['atol'] = atol
+            extra_flag2['atol'] = atol
+        self.assertFloatsAlmostEqual(likelihood.getData().reshape(data.shape), data, rtol, **extra_flag1,
                                      **ASSERT_CLOSE_KWDS)
         matrix = numpy.zeros((1, likelihood.getDataDim()), dtype=lsst.meas.modelfit.Pixel).transpose()
         likelihood.computeModelMatrix(matrix, self.nonlinear)
         model = numpy.dot(matrix, self.amplitudes)
-        self.assertFloatsAlmostEqual(model.reshape(data.shape), data, rtol=1E-6, atol=1E-7,
+        self.assertFloatsAlmostEqual(model.reshape(data.shape), data, rtol, **extra_flag2,
                                      **ASSERT_CLOSE_KWDS)
 
     def testModel(self):
@@ -212,14 +221,17 @@ class UnitTransformedLikelihoodTestCase(lsst.utils.tests.TestCase):
         self.checkLikelihood(l0b, data)
         # test with constant weights, using both ctors
         ctrl.usePixelWeights = False
+        # For the usePixelWeights = False relax checkLikeihood to pass on osx-arm64.
+        # Code path uses single-precision exp/log/sum within the c++ code,
+        # which can lead to differences on different CPU architecutres
         data = self.exposure0.getMaskedImage().getImage().getArray()
         l0c = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                            self.exposure0, self.footprint0, self.psf0, ctrl)
         weights = numpy.exp((-0.5*numpy.log(l0c.getVariance())/l0c.getDataDim()).sum())
-        self.checkLikelihood(l0c, data*weights)
+        self.checkLikelihood(l0c, data*weights, atol=1E-6)
         l0d = lsst.meas.modelfit.UnitTransformedLikelihood(self.model, self.fixed, self.sys0, self.position,
                                                            efv, ctrl)
-        self.checkLikelihood(l0d, data*weights)
+        self.checkLikelihood(l0d, data*weights, atol=1E-6)
 
     def testProjected(self):
         """Test likelihood evaluation when the fit system is not the same as the data system.
