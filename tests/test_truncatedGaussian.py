@@ -36,8 +36,8 @@ import lsst.meas.modelfit
 
 
 if False:
-    lsst.utils.logging.trace_set_at("meas.modelfit.integrals", 5)
-    lsst.utils.logging.trace_set_at("meas.modelfit.TruncatedGaussian", 5)
+    lsst.utils.logging.trace_set_at("lsst.meas.modelfit.integrals", 5)
+    lsst.utils.logging.trace_set_at("lsst.meas.modelfit.TruncatedGaussian", 5)
 
 
 class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):

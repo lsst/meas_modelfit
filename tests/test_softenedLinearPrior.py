@@ -33,7 +33,7 @@ try:
 except ImportError:
     scipy = None
 
-lsst.utils.logging.trace_set_at("meas.modelfit.SoftenedLinearPrior", 5)
+lsst.utils.logging.trace_set_at("lsst.meas.modelfit.SoftenedLinearPrior", 5)
 
 
 class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):

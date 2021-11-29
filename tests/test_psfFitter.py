@@ -36,8 +36,8 @@ import lsst.meas.base
 numpy.random.seed(500)
 
 #   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
-lsst.utils.logging.trace_set_at("meas.modelfit.optimizer.Optimizer", -1)
-lsst.utils.logging.trace_set_at("meas.modelfit.optimizer.solveTrustRegion", -1)
+lsst.utils.logging.trace_set_at("lsst.meas.modelfit.optimizer.Optimizer", -1)
+lsst.utils.logging.trace_set_at("lsst.meas.modelfit.optimizer.solveTrustRegion", -1)
 
 ELLIPSE_PARAMETER_NAMES = ["eta1", "eta2", "logR", "x", "y"]
 DATA_DIR = os.path.join(os.environ["MEAS_MODELFIT_DIR"], "tests", "data")
