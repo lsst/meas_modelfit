@@ -30,14 +30,14 @@ except ImportError:
     scipy = None
 
 import lsst.log
-import lsst.log.utils
+import lsst.utils.logging
 import lsst.utils.tests
 import lsst.meas.modelfit
 
 
 if False:
-    lsst.log.utils.traceSetAt("meas.modelfit.integrals", 5)
-    lsst.log.utils.traceSetAt("meas.modelfit.TruncatedGaussian", 5)
+    lsst.utils.logging.trace_set_at("meas.modelfit.integrals", 5)
+    lsst.utils.logging.trace_set_at("meas.modelfit.TruncatedGaussian", 5)
 
 
 class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):

@@ -25,7 +25,7 @@ import numpy
 
 import lsst.utils.tests
 import lsst.log
-import lsst.log.utils
+import lsst.utils.logging
 import lsst.meas.modelfit
 
 try:
@@ -33,7 +33,7 @@ try:
 except ImportError:
     scipy = None
 
-lsst.log.utils.traceSetAt("meas.modelfit.SoftenedLinearPrior", 5)
+lsst.utils.logging.trace_set_at("meas.modelfit.SoftenedLinearPrior", 5)
 
 
 class SoftenedLinearPriorTestCase(lsst.utils.tests.TestCase):

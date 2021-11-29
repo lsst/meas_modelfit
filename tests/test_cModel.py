@@ -29,13 +29,13 @@ import lsst.afw.geom
 import lsst.geom
 import lsst.afw.image
 import lsst.log
-import lsst.log.utils
+import lsst.utils.logging
 import lsst.meas.modelfit
 import lsst.meas.base
 
 #   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
-lsst.log.utils.traceSetAt("meas.modelfit.optimizer.Optimizer", -1)
-lsst.log.utils.traceSetAt("meas.modelfit.optimizer.solveTrustRegion", -1)
+lsst.utils.logging.trace_set_at("meas.modelfit.optimizer.Optimizer", -1)
+lsst.utils.logging.trace_set_at("meas.modelfit.optimizer.solveTrustRegion", -1)
 
 
 def makeMultiShapeletCircularGaussian(sigma):
