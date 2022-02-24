@@ -24,6 +24,7 @@ import os
 import unittest
 import numpy
 from io import StringIO
+import warnings
 
 import lsst.utils.tests
 import lsst.afw.detection
@@ -153,7 +154,9 @@ class DoubleShapeletPsfApproxTestMixin:
     def testSingleFramePlugin(self):
         """Run the algorithm as a single-frame plugin and check the quality of the fit.
         """
-        config = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="ignoreSlotPluginChecks", category=FutureWarning)
+            config = lsst.meas.base.SingleFrameMeasurementTask.ConfigClass(ignoreSlotPluginChecks=True)
         self.setupTaskConfig(config)
         config.slots.centroid = "centroid"
         schema = lsst.afw.table.SourceTable.makeMinimalSchema()
