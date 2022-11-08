@@ -87,6 +87,7 @@ class DoubleShapeletPsfApproxTestMixin:
 
         These requirements must be true after a call to any fit method or measure().
         """
+        pos = self.psf.getAveragePosition()
         self.assertEqual(len(msf.getComponents()), 2)
         self.assertEqual(
             lsst.shapelet.computeSize(self.ctrl.innerOrder),
@@ -97,11 +98,11 @@ class DoubleShapeletPsfApproxTestMixin:
             len(msf.getComponents()[1].getCoefficients())
         )
         self.assertGreater(
-            self.ctrl.maxRadiusBoxFraction * (self.psf.computeKernelImage().getBBox().getArea())**0.5,
+            self.ctrl.maxRadiusBoxFraction * (self.psf.computeKernelImage(pos).getBBox().getArea())**0.5,
             lsst.afw.geom.ellipses.Axes(msf.getComponents()[0].getEllipse().getCore()).getA()
         )
         self.assertGreater(
-            self.ctrl.maxRadiusBoxFraction * (self.psf.computeKernelImage().getBBox().getArea())**0.5,
+            self.ctrl.maxRadiusBoxFraction * (self.psf.computeKernelImage(pos).getBBox().getArea())**0.5,
             lsst.afw.geom.ellipses.Axes(msf.getComponents()[1].getEllipse().getCore()).getA()
         )
         self.assertLess(
@@ -139,7 +140,8 @@ class DoubleShapeletPsfApproxTestMixin:
     def makeImages(self, msf):
         """Return an Image of the data and an Image of the model for comparison.
         """
-        dataImage = self.exposure.getPsf().computeKernelImage()
+        pos = self.exposure.getPsf().getAveragePosition()
+        dataImage = self.exposure.getPsf().computeKernelImage(pos)
         modelImage = dataImage.Factory(dataImage.getBBox())
         msf.evaluate().addToImage(modelImage)
         return dataImage, modelImage
@@ -218,7 +220,7 @@ class DoubleShapeletPsfApproxTestMixin:
         correctly.
         """
         MOMENTS_RTOL = 1E-13
-        image = self.psf.computeKernelImage()
+        image = self.psf.computeKernelImage(self.psf.getAveragePosition())
         array = image.getArray()
         bbox = image.getBBox()
         x, y = numpy.meshgrid(
@@ -245,7 +247,7 @@ class DoubleShapeletPsfApproxTestMixin:
     def testObjective(self):
         """Test that model evaluation agrees with derivative evaluation in the objective object.
         """
-        image = self.psf.computeKernelImage()
+        image = self.psf.computeKernelImage(self.psf.getAveragePosition())
         msf = self.Algorithm.initializeResult(self.ctrl)
         self.Algorithm.fitMoments(msf, self.ctrl, image)
         moments = msf.evaluate().computeMoments()
@@ -286,7 +288,7 @@ class DoubleShapeletPsfApproxTestMixin:
         """Test that fitProfile() does not modify the ellipticity, that it improves the fit, and
         that small perturbations to the zeroth-order amplitudes and radii do not improve the fit.
         """
-        image = self.psf.computeKernelImage()
+        image = self.psf.computeKernelImage(self.psf.getAveragePosition())
         msf = self.Algorithm.initializeResult(self.ctrl)
         self.Algorithm.fitMoments(msf, self.ctrl, image)
         prev = lsst.shapelet.MultiShapeletFunction(msf)
@@ -328,7 +330,7 @@ class DoubleShapeletPsfApproxTestMixin:
         that it improves the fit, and that small perturbations to the higher-order coefficients
         do not improve the fit.
         """
-        image = self.psf.computeKernelImage()
+        image = self.psf.computeKernelImage(self.psf.getAveragePosition())
         msf = self.Algorithm.initializeResult(self.ctrl)
         self.Algorithm.fitMoments(msf, self.ctrl, image)
         self.Algorithm.fitProfile(msf, self.ctrl, image)
