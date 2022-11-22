@@ -105,9 +105,10 @@ class CModelTestCase(lsst.utils.tests.TestCase):
         self.exposure.getMaskedImage().getVariance().getArray()[:, :] = var
         psfImage = self.exposure.getPsf().computeKernelImage(self.xyPosition).getArray()
         expectedFluxErr = var**0.5 * (psfImage**2).sum()**(-0.5)
+        pos = self.exposure.getPsf().getAveragePosition()
         result = algorithm.apply(
             self.exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
-            self.xyPosition, self.exposure.getPsf().computeShape()
+            self.xyPosition, self.exposure.getPsf().computeShape(pos)
         )
         self.assertFalse(result.initial.flags[result.FAILED])
         self.assertFloatsAlmostEqual(result.initial.instFlux, self.trueFlux, rtol=0.01)
@@ -137,9 +138,10 @@ class CModelTestCase(lsst.utils.tests.TestCase):
                 noiseSigma*numpy.random.randn(exposure.getHeight(), exposure.getWidth())
             ctrl = lsst.meas.modelfit.CModelControl()
             algorithm = lsst.meas.modelfit.CModelAlgorithm(ctrl)
+            pos = self.exposure.getPsf().getAveragePosition()
             cmodel = algorithm.apply(
                 exposure, makeMultiShapeletCircularGaussian(self.psfSigma),
-                self.xyPosition, self.exposure.getPsf().computeShape()
+                self.xyPosition, self.exposure.getPsf().computeShape(pos)
             )
             psfFlux, psfFluxErr = computePsfFlux(self.xyPosition, exposure)
             self.assertFloatsAlmostEqual(psfFlux, cmodel.instFlux, rtol=0.1/fluxFactor**0.5)

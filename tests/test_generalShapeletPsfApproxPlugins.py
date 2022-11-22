@@ -75,7 +75,8 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
     def checkResult(self, msf):
         # Because we're fitting multiple shapelets to a single Gaussian (a single 0th-order shapelet)
         # we should be able to fit with zero residuals, aside from (single-precision) round-off error.
-        dataImage = self.exposure.getPsf().computeImage()
+        pos = self.exposure.getPsf().getAveragePosition()
+        dataImage = self.exposure.getPsf().computeImage(pos)
         modelImage = dataImage.Factory(dataImage.getBBox())
         modelImage.getArray()[:, :] *= -1
         msf.evaluate().addToImage(modelImage)
