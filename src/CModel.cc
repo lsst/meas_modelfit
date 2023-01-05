@@ -203,7 +203,7 @@ struct CModelStageKeys {
             if (ctrl.doRecordTime) {
                 time = schema.addField<Scalar>(
                     schema.join(prefix, "time"),
-                    "Time spent in stage", "second"
+                    "Time spent in stage", "s"
                 );
             }
         } else {
