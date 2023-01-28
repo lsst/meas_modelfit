@@ -23,7 +23,7 @@
 __all__ = ("PixelFitRegionConfig",)
 
 from lsst.pex.config import makeConfigClass
-from .pixelFitRegion import PixelFitRegionControl
+from .._modelfitLib import PixelFitRegionControl
 
 
 PixelFitRegionConfig = makeConfigClass(PixelFitRegionControl)

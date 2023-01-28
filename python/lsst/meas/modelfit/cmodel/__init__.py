@@ -20,5 +20,5 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .cmodel import *
+from .._modelfitLib import *
 from .cmodelContinued import *

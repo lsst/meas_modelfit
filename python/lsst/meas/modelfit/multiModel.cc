@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 #include "pybind11/stl.h"
 
 #include "lsst/meas/modelfit/MultiModel.h"
@@ -32,22 +33,20 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
 using PyMultiModel = py::class_<MultiModel, std::shared_ptr<MultiModel>, Model>;
 
-PYBIND11_MODULE(multiModel, mod) {
-    py::module::import("lsst.meas.modelfit.model");
+void wrapMultiModel(lsst::cpputils::python::WrapperCollection &wrappers) {
+    // py::module::import("lsst.meas.modelfit.model");
+    wrappers.wrapType(PyMultiModel(wrappers.module, "MultiModel"), [](auto &mod, auto &cls) {
+        cls.def(py::init<ModelVector, MultiModel::NameVector const &>(), "components"_a, "prefixes"_a);
+        cls.def("getComponents", &MultiModel::getComponents);
 
-    PyMultiModel cls(mod, "MultiModel");
-    cls.def(py::init<ModelVector, MultiModel::NameVector const &>(), "components"_a, "prefixes"_a);
-    cls.def("getComponents", &MultiModel::getComponents);
-
-    // All other MultiModel methods are virtuals already inherited from
-    // wrappers for Model.
+        // All other MultiModel methods are virtuals already inherited from
+        // wrappers for Model.
+    });
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

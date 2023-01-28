@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 #include "pybind11/stl.h"
 
 #include "ndarray/pybind11.h"
@@ -36,58 +37,52 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
 using PyModel = py::class_<Model, std::shared_ptr<Model>>;
 
-PYBIND11_MODULE(model, mod) {
-    py::module::import("lsst.shapelet");
-    py::module::import("lsst.meas.modelfit.priors");
-    py::module::import("lsst.meas.modelfit.unitSystem");
+void wrapModel(lsst::cpputils::python::WrapperCollection &wrappers) {
+    wrappers.wrapType(PyModel(wrappers.module, "Model"), [](auto &mod, auto &cls) {
+        py::enum_<Model::CenterEnum>(cls, "CenterEnum")
+                .value("FIXED_CENTER", Model::FIXED_CENTER)
+                .value("SINGLE_CENTER", Model::SINGLE_CENTER)
+                .value("MULTI_CENTER", Model::MULTI_CENTER)
+                .export_values();
 
-    PyModel cls(mod, "Model");
-
-    py::enum_<Model::CenterEnum>(cls, "CenterEnum")
-            .value("FIXED_CENTER", Model::FIXED_CENTER)
-            .value("SINGLE_CENTER", Model::SINGLE_CENTER)
-            .value("MULTI_CENTER", Model::MULTI_CENTER)
-            .export_values();
-
-    cls.def_static("make", (std::shared_ptr<Model>(*)(Model::BasisVector, Model::NameVector const &,
-                                                      Model::CenterEnum)) &
-                                   Model::make,
-                   "basisVector"_a, "prefixes"_a, "center"_a);
-    cls.def_static("make", (std::shared_ptr<Model>(*)(std::shared_ptr<shapelet::MultiShapeletBasis>,
-                                                      Model::CenterEnum)) &
-                                   Model::make,
-                   "basis"_a, "center"_a);
-    cls.def_static("makeGaussian", &Model::makeGaussian, "center"_a, "radius"_a = 1.0);
-    cls.def("getNonlinearDim", &Model::getNonlinearDim);
-    cls.def("getAmplitudeDim", &Model::getAmplitudeDim);
-    cls.def("getFixedDim", &Model::getFixedDim);
-    cls.def("getBasisCount", &Model::getBasisCount);
-    cls.def("getNonlinearNames", &Model::getNonlinearNames, py::return_value_policy::copy);
-    cls.def("getAmplitudeNames", &Model::getAmplitudeNames, py::return_value_policy::copy);
-    cls.def("getFixedNames", &Model::getFixedNames, py::return_value_policy::copy);
-    cls.def("getBasisVector", &Model::getBasisVector, py::return_value_policy::copy);
-    cls.def("makeShapeletFunction", &Model::makeShapeletFunction);
-    cls.def("adaptPrior", &Model::adaptPrior);
-    cls.def("makeEllipseVector", &Model::makeEllipseVector);
-    cls.def("writeEllipses",
-            (Model::EllipseVector (Model::*)(ndarray::Array<Scalar const, 1, 1> const &,
-                                             ndarray::Array<Scalar const, 1, 1> const &) const) &
-                    Model::writeEllipses,
-            "nonlinear"_a, "fixed"_a);
-    cls.def("readEllipses",
-            (void (Model::*)(Model::EllipseVector const &, ndarray::Array<Scalar, 1, 1> const &,
-                             ndarray::Array<Scalar, 1, 1> const &) const) &
-                    Model::readEllipses,
-            "ellipses"_a, "nonlinear"_a, "fixed"_a);
-    cls.def("transformParameters", &Model::transformParameters, "transform"_a, "nonlinear"_a, "amplitudes"_a,
-            "fixed"_a);
+        cls.def_static("make", (std::shared_ptr<Model>(*)(Model::BasisVector, Model::NameVector const &,
+                                                          Model::CenterEnum)) &
+                               Model::make,
+                       "basisVector"_a, "prefixes"_a, "center"_a);
+        cls.def_static("make", (std::shared_ptr<Model>(*)(std::shared_ptr<shapelet::MultiShapeletBasis>,
+                                                          Model::CenterEnum)) &
+                               Model::make,
+                       "basis"_a, "center"_a);
+        cls.def_static("makeGaussian", &Model::makeGaussian, "center"_a, "radius"_a = 1.0);
+        cls.def("getNonlinearDim", &Model::getNonlinearDim);
+        cls.def("getAmplitudeDim", &Model::getAmplitudeDim);
+        cls.def("getFixedDim", &Model::getFixedDim);
+        cls.def("getBasisCount", &Model::getBasisCount);
+        cls.def("getNonlinearNames", &Model::getNonlinearNames, py::return_value_policy::copy);
+        cls.def("getAmplitudeNames", &Model::getAmplitudeNames, py::return_value_policy::copy);
+        cls.def("getFixedNames", &Model::getFixedNames, py::return_value_policy::copy);
+        cls.def("getBasisVector", &Model::getBasisVector, py::return_value_policy::copy);
+        cls.def("makeShapeletFunction", &Model::makeShapeletFunction);
+        cls.def("adaptPrior", &Model::adaptPrior);
+        cls.def("makeEllipseVector", &Model::makeEllipseVector);
+        cls.def("writeEllipses",
+                (Model::EllipseVector (Model::*)(ndarray::Array<Scalar const, 1, 1> const &,
+                                                 ndarray::Array<Scalar const, 1, 1> const &) const) &
+                        Model::writeEllipses,
+                "nonlinear"_a, "fixed"_a);
+        cls.def("readEllipses",
+                (void (Model::*)(Model::EllipseVector const &, ndarray::Array<Scalar, 1, 1> const &,
+                                 ndarray::Array<Scalar, 1, 1> const &) const) &
+                        Model::readEllipses,
+                "ellipses"_a, "nonlinear"_a, "fixed"_a);
+        cls.def("transformParameters", &Model::transformParameters, "transform"_a, "nonlinear"_a, "amplitudes"_a,
+                "fixed"_a);
+    });
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

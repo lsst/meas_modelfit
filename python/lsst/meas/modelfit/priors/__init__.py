@@ -20,5 +20,5 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .priors import *
+from .._modelfitLib import *
 from .priorsContinued import *

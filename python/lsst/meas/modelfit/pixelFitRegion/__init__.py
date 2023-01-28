@@ -20,5 +20,5 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .pixelFitRegion import *
+from .._modelfitLib import *
 from .pixelFitRegionContinued import *

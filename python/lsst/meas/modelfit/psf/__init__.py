@@ -20,5 +20,5 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .psf import *
+from .._modelfitLib import *
 from .psfContinued import *

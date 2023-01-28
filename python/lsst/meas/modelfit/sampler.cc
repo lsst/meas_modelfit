@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 
 #include "ndarray/pybind11.h"
 
@@ -36,25 +37,20 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
 using PySamplingObjective = py::class_<SamplingObjective, std::shared_ptr<SamplingObjective>>;
 using PySampler = py::class_<Sampler, std::shared_ptr<Sampler>>;
 
-PYBIND11_MODULE(sampler, mod) {
-    py::module::import("lsst.afw.table");
-    py::module::import("lsst.meas.modelfit.mixture");
-    py::module::import("lsst.meas.modelfit.likelihood");
-
-    PySamplingObjective clsSamplingObjective(mod, "SamplingObjective");
-    clsSamplingObjective.def("getParameterDim", &SamplingObjective::getParameterDim);
-    clsSamplingObjective.def("__call__", &SamplingObjective::operator(), "parameters"_a, "sample"_a);
-
-    PySampler clsSampler(mod, "Sampler");
-    clsSampler.def("run", &Sampler::run, "objective"_a, "proposal"_a, "samples"_a);
+void wrapSampler(lsst::cpputils::python::WrapperCollection &wrappers) {
+    wrappers.wrapType(PySamplingObjective(wrappers.module, "SamplingObjective"), [](auto &mod, auto &cls) {
+        cls.def("getParameterDim", &SamplingObjective::getParameterDim);
+        cls.def("__call__", &SamplingObjective::operator(), "parameters"_a, "sample"_a);
+    });
+    wrappers.wrapType(PySampler(wrappers.module, "Sampler"), [](auto &mod, auto &cls) {
+        cls.def("run", &Sampler::run, "objective"_a, "proposal"_a, "samples"_a);
+    });
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

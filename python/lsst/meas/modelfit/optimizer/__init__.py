@@ -20,5 +20,5 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .optimizer import *
+from .._modelfitLib import *
 from .optimizerContinued import *

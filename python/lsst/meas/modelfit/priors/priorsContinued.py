@@ -29,10 +29,9 @@ import numpy as np
 from lsst.pex.config import makeConfigClass
 from lsst.utils import continueClass
 
-from ..mixture import Mixture
-from .priors import (SemiEmpiricalPriorControl, SemiEmpiricalPrior,
-                     SoftenedLinearPriorControl, SoftenedLinearPrior,
-                     MixturePrior)
+from .._modelfitLib import (Mixture, SemiEmpiricalPriorControl, SemiEmpiricalPrior,
+                            SoftenedLinearPriorControl, SoftenedLinearPrior,
+                            MixturePrior)
 
 
 SemiEmpiricalPriorConfig = makeConfigClass(SemiEmpiricalPriorControl)

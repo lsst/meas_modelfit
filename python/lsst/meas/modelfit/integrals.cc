@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 
 #include "lsst/meas/modelfit/integrals.h"
 
@@ -31,14 +32,12 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
-PYBIND11_MODULE(integrals, mod) {
-    mod.def("phid", &detail::phid);
-    mod.def("bvnu", &detail::bvnu);
+void wrapIntegrals(lsst::cpputils::python::WrapperCollection &wrappers) {
+    wrappers.module.def("phid", &detail::phid);
+    wrappers.module.def("bvnu", &detail::bvnu);
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst
