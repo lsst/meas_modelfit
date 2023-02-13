@@ -20,5 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .._modelfitLib import *
+from .._modelfitLib import (MixturePrior, Prior, SemiEmpiricalPrior,
+                            SemiEmpiricalPriorControl, SoftenedLinearPrior,
+                            SoftenedLinearPriorControl)
 from .priorsContinued import *

@@ -20,5 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .._modelfitLib import *
+from .._modelfitLib import (Optimizer, OptimizerControl,
+                            OptimizerHistoryRecorder, OptimizerObjective)
 from .optimizerContinued import *

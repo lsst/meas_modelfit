@@ -170,10 +170,6 @@ PyOptimizer declareOptimizer(lsst::cpputils::python::WrapperCollection &wrappers
 }
 
 void wrapOptimizer(lsst::cpputils::python::WrapperCollection &wrappers) {
-    // py::module::import("lsst.meas.modelfit.model");
-    // py::module::import("lsst.meas.modelfit.likelihood");
-    // py::module::import("lsst.meas.modelfit.priors");
-
     auto clsObjective = declareOptimizerObjective(wrappers);
     auto clsControl = declareOptimizerControl(wrappers);
     auto clsHistoryRecorder = declareOptimizerHistoryRecorder(wrappers);

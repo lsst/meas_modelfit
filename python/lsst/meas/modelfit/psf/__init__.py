@@ -20,5 +20,9 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .._modelfitLib import *
+from .._modelfitLib import (DoubleShapeletPsfApproxAlgorithm,
+                            DoubleShapeletPsfApproxControl, GeneralPsfFitter,
+                            GeneralPsfFitterAlgorithm,
+                            GeneralPsfFitterComponentControl,
+                            GeneralPsfFitterControl)
 from .psfContinued import *
