@@ -23,7 +23,7 @@
 # The Plugin classes here are accessed via registries, not direct imports.
 __all__ = ("CModelStageConfig", "CModelConfig")
 
-from .cmodel import CModelStageControl, CModelControl, CModelAlgorithm
+from .._modelfitLib import CModelStageControl, CModelControl, CModelAlgorithm
 
 from lsst.pex.config import makeConfigClass
 import lsst.meas.base

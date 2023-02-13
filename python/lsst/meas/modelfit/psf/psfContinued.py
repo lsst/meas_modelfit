@@ -29,7 +29,7 @@ __all__ = (
 
 import lsst.pex.config
 import lsst.meas.base
-from .psf import (
+from .._modelfitLib import (
     GeneralPsfFitterControl, GeneralPsfFitterComponentControl,
     GeneralPsfFitter, GeneralPsfFitterAlgorithm,
     DoubleShapeletPsfApproxAlgorithm, DoubleShapeletPsfApproxControl

@@ -21,20 +21,12 @@
 #
 from .version import *
 from .common import *
-from .mixture import *
-from .unitSystem import *
+
+from ._modelfitLib import *
 from .priors import *
-from .model import *
-from .multiModel import *
-from .likelihood import *
-from .sampler import *
-from .adaptiveImportanceSampler import *
 from .optimizer import *
-from .pixelFitRegion import *
 from .psf import *
-from .truncatedGaussian import *
-from .unitTransformedLikelihood import *
+from .pixelFitRegion import *
 from .cmodel import *
 
-# Match C++ namespace, without bothering with a new package for just one file.
-from . import integrals as detail
+from .detail import *

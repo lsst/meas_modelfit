@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 
 #include "ndarray/pybind11.h"
 
@@ -39,87 +40,96 @@ namespace meas {
 namespace modelfit {
 namespace {
 
-static void declarePrior(py::module &mod) {
+void declarePrior(lsst::cpputils::python::WrapperCollection &wrappers) {
     using PyPrior = py::class_<Prior, std::shared_ptr<Prior>>;
-    PyPrior cls(mod, "Prior");
-    cls.def("getTag", &Prior::getTag);
-    cls.def("evaluate", &Prior::evaluate, "nonlinear"_a, "amplitudes"_a);
-    cls.def("evaluateDerivatives", &Prior::evaluateDerivatives, "nonlinear"_a, "amplitudes"_a,
-            "nonlinearGradient"_a, "amplitudeGradient"_a, "nonlinearHessian"_a, "amplitudeHessian"_a,
-            "crossHessian"_a);
-    cls.def("marginalize", &Prior::marginalize, "gradient"_a, "hessian"_a, "nonlinear"_a);
-    cls.def("maximize", &Prior::maximize, "gradient"_a, "hessian"_a, "nonlinear"_a, "amplitudes"_a);
-    cls.def("drawAmplitudes", &Prior::drawAmplitudes, "gradient"_a, "hessian"_a, "nonlinear"_a, "rng"_a,
-            "amplitudes"_a, "weights"_a, "multiplyWeights"_a = false);
+
+    wrappers.wrapType(PyPrior(wrappers.module, "Prior"), [](auto &mod, auto &cls) {
+        cls.def("getTag", &Prior::getTag);
+        cls.def("evaluate", &Prior::evaluate, "nonlinear"_a, "amplitudes"_a);
+        cls.def("evaluateDerivatives", &Prior::evaluateDerivatives, "nonlinear"_a, "amplitudes"_a,
+                "nonlinearGradient"_a, "amplitudeGradient"_a, "nonlinearHessian"_a, "amplitudeHessian"_a,
+                "crossHessian"_a);
+        cls.def("marginalize", &Prior::marginalize, "gradient"_a, "hessian"_a, "nonlinear"_a);
+        cls.def("maximize", &Prior::maximize, "gradient"_a, "hessian"_a, "nonlinear"_a, "amplitudes"_a);
+        cls.def("drawAmplitudes", &Prior::drawAmplitudes, "gradient"_a, "hessian"_a, "nonlinear"_a, "rng"_a,
+                "amplitudes"_a, "weights"_a, "multiplyWeights"_a = false);
+    });
 }
 
-static void declareMixturePrior(py::module &mod) {
+void declareMixturePrior(lsst::cpputils::python::WrapperCollection &wrappers) {
     using Class = MixturePrior;
     using PyClass = py::class_<Class, std::shared_ptr<Class>, Prior>;
-    PyClass cls(mod, "MixturePrior");
-    cls.def(py::init<std::shared_ptr<Mixture>, std::string const &>(), "mixture"_a, "tag"_a = "");
-    cls.def_static("getUpdateRestriction", &Class::getUpdateRestriction,
-                   py::return_value_policy::reference);  // returned object has static duration
-    cls.def("getMixture", &Class::getMixture);
-    // virtual methods already wrapped by Prior base class
+    wrappers.wrapType(PyClass(wrappers.module, "MixturePrior"), [](auto &mod, auto &cls) {
+        cls.def(py::init<std::shared_ptr<Mixture>, std::string const &>(), "mixture"_a, "tag"_a = "");
+        cls.def_static("getUpdateRestriction", &Class::getUpdateRestriction,
+                       py::return_value_policy::reference);  // returned object has static duration
+        cls.def("getMixture", &Class::getMixture);
+        // virtual methods already wrapped by Prior base class
+    });
 }
 
-static void declareSemiEmpiricalPrior(py::module &mod) {
+void declareSemiEmpiricalPrior(lsst::cpputils::python::WrapperCollection &wrappers) {
     using Class = SemiEmpiricalPrior;
     using Control = SemiEmpiricalPriorControl;
     using PyControl = py::class_<Control, std::shared_ptr<Control>>;
     using PyClass = py::class_<Class, std::shared_ptr<Class>, Prior>;
 
-    PyControl clsControl(mod, "SemiEmpiricalPriorControl");
-    clsControl.def(py::init<>());
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, ellipticitySigma);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, ellipticityCore);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMinOuter);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMinInner);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMu);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusSigma);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusNu);
-    clsControl.def("validate", &Control::validate);
+    static auto clsControl =
+            wrappers.wrapType(PyControl(wrappers.module, "SemiEmpiricalPriorControl"), [](auto &mod, auto &cls) {
+                cls.def(py::init<>());
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, ellipticitySigma);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, ellipticityCore);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMinOuter);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMinInner);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMu);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusSigma);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusNu);
+                cls.def("validate", &Control::validate);
+            });
 
-    PyClass cls(mod, "SemiEmpiricalPrior");
-    cls.def(py::init<Control>(), "ctrl"_a);
-    cls.attr("Control") = clsControl;
+    wrappers.wrapType(PyClass(wrappers.module, "SemiEmpiricalPrior"), [](auto &mod, auto &cls) {
+        cls.def(py::init<Control>(), "ctrl"_a);
+        cls.attr("Control") = clsControl;
+    });
     // virtual methods already wrapped by Prior base class
 }
 
-static void declareSoftenedLinearPrior(py::module &mod) {
+void declareSoftenedLinearPrior(lsst::cpputils::python::WrapperCollection &wrappers) {
     using Class = SoftenedLinearPrior;
     using Control = SoftenedLinearPriorControl;
     using PyControl = py::class_<Control, std::shared_ptr<Control>>;
     using PyClass = py::class_<Class, std::shared_ptr<Class>, Prior>;
 
-    PyControl clsControl(mod, "SoftenedLinearPriorControl");
-    clsControl.def(py::init<>());
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, ellipticityMaxOuter);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, ellipticityMaxInner);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMinOuter);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMinInner);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMaxOuter);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMaxInner);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, Control, logRadiusMinMaxRatio);
+    static auto clsControl =
+            wrappers.wrapType(PyControl(wrappers.module, "SoftenedLinearPriorControl"), [](auto &mod, auto &cls) {
+                cls.def(py::init<>());
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, ellipticityMaxOuter);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, ellipticityMaxInner);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMinOuter);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMinInner);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMaxOuter);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMaxInner);
+                LSST_DECLARE_CONTROL_FIELD(cls, Control, logRadiusMinMaxRatio);
+            });
 
-    PyClass cls(mod, "SoftenedLinearPrior");
-    cls.def(py::init<Control>(), "ctrl"_a);
-    cls.def("getControl", &Class::getControl, py::return_value_policy::copy);
-    cls.attr("Control") = clsControl;
-    // virtual methods already wrapped by Prior base class
+    wrappers.wrapType(PyClass(wrappers.module, "SoftenedLinearPrior"), [](auto &mod, auto &cls) {
+        cls.def(py::init<Control>(), "ctrl"_a);
+        cls.def("getControl", &Class::getControl, py::return_value_policy::copy);
+        cls.attr("Control") = clsControl;
+        // virtual methods already wrapped by Prior base class
+    });
+}
+}  // namespace
+
+void wrapPriors(lsst::cpputils::python::WrapperCollection &wrappers) {
+    // py::module::import("lsst.meas.modelfit.mixture");
+
+    declarePrior(wrappers);
+    declareMixturePrior(wrappers);
+    declareSemiEmpiricalPrior(wrappers);
+    declareSoftenedLinearPrior(wrappers);
 }
 
-PYBIND11_MODULE(priors, mod) {
-    py::module::import("lsst.meas.modelfit.mixture");
-
-    declarePrior(mod);
-    declareMixturePrior(mod);
-    declareSemiEmpiricalPrior(mod);
-    declareSoftenedLinearPrior(mod);
-}
-
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

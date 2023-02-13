@@ -20,5 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-from .cmodel import *
+from .._modelfitLib import (CModelAlgorithm, CModelControl, CModelResult,
+                            CModelStageControl, CModelStageResult)
 from .cmodelContinued import *

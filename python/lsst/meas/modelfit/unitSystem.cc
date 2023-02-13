@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 
 #include "lsst/meas/modelfit/UnitSystem.h"
 
@@ -31,41 +32,38 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
 using PyUnitSystem = py::class_<UnitSystem, std::shared_ptr<UnitSystem>>;
 using PyLocalUnitTransform = py::class_<LocalUnitTransform, std::shared_ptr<LocalUnitTransform>>;
 
-PYBIND11_MODULE(unitSystem, mod) {
-    py::module::import("lsst.afw.image");
-
+void wrapUnitSystem(lsst::cpputils::python::WrapperCollection &wrappers) {
     // Data member wrappers in this module are intentionally read-only;
     // setting them in Python should never be necessary and hence always
     // represents a mistake we want to fail on as early as possible.
+    wrappers.wrapType(PyUnitSystem(wrappers.module, "UnitSystem"), [](auto &mod, auto &cls) {
+        cls.def_readonly("wcs", &UnitSystem::wcs);
+        cls.def_readonly("photoCalib", &UnitSystem::photoCalib);
+        cls.def(
+                py::init<geom::SpherePoint const &, std::shared_ptr<afw::image::PhotoCalib const>, double>(),
+                "position"_a, "calibIn"_a, "flux"_a);
+        cls.def(py::init<geom::SpherePoint const &, Scalar>(), "position"_a, "mag"_a);
+        cls.def(
+                py::init<std::shared_ptr<afw::geom::SkyWcs const>, std::shared_ptr<afw::image::PhotoCalib const>>(),
+                "wcs"_a, "photoCalib"_a);
+        cls.def(py::init<afw::image::Exposure<float> const &>(), "exposure"_a);
+        cls.def(py::init<afw::image::Exposure<double> const &>(), "exposure"_a);
+    });
 
-    PyUnitSystem clsUnitSystem(mod, "UnitSystem");
-    clsUnitSystem.def_readonly("wcs", &UnitSystem::wcs);
-    clsUnitSystem.def_readonly("photoCalib", &UnitSystem::photoCalib);
-    clsUnitSystem.def(
-            py::init<geom::SpherePoint const &, std::shared_ptr<afw::image::PhotoCalib const>, double>(),
-            "position"_a, "calibIn"_a, "flux"_a);
-    clsUnitSystem.def(py::init<geom::SpherePoint const &, Scalar>(), "position"_a, "mag"_a);
-    clsUnitSystem.def(
-            py::init<std::shared_ptr<afw::geom::SkyWcs const>, std::shared_ptr<afw::image::PhotoCalib const>>(),
-            "wcs"_a, "photoCalib"_a);
-    clsUnitSystem.def(py::init<afw::image::Exposure<float> const &>(), "exposure"_a);
-    clsUnitSystem.def(py::init<afw::image::Exposure<double> const &>(), "exposure"_a);
-
-    PyLocalUnitTransform clsLocalUnitTransform(mod, "LocalUnitTransform");
-    clsLocalUnitTransform.def_readonly("geometric", &LocalUnitTransform::geometric);
-    clsLocalUnitTransform.def_readonly("flux", &LocalUnitTransform::flux);
-    clsLocalUnitTransform.def_readonly("sb", &LocalUnitTransform::sb);
-    clsLocalUnitTransform.def(py::init<geom::Point2D const &, UnitSystem const &, UnitSystem const &>(),
-                              "sourcePixel"_a, "source"_a, "destination"_a);
-    clsLocalUnitTransform.def(py::init<>());
+    wrappers.wrapType(PyLocalUnitTransform(wrappers.module, "LocalUnitTransform"), [](auto &mod, auto &cls) {
+        cls.def_readonly("geometric", &LocalUnitTransform::geometric);
+        cls.def_readonly("flux", &LocalUnitTransform::flux);
+        cls.def_readonly("sb", &LocalUnitTransform::sb);
+        cls.def(py::init<geom::Point2D const &, UnitSystem const &, UnitSystem const &>(),
+                                  "sourcePixel"_a, "source"_a, "destination"_a);
+        cls.def(py::init<>());
+    });
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

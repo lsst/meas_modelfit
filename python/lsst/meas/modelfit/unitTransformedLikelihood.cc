@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 #include "pybind11/stl.h"
 
 #include "ndarray/pybind11.h"
@@ -35,7 +36,6 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
 using PyUnitTransformedLikelihoodControl =
         py::class_<UnitTransformedLikelihoodControl, std::shared_ptr<UnitTransformedLikelihoodControl>>;
@@ -45,42 +45,39 @@ using PyEpochFootprint = py::class_<EpochFootprint, std::shared_ptr<EpochFootpri
 using PyUnitTransformedLikelihood =
         py::class_<UnitTransformedLikelihood, std::shared_ptr<UnitTransformedLikelihood>, Likelihood>;
 
-PYBIND11_MODULE(unitTransformedLikelihood, mod) {
-    py::module::import("lsst.afw.geom.ellipses");
-    py::module::import("lsst.afw.detection");
-    py::module::import("lsst.afw.image");
-    py::module::import("lsst.meas.modelfit.model");
-    py::module::import("lsst.meas.modelfit.likelihood");
-    py::module::import("lsst.meas.modelfit.unitSystem");
+void wrapUnitTransformedLikelihood(lsst::cpputils::python::WrapperCollection &wrappers) {
+    wrappers.wrapType(
+            PyUnitTransformedLikelihoodControl(wrappers.module, "UnitTransformedLikelihoodControl"),
+            [](auto &mod, auto &cls) {
+                LSST_DECLARE_CONTROL_FIELD(cls, UnitTransformedLikelihoodControl, usePixelWeights);
+                LSST_DECLARE_CONTROL_FIELD(cls, UnitTransformedLikelihoodControl, weightsMultiplier);
+                cls.def(py::init<bool>(), "usePixelWeights"_a = false);
+            });
+    wrappers.wrapType(PyEpochFootprint(wrappers.module, "EpochFootprint"), [](auto &mod, auto &cls) {
+        cls.def(py::init<afw::detection::Footprint const &, afw::image::Exposure<Pixel> const &,
+                                      shapelet::MultiShapeletFunction const &>(),
+                              "footprint"_a, "exposure"_a, "psf"_a);
+        cls.def_readonly("footprint", &EpochFootprint::footprint);
+        cls.def_readonly("exposure", &EpochFootprint::exposure);
+        cls.def_readonly("psf", &EpochFootprint::psf);
+    });
 
-    PyUnitTransformedLikelihoodControl clsControl(mod, "UnitTransformedLikelihoodControl");
-    LSST_DECLARE_CONTROL_FIELD(clsControl, UnitTransformedLikelihoodControl, usePixelWeights);
-    LSST_DECLARE_CONTROL_FIELD(clsControl, UnitTransformedLikelihoodControl, weightsMultiplier);
-    clsControl.def(py::init<bool>(), "usePixelWeights"_a = false);
-
-    PyEpochFootprint clsEpochFootprint(mod, "EpochFootprint");
-    clsEpochFootprint.def(py::init<afw::detection::Footprint const &, afw::image::Exposure<Pixel> const &,
-                                   shapelet::MultiShapeletFunction const &>(),
-                          "footprint"_a, "exposure"_a, "psf"_a);
-    clsEpochFootprint.def_readonly("footprint", &EpochFootprint::footprint);
-    clsEpochFootprint.def_readonly("exposure", &EpochFootprint::exposure);
-    clsEpochFootprint.def_readonly("psf", &EpochFootprint::psf);
-
-    PyUnitTransformedLikelihood clsUnitTransformedLikelihood(mod, "UnitTransformedLikelihood");
-    clsUnitTransformedLikelihood.def(
-            py::init<std::shared_ptr<Model>, ndarray::Array<Scalar const, 1, 1> const &, UnitSystem const &,
-                     geom::SpherePoint const &, afw::image::Exposure<Pixel> const &,
-                     afw::detection::Footprint const &, shapelet::MultiShapeletFunction const &,
-                     UnitTransformedLikelihoodControl const &>(),
-            "model"_a, "fixed"_a, "fitSys"_a, "position"_a, "exposure"_a, "footprint"_a, "psf"_a, "ctrl"_a);
-    clsUnitTransformedLikelihood.def(
-            py::init<std::shared_ptr<Model>, ndarray::Array<Scalar const, 1, 1> const &, UnitSystem const &,
-                     geom::SpherePoint const &, std::vector<std::shared_ptr<EpochFootprint>> const &,
-                     UnitTransformedLikelihoodControl const &>(),
-            "model"_a, "fixed"_a, "fitSys"_a, "position"_a, "epochFootprintList"_a, "ctrl"_a);
+    wrappers.wrapType(PyUnitTransformedLikelihood(wrappers.module, "UnitTransformedLikelihood"),[](auto &mod, auto &cls) {
+        cls.def(
+                py::init<std::shared_ptr<Model>, ndarray::Array<Scalar const, 1, 1> const &, UnitSystem const &,
+                        geom::SpherePoint const &, afw::image::Exposure<Pixel> const &,
+                        afw::detection::Footprint const &, shapelet::MultiShapeletFunction const &,
+                        UnitTransformedLikelihoodControl const &>(),
+                "model"_a, "fixed"_a, "fitSys"_a, "position"_a, "exposure"_a, "footprint"_a, "psf"_a,
+                "ctrl"_a);
+        cls.def(
+                py::init<std::shared_ptr<Model>, ndarray::Array<Scalar const, 1, 1> const &, UnitSystem const &,
+                        geom::SpherePoint const &, std::vector<std::shared_ptr<EpochFootprint>> const &,
+                        UnitTransformedLikelihoodControl const &>(),
+                "model"_a, "fixed"_a, "fitSys"_a, "position"_a, "epochFootprintList"_a, "ctrl"_a);
+    });
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

@@ -22,7 +22,7 @@
 
 __all__ = ("OptimizerConfig",)
 
-from .optimizer import Optimizer, OptimizerControl
+from .._modelfitLib import Optimizer, OptimizerControl
 
 from lsst.utils import continueClass
 import lsst.pex.config

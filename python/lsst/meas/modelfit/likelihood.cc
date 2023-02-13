@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 
 #include "ndarray/pybind11.h"
 
@@ -33,29 +34,27 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
 using PyLikelihood = py::class_<Likelihood, std::shared_ptr<Likelihood>>;
 
-PYBIND11_MODULE(likelihood, mod) {
-    py::module::import("lsst.meas.modelfit.model");
-
-    PyLikelihood cls(mod, "Likelihood");
-    cls.def("getDataDim", &Likelihood::getDataDim);
-    cls.def("getAmplitudeDim", &Likelihood::getAmplitudeDim);
-    cls.def("getNonlinearDim", &Likelihood::getNonlinearDim);
-    cls.def("getFixedDim", &Likelihood::getFixedDim);
-    cls.def("getFixed", &Likelihood::getFixed);
-    cls.def("getData", &Likelihood::getData);
-    cls.def("getUnweightedData", &Likelihood::getUnweightedData);
-    cls.def("getWeights", &Likelihood::getWeights);
-    cls.def("getVariance", &Likelihood::getVariance);
-    cls.def("getModel", &Likelihood::getModel);
-    cls.def("computeModelMatrix", &Likelihood::computeModelMatrix, "modelMatrix"_a, "nonlinear"_a,
-            "doApplyWeights"_a = true);
+void wrapLikelihood(lsst::cpputils::python::WrapperCollection &wrappers) {
+    // py::module::import("lsst.meas.modelfit.model");
+    wrappers.wrapType(PyLikelihood(wrappers.module, "Likelihood"), [](auto &mod, auto &cls) {
+        cls.def("getDataDim", &Likelihood::getDataDim);
+        cls.def("getAmplitudeDim", &Likelihood::getAmplitudeDim);
+        cls.def("getNonlinearDim", &Likelihood::getNonlinearDim);
+        cls.def("getFixedDim", &Likelihood::getFixedDim);
+        cls.def("getFixed", &Likelihood::getFixed);
+        cls.def("getData", &Likelihood::getData);
+        cls.def("getUnweightedData", &Likelihood::getUnweightedData);
+        cls.def("getWeights", &Likelihood::getWeights);
+        cls.def("getVariance", &Likelihood::getVariance);
+        cls.def("getModel", &Likelihood::getModel);
+        cls.def("computeModelMatrix", &Likelihood::computeModelMatrix, "modelMatrix"_a, "nonlinear"_a,
+                "doApplyWeights"_a = true);
+    });
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst

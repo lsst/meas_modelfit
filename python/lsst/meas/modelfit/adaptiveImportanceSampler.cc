@@ -22,6 +22,7 @@
  */
 
 #include "pybind11/pybind11.h"
+#include "lsst/cpputils/python.h"
 
 #include "lsst/pex/config/python.h"
 #include "lsst/meas/modelfit/AdaptiveImportanceSampler.h"
@@ -35,40 +36,34 @@ using namespace pybind11::literals;
 namespace lsst {
 namespace meas {
 namespace modelfit {
-namespace {
 
 using PyImportanceSamplerControl =
         py::class_<ImportanceSamplerControl, std::shared_ptr<ImportanceSamplerControl>>;
 using PyAdaptiveImportanceSampler =
         py::class_<AdaptiveImportanceSampler, std::shared_ptr<AdaptiveImportanceSampler>, Sampler>;
 
-PYBIND11_MODULE(adaptiveImportanceSampler, mod) {
-    py::module::import("lsst.afw.table");
-    py::module::import("lsst.afw.math");
-    py::module::import("lsst.meas.modelfit.sampler");
-    py::module::import("lsst.meas.modelfit.mixture");
+void wrapAdaptiveImportanceSampler(lsst::cpputils::python::WrapperCollection &wrappers) {
+    wrappers.wrapType(PyImportanceSamplerControl(wrappers.module, "ImportanceSamplerControl"), [](auto &mod, auto &cls) {
+        cls.def(py::init<>());
+        LSST_DECLARE_CONTROL_FIELD(cls, ImportanceSamplerControl, nSamples);
+        LSST_DECLARE_CONTROL_FIELD(cls, ImportanceSamplerControl, nUpdateSteps);
+        LSST_DECLARE_CONTROL_FIELD(cls, ImportanceSamplerControl, tau1);
+        LSST_DECLARE_CONTROL_FIELD(cls, ImportanceSamplerControl, tau2);
+        LSST_DECLARE_CONTROL_FIELD(cls, ImportanceSamplerControl, targetPerplexity);
+        LSST_DECLARE_CONTROL_FIELD(cls, ImportanceSamplerControl, maxRepeat);
 
-    PyImportanceSamplerControl clsImportanceSamplerControl(mod, "ImportanceSamplerControl");
-    clsImportanceSamplerControl.def(py::init<>());
-    LSST_DECLARE_CONTROL_FIELD(clsImportanceSamplerControl, ImportanceSamplerControl, nSamples);
-    LSST_DECLARE_CONTROL_FIELD(clsImportanceSamplerControl, ImportanceSamplerControl, nUpdateSteps);
-    LSST_DECLARE_CONTROL_FIELD(clsImportanceSamplerControl, ImportanceSamplerControl, tau1);
-    LSST_DECLARE_CONTROL_FIELD(clsImportanceSamplerControl, ImportanceSamplerControl, tau2);
-    LSST_DECLARE_CONTROL_FIELD(clsImportanceSamplerControl, ImportanceSamplerControl, targetPerplexity);
-    LSST_DECLARE_CONTROL_FIELD(clsImportanceSamplerControl, ImportanceSamplerControl, maxRepeat);
-
-    PyAdaptiveImportanceSampler clsAdaptiveImportanceSampler(mod, "AdaptiveImportanceSampler");
-    clsAdaptiveImportanceSampler.def(py::init<afw::table::Schema &, std::shared_ptr<afw::math::Random>,
-                                              std::map<int, ImportanceSamplerControl> const &, bool>(),
-                                     "sampleSchema"_a, "rng"_a, "ctrls"_a, "doSaveIteration"_a = false);
-    // virtual run method already wrapped by Sampler base class
-    clsAdaptiveImportanceSampler.def("computeNormalizedPerplexity",
-                                     &AdaptiveImportanceSampler::computeNormalizedPerplexity);
-    clsAdaptiveImportanceSampler.def("computeEffectiveSampleSizeFraction",
-                                     &AdaptiveImportanceSampler::computeEffectiveSampleSizeFraction);
+        PyAdaptiveImportanceSampler clsAdaptiveImportanceSampler(mod, "AdaptiveImportanceSampler");
+        clsAdaptiveImportanceSampler.def(py::init<afw::table::Schema &, std::shared_ptr<afw::math::Random>,
+                                                 std::map<int, ImportanceSamplerControl> const &, bool>(),
+                                         "sampleSchema"_a, "rng"_a, "ctrls"_a, "doSaveIteration"_a = false);
+        // virtual run method already wrapped by Sampler base class
+        clsAdaptiveImportanceSampler.def("computeNormalizedPerplexity",
+                                         &AdaptiveImportanceSampler::computeNormalizedPerplexity);
+        clsAdaptiveImportanceSampler.def("computeEffectiveSampleSizeFraction",
+                                         &AdaptiveImportanceSampler::computeEffectiveSampleSizeFraction);
+    });
 }
 
-}
-}
-}
-}  // namespace lsst::meas::modelfit::anonymous
+}  // namespace modelfit
+}  // namespace meas
+}  // namespace lsst
