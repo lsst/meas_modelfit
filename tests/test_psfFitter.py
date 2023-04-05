@@ -110,7 +110,10 @@ class GeneralPsfFitterTestCase(lsst.utils.tests.TestCase):
         ellipses1 = model.makeEllipseVector()
         for i in range(len(ellipses1)):
             ellipses1[i].setParameterVector(ellipseParameters[i])
+        # With numpy>=1.23, we need to set a non-zero stride on a zero-length array
+        # to get ndarray/pybind11 to work.
         nonlinear = numpy.zeros(model.getNonlinearDim(), dtype=lsst.meas.modelfit.Scalar)
+        nonlinear.strides = (8,)
         fixed = numpy.zeros(model.getFixedDim(), dtype=lsst.meas.modelfit.Scalar)
         amplitudes = numpy.array([1.0, 0.1], dtype=lsst.meas.modelfit.Scalar)
         model.readEllipses(ellipses1, nonlinear, fixed)
