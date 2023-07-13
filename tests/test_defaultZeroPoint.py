@@ -31,14 +31,15 @@ import lsst.utils
 
 
 class DefaultZeroPointTestCase(lsst.utils.tests.TestCase):
-    '''Test that photoCalib objects containing invalid calibrations are replaced with a default having a
-    zero-point of magnitude 27.
-    '''
+    """Test that photoCalib objects containing invalid calibrations are
+    replaced with a default having a zero-point of magnitude 27.
+    """
 
     def setUp(self):
-        '''Create two calibs, one with a valid zero-point and one without. Use these to create two UnitSystem
-        objects.
-        '''
+        """Create two calibs, one with a valid zero-point and one without.
+
+        Use these to create two UnitSystem objects.
+        """
         self.mag2Flux = lambda m: 10.0**(m/2.5)
         self.flux2Mag = lambda f: 2.5*np.log10(f)
 
@@ -54,9 +55,10 @@ class DefaultZeroPointTestCase(lsst.utils.tests.TestCase):
         self.unitWithZero = measModel.UnitSystem(wcs, photoCalibWithZero)
 
     def testZeroPoint(self):
-        '''Verify that the UnitSystem with an invalid photoCalib gets populated with a valid photoCalib, and that
-        nothing happens to the UnitSystem with a valid photoCalib.
-        '''
+        """Verify that the UnitSystem with an invalid photoCalib gets populated
+        with a valid photoCalib, and that nothing happens to the UnitSystem
+        with a valid photoCalib.
+        """
         magNoZero = self.flux2Mag(self.unitNoZero.photoCalib.getInstFluxAtZeroMagnitude())
         magWithZero = self.flux2Mag(self.unitWithZero.photoCalib.getInstFluxAtZeroMagnitude())
 
