@@ -133,7 +133,7 @@ class MixtureTestCase(lsst.utils.tests.TestCase):
         os.remove(filename)
 
     def testDerivatives(self):
-        epsilon = 1E-7
+        epsilon = 1E-6
         g = self.makeRandomMixture(3, 4)
         t = self.makeRandomMixture(4, 3, df=4.0)
 
