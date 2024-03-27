@@ -41,7 +41,7 @@ public:
     DoubleShapeletPsfApproxControl() :
         innerOrder(2), outerOrder(1),
         radiusRatio(2.0), peakRatio(0.1),
-        minRadius(1.0), minRadiusDiff(0.5), maxRadiusBoxFraction(0.4)
+        minRadius(0.25), minRadiusDiff(0.5), maxRadiusBoxFraction(0.4)
     {}
 
     LSST_CONTROL_FIELD(innerOrder, int, "Shapelet order of inner expansion (0 == Gaussian)");
