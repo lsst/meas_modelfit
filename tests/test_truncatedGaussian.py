@@ -29,7 +29,6 @@ try:
 except ImportError:
     scipy = None
 
-import lsst.log
 import lsst.utils.logging
 import lsst.utils.tests
 import lsst.meas.modelfit

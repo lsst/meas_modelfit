@@ -28,7 +28,6 @@ import lsst.shapelet
 import lsst.afw.geom
 import lsst.geom
 import lsst.afw.image
-import lsst.log
 import lsst.utils.logging
 import lsst.meas.modelfit
 import lsst.meas.base

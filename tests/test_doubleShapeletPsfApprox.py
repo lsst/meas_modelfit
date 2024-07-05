@@ -32,7 +32,6 @@ import lsst.afw.image
 import lsst.geom
 import lsst.afw.geom
 import lsst.afw.geom.ellipses
-import lsst.log
 import lsst.utils.logging
 import lsst.meas.modelfit
 import lsst.meas.algorithms

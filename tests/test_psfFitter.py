@@ -28,7 +28,6 @@ import numpy
 import lsst.utils.tests
 import lsst.shapelet
 import lsst.geom
-import lsst.log
 import lsst.utils.logging
 import lsst.meas.modelfit
 import lsst.meas.base
