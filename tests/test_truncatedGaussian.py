@@ -29,7 +29,6 @@ try:
 except ImportError:
     scipy = None
 
-import lsst.log
 import lsst.utils.logging
 import lsst.utils.tests
 import lsst.meas.modelfit
@@ -114,14 +113,14 @@ class TruncatedGaussianTestCase(lsst.utils.tests.TestCase):
 
         def func(x):
             return evaluator(numpy.array([x]))
-        return scipy.integrate.quad(func, 0.0, numpy.Inf)
+        return scipy.integrate.quad(func, 0.0, numpy.inf)
 
     def integrate2d(self, tg):
         evaluator = tg.evaluate()
 
         def func(x, y):
             return evaluator(numpy.array([x, y]))
-        return scipy.integrate.dblquad(func, 0.0, numpy.Inf, lambda x: 0.0, lambda x: numpy.Inf)
+        return scipy.integrate.dblquad(func, 0.0, numpy.inf, lambda x: 0.0, lambda x: numpy.inf)
 
     @unittest.skipIf(scipy is None, "Test requires SciPy")
     def test1d(self):

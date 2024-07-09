@@ -22,15 +22,15 @@
 #
 import unittest
 import numpy
+import logging
 
 import lsst.utils.tests
-import lsst.log
 import lsst.utils.logging
 import lsst.meas.modelfit
 
 #   Set trace to 0-5 to view debug messages.  Level 5 enables all traces.
 lsst.utils.logging.trace_set_at("lsst.meas.modelfit.optimizer", 5)
-log = lsst.log.Log.getLogger("lsst.meas.modelfit.optimizer")
+log = logging.getLogger("lsst.meas.modelfit.optimizer")
 
 
 class OptimizerTestCase(lsst.utils.tests.TestCase):

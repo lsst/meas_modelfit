@@ -24,7 +24,6 @@ import unittest
 import numpy
 
 import lsst.utils.tests
-import lsst.log
 import lsst.utils.logging
 import lsst.meas.modelfit
 
