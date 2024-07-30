@@ -62,8 +62,8 @@ PyMixtureComponent declareMixtureComponent(lsst::cpputils::python::WrapperCollec
                         "dim1"_a, "dim2"_a);
                 cls.def(py::init<int>(), "dim"_a);
                 cls.def(py::init<Scalar, Vector const &, Matrix const &>(), "weight"_a, "mu"_a, "sigma"_a);
-                utils::python::addOutputOp(cls, "__str__");
-                utils::python::addOutputOp(cls, "__repr__");
+                cpputils::python::addOutputOp(cls, "__str__");
+                cpputils::python::addOutputOp(cls, "__repr__");
             });
 }
 
@@ -82,7 +82,7 @@ PyMixture declareMixture(lsst::cpputils::python::WrapperCollection &wrappers) {
         cls.def("__iter__", [](Mixture &self) { return py::make_iterator(self.begin(), self.end()); },
                 py::keep_alive<0, 1>());
         cls.def("__getitem__",
-                [](Mixture &self, std::ptrdiff_t i) { return self[utils::python::cppIndex(self.size(), i)]; },
+                [](Mixture &self, std::ptrdiff_t i) { return self[cpputils::python::cppIndex(self.size(), i)]; },
                 py::return_value_policy::reference_internal);
         cls.def("__len__", &Mixture::size);
         cls.def("getComponentCount", &Mixture::getComponentCount);
@@ -134,8 +134,8 @@ PyMixture declareMixture(lsst::cpputils::python::WrapperCollection &wrappers) {
         cls.def("clone", &Mixture::clone);
         cls.def(py::init<int, Mixture::ComponentList &, Scalar>(), "dim"_a, "components"_a,
                 "df"_a = std::numeric_limits<Scalar>::infinity());
-        utils::python::addOutputOp(cls, "__str__");
-        utils::python::addOutputOp(cls, "__repr__");
+        cpputils::python::addOutputOp(cls, "__str__");
+        cpputils::python::addOutputOp(cls, "__repr__");
     });
 }
 } // namespace
