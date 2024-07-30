@@ -49,7 +49,7 @@ void wrapUnitSystem(lsst::cpputils::python::WrapperCollection &wrappers);
 void wrapUnitTransformedLikelihood(lsst::cpputils::python::WrapperCollection &wrappers);
 
 PYBIND11_MODULE(_modelfitLib, mod) {
-    lsst::utils::python::WrapperCollection wrappers(mod, "lsst.meas.modelfit");
+    lsst::cpputils::python::WrapperCollection wrappers(mod, "lsst.meas.modelfit");
 
     wrappers.addInheritanceDependency("lsst.meas.base");
 
