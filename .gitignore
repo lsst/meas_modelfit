@@ -25,3 +25,4 @@ tests/reference/bvn
 bin/measureCcd.py
 bin/measureCoadd.py
 bin/measureMulti.py
+python/*.dist-info/
