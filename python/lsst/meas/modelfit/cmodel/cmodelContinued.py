@@ -102,11 +102,12 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
     def measure(self, measRecord, exposure, refRecord, refWcs):
         if refWcs != exposure.getWcs():
             wcs = exposure.getWcs()
-            raise lsst.meas.base.FatalAlgorithmError(
+            print(
                 "CModel forced measurement currently requires the measurement image to have the same"
                 " Wcs as the reference catalog (this is a temporary limitation)."
-                f"{refWcs=} and {wcs=}"
+                f"refWcs={refWcs.writeString()} and wcs={wcs.writeString()}"
             )
+            
         self.algorithm.measure(measRecord, exposure, refRecord)
 
     def fail(self, measRecord, error=None):
