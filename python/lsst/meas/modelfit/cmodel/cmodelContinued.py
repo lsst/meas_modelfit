@@ -107,7 +107,6 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
                 " Wcs as the reference catalog (this is a temporary limitation)."
                 f"refWcs={refWcs.writeString()} and wcs={wcs.writeString()}"
             )
-            
         self.algorithm.measure(measRecord, exposure, refRecord)
 
     def fail(self, measRecord, error=None):
