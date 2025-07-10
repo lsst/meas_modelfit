@@ -37,11 +37,11 @@ namespace meas {
 namespace modelfit {
 namespace {
 
-using PyCModelStageControl = py::class_<CModelStageControl>;
-using PyCModelControl = py::class_<CModelControl>;
-using PyCModelStageResult = py::class_<CModelStageResult>;
-using PyCModelResult = py::class_<CModelResult>;
-using PyCModelAlgorithm = py::class_<CModelAlgorithm>;
+using PyCModelStageControl = py::classh<CModelStageControl>;
+using PyCModelControl = py::classh<CModelControl>;
+using PyCModelStageResult = py::classh<CModelStageResult>;
+using PyCModelResult = py::classh<CModelResult>;
+using PyCModelAlgorithm = py::classh<CModelAlgorithm>;
 
 PyCModelStageControl declareCModelStageControl(lsst::cpputils::python::WrapperCollection &wrappers) {
     return wrappers.wrapType(PyCModelStageControl(wrappers.module, "CModelStageControl"), [](auto &mod, auto &cls) {

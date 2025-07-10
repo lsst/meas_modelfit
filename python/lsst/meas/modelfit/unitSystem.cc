@@ -33,8 +33,8 @@ namespace lsst {
 namespace meas {
 namespace modelfit {
 
-using PyUnitSystem = py::class_<UnitSystem>;
-using PyLocalUnitTransform = py::class_<LocalUnitTransform>;
+using PyUnitSystem = py::classh<UnitSystem>;
+using PyLocalUnitTransform = py::classh<LocalUnitTransform>;
 
 void wrapUnitSystem(lsst::cpputils::python::WrapperCollection &wrappers) {
     // Data member wrappers in this module are intentionally read-only;

@@ -36,8 +36,8 @@ namespace lsst {
 namespace meas {
 namespace modelfit {
 
-using PyPixelFitRegionControl = py::class_<PixelFitRegionControl>;
-using PyPixelFitRegion = py::class_<PixelFitRegion>;
+using PyPixelFitRegionControl = py::classh<PixelFitRegionControl>;
+using PyPixelFitRegion = py::classh<PixelFitRegion>;
 
 void wrapPixelFitRegion(lsst::cpputils::python::WrapperCollection &wrappers) {
     using Control = PixelFitRegionControl;

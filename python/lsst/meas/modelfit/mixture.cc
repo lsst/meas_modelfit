@@ -42,10 +42,10 @@ namespace meas {
 namespace modelfit {
 namespace {
 
-using PyMixtureComponent = py::class_<MixtureComponent>;
+using PyMixtureComponent = py::classh<MixtureComponent>;
 using PyMixtureUpdateRestriction =
-        py::class_<MixtureUpdateRestriction>;
-using PyMixture = py::class_<Mixture>;
+        py::classh<MixtureUpdateRestriction>;
+using PyMixture = py::classh<Mixture>;
 
 PyMixtureComponent declareMixtureComponent(lsst::cpputils::python::WrapperCollection &wrappers) {
     return wrappers.wrapType(

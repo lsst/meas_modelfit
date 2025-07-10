@@ -41,8 +41,8 @@ void declareDoubleShapelet(lsst::cpputils::python::WrapperCollection &wrappers) 
     using Control = DoubleShapeletPsfApproxControl;
     using Algorithm = DoubleShapeletPsfApproxAlgorithm;
 
-    using PyControl = py::class_<Control>;
-    using PyAlgorithm = py::class_<Algorithm, meas::base::SimpleAlgorithm>;
+    using PyControl = py::classh<Control>;
+    using PyAlgorithm = py::classh<Algorithm, meas::base::SimpleAlgorithm>;
 
     static auto clsControl =
             wrappers.wrapType(PyControl(wrappers.module, "DoubleShapeletPsfApproxControl"), [](auto &mod, auto &cls) {
@@ -83,10 +83,10 @@ void declareGeneral(lsst::cpputils::python::WrapperCollection &wrappers) {
     using Fitter = GeneralPsfFitter;
     using Algorithm = GeneralPsfFitterAlgorithm;
 
-    using PyComponentControl = py::class_<ComponentControl>;
-    using PyControl = py::class_<Control>;
-    using PyFitter = py::class_<Fitter>;
-    using PyAlgorithm = py::class_<Algorithm, Fitter>;
+    using PyComponentControl = py::classh<ComponentControl>;
+    using PyControl = py::classh<Control>;
+    using PyFitter = py::classh<Fitter>;
+    using PyAlgorithm = py::classh<Algorithm, Fitter>;
 
     wrappers.wrapType(PyComponentControl(wrappers.module, "GeneralPsfFitterComponentControl"), [](auto &mod, auto &cls) {
         cls.def(py::init<int, double>(), "order"_a = 0, "radius"_a = 1.0);
