@@ -38,9 +38,9 @@ namespace meas {
 namespace modelfit {
 
 using PyImportanceSamplerControl =
-        py::class_<ImportanceSamplerControl, std::shared_ptr<ImportanceSamplerControl>>;
+        py::classh<ImportanceSamplerControl>;
 using PyAdaptiveImportanceSampler =
-        py::class_<AdaptiveImportanceSampler, std::shared_ptr<AdaptiveImportanceSampler>, Sampler>;
+        py::classh<AdaptiveImportanceSampler, Sampler>;
 
 void wrapAdaptiveImportanceSampler(lsst::cpputils::python::WrapperCollection &wrappers) {
     wrappers.wrapType(PyImportanceSamplerControl(wrappers.module, "ImportanceSamplerControl"), [](auto &mod, auto &cls) {

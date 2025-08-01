@@ -42,10 +42,10 @@ using Sampler = TruncatedGaussianSampler;
 using Evaluator = TruncatedGaussianEvaluator;
 using LogEvaluator = TruncatedGaussianLogEvaluator;
 
-using PyTruncatedGaussian = py::class_<TruncatedGaussian, std::shared_ptr<TruncatedGaussian>>;
-using PySampler = py::class_<Sampler, std::shared_ptr<Sampler>>;
-using PyEvaluator = py::class_<Evaluator, std::shared_ptr<Evaluator>>;
-using PyLogEvaluator = py::class_<LogEvaluator, std::shared_ptr<LogEvaluator>>;
+using PyTruncatedGaussian = py::classh<TruncatedGaussian>;
+using PySampler = py::classh<Sampler>;
+using PyEvaluator = py::classh<Evaluator>;
+using PyLogEvaluator = py::classh<LogEvaluator>;
 
 // Shared wrapper code for the TruncatedGaussianLogEvaluator and
 // TruncatedGaussianEvaluator classes, which have the exact same interface.
