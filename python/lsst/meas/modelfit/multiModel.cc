@@ -34,7 +34,7 @@ namespace lsst {
 namespace meas {
 namespace modelfit {
 
-using PyMultiModel = py::class_<MultiModel, std::shared_ptr<MultiModel>, Model>;
+using PyMultiModel = py::classh<MultiModel, Model>;
 
 void wrapMultiModel(lsst::cpputils::python::WrapperCollection &wrappers) {
     // py::module::import("lsst.meas.modelfit.model");
