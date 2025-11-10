@@ -23,11 +23,12 @@
 # The Plugin classes here are accessed via registries, not direct imports.
 __all__ = ("CModelStageConfig", "CModelConfig")
 
-from .._modelfitLib import CModelStageControl, CModelControl, CModelAlgorithm
+import logging
 
-from lsst.pex.config import makeConfigClass
 import lsst.meas.base
+from lsst.pex.config import makeConfigClass
 
+from .._modelfitLib import CModelAlgorithm, CModelControl, CModelStageControl
 
 CModelStageConfig = makeConfigClass(CModelStageControl)
 CModelConfig = makeConfigClass(CModelControl)
@@ -90,21 +91,29 @@ class CModelForcedPlugin(lsst.meas.base.ForcedPlugin):
     as well as the exp, dev, and combined exp+dev fits
     """
     ConfigClass = CModelForcedConfig
+    hasLogName = True
 
     @staticmethod
     def getExecutionOrder():
         return 3.0
 
-    def __init__(self, config, name, schemaMapper, metadata):
-        lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, metadata)
+    def __init__(self, config, name, schemaMapper, metadata, logName=None):
+        lsst.meas.base.ForcedPlugin.__init__(self, config, name, schemaMapper, metadata, logName=logName)
         self.algorithm = CModelAlgorithm(name, config.makeControl(), schemaMapper)
 
     def measure(self, measRecord, exposure, refRecord, refWcs):
         if refWcs != exposure.getWcs():
-            raise lsst.meas.base.FatalAlgorithmError(
-                "CModel forced measurement currently requires the measurement image to have the same"
-                " Wcs as the reference catalog (this is a temporary limitation)."
-            )
+            if str(refWcs) == str(exposure.getWcs()):
+                logger = logging.getLogger(self.getLogName())
+                logger.debug(
+                    "The measurement and reference WCS are not equal, but have the same"
+                    "string representation."
+                )
+            else:
+                raise lsst.meas.base.FatalAlgorithmError(
+                    "CModel forced measurement currently requires the measurement image to have the same"
+                    " Wcs as the reference catalog (this is a temporary limitation)."
+                )
         self.algorithm.measure(measRecord, exposure, refRecord)
 
     def fail(self, measRecord, error=None):
