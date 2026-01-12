@@ -365,7 +365,7 @@ class DoubleShapeletPsfApproxTestMixin:
         self.setupTaskConfig(config1)
         stream = StringIO()
         config1.saveToStream(stream)
-        config2.loadFromStream(stream.getvalue())
+        config2.loadFromString(stream.getvalue())
         self.assertEqual(config1, config2)
 
 
