@@ -180,7 +180,7 @@ class DoubleShapeletPsfApproxTestMixin:
         config.copyColumns = {"id": "objectId", "parent": "parentObjectId"}
         self.setupTaskConfig(config)
         config.slots.centroid = "base_TransformedCentroid"
-        config.plugins.names |= ["base_TransformedCentroid"]
+        config.plugins.names |= ["base_TransformedCentroid", "base_PixelFlags"]
         refSchema = lsst.afw.table.SourceTable.makeMinimalSchema()
         refCentroidKey = lsst.afw.table.Point2DKey.addFields(refSchema, "centroid", "centroid", "pixel")
         refSchema.getAliasMap().set("slot_Centroid", "centroid")

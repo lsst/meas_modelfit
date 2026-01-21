@@ -110,7 +110,9 @@ class GeneralShapeletPsfApproxPluginsTestCase(lsst.utils.tests.TestCase):
         config.slots.modelFlux = None
         config.doReplaceWithNoise = False
         config.slots.centroid = "base_TransformedCentroid"
-        config.plugins.names = ["base_TransformedCentroid", "modelfit_GeneralShapeletPsfApprox"]
+        config.plugins.names = ["base_TransformedCentroid",
+                                "base_PixelFlags",
+                                "modelfit_GeneralShapeletPsfApprox"]
         config.plugins["modelfit_GeneralShapeletPsfApprox"].sequence = ["SingleGaussian"]
         config.copyColumns = {"id": "objectId", "parent": "parentObjectId"}
         refCat = lsst.afw.table.SourceCatalog(self.schema)
