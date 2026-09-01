@@ -75,18 +75,24 @@ std::shared_ptr<Model> CModelStageControl::getModel() const {
     if (priorSource == "NONE") {
         return std::shared_ptr<Prior>();
     } else if (priorSource == "FILE") {
-        // Prefer the EUPS-provided environment variable; when it is not set (e.g. an
-        // environment-variable-free, conda-only install) fall back to locating the
-        // data directory relative to the meas_modelfit shared library itself.
-        char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR");
-        std::filesystem::path basePath = pkgDir
-            ? std::filesystem::path(pkgDir)
-            : std::filesystem::path(cpputils::getPackageDirFromAddress(
-                  reinterpret_cast<void const *>(&modelfitLibraryAnchor)));
-        std::filesystem::path priorPath
-            = basePath
-            / std::filesystem::path("data")
-            / std::filesystem::path(priorName + ".fits");
+        // Locate the prior data without depending on MEAS_MODELFIT_DIR.  The env
+        // var is honored when present (EUPS setups), but the data directory is
+        // otherwise found relative to the meas_modelfit shared library itself, so
+        // an environment-variable-free, conda-only install still works.  A baked
+        // install keeps the data under <prefix>/share/meas_modelfit (next to the
+        // library at <prefix>/lib); an EUPS-installed tree keeps it in
+        // <product>/data.  The first existing location wins.
+        namespace fs = std::filesystem;
+        fs::path dataDir;
+        if (char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR")) {
+            dataDir = fs::path(pkgDir) / "data";
+        } else {
+            fs::path base = cpputils::getPackageDirFromAddress(
+                reinterpret_cast<void const *>(&modelfitLibraryAnchor));
+            fs::path baked = base / "share" / "meas_modelfit";
+            dataDir = fs::exists(baked) ? baked : base / "data";
+        }
+        fs::path priorPath = dataDir / fs::path(priorName + ".fits");
         std::shared_ptr<Mixture> mixture = Mixture::readFits(priorPath.string());
         return std::make_shared<MixturePrior>(mixture, "single-ellipse");
     } else if (priorSource == "LINEAR") {
