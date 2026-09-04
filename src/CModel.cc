@@ -32,6 +32,7 @@
 #include "lsst/geom/SpherePoint.h"
 #include "lsst/afw/math/LeastSquares.h"
 #include "lsst/shapelet/FunctorKeys.h"
+#include "lsst/cpputils/packaging.h"
 #include "lsst/meas/modelfit/TruncatedGaussian.h"
 #include "lsst/meas/modelfit/MultiModel.h"
 #include "lsst/meas/modelfit/CModel.h"
@@ -57,6 +58,11 @@ Pixel computeFluxInFootprint(
     return std::max(a, b);
 }
 
+// Anchor whose address is guaranteed to reside in libmeas_modelfit; passing it to
+// cpputils::getPackageDirFromAddress lets us locate this package's data directory
+// via dladdr, independent of the MEAS_MODELFIT_DIR environment variable.
+void modelfitLibraryAnchor() {}
+
 } // anonymous
 
 //-------------------- Control Objects ----------------------------------------------------------------------
@@ -69,17 +75,24 @@ std::shared_ptr<Model> CModelStageControl::getModel() const {
     if (priorSource == "NONE") {
         return std::shared_ptr<Prior>();
     } else if (priorSource == "FILE") {
-        char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR");
-        if (!pkgDir) {
-            throw LSST_EXCEPT(
-                meas::base::FatalAlgorithmError,
-                "MEAS_MODELFIT_DIR environment variable not defined; cannot find persisted Priors"
-            );
+        // Locate the prior data without depending on MEAS_MODELFIT_DIR.  The env
+        // var is honored when present (EUPS setups), but the data directory is
+        // otherwise found relative to the meas_modelfit shared library itself, so
+        // an environment-variable-free, conda-only install still works.  A baked
+        // install keeps the data under <prefix>/share/meas_modelfit (next to the
+        // library at <prefix>/lib); an EUPS-installed tree keeps it in
+        // <product>/data.  The first existing location wins.
+        namespace fs = std::filesystem;
+        fs::path dataDir;
+        if (char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR")) {
+            dataDir = fs::path(pkgDir) / "data";
+        } else {
+            fs::path base = cpputils::getPackageDirFromAddress(
+                reinterpret_cast<void const *>(&modelfitLibraryAnchor));
+            fs::path baked = base / "share" / "meas_modelfit";
+            dataDir = fs::exists(baked) ? baked : base / "data";
         }
-        std::filesystem::path priorPath
-            = std::filesystem::path(pkgDir)
-            / std::filesystem::path("data")
-            / std::filesystem::path(priorName + ".fits");
+        fs::path priorPath = dataDir / fs::path(priorName + ".fits");
         std::shared_ptr<Mixture> mixture = Mixture::readFits(priorPath.string());
         return std::make_shared<MixturePrior>(mixture, "single-ellipse");
     } else if (priorSource == "LINEAR") {
