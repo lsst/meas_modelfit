@@ -84,7 +84,7 @@ std::shared_ptr<Model> CModelStageControl::getModel() const {
         // <product>/data.  The first existing location wins.
         namespace fs = std::filesystem;
         fs::path dataDir;
-        if (char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR")) {
+        if (char const * pkgDir = std::getenv("MEAS_MODELFIT_DIR"); pkgDir != nullptr) {
             dataDir = fs::path(pkgDir) / "data";
         } else {
             fs::path base = cpputils::getPackageDirFromAddress(
