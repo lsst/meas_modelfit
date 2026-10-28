@@ -1,0 +1,12 @@
+prefix=${pcfiledir}/../..
+includedir=${prefix}/include
+libdir=${prefix}/lib
+doxygen_tag=${prefix}/doc/meas_modelfit.tag
+lsst_build_requires=boost_test pybind11 python3
+
+Name: lsst_meas_modelfit
+Description: LSST Science Pipelines galaxy model fitting
+Version: @VERSION@
+Requires: lsst_cpputils lsst_afw lsst_meas_algorithms lsst_shapelet lsst_meas_base lsst_log
+Cflags: -I${includedir}
+Libs: -L${libdir} -lmeas_modelfit

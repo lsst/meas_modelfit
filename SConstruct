@@ -1,3 +1,3 @@
 # -*- python -*-
 from lsst.sconsUtils import scripts
-scripts.BasicSConstruct("meas_modelfit")
+scripts.BasicSConstruct("meas_modelfit", noCfgFile=True)
